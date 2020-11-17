@@ -1,0 +1,24 @@
+Package: CARP
+Title: Process and Analyse Data from CARP Mobile Sensing
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Koen",
+           family = "Niemeijer",
+           role = c("aut", "cre"),
+           email = "koen.niemeijer@kuleuven.be",
+           comment = c(ORCID = "0000-0002-0816-534X"))
+Description: What the package does (one paragraph).
+License: `use_gpl3_license()`
+BugReports: https://gitlab.kuleuven.be/u0134047/CARP/issues
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Imports:
+    tidyr,
+    dplyr,
+    rjson,
+    foreach,
+    future,
+    doFuture,
+    progressr
