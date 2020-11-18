@@ -71,6 +71,7 @@ apps_fun <- function(data) {
 	data
 }
 
+# TODO: incorrect app usage
 battery_fun <- function(data) {
 	default_fun(data)
 }
@@ -82,6 +83,7 @@ bluetooth_fun <- function(data) {
 	data
 }
 
+# TODO: Check attendees
 calendar_fun <- function(data) {
 	data$body <- lapply(data$body, function(x) x$body$calendar_events)
 	data$body <- lapply(data$body, function(x) lapply(x, function(y) unlist(y, recursive = FALSE)))
@@ -116,6 +118,7 @@ memory_fun <- function(data) {
 	default_fun(data)
 }
 
+# TODO: find out how this works
 mobility_fun <- function(data) {
 	default_fun(data)
 }
@@ -124,6 +127,7 @@ screen_fun <- function(data) {
 	default_fun(data)
 }
 
+# TODO: Check if text_message can be unnested
 text_message_fun <- function(data) {
 	default_fun(data)
 }

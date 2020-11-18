@@ -65,34 +65,44 @@ import <- function(path = getwd(), progress = TRUE, parallel = TRUE) {
 	# Retrieve all JSON files
 	files <- dir(path = path, pattern = "*.json$")
 	
+	if(length(files) == 0) {
+		stop("No JSON files found")
+	}
+	
 	# Set up parallel backend
 	if(parallel) {
 		doFuture::registerDoFuture()
 		future::plan(multisession)
+		# cl <- parallel::makeCluster(parallel::detectCores())
+		# doParallel::registerDoParallel(cl)
 	}
 	
 	if(progress) {
 		progressr::with_progress({
-			import_impl(files)
+			res <- import_impl(path, files)
 		})
 	} else{
-		import_impl(files)
+		res <- import_impl(path, files)
 	}
 	
 	if(parallel) {
+		# doParallel::stopImplicitCluster()
+		# parallel::stopCluster(cl)
 		plan(sequential)
 	}
 	
-	res <- purrr::flatten(res)
+	# TODO: # Replace with non-purrr version
+	res <- purrr::flatten(res) 
 	res <- tibble::enframe(res)
 	res <- split(res, res$name)
 	res <- lapply(res, function(x) tidyr::unnest(x, value))
 	res
 }	
 
-import_impl <- function(files) {
+import_impl <- function(path, files) {
+	# c("decide_fun", "accelerometer_fun, activity_fun, air_quality_fun, app_usage_fun, apps_fun, battery_fun, bluetooth_fun, calendar_fun, connectivity_fun, device_fun, gyroscope_fun, light_fun, location_fun, memory_fun, mobility_fun, screen_fun, text_message_fun, weather_fun, wifi_fun")
 	p <- progressr::progressor(length(files))
-	res <- foreach::foreach(i = 1:length(files)) %dopar% {
+	res <- foreach::foreach(i = 1:length(files), .noexport = c("data")) %dopar% {
 		p(sprintf("x=%g", i))
 		data <- rjson::fromJSON(file = paste0(path, "/", files[i]), simplify = FALSE)
 		
@@ -128,9 +138,10 @@ import_impl <- function(files) {
 }
 
 
-# bin_accelerometer <- function(data = accelerometer1) {
-# 	if(!exists("accelerometer", mode = "list")) {
-# 		error("Input data not found")
-# 	}
-# }
+acceleration <- function(data, x = x, y = y, z = z) {
+	x <- data$x
+	y <- data$y
+	z <- data$z
+	data$acceleration <- sqrt((x)^2 + (y)^2 + (z - 9.810467)^2)
+}
 
