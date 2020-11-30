@@ -8,7 +8,7 @@
 
 which_sensor <- function(data, sensor) {
 	switch(sensor,
-				 accelerometer = CARP:::acelerometer_fun(data),
+				 accelerometer = CARP:::accelerometer_fun(data),
 				 activity = CARP:::activity_fun(data),
 				 air_quality = CARP:::air_quality_fun(data),
 				 app_usage = CARP:::app_usage_fun(data),
