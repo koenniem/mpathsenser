@@ -9,7 +9,7 @@
 #'
 #' @return Invisible result. Side effect is corrupted JSON files fixed and/or data unzipped.
 #' @export
-clean_carp <- function(path = getwd(), zipped = TRUE) {
+clean <- function(path = getwd(), zipped = TRUE) {
 	# 1. Get list of JSONs
 	
 	# Find all JSON files that are _not_ zipped
@@ -72,39 +72,48 @@ import <- function(path = getwd(), progress = TRUE, parallel = TRUE) {
 	# Set up parallel backend
 	if(parallel) {
 		doFuture::registerDoFuture()
-		future::plan(multisession)
-		# cl <- parallel::makeCluster(parallel::detectCores())
-		# doParallel::registerDoParallel(cl)
+		future::plan(future::multisession)
+	} else {
+		foreach::registerDoSEQ()
 	}
 	
 	if(progress) {
 		progressr::with_progress({
-			res <- import_impl(path, files)
+			res <- CARP:::import_impl(path, files)
 		})
 	} else{
-		res <- import_impl(path, files)
+		res <- CARP:::import_impl(path, files)
 	}
 	
+	# Return to sequential processing
 	if(parallel) {
-		# doParallel::stopImplicitCluster()
-		# parallel::stopCluster(cl)
-		plan(sequential)
+		future::plan(future::sequential)
 	}
 	
 	# TODO: # Replace with non-purrr version
+	res <- purrr::compact(res)
 	res <- purrr::flatten(res) 
 	res <- tibble::enframe(res)
 	res <- split(res, res$name)
 	res <- lapply(res, function(x) tidyr::unnest(x, value))
+	# res <- lapply(res, function(x) x[["timestamp"]] <- )
 	res
 }	
 
 import_impl <- function(path, files) {
-	# c("decide_fun", "accelerometer_fun, activity_fun, air_quality_fun, app_usage_fun, apps_fun, battery_fun, bluetooth_fun, calendar_fun, connectivity_fun, device_fun, gyroscope_fun, light_fun, location_fun, memory_fun, mobility_fun, screen_fun, text_message_fun, weather_fun, wifi_fun")
 	p <- progressr::progressor(length(files))
-	res <- foreach::foreach(i = 1:length(files), .noexport = c("data")) %dopar% {
+	res <- foreach::`%dopar%`(foreach::foreach(i = 1:length(files), .packages = "CARP"), {
+		
+		# Update progress bar
 		p(sprintf("x=%g", i))
+	
 		data <- rjson::fromJSON(file = paste0(path, "/", files[i]), simplify = FALSE)
+		
+		# Check if it is not an empty file
+		if(length(data) == 0) {
+			# next
+			return(NULL)
+		}
 		
 		# Clean-up and extract the header and body
 		data <- tibble::tibble(header = lapply(data, function(x) x[1]),
@@ -130,13 +139,15 @@ import_impl <- function(path, files) {
 		for(i in 1:length(data)) {
 			# Get sensor name
 			sensor <- names(data)[[i]]
-			
-			out[[i]] <- decide_fun(data[[sensor]], sensor)
+			tmp <- data[[sensor]]
+
+			# Make the package for the decision function explicition
+			# otherwise globals won't know to export it
+			out[[i]] <- CARP:::which_sensor(tmp, sensor)
 		}
 		out
-	}
+	})
 }
-
 
 acceleration <- function(data, x = x, y = y, z = z) {
 	x <- data$x
@@ -144,4 +155,5 @@ acceleration <- function(data, x = x, y = y, z = z) {
 	z <- data$z
 	data$acceleration <- sqrt((x)^2 + (y)^2 + (z - 9.810467)^2)
 }
+
 

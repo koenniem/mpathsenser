@@ -21,4 +21,5 @@ Imports:
     foreach,
     future,
     doFuture,
+    globals(>= 0.14.0),
     progressr
