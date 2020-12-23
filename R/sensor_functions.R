@@ -26,7 +26,8 @@ which_sensor <- function(data, sensor) {
 				 screen = screen_fun(data),
 				 text_message = text_message_fun(data),
 				 weather = weather_fun(data),
-				 wifi = wifi_fun(data))
+				 wifi = wifi_fun(data),
+			   default_fun(data)) # default
 }
 
 default_fun <- function(data) {

@@ -135,6 +135,11 @@ import_impl <- function(path, files) {
 		data <- tidyr::unnest(data, header)
 		colnames(data) <- c("study_id", "user_id", "start_time", "data_namespace", "sensor", "body")
 
+		# Check if it has any rows
+		if(nrow(data) == 0) {
+			return(NULL)
+		}
+
 		# Convert to POSIX time
 		data$start_time <- as.POSIXct(data$start_time, "%Y-%m-%dT%H:%M:%S", tz="Europe/Brussels")
 
@@ -169,7 +174,70 @@ acceleration <- function(data, x = x, y = y, z = z) {
 	data$acceleration <- sqrt((x)^2 + (y)^2 + (z - 9.810467)^2)
 }
 
-coverage <- function(data) {
+freq <- c(
+	accelerometer = 3600, # Once per second
+	bluetooth = 60,  # Once per minute
+	light = 360, # Once per 10 seconds
+	location = 120, # Once per 30 seconds
+	memory = 60, # Once per minute
+	wifi = 60 # once per minute
+)
 
+
+#' Create a coverage chart showing sampling rate
+#'
+#' Only applicable to non-reactive sensors with "continuous" sampling
+#'
+#' @param data A list of data frames containing data per sensor
+#' as output by \link[CARP]{import}
+#' @param frequency A named numeric vector with sensors as names
+#' and the number of expected samples per hour
+#'
+#' @return
+#' @export
+#'
+#' @examples
+coverage <- function(data, frequency) {
+
+	uid <- unique(unlist(lapply(data, function(x) unique(x$user_id))))
+	if(length(uid) > 1) stop("Only 1 participant per coverage chart allowed")
+
+	if(!is.list(data)) stop("Data is expected to be a list of data frames")
+
+	if(!is.numeric(frequency) || !is.null(names(frequency))) stop("Frequency is supposed to be a named vector")
+
+	# Device information
+	device <- paste(
+		unique(data$device$platform),
+		unique(data$device$device_model),
+		lubridate::date(data$device$start_time[1])
+	)
+
+	x <- data %>%
+		map(~ {
+			.x %>%
+				distinct(start_time) %>%
+				mutate(Hour = lubridate::hour(start_time)) %>%
+				mutate(Date = lubridate::date(start_time)) %>%
+				count(Date, Hour) %>%
+				group_by(Hour) %>%
+				summarise(Coverage = sum(n) / n(), .groups = "drop")
+		})
+
+	x <- x[names(x) %in% names(frequency)]
+	x <- map2(x, frequency, ~mutate(.x, Coverage = round(Coverage / .y, 2)))
+	x <- tibble::enframe(x, name = "measure")
+	x <- unnest(x, value)
+	x <- mutate(x, measure = factor(measure),
+							measure = factor(measure, levels = rev(levels(measure))))
+
+	# Plot
+	ggplot(x, aes(x = Hour, y = measure, fill = Coverage)) +
+		geom_raster() +
+		geom_text(aes(label = Coverage), colour = "white") +
+		scale_x_continuous(breaks = 0:23) +
+		scale_fill_gradient2(midpoint = 0.5, high = "#3F7F93", low = "#d70525") +
+		theme_minimal() +
+		ggtitle(device)
 }
 
