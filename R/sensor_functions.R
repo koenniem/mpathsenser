@@ -8,7 +8,7 @@
 
 which_sensor <- function(data, sensor) {
 	switch(sensor,
-				 accelerometer = accelerometer_fun(data),
+				 accelerometer = default_fun(data),
 				 activity = activity_fun(data),
 				 air_quality = air_quality_fun(data),
 				 app_usage = app_usage_fun(data),
@@ -18,11 +18,12 @@ which_sensor <- function(data, sensor) {
 				 calendar = calendar_fun(data),
 				 connectivity = connectivity_fun(data),
 				 device = device_fun(data),
-				 gyroscope = gyroscope_fun(data),
+				 gyroscope = default_fun(data),
 				 light = light_fun(data),
 				 location = location_fun(data),
 				 memory = memory_fun(data),
 				 mobility = mobility_fun(data),
+				 noise = noise_fun(data),
 				 screen = screen_fun(data),
 				 text_message = text_message_fun(data),
 				 weather = weather_fun(data),
@@ -44,6 +45,7 @@ default_fun <- function(data) {
 	}
 }
 
+# Not in use
 accelerometer_fun <- function(data) {
 	data$body <- lapply(data$body, function(x) x$body$data)
 	data$body <- lapply(data$body, dplyr::bind_rows)
@@ -60,8 +62,18 @@ air_quality_fun <- function(data) {
 	default_fun(data)
 }
 
+# Warning: Outer names are only allowed for unnamed scalar atomic inputs
 app_usage_fun <- function(data) {
-	default_fun(data)
+	data <- suppressWarnings(default_fun(data))
+	if("usage" %in% colnames(data)) {
+		# Get and delete entries that have null usage
+		nulls <- unlist(lapply(data$usage, is.null))
+		data <- data[!nulls,]
+
+		data$app <- names(data$usage)
+		data$usage <- as.numeric(data$usage)
+	}
+	data
 }
 
 apps_fun <- function(data) {
@@ -89,13 +101,15 @@ calendar_fun <- function(data) {
 	data$body <- lapply(data$body, function(x) x$body$calendar_events)
 	data$body <- lapply(data$body, function(x) lapply(x, function(y) unlist(y, recursive = FALSE)))
 	data$body <- lapply(data$body, dplyr::bind_rows)
-	data <- tidyr::unnest(data, body, keep_empty = TRUE)
+	data <- tidyr::unnest(data, body)
 
 	if(nrow(data) > 0) {
 		data$start <- as.POSIXct(data$start, "%Y-%m-%dT%H:%M:%S", tz="Europe/Brussels")
 		data$end <- as.POSIXct(data$end, "%Y-%m-%dT%H:%M:%S", tz="Europe/Brussels")
+		return(data)
+	} else {
+		return(NA)
 	}
-	data
 }
 
 connectivity_fun <- function(data) {
@@ -124,6 +138,10 @@ memory_fun <- function(data) {
 
 # TODO: find out how this works
 mobility_fun <- function(data) {
+	default_fun(data)
+}
+
+noise_fun <- function(data) {
 	default_fun(data)
 }
 

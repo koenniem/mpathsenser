@@ -4,41 +4,56 @@
 #' app not properly closing them. This function (hopefully) fixes that. Additionally,
 #' it can also unzip all the output in the directory.
 #'
+#' Note: Be careful when running this function multiple times. In the case there are
+#' many zips and no JSON files, it will be fast. However, when re-running the function,
+#' every previously unzipped JSON file will be checked for errors.
+#'
 #' @param path The path to the directory containing the JSON and/or zip files
-#' @param zipped Logical value indiciating whether you want to unzip the files as well.
+#' @param zipped Logical value indicating whether you want to unzip the files as well.
+#' @param fix Logical value indicating whether to fix incorrectly formatted JSON files in path.
+#' @param overwrite Defaults to true.
 #'
 #' @return Invisible result. Side effect is corrupted JSON files fixed and/or data unzipped.
 #' @export
-clean <- function(path = getwd(), zipped = TRUE) {
+clean <- function(path = getwd(), zipped = TRUE, fix = FALSE, overwrite = FALSE) {
 	# 1. Get list of JSONs
 
 	# Find all JSON files that are _not_ zipped
 	# Thus, make sure you didn't unzip them yet, otherwise this may take a long time
-	files <- dir(path = path, pattern = "*.json$")
+	jsonfiles <- dir(path = path, pattern = "*.json$")
 
 	# 2. Fix JSONs
-	if(length(files > 0)) {
-		lines <- lapply(files, readLines)
-		eof <- lapply(lines, function(x) x[length(x)])
+	if(fix) {
+		if(length(jsonfiles > 0)) {
+			lines <- lapply(jsonfiles, readLines)
+			eof <- lapply(lines, function(x) x[length(x)])
 
-		for(i in 1:length(files)) {
-			file <- paste0(path, "/", files[i])
-			if(eof[i] == ",") {
-				write("{}]", file, append = TRUE)
+			for(i in 1:length(jsonfiles)) {
+				file <- paste0(path, "/", jsonfiles[i])
+				if(eof[i] == ",") {
+					write("{}]", file, append = TRUE)
+				}
+				if(eof[i] == "[") {
+					write("]", file, append = TRUE)
+				}
+				if(nchar(eof[i]) > 3 && substr(eof[i], nchar(eof[i])-1, nchar(eof[i])) == "}}") {
+					write("]", file, append = TRUE)
+				}
 			}
-			if(eof[i] == "[") {
-				write("]", file, append = TRUE)
-			}
-			if(nchar(eof[i]) > 3 && substr(eof[i], nchar(eof[i])-1, nchar(eof[i])) == "}}") {
-				write("]", file, append = TRUE)
-			}
+		} else{
+			message("No JSON files found. Checking if there are zips...")
 		}
-	} else{
-		message("No JSON files found. Checking if there are zips...")
 	}
 
 	# 3. Unzip
+	# Get all zipfiles in the path
 	zipfiles <- dir(pattern = "*.zip$", full.names = TRUE)
+
+	# Do not unzip files that already exist as JSON file
+	if(!overwrite) {
+		zipfiles <- setdiff(zipfiles, jsonfiles)
+	}
+
 	if(length(zipfiles) > 0) {
 		message(paste0("Unzipping ", length(zipfiles), " files."))
 		invisible(lapply(zipfiles, unzip))
@@ -46,7 +61,7 @@ clean <- function(path = getwd(), zipped = TRUE) {
 		message("No files found to unzip.")
 	}
 
-	if(zipfiles == 0 && files == 0) {
+	if(zipfiles == 0 && jsonfiles == 0) {
 		warning("No files were found to be processed.")
 	}
 }
@@ -135,11 +150,6 @@ import_impl <- function(path, files) {
 		data <- tidyr::unnest(data, header)
 		colnames(data) <- c("study_id", "user_id", "start_time", "data_namespace", "sensor", "body")
 
-		# Check if it has any rows
-		if(nrow(data) == 0) {
-			return(NULL)
-		}
-
 		# Convert to POSIX time
 		data$start_time <- as.POSIXct(data$start_time, "%Y-%m-%dT%H:%M:%S", tz="Europe/Brussels")
 
@@ -154,14 +164,14 @@ import_impl <- function(path, files) {
 		names(out) <- names(data)
 
 		# Call function for each list according to their name plus _fun
-		for(i in 1:length(data)) {
+		for(j in 1:length(data)) {
 			# Get sensor name
-			sensor <- names(data)[[i]]
+			sensor <- names(data)[[j]]
 			tmp <- data[[sensor]]
 
-			# Make the package for the decision function explicition
+			# Make the package for the decision function explicit
 			# otherwise globals won't know to export it
-			out[[i]] <- which_sensor(tmp, sensor)
+			out[[j]] <- which_sensor(tmp, sensor)
 		}
 		out
 	})
@@ -174,12 +184,17 @@ acceleration <- function(data, x = x, y = y, z = z) {
 	data$acceleration <- sqrt((x)^2 + (y)^2 + (z - 9.810467)^2)
 }
 
+# Per hour
 freq <- c(
 	accelerometer = 3600, # Once per second
+	air_quality = 1,
+	app_usage = 360,
 	bluetooth = 60,  # Once per minute
 	light = 360, # Once per 10 seconds
 	location = 120, # Once per 30 seconds
 	memory = 60, # Once per minute
+	noise = 120,
+	weather = 1,
 	wifi = 60 # once per minute
 )
 
@@ -196,7 +211,25 @@ freq <- c(
 #' @return
 #' @export
 #'
+#' @importFrom magrittr "%>%"
+#'
 #' @examples
+#' setwd("~/data")
+#' clean()
+#' data <- import()
+#' freq <- c(
+#'   accelerometer = 3600, # Once per second
+#'   air_quality = 1,
+#'   app_usage = 360, # Once per 10 seconds
+#'   bluetooth = 60,  # Once per minute
+#'   light = 360, # Once per 10 seconds
+#'   location = 120, # Once per 30 seconds
+#'   memory = 60, # Once per minute
+#'   noise = 120,
+#'   weather = 1,
+#'   wifi = 60 # once per minute
+#' )
+#' coverage(data, freq)
 coverage <- function(data, frequency) {
 
 	uid <- unique(unlist(lapply(data, function(x) unique(x$user_id))))
@@ -204,40 +237,66 @@ coverage <- function(data, frequency) {
 
 	if(!is.list(data)) stop("Data is expected to be a list of data frames")
 
-	if(!is.numeric(frequency) || !is.null(names(frequency))) stop("Frequency is supposed to be a named vector")
+	if(!is.numeric(frequency) || is.null(names(frequency))) stop("Frequency is supposed to be a named numeric vector")
 
-	# Device information
+	# Retain only frequencies that appear in the data
+	frequency <- frequency[names(frequency) %in% names(data)]
+
+	# Retain only variables that appear in the frequency
+	data <- data[names(data) %in% names(frequency)]
+
+	# Get device information
 	device <- paste(
 		unique(data$device$platform),
 		unique(data$device$device_model),
-		lubridate::date(data$device$start_time[1])
+		as.Date(data$device$start_time[1])
 	)
 
-	x <- data %>%
-		map(~ {
-			.x %>%
-				distinct(start_time) %>%
-				mutate(Hour = lubridate::hour(start_time)) %>%
-				mutate(Date = lubridate::date(start_time)) %>%
-				count(Date, Hour) %>%
-				group_by(Hour) %>%
-				summarise(Coverage = sum(n) / n(), .groups = "drop")
-		})
+	# Get the number of observations per hour
+	data <- lapply(data, function(.x) {
+		.x %>%
+			dplyr::distinct(start_time) %>%
+			dplyr::mutate(Hour = lubridate::hour(start_time)) %>%
+			dplyr::mutate(Date = lubridate::date(start_time)) %>%
+			dplyr::count(Date, Hour) %>%
+			dplyr::group_by(Hour) %>%
+			dplyr::summarise(Coverage = sum(n) / dplyr::n(), .groups = "drop")
+	})
 
-	x <- x[names(x) %in% names(frequency)]
-	x <- map2(x, frequency, ~mutate(.x, Coverage = round(Coverage / .y, 2)))
-	x <- tibble::enframe(x, name = "measure")
-	x <- unnest(x, value)
-	x <- mutate(x, measure = factor(measure),
-							measure = factor(measure, levels = rev(levels(measure))))
+	# Calculate its target frequency ratio
+	data <- mapply(
+		FUN = function(.x, .y) dplyr::mutate(.x, Coverage = round(Coverage / .y, 2)),
+		.x = data,
+		.y = frequency,
+		SIMPLIFY = F)
+
+	# Pour into ggplot format
+	data <- mapply(
+		FUN = function(.x, .y) dplyr::mutate(.x, measure = .y),
+		.x = data,
+		.y = names(data),
+		SIMPLIFY = FALSE)
+	data <- do.call("rbind", data)
+	data$measure <- factor(data$measure)
+	data$measure <- factor(data$measure, levels = rev(levels(data$measure)))
+	#
+	# data <- tibble::enframe(data, name = "measure")
+	# data <- tidyr::unnest(data, value)
+	# data <- dplyr::mutate(data, measure = factor(measure),
+	# 						measure = factor(measure, levels = rev(levels(measure))))
 
 	# Plot
-	ggplot(x, aes(x = Hour, y = measure, fill = Coverage)) +
-		geom_raster() +
-		geom_text(aes(label = Coverage), colour = "white") +
-		scale_x_continuous(breaks = 0:23) +
-		scale_fill_gradient2(midpoint = 0.5, high = "#3F7F93", low = "#d70525") +
-		theme_minimal() +
-		ggtitle(device)
+	ggplot2::ggplot(data = data,
+									mapping = ggplot2::aes(x = Hour, y = measure, fill = Coverage)) +
+		ggplot2::geom_tile() +
+		ggplot2::geom_text(mapping = ggplot2::aes(label = Coverage),
+											 colour = "white") +
+		ggplot2::scale_x_continuous(breaks = 0:23) +
+		ggplot2::scale_fill_gradientn(colours = c("#d70525", "#FFFFFF", "#3F7F93"),
+																	breaks = c(0, 0.5, 1),
+																	labels = c(0, 0.5, 1),
+																	limits = c(0,1)) +
+		ggplot2::theme_minimal() +
+		ggplot2::ggtitle(device)
 }
 

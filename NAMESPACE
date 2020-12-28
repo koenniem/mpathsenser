@@ -3,3 +3,4 @@
 export(clean)
 export(coverage)
 export(import)
+importFrom(magrittr,"%>%")
