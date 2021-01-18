@@ -1,3 +1,33 @@
+
+#' Copy CARP zip files to a new location
+#'
+#' Copy zip files from a source destination to an origin destination where they do not yet exist.
+#' That is, it only updates the origin folder from the source folder.
+#'
+#'
+#' @param from A path to copy files from.
+#' @param to A path to copy files to.
+#'
+#' @return Invisible result. Messages indicating how many files were copied.
+#' @export
+#'
+#' @examples
+#' library(CARP)
+#' ccopy("K:/data/myproject/", "~/myproject")
+ccopy <- function(from, to = getwd()) {
+	# from <- "K:/GHUM-PPW-MICAS-OKPIV-PHD_KOEN-0800-A/emosense/"
+	from_list <- dir(path = from, pattern = "*.zip$")
+	to_list <- dir(path = to, pattern = "*.zip$")
+	copy <- from_list[!(from_list %in% to_list)]
+	if(length(copy) == 0) {
+		message("No files left to copy")
+		return(invisible(""))
+	}
+	message(paste0("Copying ", length(copy), " files."))
+	copy <- paste0(from, copy)
+	invisible(do.call(file.copy, list(from = copy, to = to, overwrite = FALSE)))
+}
+
 #' Clean up direct CARP output
 #'
 #' When copying data directly coming from CARP, JSON files are often corrupt due to the
@@ -20,7 +50,8 @@ clean <- function(path = getwd(), zipped = TRUE, fix = FALSE, overwrite = FALSE)
 
 	# Find all JSON files that are _not_ zipped
 	# Thus, make sure you didn't unzip them yet, otherwise this may take a long time
-	jsonfiles <- dir(path = path, pattern = "*.json$")
+	jsonfiles <- dir(path = path, pattern = "*.json$", TRUE)
+	tag.json <- substr(jsonfiles, 11, nchar(jsonfiles) - 5)
 
 	# 2. Fix JSONs
 	if(fix) {
@@ -47,15 +78,20 @@ clean <- function(path = getwd(), zipped = TRUE, fix = FALSE, overwrite = FALSE)
 
 	# 3. Unzip
 	# Get all zipfiles in the path
-	zipfiles <- dir(pattern = "*.zip$", full.names = TRUE)
+	zipfiles <- dir(pattern = "*.zip$")
+	tag.zip <- sapply(strsplit(zipfiles, "carp-data-"), function(x) x[2])
+	tag.zip <- substr(tag.zip, 1, nchar(tag.zip) - 4)
 
 	# Do not unzip files that already exist as JSON file
 	if(!overwrite) {
-		zipfiles <- setdiff(zipfiles, jsonfiles)
+		# zipfiles <- setdiff(zipfiles, jsonfiles)
+		zipfiles <- zipfiles[!(tag.zip %in% tag.json)]
 	}
 
 	if(length(zipfiles) > 0) {
 		message(paste0("Unzipping ", length(zipfiles), " files."))
+		# TODO: implement error handling in case unzipping fails
+		# (e.g. unexpected end of data)
 		invisible(lapply(zipfiles, unzip))
 	} else {
 		message("No files found to unzip.")
@@ -150,6 +186,8 @@ import_impl <- function(path, files) {
 		data <- tidyr::unnest(data, header)
 		colnames(data) <- c("study_id", "user_id", "start_time", "data_namespace", "sensor", "body")
 
+		data$user_id <-
+
 		# Convert to POSIX time
 		data$start_time <- as.POSIXct(data$start_time, "%Y-%m-%dT%H:%M:%S", tz="Europe/Brussels")
 
@@ -237,7 +275,8 @@ coverage <- function(data, frequency) {
 
 	if(!is.list(data)) stop("Data is expected to be a list of data frames")
 
-	if(!is.numeric(frequency) || is.null(names(frequency))) stop("Frequency is supposed to be a named numeric vector")
+	if(!is.numeric(frequency) || is.null(names(frequency)))
+		stop("Frequency is supposed to be a named numeric vector")
 
 	# Retain only frequencies that appear in the data
 	frequency <- frequency[names(frequency) %in% names(data)]
