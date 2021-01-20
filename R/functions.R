@@ -186,8 +186,6 @@ import_impl <- function(path, files) {
 		data <- tidyr::unnest(data, header)
 		colnames(data) <- c("study_id", "user_id", "start_time", "data_namespace", "sensor", "body")
 
-		data$user_id <-
-
 		# Convert to POSIX time
 		data$start_time <- as.POSIXct(data$start_time, "%Y-%m-%dT%H:%M:%S", tz="Europe/Brussels")
 
