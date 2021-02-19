@@ -4,14 +4,14 @@
 \alias{coverage}
 \title{Create a coverage chart showing sampling rate}
 \usage{
-coverage(data, frequency)
+coverage(db, participant_id, sensor = "All", frequency, relative = TRUE)
 }
 \arguments{
-\item{data}{A list of data frames containing data per sensor
-as output by \link[CARP]{import}}
-
 \item{frequency}{A named numeric vector with sensors as names
 and the number of expected samples per hour}
+
+\item{data}{A valid database connection. Schema must be that as it is created by
+\link[CARP]{open_db}.}
 }
 \value{
 
@@ -22,7 +22,7 @@ Only applicable to non-reactive sensors with "continuous" sampling
 \examples{
 setwd("~/data")
 clean()
-data <- import()
+import()
 freq <- c(
   accelerometer = 3600, # Once per second
   air_quality = 1,
@@ -35,5 +35,5 @@ freq <- c(
   weather = 1,
   wifi = 60 # once per minute
 )
-coverage(data, freq)
+coverage(db, freq)
 }

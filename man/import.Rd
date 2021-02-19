@@ -2,20 +2,34 @@
 % Please edit documentation in R/functions.R
 \name{import}
 \alias{import}
-\title{Import CARP files into R (CARP data scheme)}
+\title{Import CARP files into a database (CARP data scheme)}
 \usage{
-import(path = getwd(), progress = TRUE, parallel = TRUE)
+import(
+  path = getwd(),
+  db = NULL,
+  dbname = "carp.db",
+  backend = "RSQLite",
+  progress = TRUE,
+  parallel = False
+)
 }
 \arguments{
 \item{path}{The path to the file directory}
+
+\item{db}{Valid database connection.}
+
+\item{dbname}{If no database is provided, a new database dbname is created.}
+
+\item{backend}{Name of the database backend that is used. Currently, only RSQLite is supported.}
 
 \item{progress}{Logical value to show a progress bar or not.}
 
 \item{parallel}{Logical value which indicates whether to do reading in and processing in parallel.}
 }
 \value{
-An S3 object containing a tibble for each sensor in the data.
+Invisible. Imported database can be reopened using \link[CARP]{open_db}.
 }
 \description{
-Import CARP files into R (CARP data scheme)
+Currently, only SQLite is supported as a backend. Due to its concurrency restrcition, the
+\code{parallel} is disabled.
 }

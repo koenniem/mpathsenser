@@ -1,6 +1,6 @@
 Package: CARP
 Title: Process and Analyse Data from CARP Mobile Sensing
-Version: 0.0.0.9000
+Version: 0.0.1
 Authors@R: 
     person(given = "Koen",
            family = "Niemeijer",
@@ -15,8 +15,13 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports:
+    DBI,
+    RSQLite,
     tidyr,
     dplyr,
+    dbplyr,
+    purrr,
+    ggplot2,
     rjson,
     foreach,
     future,
