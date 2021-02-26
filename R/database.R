@@ -1,3 +1,11 @@
+#' Available Sensors
+#'
+#' A list containing all available sensors in this package you can work with. This variable was
+#' created so it is easier to use in your own functions, e.g. to loop over sensors.
+#'
+#' @examples
+#' sensors
+#' @export sensors
 sensors <- c("Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "Bluetooth",
 						 "Calendar", "Connectivity", "Device", "Geofence", "Gyroscope", "InstalledApps",
 						 "Keyboard", "Light", "Location", "Memory", "Mobility", "Noise",
@@ -22,7 +30,7 @@ create_db <- function(db_name = "carp.db", overwrite = FALSE) {
 				stop("Database db_name already exists. Use overwrite = TRUE to overwrite.")
 			}
 		}
-		db <- dbConnect(RSQLite::SQLite(), db_name)
+		db <- RSQLite::dbConnect(RSQLite::SQLite(), db_name)
 	} else {
 		stop("Argument db_name must be a filename.")
 	}
@@ -30,10 +38,10 @@ create_db <- function(db_name = "carp.db", overwrite = FALSE) {
 	tryCatch({
 		script <- strsplit(paste0(readLines("dbdef.sql", warn = FALSE), collapse = "\n"),	"\n\n")[[1]]
 		for (statement in script) {
-			dbExecute(db, statement)
+			RSQLite::dbExecute(db, statement)
 		}
 	}, error = function(e) {
-		dbDisconnect(db)
+		RSQLite::dbDisconnect(db)
 		stop(e)
 	})
 
@@ -49,16 +57,16 @@ create_db <- function(db_name = "carp.db", overwrite = FALSE) {
 open_db <- function(db_name = "carp.db") {
 	if (!file.exists(db_name))
 		stop("There is no such file")
-	db <- dbConnect(RSQLite::SQLite(), db_name)
-	if (!dbExistsTable(db, "Participant")) {
-		dbDisconnect(db)
+	db <- DBI::dbConnect(RSQLite::SQLite(), db_name)
+	if (!RSQLite::dbExistsTable(db, "Participant")) {
+		RSQLite::dbDisconnect(db)
 		stop("Sorry, this does not appear to be a CARP database.")
 	}
 	return(db)
 }
 
 add_study <- function(db, data) {
-	dbExecute(db,
+	RSQLite::dbExecute(db,
 	"INSERT INTO Study(study_id, data_format)
 	VALUES(:study_id, :data_format)
 	ON CONFLICT DO NOTHING;",
@@ -66,7 +74,7 @@ add_study <- function(db, data) {
 }
 
 add_participant <- function(db, data) {
-	dbExecute(db,
+	RSQLite::dbExecute(db,
 	"INSERT INTO Participant(participant_id, study_id)
 	VALUES(:participant_id, :study_id)
 	ON CONFLICT DO NOTHING;",
@@ -74,14 +82,14 @@ add_participant <- function(db, data) {
 }
 
 add_processed_file <- function(db, data) {
-	dbExecute(db,
+	RSQLite::dbExecute(db,
 	"INSERT INTO ProcessedFiles(file_name, study_id, participant_id)
 	VALUES(:file_name, :study_id, :participant_id);",
 	list(file_name = data$file_name, study_id = data$study_id, participant_id = data$participant_id))
 }
 
 clear_sensors_db <- function(db) {
-	res <- lapply(sensors, function(x) dbExecute(db, paste0("DELETE FROM ", x, ";")))
+	res <- lapply(sensors, function(x) RSQLite::dbExecute(db, paste0("DELETE FROM ", x, ";")))
 	names(res) <- sensors
 	res
 }
@@ -96,8 +104,8 @@ clear_sensors_db <- function(db) {
 #' @return A data frame contain processed file for each participant and study.
 #' @export
 get_processed_files <- function(db) {
-	if(!dbIsValid(db)) stop("Database connection is not valid")
-	dbReadTable(db, "ProcessedFiles")
+	if(!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+	RSQLite::dbReadTable(db, "ProcessedFiles")
 }
 
 #' Get all participants
@@ -108,11 +116,11 @@ get_processed_files <- function(db) {
 #' @return A data frame containing all participants.
 #' @export
 get_participants <- function(db, lazy = FALSE) {
-	if(!dbIsValid(db)) stop("Database connection is not valid")
+	if(!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
 	if(lazy) {
-		tbl(db, "Participant")
+		dplyr::tbl(db, "Participant")
 	} else {
-		dbReadTable(db, "Participant")
+		RSQLite::dbReadTable(db, "Participant")
 	}
 }
 
@@ -124,11 +132,11 @@ get_participants <- function(db, lazy = FALSE) {
 #' @return A data frame containing all studies.
 #' @export
 get_studies <- function(db, lazy = FALSE) {
-	if(!dbIsValid(db)) stop("Database connection is not valid")
+	if(!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
 	if(lazy) {
-		tbl(db, "Study")
+		dplyr::tbl(db, "Study")
 	} else {
-		dbReadTable(db, "Study")
+		RSQLite::dbReadTable(db, "Study")
 	}
 }
 
@@ -141,11 +149,68 @@ get_studies <- function(db, lazy = FALSE) {
 #' @return A named vector containing the number of rows for each sensor.
 #' @export
 get_nrows <- function(db, sensor = "All") {
-	if(!dbIsValid(db)) stop("Database connection is not valid")
+	if(!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
 
 	if(sensor == "All") {
-		sensor <- sensors
+		sensor <- CARP:::sensors
 	}
 
-	sapply(sensor, function(x) dbGetQuery(db, paste0("SELECT COUNT(*) FROM ", x))[[1]])
+	sapply(sensor, function(x) RSQLite::dbGetQuery(db, paste0("SELECT COUNT(*) FROM ", x))[[1]])
+}
+
+get_data <- function(db, sensor, participant_id = NULL, startDate = NULL, endDate = NULL) {
+	out <- tbl(db, sensor)
+
+	if(!is.null(participant_id)) {
+		p_id <- participant_id
+		out <- out %>%
+			filter(participant_id == p_id)
+	}
+
+	if(!is.null(startDate) && !is.null(endDate)) {
+		start.date <- is(as.Date(startDate), "Date")
+		end.date <- is(as.Date(endDate), "Date")
+		if(start.date & end.date) {
+			out <- out %>%
+				mutate(date = DATE(time)) %>%
+				dplyr::filter(date >= startDate) %>%
+				dplyr::filter(date <= endDate)
+		}
+	}
+
+	out
+}
+
+get_installed_apps <- function(db, participant_id = NULL) {
+	data <- get_data(db, "InstalledApps", participant_id)
+	data <- collect(data)
+	apps <- paste0(data$apps, collapse = "|")
+	apps <- strsplit(apps, "|", fixed = TRUE)
+	apps <- unique(unlist(apps))
+	apps <- sort(apps)
+	apps
+}
+
+get_app_usage <- function(db, participant_id = NULL, startDate = NULL, endDate = NULL) {
+	if(!is.null(startDate) & is.null(endDate)) {
+		endDate <- startDate
+	}
+	data <- get_data(db, "AppUsage", participant_id, startDate, endDate)
+	data <- collect(data)
+
+	# Average sum per day if multiple days are selected
+	if(startDate == endDate) {
+		data %>%
+			drop_na(usage, app) %>%
+			group_by(app) %>%
+			summarise(UsageHour = round(sum(usage) / 60 / 60, 2))
+	} else {
+		data %>%
+			drop_na(usage, app) %>%
+			mutate(date = lubridate::date(time)) %>%
+			group_by(app, date) %>%
+			summarise(UsageHour = sum(usage) / 60 / 60) %>%
+			group_by(app) %>%
+			summarise(UsageHour = round(mean(UsageHour), 2))
+	}
 }

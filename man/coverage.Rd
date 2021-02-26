@@ -4,7 +4,16 @@
 \alias{coverage}
 \title{Create a coverage chart showing sampling rate}
 \usage{
-coverage(db, participant_id, sensor = "All", frequency, relative = TRUE)
+coverage(
+  db,
+  participant_id,
+  sensor = "All",
+  frequency,
+  relative = TRUE,
+  offset = "None",
+  startDate = NULL,
+  endDate = NULL
+)
 }
 \arguments{
 \item{frequency}{A named numeric vector with sensors as names

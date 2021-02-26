@@ -1,5 +1,5 @@
 save2db <- function(db, name, data) {
-		dbAppendTable(db, name, data)
+		RSQLite::dbAppendTable(db, name, data)
 }
 
 which_sensor <- function(db, data, sensor) {
@@ -76,6 +76,23 @@ accelerometer_fun <- function(db, data) {
 	save2db(db, "Accelerometer", data)
 }
 
+periodic_accelerometer_fun <- function(db, data) {
+	data$body <- lapply(data$body, function(x) x$body)
+	data$body <- suppressWarnings(lapply(data$body, dplyr::bind_rows))
+	data <- tidyr::unnest(data, body, keep_empty = TRUE)
+
+	data <- safe.data.frame(
+		measurement_id = data$id,
+		participant_id = data$participant_id,
+		time = data$timestamp,
+		x = data$x,
+		y = data$y,
+		z = data$z
+	)
+
+	save2db(db, "Accelerometer", data)
+}
+
 activity_fun <- function(db, data) {
 	data <- default_fun(data)
 
@@ -111,17 +128,13 @@ air_quality_fun <- function(db, data) {
 app_usage_fun <- function(db, data) {
 	data$body <- lapply(data$body, function(x) x$body)
 	data$body <- suppressWarnings(lapply(data$body, dplyr::bind_rows))
-	data <- tidyr::unnest(data, body)
-
-	if(nrow(data) == 0) {
-		return(invisible(NULL))
-	}
+	data <- tidyr::unnest(data, body, keep_empty = TRUE)
+#
+# 	if(nrow(data) == 0) {
+# 		return(invisible(NULL))
+# 	}
 
 	if("usage" %in% colnames(data)) {
-		# Get and delete entries that have null usage
-		# nulls <- unlist(lapply(data$usage, is.null))
-		# data <- data[!nulls,]
-
 		data$app <- names(data$usage)
 		data$usage <- suppressWarnings(as.numeric(as.character(data$usage)))
 	} else {
@@ -154,10 +167,11 @@ apps_fun <- function(db, data) {
 	data$body <- lapply(data$body, function(x) tibble::tibble(id = x$id,
 																														timestamp = x$timestamp,
 																														apps = list(x$installed_apps)))
-	data <- tidyr::unnest(data, body)
+	data <- tidyr::unnest(data, body, keep_empty = TRUE)
 	data$apps <- sapply(data$apps, function(x) paste0(x, collapse = "|"))
 	# data <- tidyr::unnest(data, apps)
 	# data$timestamp <- as.POSIXct(data$timestamp, "%Y-%m-%dT%H:%M:%S", tz="Europe/Brussels")
+
 	data <- safe.data.frame(
 		measurement_id = data$id,
 		participant_id = data$participant_id,
@@ -187,11 +201,11 @@ bluetooth_fun <- function(db, data) {
 	data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
 	data$body <- lapply(data$body, function(x) x$body$scan_result)
 	data$body <- lapply(data$body, dplyr::bind_rows)
-	data <- tidyr::unnest(data,body)
+	data <- tidyr::unnest(data, body, keep_empty = TRUE)
 
-	if(nrow(data) == 0) {
-		return(invisible(NULL))
-	}
+	# if(nrow(data) == 0) {
+	# 	return(invisible(NULL))
+	# }
 
 	# TODO: Consider unique ID constraint
 	# Temporary fix
@@ -233,16 +247,18 @@ calendar_fun <- function(db, data) {
 					 attendees = I(y[["attendees"]])
 		)))
 	data$body <- lapply(data$body, dplyr::bind_rows)
-	data <- tidyr::unnest(data, body)
+	data <- tidyr::unnest(data, body, keep_empty = TRUE)
 
 	# This is actually a bug. If a measurement is performed but no useful data was collected,
 	# the measurement itself should still be registered.
 	# Ignored for now.
-	if(nrow(data) == 0) {
-		return(invisible(TRUE))
-	}
+	# if(nrow(data) == 0) {
+	# 	return(invisible(TRUE))
+	# }
 
-	data$attendees <- sapply(data$attendees, function(x) paste0(x, collapse = ", "))
+	if("attendees" %in% colnames(data)) {
+		data$attendees <- sapply(data$attendees, function(x) paste0(x, collapse = ", "))
+	}
 
 	# TODO: Consider unique ID constraint
 	# Temporary fix
@@ -473,11 +489,11 @@ text_message_fun <- function(db, data) {
 	data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
 	data$body <- lapply(data$body, function(x) x$body$text_message)
 	data$body <- lapply(data$body, dplyr::bind_rows)
-	data <- tidyr::unnest(data,body)
+	data <- tidyr::unnest(data,body, keep_empty = TRUE)
 
-	if(nrow(data) == 0) {
-		return(invisible(NULL))
-	}
+	# if(nrow(data) == 0) {
+	# 	return(invisible(NULL))
+	# }
 
 	# TODO: Consider unique ID constraint
 	# Temporary fix

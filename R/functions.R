@@ -1,4 +1,3 @@
-
 #' Copy CARP zip files to a new location
 #'
 #' Copy zip files from a source destination to an origin destination where they do not yet exist.
@@ -117,7 +116,7 @@ clean <- function(path = getwd(), zipped = TRUE, fix = FALSE, overwrite = FALSE)
 #'
 #' @return Invisible. Imported database can be reopened using \link[CARP]{open_db}.
 #' @export
-import <- function(path = getwd(), db = NULL, dbname = "carp.db", backend = "RSQLite", progress = TRUE, parallel = False) {
+import <- function(path = getwd(), db = NULL, dbname = "carp.db", backend = "RSQLite", progress = TRUE, parallel = FALSE) {
 
 	# Retrieve all JSON files
 	files <- dir(path = path, pattern = "*.json$")
@@ -162,10 +161,27 @@ import <- function(path = getwd(), db = NULL, dbname = "carp.db", backend = "RSQ
 	# Call on implementation with or without progress bar
 	if(progress) {
 		progressr::with_progress({
-			res <- import_impl(path, files, db@dbname)
+			import_impl(path, files, db@dbname)
 		})
 	} else{
-		res <- import_impl(path, files, db@dbname)
+		import_impl(path, files, db@dbname)
+	}
+
+	# Update Date and Time
+	for(i in 1:length(sensors)) {
+		dbExecute(db, paste0("ALTER TABLE ", sensors[i], " ADD COLUMN date TEXT"))
+		dbExecute(db, paste0("UPDATE ", sensors[i], " SET date = DATE(time)"))
+		dbExecute(db, paste0("UPDATE ", sensors[i], " SET time = TIME(time)"))
+	}
+
+	# Create indices
+	for(sensor in sensors) {
+		dbExecute(db, paste0("CREATE INDEX idx_", sensor,
+												 " ON ", sensor, "(participant_id)"))
+		dbExecute(db, paste0("CREATE INDEX date_", sensor,
+												 " ON ", sensor, "(date)"))
+		dbExecute(db, paste0("CREATE INDEX date_idx_", sensor,
+												 " ON ", sensor, "(participant_id, date)"))
 	}
 
 	# Return to sequential processing
@@ -173,13 +189,13 @@ import <- function(path = getwd(), db = NULL, dbname = "carp.db", backend = "RSQ
 		future::plan(future::sequential)
 	}
 
-	dbDisconnect(db)
+	RSQLite::dbDisconnect(db)
 }
 
 import_impl <- function(path, files, db_name) {
 	p <- progressr::progressor(length(files))
-	foreach::`%dopar%`(foreach::foreach(i = 1:length(files)), {
-
+	# foreach::`%dopar%`(foreach::foreach(i = 1:length(files)), {
+	for(i in 1:length(files)) {
 		# Update progress bar
 		p(sprintf("x=%g", i))
 	# for(i in 1:length(files)) {
@@ -216,9 +232,9 @@ import_impl <- function(path, files, db_name) {
 			study_id = unique(data$study_id)
 		)
 		processedFiles <- get_processed_files(tmp_db)
-		matches <- inner_join(this_file,
-													processedFiles,
-													by = c("file_name", "participant_id", "study_id"))
+		matches <- dplyr::inner_join(this_file,
+																 processedFiles,
+																 by = c("file_name", "participant_id", "study_id"))
 		if(nrow(matches) > 0) {
 			return(NULL) # File was already processed
 		}
@@ -238,7 +254,7 @@ import_impl <- function(path, files, db_name) {
 
 		# Call function for each sensor
 		tryCatch({
-			dbWithTransaction(tmp_db, {
+			RSQLite::dbWithTransaction(tmp_db, {
 				for(j in 1:length(data)) {
 					# Get sensor name
 					sensor <- names(data)[[j]]
@@ -253,8 +269,8 @@ import_impl <- function(path, files, db_name) {
 		}, error = function(e) {}) # Empty for now
 
 		# Close db connection of worker
-		dbDisconnect(tmp_db)
-	})
+		RSQLite::dbDisconnect(tmp_db)
+	}
 }
 
 acceleration_vector <- function(data, x = x, y = y, z = z, gravity = 9.810467) {
@@ -310,13 +326,20 @@ freq <- c(
 #'   wifi = 60 # once per minute
 #' )
 #' coverage(db, freq)
-coverage <- function(db, participant_id, sensor = "All", frequency, relative = TRUE) {
+coverage <- function(db,
+										 participant_id,
+										 sensor = "All",
+										 frequency,
+										 relative = TRUE,
+										 offset = "None",
+										 startDate = NULL,
+										 endDate = NULL) {
 	# Check db
 	if(!inherits(db, "DBIConnection")) {
 		stop("Argument db is not a database connection.")
 	}
 
-	if(!dbIsValid(db)) {
+	if(!RSQLite::dbIsValid(db)) {
 		stop("Database is invalid.")
 	}
 
@@ -347,6 +370,25 @@ coverage <- function(db, participant_id, sensor = "All", frequency, relative = T
 		stop("Frequency is must be a named numeric vector")
 	}
 
+	# Check time subset
+	if(grepl("\\d day", offset)) {
+		offset <- paste0("-", offset)
+	} else if(is.null(offset) || (tolower(offset) == "none")) {
+		offset <- NULL
+	} else {
+		stop("Argument offset must be either 'None', 1 day, or 2, 3, 4, ... days.")
+	}
+
+	# Check startDate, endDate
+	if((!is.null(startDate) && !is.null(endDate)) && !is.null(offset)) {
+		warning("Argument startDate/endDate and offset cannot be present at the same time.
+						Ignoring the offset argument.")
+		offset <- NULL
+	} else if(!(is(startDate, "Date") | is.character(startDate)) |
+						!(is(endDate, "Date") | is.character(endDate))) {
+		stop("startDate and endDate must be a character string or date.")
+	}
+
 	# Retain only frequencies that appear in the sensor list
 	frequency <- frequency[names(frequency) %in% sensor]
 
@@ -355,40 +397,65 @@ coverage <- function(db, participant_id, sensor = "All", frequency, relative = T
 	p_id <- as.character(participant_id)
 
 	# Get Data
-	data <- lapply(sensor, function(x) {
-		tmp <- tbl(db, x) %>%
-			filter(participant_id == p_id) %>%
-			select(measurement_id, time)
+	data <- lapply(names(frequency), function(x) {
+		tmp <- dplyr::tbl(db, x) %>%
+			dplyr::filter(participant_id == p_id) %>%
+			dplyr::select(measurement_id, time, date)
 
-		# From the last hour (unless otherwise specified)
-		max_date <- tmp %>%
-			summarise(max = datetime(max(time, na.rm = T), '-1 days')) %>%
-			pull(max) %>%
-			lubridate::as_datetime() %>%
-			lubridate::format_ISO8601()
+		# From the last day (unless otherwise specified)
+		# if(!is.null(offset) && tolower(offset) != "none") {
+		# max_date <- tmp %>%
+		# 	dplyr::summarise(max = datetime(max(time, na.rm = T), subset)) %>%
+		# 	dplyr::pull(max) %>%
+		# 	lubridate::as_datetime() %>%
+		# 	lubridate::format_ISO8601()
+		#
+		# tmp <- tmp %>%
+		# dplyr::filter(time > max_date)
+		# } else
+		if(!is.null(startDate) && !is.null(endDate)) {
+			tmp <- tmp %>%
+				# mutate(date = Date(time)) %>%
+				dplyr::filter(date >= startDate) %>%
+				dplyr::filter(date <= endDate)
+		}
 
-		tmp <- tmp %>%
-			filter(time > max_date)
+		# Remove duplicate IDs with _ for certain sensors
+		if(x %in% c("AppUsage", "Bluetooth", "Calendar", "TextMessage")) {
+			tmp <- tmp %>%
+				dplyr::mutate(measurement_id = substr(measurement_id, 1, 36)) %>%
+				dplyr::distinct()
+		}
 
 		tmp
 	})
-	names(data) <- sensor
+	names(data) <- names(frequency)
 
 	# Get the number of observations per hour
 	data <- lapply(data, function(x) {
 		x %>%
 			# TODO: Something to filter out duplicate IDs with _
-			mutate(Hour = strftime("%H", time)) %>%
-			mutate(Date = date(time)) %>%
-			count(Date, Hour) %>%
-			group_by(Hour) %>%
-			summarise(Coverage = sum(n, na.rm = TRUE) / n())
+			dplyr::mutate(Hour = strftime("%H", time)) %>%
+			# dplyr::mutate(Date = date(time)) %>%
+			dplyr::count(date, Hour) %>%
+			dplyr::group_by(Hour) %>%
+			dplyr::summarise(Coverage = sum(n, na.rm = TRUE) / n())
 	})
+
+	# Collect into local tibble
+	data <- lapply(data, collect)
+
+	# Force correct column types
+	# In case one sensor comes back empty, columns are logical by default
+	data <- lapply(data,
+								 function(x) dplyr::mutate(x,
+								 													Hour = as.numeric(Hour),
+								 													Coverage = as.numeric(Coverage)))
 
 	# Calculate its relative target frequency ratio
 	if(relative) {
 		data <- mapply(
-			FUN = function(.x, .y) mutate(.x, Coverage = round(Coverage / .y, 2)),
+			FUN = function(.x, .y) dplyr::mutate(.x, Coverage = round(Coverage / .y, 2)),
 			.x = data,
 			.y = frequency,
 			SIMPLIFY = F)
@@ -400,38 +467,27 @@ coverage <- function(db, participant_id, sensor = "All", frequency, relative = T
 		.y = names(data),
 		SIMPLIFY = FALSE)
 
-	# Collect into local tibble
-	data <- lapply(data, collect)
-
-	# Force correct column types
-	# In case one sensor comes back empty, columns are logical by default
-	data <- lapply(data,
-								 function(x) mutate(x,
-								 									 Hour = as.numeric(Hour),
-								 									 Coverage = as.numeric(Coverage),
-								 									 measure = as.character(measure)))
-
 	# Complete missing hours with 0
 	data <- mapply(
-		FUN = function(.x, .y) complete(.x, Hour = 0:23, measure = .y, fill = list(Coverage = 0)),
+		FUN = function(.x, .y) tidyr::complete(.x, Hour = 0:23, measure = .y, fill = list(Coverage = 0)),
 		.x = data,
 		.y = names(data),
 		SIMPLIFY = FALSE
 	)
 
-	data <- bind_rows(data)
+	data <- dplyr::bind_rows(data)
 	data$measure <- factor(data$measure)
 	data$measure <- factor(data$measure, levels = rev(levels(data$measure)))
 
 	# Plot
-	ggplot(data = data, mapping = aes(x = Hour, y = measure, fill = Coverage)) +
-		geom_tile() +
-		geom_text(mapping = aes(label = Coverage), colour = "white") +
-		scale_x_continuous(breaks = 0:23) +
-		scale_fill_gradientn(colours = c("#d70525", "#645a6c", "#3F7F93"),
+	ggplot2::ggplot(data = data, mapping = ggplot2::aes(x = Hour, y = measure, fill = Coverage)) +
+		ggplot2::geom_tile() +
+		ggplot2::geom_text(mapping = ggplot2::aes(label = Coverage), colour = "white") +
+		ggplot2::scale_x_continuous(breaks = 0:23) +
+		ggplot2::scale_fill_gradientn(colours = c("#d70525", "#645a6c", "#3F7F93"),
 																	breaks = c(0, 0.5, 1),
 																	labels = c(0, 0.5, 1),
 																	limits = c(0,1)) +
-		theme_minimal() +
-		ggtitle(paste0("Coverage for participant ", participant_id))
+		ggplot2::theme_minimal() +
+		ggplot2::ggtitle(paste0("Coverage for participant ", participant_id))
 }

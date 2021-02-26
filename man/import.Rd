@@ -10,7 +10,7 @@ import(
   dbname = "carp.db",
   backend = "RSQLite",
   progress = TRUE,
-  parallel = False
+  parallel = FALSE
 )
 }
 \arguments{
