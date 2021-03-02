@@ -152,65 +152,8 @@ get_nrows <- function(db, sensor = "All") {
 	if(!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
 
 	if(sensor == "All") {
-		sensor <- CARP:::sensors
+		sensor <- sensors
 	}
 
 	sapply(sensor, function(x) RSQLite::dbGetQuery(db, paste0("SELECT COUNT(*) FROM ", x))[[1]])
-}
-
-get_data <- function(db, sensor, participant_id = NULL, startDate = NULL, endDate = NULL) {
-	out <- tbl(db, sensor)
-
-	if(!is.null(participant_id)) {
-		p_id <- participant_id
-		out <- out %>%
-			filter(participant_id == p_id)
-	}
-
-	if(!is.null(startDate) && !is.null(endDate)) {
-		start.date <- is(as.Date(startDate), "Date")
-		end.date <- is(as.Date(endDate), "Date")
-		if(start.date & end.date) {
-			out <- out %>%
-				mutate(date = DATE(time)) %>%
-				dplyr::filter(date >= startDate) %>%
-				dplyr::filter(date <= endDate)
-		}
-	}
-
-	out
-}
-
-get_installed_apps <- function(db, participant_id = NULL) {
-	data <- get_data(db, "InstalledApps", participant_id)
-	data <- collect(data)
-	apps <- paste0(data$apps, collapse = "|")
-	apps <- strsplit(apps, "|", fixed = TRUE)
-	apps <- unique(unlist(apps))
-	apps <- sort(apps)
-	apps
-}
-
-get_app_usage <- function(db, participant_id = NULL, startDate = NULL, endDate = NULL) {
-	if(!is.null(startDate) & is.null(endDate)) {
-		endDate <- startDate
-	}
-	data <- get_data(db, "AppUsage", participant_id, startDate, endDate)
-	data <- collect(data)
-
-	# Average sum per day if multiple days are selected
-	if(startDate == endDate) {
-		data %>%
-			drop_na(usage, app) %>%
-			group_by(app) %>%
-			summarise(UsageHour = round(sum(usage) / 60 / 60, 2))
-	} else {
-		data %>%
-			drop_na(usage, app) %>%
-			mutate(date = lubridate::date(time)) %>%
-			group_by(app, date) %>%
-			summarise(UsageHour = sum(usage) / 60 / 60) %>%
-			group_by(app) %>%
-			summarise(UsageHour = round(mean(UsageHour), 2))
-	}
 }

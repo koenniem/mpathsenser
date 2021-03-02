@@ -1,565 +1,302 @@
-save2db <- function(db, name, data) {
-		RSQLite::dbAppendTable(db, name, data)
+#' Generic helper function from extracting data from a CARP database
+#'
+#' This is a generic funcation to help extract data from a CARP database. For some sensors that
+#' require a bit more pre-processing, such as app usage and screen time, more specialised functions
+#' are available (e.g. \code{\link[CARP]{get_app_usage}} and \code{\link[CARP]{screen_duration}}).
+#'
+#' @param db A database connection to a CARP database.
+#' @param sensor The name of a sensor. See \link[CARP]{sensors} for a list of available sensors.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#' @param startDate Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.
+#' @param endDate Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.
+#'
+#' @return A lazy \code{\link[dplyr]{tbl}} containg the requested data.
+#' @export
+#'
+#' @examples
+#' # Open a database
+#' db <- open_db()
+#'
+#' # Retrieve some data
+#' get_data(db, "Accelerometer", "12345")
+#'
+#' # Or within a specific window
+#' get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
+get_data <- function(db, sensor, participant_id = NULL, startDate = NULL, endDate = NULL) {
+	out <- dplyr::tbl(db, sensor)
+
+	if(!is.null(participant_id)) {
+		p_id <- as.character(participant_id)
+		out <- dplyr::filter(out, participant_id == p_id)
+	}
+
+	if(!is.null(startDate) && !is.null(endDate)) {
+		start.date <- is(as.Date(startDate), "Date")
+		end.date <- is(as.Date(endDate), "Date")
+		if(start.date & end.date) {
+			# out <- dplyr::mutate(out, date = DATE(time)) %>%
+			out <- dplyr::filter(out, date >= startDate)
+			out <- dplyr::filter(out, date <= endDate)
+		}
+	}
+
+	out
 }
 
-which_sensor <- function(db, data, sensor) {
-	switch(sensor,
-				 accelerometer = accelerometer_fun(db, data),
-				 activity = activity_fun(db, data),
-				 air_quality = air_quality_fun(db, data),
-				 app_usage = app_usage_fun(db, data),
-				 apps = apps_fun(db, data),
-				 battery = battery_fun(db, data),
-				 bluetooth = bluetooth_fun(db, data),
-				 calendar = calendar_fun(db, data),
-				 connectivity = connectivity_fun(db, data),
-				 device = device_fun(db, data),
-				 geofence = geofence_fun(db, data),
-				 gyroscope = gyroscope_fun(db, data),
-				 keyboard = keyboard_fun(db, data),
-				 light = light_fun(db, data),
-				 location = location_fun(db, data),
-				 memory = memory_fun(db, data),
-				 mobility = mobility_fun(db, data),
-				 noise = noise_fun(db, data),
-				 phone_log = phone_log_fun(db, data),
-				 pedometer = pedometer_fun(db, data),
-				 screen = screen_fun(db, data),
-				 text_message = text_message_fun(db, data),
-				 weather = weather_fun(db, data),
-				 wifi = wifi_fun(db, data),
-			   default_fun(data)) # default
+#' Extract the date of the first entry
+#'
+#' A helper function for extracting the first date of entry of (of one or all participant) of one
+#' sensor. Note that this function is specific to the first date of a sensor. After all, it
+#' wouldn't make sense to extract the first date for a participant of the accelerometer, while the
+#' first device measurement occurred a day later.
+#'
+#' @param db A database connection to a CARP database.
+#' @param sensor The name of a sensor. See \link[CARP]{sensors} for a list of available sensors.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#'
+#' @return A string in the format "YYYY-mm-dd" of the first entry date.
+#' @export
+#'
+#' @examples
+#' db <- open_db()
+#' first_date(db, "Accelerometer", "12345")
+first_date <- function(db, sensor, participant_id = NULL) {
+	query <- paste0("SELECT MIN(date) AS `min` FROM `", sensor, "`")
+
+	if(!is.null(participant_id)) {
+		query <- paste0(query, " WHERE (`participant_id` = '", participant_id, "')")
+	}
+	dbGetQuery(db, query)[1,1]
 }
 
-# # Make a data frame, handling and ensuring no columns are missing
-# tidy_df <- function(data, names) {
-# 	missing <- setdiff(names, colnames(data)) # Find if any column is missing
-# 	data[,missing] <- NA # If so, fill with NA
-# 	data <- data[,names] # Select the relevant columns, in the right order
-# 	colnames(data) <- names(names) # Replace those names with the new names
-# 	data
-# }
-safe.data.frame <- function(...) {
-	x <- suppressWarnings(list(...))
-	x <- lapply(x, function(x) if(is.null(x)) NA else x)
-	x <- as.data.frame(x)
-	x
+#' Extract the date of the last entry
+#'
+#' A helper function for extracting the last date of entry of (of one or all participant) of one
+#' sensor. Note that this function is specific to the last date of a sensor. After all, it
+#' wouldn't make sense to extract the last date for a participant of the device info, while the
+#' last accelerometer measurement occurred a day later..
+#'
+#' @param db A database connection to a CARP database.
+#' @param sensor The name of a sensor. See \link[CARP]{sensors} for a list of available sensors.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#'
+#' @return A string in the format "YYYY-mm-dd" of the last entry date.
+#' @export
+#'
+#' @examples
+#' db <- open_db()
+#' first_date(db, "Accelerometer", "12345")
+last_date <- function(db, sensor, participant_id = NULL) {
+	query <- paste0("SELECT MAX(date) AS `max` FROM `", sensor, "`")
+
+	if(!is.null(participant_id)) {
+		query <- paste0(query, " WHERE (`participant_id` = '", participant_id, "')")
+	}
+	dbGetQuery(db, query)[1,1]
 }
 
-default_fun <- function(data) {
-	data$body <- lapply(data$body, function(x) x$body)
-	data <- dplyr::bind_cols(data, dplyr::bind_rows(data$body))
-	data$body <- NULL
+#' Get installed apps
+#'
+#' Extract installed apps for one or all participants. Contrarily to other get_* functions in
+#' this package, start and end dates are not used since installed apps are assumed to be fixed
+#' throughout the study.
+#'
+#' @param db A database connection to a CARP database.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#'
+#' @return A character vector of app names.
+#' @export
+get_installed_apps <- function(db, participant_id = NULL) {
+	data <- get_data(db, "InstalledApps", participant_id)
+	data <- dplyr::collect(data)
+	apps <- paste0(data$apps, collapse = "|")
+	apps <- strsplit(apps, "|", fixed = TRUE)
+	apps <- unique(unlist(apps))
+	apps <- sort(apps)
+	apps
+}
 
-	if(nrow(data) > 0) {
-		return(data)
+
+#' Get app usage per hour
+#'
+#' This function extracts app usage per hour for either one or multiple participants. If multiple
+#' days are selected, the app usage time is averaged.
+#'
+#' @param db A database connection to a CARP database.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#' @param startDate Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.
+#' @param endDate Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.
+#'
+#' @return A data frame containing a column "App" and a column "Usage" for the hourly app usage.
+#' @export
+#'
+#' @importFrom magrittr "%>%"
+get_app_usage <- function(db, participant_id = NULL, startDate = NULL, endDate = NULL) {
+	if(!is.null(startDate) & is.null(endDate)) {
+		endDate <- startDate
+	}
+	data <- get_data(db, "AppUsage", participant_id, startDate, endDate)
+	data <- dplyr::collect(data)
+
+	# Average sum per day if multiple days are selected
+	if(!is.null(startDate) && startDate == endDate) {
+		data <- data %>%
+			tidyr::drop_na(usage, app) %>%
+			dplyr::group_by(app) %>%
+			dplyr::summarise(UsageHour = round(sum(usage) / 60 / 60, 2))
 	} else {
-		return(NA)
+		data <- data %>%
+			tidyr::drop_na(usage, app) %>%
+			dplyr::group_by(app, date) %>%
+			dplyr::summarise(UsageHour = sum(usage) / 60 / 60, .groups = "drop_last") %>%
+			dplyr::group_by(app) %>%
+			dplyr::summarise(UsageHour = round(mean(UsageHour), 2))
 	}
+	colnames(data) <- c("App", "Usage")
+	data
 }
 
-accelerometer_fun <- function(db, data) {
-	# Transform data
-	data <- default_fun(data)
+#' Screen duration by hour or day
+#'
+#' Calculate the screen duration time where the screen was _unlocked_ (i.e. not just on).
+#'
+#' @param db A database connection to a CARP database.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#' @param startDate Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.
+#' @param endDate Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.
+#' @param by Either "Hour" or "Day" indicating how to summarise the results. Leave empty to get raw screen duration per measurement.
+#'
+#' @return A tibble with either "hour" and "duration" columns or "date" and "duration" columns depending on the \code{by} argument. Alternatively, if not \code{by} is specified, a remote tibble is returned with the date, time, and duration since the previous measurement.
+#' @export
+screen_duration <- function(db, participant_id, startDate = NULL, endDate = NULL, by = c("Hour", "Day")) {
+	out <- get_data(db, "Screen", participant_id, startDate, endDate) %>%
+		dplyr::filter(screen_event != "SCREEN_ON") %>%
+		dplyr::mutate(datetime = paste(date, time)) %>%
+		dplyr::select(-c(measurement_id, participant_id)) %>%
+		dplyr::mutate(next_event = dplyr::lead(screen_event, n = 1)) %>%
+		dplyr::mutate(next_time = dplyr::lead(datetime, n = 1)) %>%
+		dplyr::filter(screen_event == "SCREEN_UNLOCKED" & next_event == "SCREEN_OFF") %>%
+		dplyr::mutate(duration = strftime('%s', next_time) - strftime('%s', datetime))
 
-	# Put into right data format
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		x = data$x,
-		y = data$y,
-		z = data$z
-	)
-
-	# Save to database
-	save2db(db, "Accelerometer", data)
-}
-
-periodic_accelerometer_fun <- function(db, data) {
-	data$body <- lapply(data$body, function(x) x$body)
-	data$body <- suppressWarnings(lapply(data$body, dplyr::bind_rows))
-	data <- tidyr::unnest(data, body, keep_empty = TRUE)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		x = data$x,
-		y = data$y,
-		z = data$z
-	)
-
-	save2db(db, "Accelerometer", data)
-}
-
-activity_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		confidence = data$confidence,
-		type = data$type
-	)
-
-	save2db(db, "Activity", data)
-}
-
-air_quality_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		air_quality_index = data$air_quality_index,
-		air_quality_level = data$air_quality_level,
-		source = data$source,
-		place = data$place,
-		latitude = data$latitude,
-		longitude = data$longitude
-	)
-
-	save2db(db, "AirQuality", data)
-}
-
-app_usage_fun <- function(db, data) {
-	data$body <- lapply(data$body, function(x) x$body)
-	data$body <- suppressWarnings(lapply(data$body, dplyr::bind_rows))
-	data <- tidyr::unnest(data, body, keep_empty = TRUE)
-#
-# 	if(nrow(data) == 0) {
-# 		return(invisible(NULL))
-# 	}
-
-	if("usage" %in% colnames(data)) {
-		data$app <- names(data$usage)
-		data$usage <- suppressWarnings(as.numeric(as.character(data$usage)))
-	} else {
-		data$app <- NA
-		data$usage <- NA
+	if(is.null(by) || missing(by)) {
+		out <- out %>%
+			dplyr::select(date, time, duration)
+	} else if(by[1] == "Hour") {
+		out <- out %>%
+			dplyr::mutate(hour = strftime('%H', time)) %>%
+			dplyr::group_by(hour) %>%
+			dplyr::summarise(duration = mean(duration, na.rm = T) / 60) %>%
+			dplyr::collect() %>%
+			dplyr::mutate(hour = as.numeric(hour)) %>%
+			tidyr::complete(hour = 0:23, fill = list(duration = 0))
+	} else if(by[1] == "Day") {
+		out <- out %>%
+			dplyr::group_by(date) %>%
+			dplyr::summarise(duration = sum(duration, na.rm = T) / 60 / 60) %>%
+			dplyr::collect()
+	} else { # Default case
+		out <- out %>%
+			dplyr::select(date, time, duration)
 	}
-
-	# TODO: Consider unique ID constraint
-	# Temporary fix
-	data <- group_by(data, id)
-	data <- mutate(data, id = paste0(id, "_", 1:n()))
-	data <- ungroup(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		start = data$start,
-		end = data$end,
-		usage = data$usage,
-		app = data$app
-	)
-
-	save2db(db, "AppUsage", data)
+	return(out)
 }
 
-# TODO: Simplify and add timestamp and id
-apps_fun <- function(db, data) {
-	data$body <- lapply(data$body, function(x) x$body)
-	data$body <- lapply(data$body, function(x) tibble::tibble(id = x$id,
-																														timestamp = x$timestamp,
-																														apps = list(x$installed_apps)))
-	data <- tidyr::unnest(data, body, keep_empty = TRUE)
-	data$apps <- sapply(data$apps, function(x) paste0(x, collapse = "|"))
-	# data <- tidyr::unnest(data, apps)
-	# data$timestamp <- as.POSIXct(data$timestamp, "%Y-%m-%dT%H:%M:%S", tz="Europe/Brussels")
+#' Get number of times screen turned on
+#'
+#' @param db A database connection to a CARP database.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#' @param startDate Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.
+#' @param endDate Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.
+#' @param by Either "Total", "Hour", or "Day" indicating how to summarise the results. Defaults to total.
+#'
+#' @return In case of grouping is by the total amount, returns a single numeric value. For date and hour grouping returns a tibble with columns "date" or "hour" and the number of screen on's "n".
+#' @export
+n_screen_on <- function(db, participant_id, startDate = NULL, endDate = NULL, by = c("Total", "Hour", "Day")) {
+	out <- get_data(db, "Screen", participant_id, startDate, endDate) %>%
+		dplyr::select(-c(measurement_id, participant_id)) %>%
+		dplyr::filter(screen_event == "SCREEN_ON")
 
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		apps = data$apps
-	)
-
-	save2db(db, "InstalledApps", data)
-}
-
-battery_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		battery_level = data$battery_level,
-		battery_status = data$battery_status
-	)
-
-	save2db(db, "Battery", data)
-}
-
-bluetooth_fun <- function(db, data) {
-	data$id <- sapply(data$body, function(x) x$body$id)
-	data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
-	data$body <- lapply(data$body, function(x) x$body$scan_result)
-	data$body <- lapply(data$body, dplyr::bind_rows)
-	data <- tidyr::unnest(data, body, keep_empty = TRUE)
-
-	# if(nrow(data) == 0) {
-	# 	return(invisible(NULL))
-	# }
-
-	# TODO: Consider unique ID constraint
-	# Temporary fix
-	data <- group_by(data, id)
-	data <- mutate(data, id = paste0(id, "_", 1:n()))
-	data <- ungroup(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$start_time,
-		advertisement_name = data$advertisement_name,
-		bluetooth_device_id = data$bluetooth_device_id,
-		bluetooth_device_name = data$bluetooth_device_name,
-		bluetooth_device_type = data$bluetooth_device_type,
-		connectable = data$connectable,
-		rssi = data$rssi,
-		tx_power_level = data$tx_power_level
-	)
-
-	save2db(db, "Bluetooth", data)
-}
-
-# TODO: Check attendees
-# TODO: save to db
-calendar_fun <- function(db, data) {
-	data$id <- sapply(data$body, function(x) x$body$id)
-	data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
-	data$body <- lapply(data$body, function(x) x$body$calendar_events)
-	data$body <- lapply(data$body, function(x) lapply(x, function(y)
-		tibble(event_id = y[["event_id"]],
-					 calendar_id = y[["calendar_id"]],
-					 title = y[["title"]],
-					 description = y[["description"]],
-					 start = y[["start"]],
-					 end = y[["end"]],
-					 all_day = y[["all_day"]],
-					 location = y[["location"]],
-					 attendees = I(y[["attendees"]])
-		)))
-	data$body <- lapply(data$body, dplyr::bind_rows)
-	data <- tidyr::unnest(data, body, keep_empty = TRUE)
-
-	# This is actually a bug. If a measurement is performed but no useful data was collected,
-	# the measurement itself should still be registered.
-	# Ignored for now.
-	# if(nrow(data) == 0) {
-	# 	return(invisible(TRUE))
-	# }
-
-	if("attendees" %in% colnames(data)) {
-		data$attendees <- sapply(data$attendees, function(x) paste0(x, collapse = ", "))
+	if(is.null(by)) {
+		out <- out %>%
+			dplyr::summarise(n = n()) %>%
+			dplyr::pull(n)
+	} else if(by[1] == "Total" | by[1] == "total") {
+		out <- out %>%
+			dplyr::summarise(n = n()) %>%
+			dplyr::pull(n)
+	} else if(by[1] == "Hour" | by[1] == "hour") {
+		out <- out %>%
+			dplyr::mutate(hour = STRFTIME('%H', time)) %>%
+			dplyr::count(hour) %>%
+			dplyr::collect() %>%
+			dplyr::mutate(hour = as.numeric(hour)) %>%
+			tidyr::complete(hour = 0:23, fill = list(n = 0))
+	} else if(by[1] == "Day" | by[1] == "day") {
+		out <- out %>%
+			dplyr::count(date) %>%
+			dplyr::collect()
+	} else { # Default case
+		out <- out %>%
+			dplyr::summarise(n = n()) %>%
+			dplyr::pull(n)
 	}
-
-	# TODO: Consider unique ID constraint
-	# Temporary fix
-	data <- group_by(data, id)
-	data <- mutate(data, id = paste0(id, "_", 1:n()))
-	data <- ungroup(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$start_time,
-		event_id = data$event_id,
-		calendar_id = data$calendar_id,
-		title = data$title,
-		description = data$description,
-		start = data$start,
-		end = data$end,
-		all_day = data$all_day,
-		location = data$location,
-		attendees = data$attendees
-	)
-
-	save2db(db, "Calendar", data)
+	return(out)
 }
 
-connectivity_fun <- function(db, data) {
-	data <- default_fun(data)
+#' Get number of screen unlocks
+#'
+#' @param db A database connection to a CARP database.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#' @param startDate Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.
+#' @param endDate Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.
+#' @param by Either "Total", "Hour", or "Day" indicating how to summarise the results. Defaults to total.
+#'
+#' @return In case of grouping is by the total amount, returns a single numeric value. For date and hour grouping returns a tibble with columns "date" or "hour" and the number of screen unlocks "n".
+#' @export
+n_screen_unlocks <- function(db, participant_id, startDate = NULL, endDate = NULL, by = c("Total", "Hour", "Day")) {
+	out <- get_data(db, "Screen", participant_id, startDate, endDate) %>%
+		dplyr::select(-c(measurement_id, participant_id)) %>%
+		dplyr::filter(screen_event == "SCREEN_UNLOCKED")
 
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		connectivity_status = data$connectivity_status
-	)
-
-	save2db(db, "Connectivity", data)
-}
-
-device_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		device_id = data$device_id,
-		hardware = data$hardware,
-		device_name = data$device_name,
-		device_manufacturer = data$device_manufacturer,
-		device_model = data$device_model,
-		operating_system = data$operating_system
-	)
-
-	save2db(db, "Device", data)
-}
-
-geofence_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		center = data$center,
-		dwell = data$dwell,
-		name = data$name,
-		radius = data$radius,
-		state = data$state
-	)
-
-	save2db(db, "Geofence", data)
-}
-
-gyroscope_fun <- function(db, data) {
-	# Transform data
-	data <- default_fun(data)
-
-	# Put into right data format
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		x = data$x,
-		y = data$y,
-		z = data$z
-	)
-
-	# Save to database
-	save2db(db, "Gyroscope", data)
-}
-
-keyboard_fun <- function(db, data) {
-	error("Function not implemented")
-}
-
-light_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		mean_lux = data$mean_lux,
-		std_lux = data$std_lux,
-		min_lux = data$min_lux,
-		max_lux = data$max_lux
-	)
-
-	save2db(db, "Light", data)
-}
-
-location_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		latitude = data$latitude,
-		longitude = data$longitude,
-		altitude = data$altitude,
-		accuracy = data$accuracy,
-		speed = data$speed,
-		speed_accuracy = data$speed_accuracy,
-		heading = data$heading
-	)
-
-	save2db(db, "Location", data)
-}
-
-memory_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		free_physical_memory = data$free_physical_memory,
-		free_virtual_memory = data$free_virtual_memory
-	)
-
-	save2db(db, "Memory", data)
-}
-
-# TODO: find out how this works
-mobility_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		number_of_places = data$number_of_places,
-		location_variance = data$location_variance,
-		entropy = data$entropy,
-		normalized_entropy = data$normalized_entropy,
-		home_stay = data$home_stay,
-		distance_travelled = data$distance_travelled
-	)
-
-	save2db(db, "Mobility", data)
-}
-
-noise_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		mean_decibel = data$mean_decibel,
-		std_decibel = data$std_decibel,
-		min_decibel = data$min_decibel,
-		max_decibel = data$max_decibel
-	)
-
-	save2db(db, "Noise", data)
-}
-
-phone_log_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		call_type = data$call_type,
-		datetime = data$datetime,
-		duration = data$duration,
-		formatted_number = data$formatted_number,
-		name = data$name,
-		number = data$number
-	)
-
-	save2db(db, "PhoneLog", data)
-}
-
-pedometer_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		step_count = data$step_count
-	)
-
-	save2db(db, "Pedometer", data)
-}
-
-screen_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		screen_event = data$screen_event
-	)
-
-	save2db(db, "Screen", data)
-}
-
-# TODO: Check if text_message can be unnested
-text_message_fun <- function(db, data) {
-	# data <- default_fun(data)
-	data$id <- sapply(data$body, function(x) x$body$id)
-	data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
-	data$body <- lapply(data$body, function(x) x$body$text_message)
-	data$body <- lapply(data$body, dplyr::bind_rows)
-	data <- tidyr::unnest(data,body, keep_empty = TRUE)
-
-	# if(nrow(data) == 0) {
-	# 	return(invisible(NULL))
-	# }
-
-	# TODO: Consider unique ID constraint
-	# Temporary fix
-	data <- group_by(data, id)
-	data <- mutate(data, id = paste0(id, "_", 1:n()))
-	data <- ungroup(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		address = data$address,
-		body = data$body,
-		date = data$date,
-		date_sent = data$date_sent,
-		is_read = data$is_read,
-		kind = data$kind,
-		size = data$size,
-		state = data$state
-	)
-
-	save2db(db, "TextMessage", data)
-}
-
-# TODO: Check date, sunrise, and sunset time in UTC
-weather_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		country = data$country,
-		area_name = data$area_name,
-		weather_main = data$weather_main,
-		weather_description = data$weather_description,
-		sunrise = data$sunrise,
-		sunset = data$sunset,
-		latitude = data$latitude,
-		longitude = data$longitude,
-		pressure = data$pressure,
-		wind_speed = data$wind_speed,
-		humidity = data$humidity,
-		cloudiness = data$cloudiness,
-		rain_last_hour = data$rain_last_hour,
-		rain_last_3hours = data$rain_last3_hours,
-		snow_last_hour = data$snow_last_hour,
-		snow_last_3hours = data$snow_last3_hours,
-		temperature = data$temperature,
-		temp_min = data$temp_min,
-		temp_max = data$temp_max
-	)
-
-	save2db(db, "Weather", data)
-}
-
-wifi_fun <- function(db, data) {
-	data <- default_fun(data)
-
-	data <- safe.data.frame(
-		measurement_id = data$id,
-		participant_id = data$participant_id,
-		time = data$timestamp,
-		ssid = data$ssid,
-		bssid = data$bssid
-	)
-
-	save2db(db, "Wifi", data)
+	if(is.null(by)) {
+		out <- out %>%
+			dplyr::summarise(n = n()) %>%
+			dplyr::pull(n)
+	} else if(by[1] == "Total" | by[1] == "total") {
+		out <- out %>%
+			dplyr::summarise(n = n()) %>%
+			dplyr::pull(n)
+	} else if(by[1] == "Hour" | by[1] == "hour") {
+		out <- out %>%
+			dplyr::mutate(hour = STRFTIME('%H', time)) %>%
+			dplyr::count(hour) %>%
+			dplyr::collect() %>%
+			dplyr::mutate(hour = as.numeric(hour)) %>%
+			tidyr::complete(hour = 0:23, fill = list(n = 0))
+	} else if(by[1] == "Day" | by[1] == "day") {
+		out <- out %>%
+			dplyr::count(date) %>%
+			dplyr::collect()
+	} else { # Default case
+		out <- out %>%
+			dplyr::summarise(n = n()) %>%
+			dplyr::pull(n)
+	}
+	return(out)
 }

@@ -1,13 +1,13 @@
 Package: CARP
 Title: Process and Analyse Data from CARP Mobile Sensing
-Version: 0.0.1
+Version: 0.1.0
 Authors@R: 
     person(given = "Koen",
            family = "Niemeijer",
            role = c("aut", "cre"),
            email = "koen.niemeijer@kuleuven.be",
            comment = c(ORCID = "0000-0002-0816-534X"))
-Description: What the package does (one paragraph).
+Description: Process and Analyse Data from CARP Mobile Sensing.
 License: `use_gpl3_license()`
 BugReports: https://gitlab.kuleuven.be/u0134047/CARP/issues
 Encoding: UTF-8

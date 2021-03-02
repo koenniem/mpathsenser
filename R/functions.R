@@ -20,92 +20,110 @@ ccopy <- function(from, to = getwd()) {
 	copy <- from_list[!(from_list %in% to_list)]
 	if(length(copy) == 0) {
 		message("No files left to copy")
-		return(invisible(""))
+		return(invisible(TRUE))
 	}
 	message(paste0("Copying ", length(copy), " files."))
 	copy <- paste0(from, copy)
 	invisible(do.call(file.copy, list(from = copy, to = to, overwrite = FALSE)))
 }
 
-#' Clean up direct CARP output
+#' Fix JSON files
 #'
 #' When copying data directly coming from CARP, JSON files are often corrupt due to the
-#' app not properly closing them. This function (hopefully) fixes that. Additionally,
-#' it can also unzip all the output in the directory.
+#' app not properly closing them. This function attempts to fix the most common
+#' problems associated with improper file closure by CARP.
 #'
 #' Note: Be careful when running this function multiple times. In the case there are
 #' many zips and no JSON files, it will be fast. However, when re-running the function,
 #' every previously unzipped JSON file will be checked for errors.
 #'
-#' @param path The path to the directory containing the JSON and/or zip files
-#' @param zipped Logical value indicating whether you want to unzip the files as well.
-#' @param fix Logical value indicating whether to fix incorrectly formatted JSON files in path.
-#' @param overwrite Defaults to true.
-#'
-#' @return Invisible result. Side effect is corrupted JSON files fixed and/or data unzipped.
+#' @param path The pathname of the JSON files.
 #' @export
-clean <- function(path = getwd(), zipped = TRUE, fix = FALSE, overwrite = FALSE) {
-	# 1. Get list of JSONs
-
+fix_json <- function(path = getwd()) {
 	# Find all JSON files that are _not_ zipped
 	# Thus, make sure you didn't unzip them yet, otherwise this may take a long time
 	jsonfiles <- dir(path = path, pattern = "*.json$", TRUE)
-	tag.json <- substr(jsonfiles, 11, nchar(jsonfiles) - 5)
 
-	# 2. Fix JSONs
-	if(fix) {
-		if(length(jsonfiles > 0)) {
-			lines <- lapply(jsonfiles, readLines)
-			eof <- lapply(lines, function(x) x[length(x)])
+	if(length(jsonfiles > 0)) {
+		for(i in 1:length(jsonfiles)) {
+			file <- path.expand(paste0(path, "/", jsonfiles[i]))
+			lines <- readLines(file)
+			eof <- lines[(length(lines) - 2):length(lines)]
 
-			for(i in 1:length(jsonfiles)) {
-				file <- paste0(path, "/", jsonfiles[i])
-				if(eof[i] == ",") {
-					write("{}]", file, append = TRUE)
-				}
-				if(eof[i] == "[") {
-					write("]", file, append = TRUE)
-				}
-				if(nchar(eof[i]) > 3 && substr(eof[i], nchar(eof[i])-1, nchar(eof[i])) == "}}") {
-					write("]", file, append = TRUE)
-				}
+			# Cases where it can go wrong
+			if(eof[2] == "," & eof[3] == "{}]") {
+				next # Okay
+			} else if(eof[1] == "{}]" & eof[2] == "]" & eof[3] == "]") {
+				write(lines[1:(length(lines) - 2)], file, append = FALSE)
+			} else if(eof[2] == "]" & eof[3] == "]") {
+				write(lines[1:(length(lines) - 1)], file, append = FALSE)
+			} else if(eof[1] == "{}]" & eof[2] == "{}]" & eof[3] == "{}]") {
+				write(lines[1:(length(lines) - 2)], file, append = FALSE)
+			} else if(eof[2] == "{}]" & eof[3] == "{}]") {
+				write(lines[1:(length(lines) - 1)], file, append = FALSE)
+			} else if(eof[2] == "," & eof[3] == "]") {
+				write(lines[1:(length(lines) - 2)], file, append = FALSE)
+				write("]", file, append = TRUE)
+			} else if(eof[3] == ",") {
+				write("{}]", file, append = TRUE)
+			} else if(eof[3] == "[") {
+				write("]", file, append = TRUE)
+			} else if(nchar(eof[3]) > 3 && substr(eof[3], nchar(eof[3])-1, nchar(eof[3])) == "}}") {
+				write("]", file, append = TRUE)
 			}
-		} else{
-			message("No JSON files found. Checking if there are zips...")
 		}
+	} else{
+		message("No JSON files found.")
 	}
+}
 
-	# 3. Unzip
-	# Get all zipfiles in the path
+test_jsons <- function(path = getwd()) {
+	jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE, full.names = TRUE)
+	for(i in 1:length(jsonfiles)) {
+		cat("File ", i, ": ")
+		rjson::fromJSON(file = jsonfiles[i], simplify = FALSE)
+		cat(" OK.\n")
+	}
+}
+
+#' Unzip CARP output
+#'
+#' Similar to \link[utils]{unzip}, but makes it easier to unzip all files in a given path
+#' with one function call.
+#'
+#' @param path The path to the directory containing the zip files.
+#' @param overwrite Logical value wheter you want to overwrite already existing zip files.
+#'
+#' @export
+unzip_carp <- function(path = getwd(), overwrite = FALSE) {
+	# Get all json and zipfiles in the path
+	# jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE)
+	# tag.json <- substr(jsonfiles, 11, nchar(jsonfiles) - 5)
 	zipfiles <- dir(path = path, pattern = "*.zip$")
-	tag.zip <- sapply(strsplit(zipfiles, "carp-data-"), function(x) x[2])
-	tag.zip <- substr(tag.zip, 1, nchar(tag.zip) - 4)
-
-	# Do not unzip files that already exist as JSON file
-	if(!overwrite) {
-		# zipfiles <- setdiff(zipfiles, jsonfiles)
-		zipfiles <- zipfiles[!(tag.zip %in% tag.json)]
-	}
+	# tag.zip <- sapply(strsplit(zipfiles, "carp-data-"), function(x) x[2])
+	# tag.zip <- substr(tag.zip, 1, nchar(tag.zip) - 4)
+	#
+	# # Do not unzip files that already exist as JSON file
+	# if(!overwrite) {
+	# 	zipfiles <- zipfiles[!(tag.zip %in% tag.json)]
+	# }
 
 	if(length(zipfiles) > 0) {
 		message(paste0("Unzipping ", length(zipfiles), " files."))
 		# TODO: implement error handling in case unzipping fails
 		# (e.g. unexpected end of data)
-		invisible(lapply(paste0(path, "/", zipfiles), unzip, exdir = path))
+		invisible(lapply(paste0(path, "/", zipfiles),
+										 utils::unzip, exdir = path, list = TRUE, overwrite = overwrite))
 	} else {
 		message("No files found to unzip.")
-	}
-
-	if(zipfiles == 0 && jsonfiles == 0) {
-		warning("No files were found to be processed.")
 	}
 }
 
 
 #' Import CARP files into a database (CARP data scheme)
 #'
-#' Currently, only SQLite is supported as a backend. Due to its concurrency restrcition, the
-#' `parallel` is disabled.
+#' Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
+#' `parallel` option is disabled.
 #'
 #' @param path The path to the file directory
 #' @param db Valid database connection.
@@ -127,8 +145,7 @@ import <- function(path = getwd(), db = NULL, dbname = "carp.db", backend = "RSQ
 
 	# Check backend and parallel constraint
 	if(backend == "RSQLite" & parallel) {
-		warning("Parallel cannot be used when RSQLite is provided as a backend
-						due to concurrency constraint. Setting parallel to false.")
+		warning("Parallel cannot be used when RSQLite is provided as a backend due to concurrency constraint. Setting parallel to false.")
 		parallel <- FALSE
 	}
 
@@ -140,7 +157,7 @@ import <- function(path = getwd(), db = NULL, dbname = "carp.db", backend = "RSQ
 	# If there are no duplicate files
 	# Proceed with the unsafe (but fast) check
 	# to prevent duplicate insertion into db
-	if(!anyDuplicated(files)) {
+	if(anyDuplicated(files) == 0) {
 		processedFiles <- get_processed_files(db)
 		# Keep files _not_ already registered in db
 		files <- files[!(files %in% processedFiles$file_name)]
@@ -167,26 +184,17 @@ import <- function(path = getwd(), db = NULL, dbname = "carp.db", backend = "RSQ
 		import_impl(path, files, db@dbname)
 	}
 
-	# Update Date and Time
-	for(i in 1:length(sensors)) {
-		dbExecute(db, paste0("ALTER TABLE ", sensors[i], " ADD COLUMN date TEXT"))
-		dbExecute(db, paste0("UPDATE ", sensors[i], " SET date = DATE(time)"))
-		dbExecute(db, paste0("UPDATE ", sensors[i], " SET time = TIME(time)"))
-	}
-
-	# Create indices
-	for(sensor in sensors) {
-		dbExecute(db, paste0("CREATE INDEX idx_", sensor,
-												 " ON ", sensor, "(participant_id)"))
-		dbExecute(db, paste0("CREATE INDEX date_", sensor,
-												 " ON ", sensor, "(date)"))
-		dbExecute(db, paste0("CREATE INDEX date_idx_", sensor,
-												 " ON ", sensor, "(participant_id, date)"))
-	}
-
 	# Return to sequential processing
 	if(parallel) {
 		future::plan(future::sequential)
+	}
+
+	processedFiles <- get_processed_files(db)
+	complete <- all(files %in% processedFiles$file_name)
+	if(complete) {
+		message("All files were successfully written to the database.")
+	} else {
+		warning("Some files could not be written to the database.")
 	}
 
 	RSQLite::dbDisconnect(db)
@@ -240,10 +248,10 @@ import_impl <- function(path, files, db_name) {
 		}
 
 		# Populate study specifics to db
-		add_study(db = tmp_db, data = distinct(data, study_id, data_format))
+		add_study(db = tmp_db, data = dplyr::distinct(data, study_id, data_format))
 
 		# Add participants
-		add_participant(db = tmp_db, data = distinct(data, participant_id, study_id))
+		add_participant(db = tmp_db, data = dplyr::distinct(data, participant_id, study_id))
 
 		# Divide et impera
 		data <- split(data, as.factor(data$sensor), drop = TRUE)
@@ -273,23 +281,48 @@ import_impl <- function(path, files, db_name) {
 	}
 }
 
-acceleration_vector <- function(data, x = x, y = y, z = z, gravity = 9.810467) {
-	x <- data$x
-	y <- data$y
-	z <- data$z
-	data$acceleration <- sqrt((x)^2 + (y)^2 + (z - gravity)^2)
+
+#' Calculate total acceleration from x, y, and z coordinates
+#'
+#' A convenience function to calculate the total acceleration in either or a local or remote
+#' tibble.
+#'
+#' @param data A data frame or a remote data frame connection through \link[dplyr]{tbl}.
+#' @param colname The name of the newly added column containing the total acceleration.
+#' @param x Acceleration along the x-axis.
+#' @param y Acceleration along the y-axis.
+#' @param z Acceleration along the z-axis.
+#' @param gravity Gravity in meters per second. Defaults to 9.810467. Set to 0 to ignore.
+#'
+#' @return The input data with a column \code{colname} attached.
+#' @export
+#'
+#' @examples
+#' db <- open_db()
+#' tbl(db, "Accelerometer") %>%
+#'   total_acceleration("total_acc")
+total_acceleration <- function(data, colname, x = x, y = y, z = z, gravity = 9.810467) {
+	data %>%
+		dplyr::mutate(!!colname := sqrt((x)^2 + (y)^2 + (z - gravity)^2))
 }
 
-# Per hour
+#' Measurement frequencies per sensor
+#'
+#' A numeric vector containing (an example) of the measurement frequencies per sensor.
+#' Such input is needed for \link[CARP]{coverage}.
+#'
+#' @export freq
 freq <- c(
-	Accelerometer = 3600, # Once per second
+	Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
 	AirQuality = 1,
-	AppUsage = 360,
-	Bluetooth = 60,  # Once per minute
+	AppUsage = 2, # Once every 30 minutes
+	Bluetooth = 60,  # Once per minute. Can have multiple measurements.
+	Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
 	Light = 360, # Once per 10 seconds
-	Location = 120, # Once per 30 seconds
+	Location = 60, # Once per 60 seconds
 	Memory = 60, # Once per minute
 	Noise = 120,
+	Pedometer = 1,
 	Weather = 1,
 	Wifi = 60 # once per minute
 )
@@ -299,10 +332,15 @@ freq <- c(
 #'
 #' Only applicable to non-reactive sensors with "continuous" sampling
 #'
-#' @param data A valid database connection. Schema must be that as it is created by
+#' @param db A valid database connection. Schema must be that as it is created by
 #' \link[CARP]{open_db}.
-#' @param frequency A named numeric vector with sensors as names
-#' and the number of expected samples per hour
+#' @param participant_id A character string of _one_ participant ID.
+#' @param sensor A character vector containing one or multiple sensors. See \link[CARP]{sensors} for a list of available sensors. Use "All" for all available sensors.
+#' @param frequency A named numeric vector with sensors as names and the number of expected samples per hour
+#' @param relative Show absolute number of measurements or relative to the expected number? Logical value.
+#' @param offset Currently not used.
+#' @param startDate A date (or convertible to a date using \link[base]{as.Date}) indicating the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.
+#' @param endDate A date (or convertible to a date using \link[base]{as.Date}) indicating the latest date to show.Leave empty for all data. Must be used with \code{startDate}
 #'
 #' @return
 #' @export
@@ -311,21 +349,28 @@ freq <- c(
 #'
 #' @examples
 #' setwd("~/data")
-#' clean()
-#' import()
+#' fix_json()
+#' unzip()
 #' freq <- c(
-#'   accelerometer = 3600, # Once per second
-#'   air_quality = 1,
-#'   app_usage = 360, # Once per 10 seconds
-#'   bluetooth = 60,  # Once per minute
-#'   light = 360, # Once per 10 seconds
-#'   location = 120, # Once per 30 seconds
-#'   memory = 60, # Once per minute
-#'   noise = 120,
-#'   weather = 1,
-#'   wifi = 60 # once per minute
+#' 	 Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
+#' 	 AirQuality = 1,
+#' 	 AppUsage = 2, # Once every 30 minutes
+#' 	 Bluetooth = 60,  # Once per minute. Can have multiple measurements.
+#' 	 Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
+#' 	 Light = 360, # Once per 10 seconds
+#' 	 Location = 60, # Once per 60 seconds
+#' 	 Memory = 60, # Once per minute
+#' 	 Noise = 120,
+#' 	 Pedometer = 1,
+#' 	 Weather = 1,
+#' 	 Wifi = 60 # once per minute
 #' )
-#' coverage(db, freq)
+#' coverage(db = db,
+#'          participant_id = "12345",
+#'          sensor = c("Accelerometer", "Gyroscope"),
+#'          frequency = CARP::freq,
+#'          startDate = "2021-01-01",
+#'          endDate = "2021-05-01")
 coverage <- function(db,
 										 participant_id,
 										 sensor = "All",
@@ -469,7 +514,9 @@ coverage <- function(db,
 
 	# Complete missing hours with 0
 	data <- mapply(
-		FUN = function(.x, .y) tidyr::complete(.x, Hour = 0:23, measure = .y, fill = list(Coverage = 0)),
+		FUN = function(.x, .y) tidyr::complete(.x, Hour = 0:23,
+																					 measure = .y,
+																					 fill = list(Coverage = 0)),
 		.x = data,
 		.y = names(data),
 		SIMPLIFY = FALSE

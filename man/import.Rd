@@ -30,6 +30,6 @@ import(
 Invisible. Imported database can be reopened using \link[CARP]{open_db}.
 }
 \description{
-Currently, only SQLite is supported as a backend. Due to its concurrency restrcition, the
-\code{parallel} is disabled.
+Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
+\code{parallel} option is disabled.
 }
