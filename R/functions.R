@@ -38,6 +38,7 @@ ccopy <- function(from, to = getwd()) {
 #' every previously unzipped JSON file will be checked for errors.
 #'
 #' @param path The pathname of the JSON files.
+#'
 #' @export
 fix_json <- function(path = getwd()) {
 	# Find all JSON files that are _not_ zipped
@@ -335,12 +336,12 @@ freq <- c(
 #' @param db A valid database connection. Schema must be that as it is created by
 #' \link[CARP]{open_db}.
 #' @param participant_id A character string of _one_ participant ID.
-#' @param sensor A character vector containing one or multiple sensors. See \link[CARP]{sensors} for a list of available sensors. Use "All" for all available sensors.
+#' @param sensor A character vector containing one or multiple sensors. See \code{\link[CARP]{sensors}} for a list of available sensors. Use "All" for all available sensors.
 #' @param frequency A named numeric vector with sensors as names and the number of expected samples per hour
 #' @param relative Show absolute number of measurements or relative to the expected number? Logical value.
 #' @param offset Currently not used.
-#' @param startDate A date (or convertible to a date using \link[base]{as.Date}) indicating the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.
-#' @param endDate A date (or convertible to a date using \link[base]{as.Date}) indicating the latest date to show.Leave empty for all data. Must be used with \code{startDate}
+#' @param startDate A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.
+#' @param endDate A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating the latest date to show.Leave empty for all data. Must be used with \code{startDate}.
 #'
 #' @return
 #' @export
