@@ -21,7 +21,7 @@ coverage(
 
 \item{participant_id}{A character string of \emph{one} participant ID.}
 
-\item{sensor}{A character vector containing one or multiple sensors. See \link[CARP]{sensors} for a list of available sensors. Use "All" for all available sensors.}
+\item{sensor}{A character vector containing one or multiple sensors. See \code{\link[CARP]{sensors}} for a list of available sensors. Use "All" for all available sensors.}
 
 \item{frequency}{A named numeric vector with sensors as names and the number of expected samples per hour}
 
@@ -29,9 +29,9 @@ coverage(
 
 \item{offset}{Currently not used.}
 
-\item{startDate}{A date (or convertible to a date using \link[base]{as.Date}) indicating the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.}
+\item{startDate}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.}
 
-\item{endDate}{A date (or convertible to a date using \link[base]{as.Date}) indicating the latest date to show.Leave empty for all data. Must be used with \code{startDate}}
+\item{endDate}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating the latest date to show.Leave empty for all data. Must be used with \code{startDate}.}
 }
 \value{
 
@@ -44,23 +44,25 @@ setwd("~/data")
 fix_json()
 unzip()
 freq <- c(
-	 Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
-	 AirQuality = 1,
-	 AppUsage = 2, # Once every 30 minutes
-	 Bluetooth = 60,  # Once per minute. Can have multiple measurements.
-	 Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
-	 Light = 360, # Once per 10 seconds
-	 Location = 60, # Once per 60 seconds
-	 Memory = 60, # Once per minute
-	 Noise = 120,
-	 Pedometer = 1,
-	 Weather = 1,
-	 Wifi = 60 # once per minute
+  Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
+  AirQuality = 1,
+  AppUsage = 2, # Once every 30 minutes
+  Bluetooth = 60, # Once per minute. Can have multiple measurements.
+  Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
+  Light = 360, # Once per 10 seconds
+  Location = 60, # Once per 60 seconds
+  Memory = 60, # Once per minute
+  Noise = 120,
+  Pedometer = 1,
+  Weather = 1,
+  Wifi = 60 # once per minute
 )
-coverage(db = db,
-         participant_id = "12345",
-         sensor = c("Accelerometer", "Gyroscope"),
-         frequency = CARP::freq,
-         startDate = "2021-01-01",
-         endDate = "2021-05-01")
+coverage(
+  db = db,
+  participant_id = "12345",
+  sensor = c("Accelerometer", "Gyroscope"),
+  frequency = CARP::freq,
+  startDate = "2021-01-01",
+  endDate = "2021-05-01"
+)
 }

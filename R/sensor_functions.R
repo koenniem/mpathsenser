@@ -156,32 +156,32 @@ get_app_usage <- function(db, participant_id = NULL,
 
   } else if (by[1] == "Total" | by[1] == "total") {
     data <- data %>%
-      group_by(date, app) %>%
-      slice(n()) %>%
-      mutate(usage = usage / 60 / 60) %>%
+    	dplyr::group_by(date, app) %>%
+    	dplyr::slice(n()) %>%
+      dplyr::mutate(usage = usage / 60 / 60) %>%
       dplyr::group_by(app) %>%
       dplyr::summarise(usage = round(mean(usage), 2), .groups = "drop")
   } else if (by[1] == "Hour" | by[1] == "hour") {
     data <- data %>%
-      group_by(date, app) %>%
-      mutate(prev_usage = lag(usage, default = 0)) %>%
-      mutate(hour = substr(time, 1, 2)) %>%
-      group_by(date, app) %>%
-      mutate(duration = usage - prev_usage) %>%
-      group_by(hour, date, app) %>%
-      summarise(usage = usage / 60 / 60, .groups = "drop") %>%
+    	dplyr::group_by(date, app) %>%
+    	dplyr::mutate(prev_usage = lag(usage, default = 0)) %>%
+    	dplyr::mutate(hour = substr(time, 1, 2)) %>%
+    	dplyr::group_by(date, app) %>%
+    	dplyr::mutate(duration = usage - prev_usage) %>%
+    	dplyr::group_by(hour, date, app) %>%
+    	dplyr::summarise(usage = usage / 60 / 60, .groups = "drop") %>%
       dplyr::mutate(hour = as.numeric(hour)) %>%
       tidyr::complete(hour = 0:23, app, fill = list(n = 0))
   } else if (by[1] == "Day" | by[1] == "day") {
     data <- data %>%
-      group_by(date, app) %>%
-      slice(n()) %>%
-      mutate(usage = round(usage / 60 / 60, 2))
+    	dplyr::group_by(date, app) %>%
+    	dplyr::slice(n()) %>%
+    	dplyr::mutate(usage = round(usage / 60 / 60, 2))
   } else { # Default case
     data <- data %>%
-      group_by(date, app) %>%
-      slice(n()) %>%
-      mutate(usage = usage / 60 / 60)
+    	dplyr::group_by(date, app) %>%
+    	dplyr::slice(n()) %>%
+    	dplyr::mutate(usage = usage / 60 / 60)
   }
   return(data)
 

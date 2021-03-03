@@ -26,7 +26,7 @@ Leave empty to get data for all participants.}
 \item{by}{Either "Hour" or "Day" indicating how to summarise the results. Leave empty to get raw screen duration per measurement.}
 }
 \value{
-A tibble with either "hour" and "duration" columns or "date" and "duration" columns depending on the \code{by} argument. Alternatively, if not \code{by} is specified, a remote tibble is returned with the date, time, and duration since the previous measurement.
+A tibble with either "hour" and "duration" columns or "date" and "duration" columns depending on the \code{by} argument. Alternatively, if no \code{by} is specified, a remote tibble is returned with the date, time, and duration since the previous measurement.
 }
 \description{
 Calculate the screen duration time where the screen was \emph{unlocked} (i.e. not just on).
