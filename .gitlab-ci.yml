@@ -1,6 +1,3 @@
-tags:
-  - pages
-
 image: rocker/tidyverse
 
 stages:
@@ -10,6 +7,8 @@ stages:
 
 building:
   stage: build
+  tags:
+    - pages
   script:
     - R -e "remotes::install_deps(dependencies = TRUE)"
     - R -e 'devtools::check()'
@@ -22,6 +21,8 @@ building:
 
 testing:
     stage: test
+    tags:
+        - pages
     allow_failure: true
     when: on_success
     only:
@@ -38,6 +39,8 @@ testing:
 
 pages:
     stage: deploy
+    tags:
+        - pages
     dependencies:
         - testing
     script:
