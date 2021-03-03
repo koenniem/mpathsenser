@@ -1,5 +1,8 @@
 image: rocker/tidyverse
 
+tags:
+  - pages
+
 stages:
   - build
   - test
