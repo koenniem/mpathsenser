@@ -1,7 +1,7 @@
-image: rocker/tidyverse
-
 tags:
   - pages
+
+image: rocker/tidyverse
 
 stages:
   - build
