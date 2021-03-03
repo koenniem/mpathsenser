@@ -14,17 +14,17 @@
 #' library(CARP)
 #' ccopy("K:/data/myproject/", "~/myproject")
 ccopy <- function(from, to = getwd()) {
-	# from <- "K:/GHUM-PPW-MICAS-OKPIV-PHD_KOEN-0800-A/emosense/"
-	from_list <- dir(path = from, pattern = "*.zip$")
-	to_list <- dir(path = to, pattern = "*.zip$")
-	copy <- from_list[!(from_list %in% to_list)]
-	if(length(copy) == 0) {
-		message("No files left to copy")
-		return(invisible(TRUE))
-	}
-	message(paste0("Copying ", length(copy), " files."))
-	copy <- paste0(from, copy)
-	invisible(do.call(file.copy, list(from = copy, to = to, overwrite = FALSE)))
+  # from <- "K:/GHUM-PPW-MICAS-OKPIV-PHD_KOEN-0800-A/emosense/"
+  from_list <- dir(path = from, pattern = "*.zip$")
+  to_list <- dir(path = to, pattern = "*.zip$")
+  copy <- from_list[!(from_list %in% to_list)]
+  if (length(copy) == 0) {
+    message("No files left to copy")
+    return(invisible(TRUE))
+  }
+  message(paste0("Copying ", length(copy), " files."))
+  copy <- paste0(from, copy)
+  invisible(do.call(file.copy, list(from = copy, to = to, overwrite = FALSE)))
 }
 
 #' Fix JSON files
@@ -41,50 +41,50 @@ ccopy <- function(from, to = getwd()) {
 #'
 #' @export
 fix_json <- function(path = getwd()) {
-	# Find all JSON files that are _not_ zipped
-	# Thus, make sure you didn't unzip them yet, otherwise this may take a long time
-	jsonfiles <- dir(path = path, pattern = "*.json$", TRUE)
+  # Find all JSON files that are _not_ zipped
+  # Thus, make sure you didn't unzip them yet, otherwise this may take a long time
+  jsonfiles <- dir(path = path, pattern = "*.json$", TRUE)
 
-	if(length(jsonfiles > 0)) {
-		for(i in 1:length(jsonfiles)) {
-			file <- path.expand(paste0(path, "/", jsonfiles[i]))
-			lines <- readLines(file)
-			eof <- lines[(length(lines) - 2):length(lines)]
+  if (length(jsonfiles > 0)) {
+    for (i in 1:length(jsonfiles)) {
+      file <- path.expand(paste0(path, "/", jsonfiles[i]))
+      lines <- readLines(file)
+      eof <- lines[(length(lines) - 2):length(lines)]
 
-			# Cases where it can go wrong
-			if(eof[2] == "," & eof[3] == "{}]") {
-				next # Okay
-			} else if(eof[1] == "{}]" & eof[2] == "]" & eof[3] == "]") {
-				write(lines[1:(length(lines) - 2)], file, append = FALSE)
-			} else if(eof[2] == "]" & eof[3] == "]") {
-				write(lines[1:(length(lines) - 1)], file, append = FALSE)
-			} else if(eof[1] == "{}]" & eof[2] == "{}]" & eof[3] == "{}]") {
-				write(lines[1:(length(lines) - 2)], file, append = FALSE)
-			} else if(eof[2] == "{}]" & eof[3] == "{}]") {
-				write(lines[1:(length(lines) - 1)], file, append = FALSE)
-			} else if(eof[2] == "," & eof[3] == "]") {
-				write(lines[1:(length(lines) - 2)], file, append = FALSE)
-				write("]", file, append = TRUE)
-			} else if(eof[3] == ",") {
-				write("{}]", file, append = TRUE)
-			} else if(eof[3] == "[") {
-				write("]", file, append = TRUE)
-			} else if(nchar(eof[3]) > 3 && substr(eof[3], nchar(eof[3])-1, nchar(eof[3])) == "}}") {
-				write("]", file, append = TRUE)
-			}
-		}
-	} else{
-		message("No JSON files found.")
-	}
+      # Cases where it can go wrong
+      if (eof[2] == "," & eof[3] == "{}]") {
+        next # Okay
+      } else if (eof[1] == "{}]" & eof[2] == "]" & eof[3] == "]") {
+        write(lines[1:(length(lines) - 2)], file, append = FALSE)
+      } else if (eof[2] == "]" & eof[3] == "]") {
+        write(lines[1:(length(lines) - 1)], file, append = FALSE)
+      } else if (eof[1] == "{}]" & eof[2] == "{}]" & eof[3] == "{}]") {
+        write(lines[1:(length(lines) - 2)], file, append = FALSE)
+      } else if (eof[2] == "{}]" & eof[3] == "{}]") {
+        write(lines[1:(length(lines) - 1)], file, append = FALSE)
+      } else if (eof[2] == "," & eof[3] == "]") {
+        write(lines[1:(length(lines) - 2)], file, append = FALSE)
+        write("]", file, append = TRUE)
+      } else if (eof[3] == ",") {
+        write("{}]", file, append = TRUE)
+      } else if (eof[3] == "[") {
+        write("]", file, append = TRUE)
+      } else if (nchar(eof[3]) > 3 && substr(eof[3], nchar(eof[3]) - 1, nchar(eof[3])) == "}}") {
+        write("]", file, append = TRUE)
+      }
+    }
+  } else {
+    message("No JSON files found.")
+  }
 }
 
 test_jsons <- function(path = getwd()) {
-	jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE, full.names = TRUE)
-	for(i in 1:length(jsonfiles)) {
-		cat("File ", i, ": ")
-		rjson::fromJSON(file = jsonfiles[i], simplify = FALSE)
-		cat(" OK.\n")
-	}
+  jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE, full.names = TRUE)
+  for (i in 1:length(jsonfiles)) {
+    cat("File ", i, ": ")
+    rjson::fromJSON(file = jsonfiles[i], simplify = FALSE)
+    cat(" OK.\n")
+  }
 }
 
 #' Unzip CARP output
@@ -97,27 +97,29 @@ test_jsons <- function(path = getwd()) {
 #'
 #' @export
 unzip_carp <- function(path = getwd(), overwrite = FALSE) {
-	# Get all json and zipfiles in the path
-	# jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE)
-	# tag.json <- substr(jsonfiles, 11, nchar(jsonfiles) - 5)
-	zipfiles <- dir(path = path, pattern = "*.zip$")
-	# tag.zip <- sapply(strsplit(zipfiles, "carp-data-"), function(x) x[2])
-	# tag.zip <- substr(tag.zip, 1, nchar(tag.zip) - 4)
-	#
-	# # Do not unzip files that already exist as JSON file
-	# if(!overwrite) {
-	# 	zipfiles <- zipfiles[!(tag.zip %in% tag.json)]
-	# }
+  # Get all json and zipfiles in the path
+  # jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE)
+  # tag.json <- substr(jsonfiles, 11, nchar(jsonfiles) - 5)
+  zipfiles <- dir(path = path, pattern = "*.zip$")
+  # tag.zip <- sapply(strsplit(zipfiles, "carp-data-"), function(x) x[2])
+  # tag.zip <- substr(tag.zip, 1, nchar(tag.zip) - 4)
+  #
+  # # Do not unzip files that already exist as JSON file
+  # if(!overwrite) {
+  # 	zipfiles <- zipfiles[!(tag.zip %in% tag.json)]
+  # }
 
-	if(length(zipfiles) > 0) {
-		message(paste0("Unzipping ", length(zipfiles), " files."))
-		# TODO: implement error handling in case unzipping fails
-		# (e.g. unexpected end of data)
-		invisible(lapply(paste0(path, "/", zipfiles),
-										 utils::unzip, exdir = path, list = TRUE, overwrite = overwrite))
-	} else {
-		message("No files found to unzip.")
-	}
+  if (length(zipfiles) > 0) {
+    message(paste0("Unzipping ", length(zipfiles), " files."))
+    # TODO: implement error handling in case unzipping fails
+    # (e.g. unexpected end of data)
+    invisible(lapply(paste0(path, "/", zipfiles),
+      utils::unzip,
+      exdir = path, list = TRUE, overwrite = overwrite
+    ))
+  } else {
+    message("No files found to unzip.")
+  }
 }
 
 
@@ -137,149 +139,155 @@ unzip_carp <- function(path = getwd(), overwrite = FALSE) {
 #' @export
 import <- function(path = getwd(), db = NULL, dbname = "carp.db", backend = "RSQLite", progress = TRUE, parallel = FALSE) {
 
-	# Retrieve all JSON files
-	files <- dir(path = path, pattern = "*.json$")
+  # Retrieve all JSON files
+  files <- dir(path = path, pattern = "*.json$")
 
-	if(length(files) == 0) {
-		stop("No JSON files found")
-	}
+  if (length(files) == 0) {
+    stop("No JSON files found")
+  }
 
-	# Check backend and parallel constraint
-	if(backend == "RSQLite" & parallel) {
-		warning("Parallel cannot be used when RSQLite is provided as a backend due to concurrency constraint. Setting parallel to false.")
-		parallel <- FALSE
-	}
+  # Check backend and parallel constraint
+  if (backend == "RSQLite" & parallel) {
+    warning("Parallel cannot be used when RSQLite is provided as a backend due to concurrency constraint. Setting parallel to false.")
+    parallel <- FALSE
+  }
 
-	# Set up database if not provided
-	if(is.null(db)) {
-		db <- create_db(db_name = dbname)
-	}
+  # Set up database if not provided
+  if (is.null(db)) {
+    db <- create_db(db_name = dbname)
+  }
 
-	# If there are no duplicate files
-	# Proceed with the unsafe (but fast) check
-	# to prevent duplicate insertion into db
-	if(anyDuplicated(files) == 0) {
-		processedFiles <- get_processed_files(db)
-		# Keep files _not_ already registered in db
-		files <- files[!(files %in% processedFiles$file_name)]
+  # If there are no duplicate files
+  # Proceed with the unsafe (but fast) check
+  # to prevent duplicate insertion into db
+  if (anyDuplicated(files) == 0) {
+    processedFiles <- get_processed_files(db)
+    # Keep files _not_ already registered in db
+    files <- files[!(files %in% processedFiles$file_name)]
 
-		if(length(files) == 0) {
-			return("No new files to process.")
-		}
-	}
+    if (length(files) == 0) {
+      return("No new files to process.")
+    }
+  }
 
-	# Set up parallel backend
-	if(parallel) {
-		doFuture::registerDoFuture()
-		future::plan(future::multisession)
-	} else {
-		foreach::registerDoSEQ()
-	}
+  # Set up parallel backend
+  if (parallel) {
+    doFuture::registerDoFuture()
+    future::plan(future::multisession)
+  } else {
+    foreach::registerDoSEQ()
+  }
 
-	# Call on implementation with or without progress bar
-	if(progress) {
-		progressr::with_progress({
-			import_impl(path, files, db@dbname)
-		})
-	} else{
-		import_impl(path, files, db@dbname)
-	}
+  # Call on implementation with or without progress bar
+  if (progress) {
+    progressr::with_progress({
+      import_impl(path, files, db@dbname)
+    })
+  } else {
+    import_impl(path, files, db@dbname)
+  }
 
-	# Return to sequential processing
-	if(parallel) {
-		future::plan(future::sequential)
-	}
+  # Return to sequential processing
+  if (parallel) {
+    future::plan(future::sequential)
+  }
 
-	processedFiles <- get_processed_files(db)
-	complete <- all(files %in% processedFiles$file_name)
-	if(complete) {
-		message("All files were successfully written to the database.")
-	} else {
-		warning("Some files could not be written to the database.")
-	}
+  processedFiles <- get_processed_files(db)
+  complete <- all(files %in% processedFiles$file_name)
+  if (complete) {
+    message("All files were successfully written to the database.")
+  } else {
+    warning("Some files could not be written to the database.")
+  }
 
-	RSQLite::dbDisconnect(db)
+  RSQLite::dbDisconnect(db)
 }
 
 import_impl <- function(path, files, db_name) {
-	p <- progressr::progressor(length(files))
-	# foreach::`%dopar%`(foreach::foreach(i = 1:length(files)), {
-	for(i in 1:length(files)) {
-		# Update progress bar
-		p(sprintf("x=%g", i))
-	# for(i in 1:length(files)) {
+  p <- progressr::progressor(length(files))
+  # foreach::`%dopar%`(foreach::foreach(i = 1:length(files)), {
+  for (i in 1:length(files)) {
+    # Update progress bar
+    p(sprintf("x=%g", i))
+    # for(i in 1:length(files)) {
 
-		data <- rjson::fromJSON(file = paste0(path, "/", files[i]), simplify = FALSE)
+    data <- rjson::fromJSON(file = paste0(path, "/", files[i]), simplify = FALSE)
 
-		# Check if it is not an empty file
-		# Return NULL is true
-		if(length(data) == 0) {
-			return(NULL)
-		}
+    # Check if it is not an empty file
+    # Return NULL is true
+    if (length(data) == 0) {
+      return(NULL)
+    }
 
-		# Clean-up and extract the header and body
-		data <- tibble::tibble(header = lapply(data, function(x) x[1]),
-													 body = lapply(data, function(x) x[2]))
-		# Extract columns
-		data$study_id <- lapply(data$header, function(x) x$header$study_id)
-		data$participant_id <- lapply(data$header, function(x) x$header$user_id)
-		data$start_time <- lapply(data$header, function(x) x$header$start_time)
-		data$data_format <- lapply(data$header, function(x) x$header$data_format$namespace)
-		data$sensor <- lapply(data$header, function(x) x$header$data_format$name)
-		data$header <- NULL
-		data <- tidyr::unnest(data, c(study_id:sensor))
+    # Clean-up and extract the header and body
+    data <- tibble::tibble(
+      header = lapply(data, function(x) x[1]),
+      body = lapply(data, function(x) x[2])
+    )
+    # Extract columns
+    data$study_id <- lapply(data$header, function(x) x$header$study_id)
+    data$participant_id <- lapply(data$header, function(x) x$header$user_id)
+    data$start_time <- lapply(data$header, function(x) x$header$start_time)
+    data$data_format <- lapply(data$header, function(x) x$header$data_format$namespace)
+    data$sensor <- lapply(data$header, function(x) x$header$data_format$name)
+    data$header <- NULL
+    data <- tidyr::unnest(data, c(study_id:sensor))
 
-		# Open db
-		tmp_db <- open_db(db_name)
+    # Open db
+    tmp_db <- open_db(db_name)
 
-		#Safe duplicate check before insertion
-		# Check if file is already registered as processed
-		# Now using the participant_id and study_id as
-		this_file <- data.frame(
-			file_name = files[i],
-			participant_id = unique(data$participant_id),
-			study_id = unique(data$study_id)
-		)
-		processedFiles <- get_processed_files(tmp_db)
-		matches <- dplyr::inner_join(this_file,
-																 processedFiles,
-																 by = c("file_name", "participant_id", "study_id"))
-		if(nrow(matches) > 0) {
-			return(NULL) # File was already processed
-		}
+    # Safe duplicate check before insertion
+    # Check if file is already registered as processed
+    # Now using the participant_id and study_id as
+    this_file <- data.frame(
+      file_name = files[i],
+      participant_id = unique(data$participant_id),
+      study_id = unique(data$study_id)
+    )
+    processedFiles <- get_processed_files(tmp_db)
+    matches <- dplyr::inner_join(this_file,
+      processedFiles,
+      by = c("file_name", "participant_id", "study_id")
+    )
+    if (nrow(matches) > 0) {
+      return(NULL) # File was already processed
+    }
 
-		# Populate study specifics to db
-		add_study(db = tmp_db, data = dplyr::distinct(data, study_id, data_format))
+    # Populate study specifics to db
+    add_study(db = tmp_db, data = dplyr::distinct(data, study_id, data_format))
 
-		# Add participants
-		add_participant(db = tmp_db, data = dplyr::distinct(data, participant_id, study_id))
+    # Add participants
+    add_participant(db = tmp_db, data = dplyr::distinct(data, participant_id, study_id))
 
-		# Divide et impera
-		data <- split(data, as.factor(data$sensor), drop = TRUE)
+    # Divide et impera
+    data <- split(data, as.factor(data$sensor), drop = TRUE)
 
-		# Drop useless data
-		data[["error"]] <- NULL
-		data[["unknown"]] <- NULL
+    # Drop useless data
+    data[["error"]] <- NULL
+    data[["unknown"]] <- NULL
 
-		# Call function for each sensor
-		tryCatch({
-			RSQLite::dbWithTransaction(tmp_db, {
-				for(j in 1:length(data)) {
-					# Get sensor name
-					sensor <- names(data)[[j]]
-					tmp <- data[[sensor]]
+    # Call function for each sensor
+    tryCatch(
+      {
+        RSQLite::dbWithTransaction(tmp_db, {
+          for (j in 1:length(data)) {
+            # Get sensor name
+            sensor <- names(data)[[j]]
+            tmp <- data[[sensor]]
 
-					which_sensor(tmp_db, tmp, sensor)
-				}
-			})
+            which_sensor(tmp_db, tmp, sensor)
+          }
+        })
 
-			# Add file to list of processed files
-			add_processed_file(tmp_db, this_file)
-		}, error = function(e) {}) # Empty for now
+        # Add file to list of processed files
+        add_processed_file(tmp_db, this_file)
+      },
+      error = function(e) {}
+    ) # Empty for now
 
-		# Close db connection of worker
-		RSQLite::dbDisconnect(tmp_db)
-	}
+    # Close db connection of worker
+    RSQLite::dbDisconnect(tmp_db)
+  }
 }
 
 
@@ -303,8 +311,8 @@ import_impl <- function(path, files, db_name) {
 #' tbl(db, "Accelerometer") %>%
 #'   total_acceleration("total_acc")
 total_acceleration <- function(data, colname, x = x, y = y, z = z, gravity = 9.810467) {
-	data %>%
-		dplyr::mutate(!!colname := sqrt((x)^2 + (y)^2 + (z - gravity)^2))
+  data %>%
+    dplyr::mutate(!!colname := sqrt((x)^2 + (y)^2 + (z - gravity)^2))
 }
 
 #' Measurement frequencies per sensor
@@ -314,18 +322,18 @@ total_acceleration <- function(data, colname, x = x, y = y, z = z, gravity = 9.8
 #'
 #' @export freq
 freq <- c(
-	Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
-	AirQuality = 1,
-	AppUsage = 2, # Once every 30 minutes
-	Bluetooth = 60,  # Once per minute. Can have multiple measurements.
-	Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
-	Light = 360, # Once per 10 seconds
-	Location = 60, # Once per 60 seconds
-	Memory = 60, # Once per minute
-	Noise = 120,
-	Pedometer = 1,
-	Weather = 1,
-	Wifi = 60 # once per minute
+  Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
+  AirQuality = 1,
+  AppUsage = 2, # Once every 30 minutes
+  Bluetooth = 60, # Once per minute. Can have multiple measurements.
+  Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
+  Light = 360, # Once per 10 seconds
+  Location = 60, # Once per 60 seconds
+  Memory = 60, # Once per minute
+  Noise = 120,
+  Pedometer = 1,
+  Weather = 1,
+  Wifi = 60 # once per minute
 )
 
 
@@ -353,189 +361,208 @@ freq <- c(
 #' fix_json()
 #' unzip()
 #' freq <- c(
-#' 	 Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
-#' 	 AirQuality = 1,
-#' 	 AppUsage = 2, # Once every 30 minutes
-#' 	 Bluetooth = 60,  # Once per minute. Can have multiple measurements.
-#' 	 Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
-#' 	 Light = 360, # Once per 10 seconds
-#' 	 Location = 60, # Once per 60 seconds
-#' 	 Memory = 60, # Once per minute
-#' 	 Noise = 120,
-#' 	 Pedometer = 1,
-#' 	 Weather = 1,
-#' 	 Wifi = 60 # once per minute
+#'   Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
+#'   AirQuality = 1,
+#'   AppUsage = 2, # Once every 30 minutes
+#'   Bluetooth = 60, # Once per minute. Can have multiple measurements.
+#'   Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
+#'   Light = 360, # Once per 10 seconds
+#'   Location = 60, # Once per 60 seconds
+#'   Memory = 60, # Once per minute
+#'   Noise = 120,
+#'   Pedometer = 1,
+#'   Weather = 1,
+#'   Wifi = 60 # once per minute
 #' )
-#' coverage(db = db,
-#'          participant_id = "12345",
-#'          sensor = c("Accelerometer", "Gyroscope"),
-#'          frequency = CARP::freq,
-#'          startDate = "2021-01-01",
-#'          endDate = "2021-05-01")
+#' coverage(
+#'   db = db,
+#'   participant_id = "12345",
+#'   sensor = c("Accelerometer", "Gyroscope"),
+#'   frequency = CARP::freq,
+#'   startDate = "2021-01-01",
+#'   endDate = "2021-05-01"
+#' )
 coverage <- function(db,
-										 participant_id,
-										 sensor = "All",
-										 frequency,
-										 relative = TRUE,
-										 offset = "None",
-										 startDate = NULL,
-										 endDate = NULL) {
-	# Check db
-	if(!inherits(db, "DBIConnection")) {
-		stop("Argument db is not a database connection.")
-	}
+                     participant_id,
+                     sensor = "All",
+                     frequency,
+                     relative = TRUE,
+                     offset = "None",
+                     startDate = NULL,
+                     endDate = NULL) {
+  # Check db
+  if (!inherits(db, "DBIConnection")) {
+    stop("Argument db is not a database connection.")
+  }
 
-	if(!RSQLite::dbIsValid(db)) {
-		stop("Database is invalid.")
-	}
+  if (!RSQLite::dbIsValid(db)) {
+    stop("Database is invalid.")
+  }
 
-	# Check sensors
-	if(length(sensor) == 1 && sensor == "All") {
-		sensor <- sensors
-	} else {
-		missing <- sensor[!(sensor %in% sensors)]
-		if(length(missing) != 0) {
-			stop(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
-		}
-	}
+  # Check sensors
+  if (length(sensor) == 1 && sensor == "All") {
+    sensor <- sensors
+  } else {
+    missing <- sensor[!(sensor %in% sensors)]
+    if (length(missing) != 0) {
+      stop(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
+    }
+  }
 
-	# Check participants
-	if(length(participant_id) > 1) {
-		stop("Only 1 participant per coverage chart allowed")
-	}
+  # Check participants
+  if (length(participant_id) > 1) {
+    stop("Only 1 participant per coverage chart allowed")
+  }
 
-	if(is.character(participant_id)) {
-		if(!(participant_id %in% get_participants(db)$participant_id))
-			stop("Participant_id not known.")
-	} else {
-		stop("participant_id must be a character string")
-	}
+  if (is.character(participant_id)) {
+    if (!(participant_id %in% get_participants(db)$participant_id)) {
+      stop("Participant_id not known.")
+    }
+  } else {
+    stop("participant_id must be a character string")
+  }
 
-	# Check frequency
-	if(!is.numeric(frequency) || is.null(names(frequency))) {
-		stop("Frequency is must be a named numeric vector")
-	}
+  # Check frequency
+  if (!is.numeric(frequency) || is.null(names(frequency))) {
+    stop("Frequency is must be a named numeric vector")
+  }
 
-	# Check time subset
-	if(grepl("\\d day", offset)) {
-		offset <- paste0("-", offset)
-	} else if(is.null(offset) || (tolower(offset) == "none")) {
-		offset <- NULL
-	} else {
-		stop("Argument offset must be either 'None', 1 day, or 2, 3, 4, ... days.")
-	}
+  # Check time subset
+  if (grepl("\\d day", offset)) {
+    offset <- paste0("-", offset)
+  } else if (is.null(offset) || (tolower(offset) == "none")) {
+    offset <- NULL
+  } else {
+    stop("Argument offset must be either 'None', 1 day, or 2, 3, 4, ... days.")
+  }
 
-	# Check startDate, endDate
-	if((!is.null(startDate) && !is.null(endDate)) && !is.null(offset)) {
-		warning("Argument startDate/endDate and offset cannot be present at the same time.
+  # Check startDate, endDate
+  if ((!is.null(startDate) && !is.null(endDate)) && !is.null(offset)) {
+    warning("Argument startDate/endDate and offset cannot be present at the same time.
 						Ignoring the offset argument.")
-		offset <- NULL
-	} else if(!(is(startDate, "Date") | is.character(startDate)) |
-						!(is(endDate, "Date") | is.character(endDate))) {
-		stop("startDate and endDate must be a character string or date.")
-	}
+    offset <- NULL
+  } else if (!(is(startDate, "Date") | is.character(startDate)) |
+    !(is(endDate, "Date") | is.character(endDate))) {
+    stop("startDate and endDate must be a character string or date.")
+  }
 
-	# Retain only frequencies that appear in the sensor list
-	frequency <- frequency[names(frequency) %in% sensor]
+  # Retain only frequencies that appear in the sensor list
+  frequency <- frequency[names(frequency) %in% sensor]
 
-	# Interesting bug/feature in dbplyr: If participant_id is used in the query,
-	# the index of the table is not used. Hence, we rename participant_id to p_id
-	p_id <- as.character(participant_id)
+  # Interesting bug/feature in dbplyr: If participant_id is used in the query,
+  # the index of the table is not used. Hence, we rename participant_id to p_id
+  p_id <- as.character(participant_id)
 
-	# Get Data
-	data <- lapply(names(frequency), function(x) {
-		tmp <- dplyr::tbl(db, x) %>%
-			dplyr::filter(participant_id == p_id) %>%
-			dplyr::select(measurement_id, time, date)
+  # Get Data
+  data <- lapply(names(frequency), function(x) {
+    tmp <- dplyr::tbl(db, x) %>%
+      dplyr::filter(participant_id == p_id) %>%
+      dplyr::select(measurement_id, time, date)
 
-		# From the last day (unless otherwise specified)
-		# if(!is.null(offset) && tolower(offset) != "none") {
-		# max_date <- tmp %>%
-		# 	dplyr::summarise(max = datetime(max(time, na.rm = T), subset)) %>%
-		# 	dplyr::pull(max) %>%
-		# 	lubridate::as_datetime() %>%
-		# 	lubridate::format_ISO8601()
-		#
-		# tmp <- tmp %>%
-		# dplyr::filter(time > max_date)
-		# } else
-		if(!is.null(startDate) && !is.null(endDate)) {
-			tmp <- tmp %>%
-				# mutate(date = Date(time)) %>%
-				dplyr::filter(date >= startDate) %>%
-				dplyr::filter(date <= endDate)
-		}
+    # From the last day (unless otherwise specified)
+    # if(!is.null(offset) && tolower(offset) != "none") {
+    # max_date <- tmp %>%
+    # 	dplyr::summarise(max = datetime(max(time, na.rm = T), subset)) %>%
+    # 	dplyr::pull(max) %>%
+    # 	lubridate::as_datetime() %>%
+    # 	lubridate::format_ISO8601()
+    #
+    # tmp <- tmp %>%
+    # dplyr::filter(time > max_date)
+    # } else
+    if (!is.null(startDate) && !is.null(endDate)) {
+      tmp <- tmp %>%
+        # mutate(date = Date(time)) %>%
+        dplyr::filter(date >= startDate) %>%
+        dplyr::filter(date <= endDate)
+    }
 
-		# Remove duplicate IDs with _ for certain sensors
-		if(x %in% c("AppUsage", "Bluetooth", "Calendar", "TextMessage")) {
-			tmp <- tmp %>%
-				dplyr::mutate(measurement_id = substr(measurement_id, 1, 36)) %>%
-				dplyr::distinct()
-		}
+    # Remove duplicate IDs with _ for certain sensors
+    if (x %in% c(
+      "Accelerometer", "AppUsage", "Bluetooth",
+      "Calendar", "Gyroscope", "TextMessage"
+    )) {
+      tmp <- tmp %>%
+        dplyr::mutate(measurement_id = substr(measurement_id, 1, 36)) %>%
+        dplyr::distinct()
+    }
 
-		tmp
-	})
-	names(data) <- names(frequency)
+    tmp
+  })
+  names(data) <- names(frequency)
 
-	# Get the number of observations per hour
-	data <- lapply(data, function(x) {
-		x %>%
-			# TODO: Something to filter out duplicate IDs with _
-			dplyr::mutate(Hour = strftime("%H", time)) %>%
-			# dplyr::mutate(Date = date(time)) %>%
-			dplyr::count(date, Hour) %>%
-			dplyr::group_by(Hour) %>%
-			dplyr::summarise(Coverage = sum(n, na.rm = TRUE) / n())
-	})
+  # Get the number of observations per hour
+  data <- lapply(data, function(x) {
+    x %>%
+      # TODO: Something to filter out duplicate IDs with _
+      dplyr::mutate(Hour = strftime("%H", time)) %>%
+      # dplyr::mutate(Date = date(time)) %>%
+      dplyr::count(date, Hour) %>%
+      dplyr::group_by(Hour) %>%
+      dplyr::summarise(Coverage = sum(n, na.rm = TRUE) / n())
+  })
 
-	# Collect into local tibble
-	data <- lapply(data, collect)
+  # Collect into local tibble
+  data <- lapply(data, collect)
 
-	# Force correct column types
-	# In case one sensor comes back empty, columns are logical by default
-	data <- lapply(data,
-								 function(x) dplyr::mutate(x,
-								 													Hour = as.numeric(Hour),
-								 													Coverage = as.numeric(Coverage)))
+  # Force correct column types
+  # In case one sensor comes back empty, columns are logical by default
+  data <- lapply(
+    data,
+    function(x) {
+      dplyr::mutate(x,
+        Hour = as.numeric(Hour),
+        Coverage = as.numeric(Coverage)
+      )
+    }
+  )
 
-	# Calculate its relative target frequency ratio
-	if(relative) {
-		data <- mapply(
-			FUN = function(.x, .y) dplyr::mutate(.x, Coverage = round(Coverage / .y, 2)),
-			.x = data,
-			.y = frequency,
-			SIMPLIFY = F)
-	}
-	# Pour into ggplot format
-	data <- mapply(
-		FUN = function(.x, .y) dplyr::mutate(.x, measure = .y),
-		.x = data,
-		.y = names(data),
-		SIMPLIFY = FALSE)
+  # Calculate its relative target frequency ratio
+  if (relative) {
+    data <- mapply(
+      FUN = function(.x, .y) dplyr::mutate(.x, Coverage = round(Coverage / .y, 2)),
+      .x = data,
+      .y = frequency,
+      SIMPLIFY = F
+    )
+  }
+  # Pour into ggplot format
+  data <- mapply(
+    FUN = function(.x, .y) dplyr::mutate(.x, measure = .y),
+    .x = data,
+    .y = names(data),
+    SIMPLIFY = FALSE
+  )
 
-	# Complete missing hours with 0
-	data <- mapply(
-		FUN = function(.x, .y) tidyr::complete(.x, Hour = 0:23,
-																					 measure = .y,
-																					 fill = list(Coverage = 0)),
-		.x = data,
-		.y = names(data),
-		SIMPLIFY = FALSE
-	)
+  # Complete missing hours with 0
+  data <- mapply(
+    FUN = function(.x, .y) {
+      tidyr::complete(.x,
+        Hour = 0:23,
+        measure = .y,
+        fill = list(Coverage = 0)
+      )
+    },
+    .x = data,
+    .y = names(data),
+    SIMPLIFY = FALSE
+  )
 
-	data <- dplyr::bind_rows(data)
-	data$measure <- factor(data$measure)
-	data$measure <- factor(data$measure, levels = rev(levels(data$measure)))
+  data <- dplyr::bind_rows(data)
+  data$measure <- factor(data$measure)
+  data$measure <- factor(data$measure, levels = rev(levels(data$measure)))
 
-	# Plot
-	ggplot2::ggplot(data = data, mapping = ggplot2::aes(x = Hour, y = measure, fill = Coverage)) +
-		ggplot2::geom_tile() +
-		ggplot2::geom_text(mapping = ggplot2::aes(label = Coverage), colour = "white") +
-		ggplot2::scale_x_continuous(breaks = 0:23) +
-		ggplot2::scale_fill_gradientn(colours = c("#d70525", "#645a6c", "#3F7F93"),
-																	breaks = c(0, 0.5, 1),
-																	labels = c(0, 0.5, 1),
-																	limits = c(0,1)) +
-		ggplot2::theme_minimal() +
-		ggplot2::ggtitle(paste0("Coverage for participant ", participant_id))
+  # Plot
+  ggplot2::ggplot(data = data, mapping = ggplot2::aes(x = Hour, y = measure, fill = Coverage)) +
+    ggplot2::geom_tile() +
+    ggplot2::geom_text(mapping = ggplot2::aes(label = Coverage), colour = "white") +
+    ggplot2::scale_x_continuous(breaks = 0:23) +
+    ggplot2::scale_fill_gradientn(
+      colours = c("#d70525", "#645a6c", "#3F7F93"),
+      breaks = c(0, 0.5, 1),
+      labels = c(0, 0.5, 1),
+      limits = c(0, 1)
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::ggtitle(paste0("Coverage for participant ", participant_id))
 }
