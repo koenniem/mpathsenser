@@ -1,5 +1,18 @@
+# First, try to simply add the data to the table
+# If the measurement already exists, skip that measurement
 save2db <- function(db, name, data) {
-  RSQLite::dbAppendTable(db, name, data)
+  tryCatch({
+    RSQLite::dbAppendTable(db, name, data)
+  }, error = function(e) {
+    names <- colnames(data)
+
+    query <- paste0(
+      "INSERT INTO ", name, "(", paste0(names, collapse = ", "), ") VALUES(",
+      paste0(":", names, collapse = ", "), ") ON CONFLICT DO NOTHING;"
+    )
+
+    RSQLite::dbExecute(db, query, data)
+  })
 }
 
 which_sensor <- function(db, data, sensor) {
@@ -14,6 +27,7 @@ which_sensor <- function(db, data, sensor) {
     calendar = calendar_fun(db, data),
     connectivity = connectivity_fun(db, data),
     device = device_fun(db, data),
+    error = error_fun(db, data),
     geofence = geofence_fun(db, data),
     gyroscope = gyroscope_fun(db, data),
     keyboard = keyboard_fun(db, data),
@@ -79,7 +93,7 @@ periodic_accelerometer_fun <- function(data) {
   # TODO: Consider unique ID constraint
   # Temporary fix
   data <- dplyr::group_by(data, id)
-  data <- dplyr::mutate(data, id = paste0(id, "_", 1:n()))
+  data <- dplyr::mutate(data, id = paste0(id, "_", 1:dplyr::n()))
   data <- dplyr::ungroup(data)
 
   data
@@ -123,10 +137,6 @@ app_usage_fun <- function(db, data) {
   data$body <- lapply(data$body, function(x) x$body)
   data$body <- suppressWarnings(lapply(data$body, dplyr::bind_rows))
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
-  #
-  # 	if(nrow(data) == 0) {
-  # 		return(invisible(NULL))
-  # 	}
 
   if ("usage" %in% colnames(data)) {
     data$app <- names(data$usage)
@@ -139,7 +149,7 @@ app_usage_fun <- function(db, data) {
   # TODO: Consider unique ID constraint
   # Temporary fix
   data <- dplyr::group_by(data, id)
-  data <- dplyr::mutate(data, id = paste0(id, "_", 1:n()))
+  data <- dplyr::mutate(data, id = paste0(id, "_", 1:dplyr::n()))
   data <- dplyr::ungroup(data)
 
   data <- safe.data.frame(
@@ -207,7 +217,7 @@ bluetooth_fun <- function(db, data) {
   # TODO: Consider unique ID constraint
   # Temporary fix
   data <- dplyr::group_by(data, id)
-  data <- dplyr::mutate(data, id = paste0(id, "_", 1:n()))
+  data <- dplyr::mutate(data, id = paste0(id, "_", 1:dplyr::n()))
   data <- dplyr::ungroup(data)
 
   data <- safe.data.frame(
@@ -258,7 +268,7 @@ calendar_fun <- function(db, data) {
   # TODO: Consider unique ID constraint
   # Temporary fix
   data <- dplyr::group_by(data, id)
-  data <- dplyr::mutate(data, id = paste0(id, "_", 1:n()))
+  data <- dplyr::mutate(data, id = paste0(id, "_", 1:dplyr::n()))
   data <- dplyr::ungroup(data)
 
   data <- safe.data.frame(
@@ -311,6 +321,20 @@ device_fun <- function(db, data) {
   )
 
   save2db(db, "Device", data)
+}
+
+error_fun <- function(db, data) {
+  data <- default_fun(data)
+
+  data <- safe.data.frame(
+    measurement_id = data$id,
+    participant_id = data$participant_id,
+    date = substr(data$timestamp, 1, 10),
+    time = substr(data$timestamp, 12, 19),
+    message = data$message
+  )
+
+  save2db(db, "Error", data)
 }
 
 geofence_fun <- function(db, data) {
@@ -448,11 +472,13 @@ noise_fun <- function(db, data) {
 }
 
 phone_log_fun <- function(db, data) {
-  # data <- default_fun(data)
   data$id <- sapply(data$body, function(x) x$body$id)
   data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
   data$body <- lapply(data$body, function(x) x$body$phone_log)
   data$body <- lapply(data$body, dplyr::bind_rows)
+  data$body <- lapply(data$body, function(x) { # Replace double timestamp name
+      colnames(x)[colnames(x) == "timestamp"] <- "datetime"
+  })
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
 
   data <- safe.data.frame(
@@ -511,7 +537,7 @@ text_message_fun <- function(db, data) {
   # TODO: Consider unique ID constraint
   # Temporary fix
   data <- dplyr::group_by(data, id)
-  data <- dplyr::mutate(data, id = paste0(id, "_", 1:n()))
+  data <- dplyr::mutate(data, id = paste0(id, "_", 1:dplyr::n()))
   data <- dplyr::ungroup(data)
 
   data <- safe.data.frame(
@@ -521,7 +547,7 @@ text_message_fun <- function(db, data) {
     time = substr(data$timestamp, 12, 19),
     address = data$address,
     body = data$body,
-    date = data$date,
+    text_date = data$date,
     date_sent = data$date_sent,
     is_read = data$is_read,
     kind = data$kind,

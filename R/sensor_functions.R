@@ -323,3 +323,96 @@ n_screen_unlocks <- function(db, participant_id, startDate = NULL, endDate = NUL
   }
   return(out)
 }
+
+
+#' Get step count
+#'
+#' Extracts the number of steps per hour as sensed by the underlying operating system.
+#'
+#' @param db A database connection to a CARP database.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#' @param startDate Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.
+#' @param endDate Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.
+#'
+#' @return A tibble with the "date", "hour", and the number of "steps".
+#' @export
+step_count <- function(db, participant_id, startDate = NULL, endDate = NULL) {
+  get_data(db, "Pedometer", participant_id, startDate, endDate) %>%
+    dplyr::mutate(hour = strftime("%H", time)) %>%
+    dbplyr::window_order(date, time) %>%
+    dplyr::mutate(next_count = lead(step_count, default = NA)) %>%
+    dplyr::mutate(step_count = ifelse(step_count > next_count, 0, step_count)) %>%
+    dplyr::mutate(steps = next_count - step_count) %>%
+    dplyr::group_by(date, hour) %>%
+    dplyr::summarise(steps = sum(steps, na.rm = TRUE), .groups = "drop") %>%
+    dplyr::collect()
+}
+
+
+#' Moving average for values in CARP DB
+#'
+#' @param db A database connection to a CARP database.
+#' @param sensor The name of a sensor. See \link[CARP]{sensors} for a list of available sensors.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#' @param ... Unquoted names of columns of the \code{sensor} table.
+#' @param n The number of observations to average over.
+#' @param startDate Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.
+#' @param endDate Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.
+#'
+#' @return A tibble with the same columns as the input, modified to be a moving average.
+#' @export
+#'
+#' @examples
+#' get_moving_average(db, "Light", "27624", mean_lux, max_lux, n = 5)
+moving_average <- function(db, sensor, participant_id, ..., n,
+                               startDate = NULL, endDate = NULL) {
+  cols <- ensyms(...)
+
+  # SELECT
+  query <- "SELECT datetime, "
+
+  # Calculate moving average
+  avgs <- lapply(cols, function(x) {
+    paste0(
+      "avg(`",  x,"`) OVER (",
+      "ORDER BY CAST (strftime('%s', datetime) AS INT) ",
+      "RANGE BETWEEN ", n / 2, " PRECEDING ",
+      "AND ", n / 2, " FOLLOWING",
+      ") AS ", x
+    )
+  })
+
+  avgs <- paste0(avgs, collapse = ", ")
+  query <- paste0(query, avgs)
+
+  # FROM
+  query <- paste0(query, " FROM (SELECT `date` || 'T' || `time` AS `datetime`, ",
+                  paste0(cols, collapse = ", "),
+                  " FROM ", sensor)
+
+  # Where
+  query <- paste0(query, " WHERE (`participant_id` = '", participant_id, "')")
+
+  if(!is.null(startDate) & !is.null(endDate)) {
+    query <- paste0(query, " AND (`date` BETWEEN '", startDate, "' AND '", endDate,"')")
+  }
+
+  # Closing parenthesis
+  query <- paste0(query, ")")
+
+  # Get data
+  dbGetQuery(db, query)
+}
+
+decrypt_gps <- function(data, key) {
+  data %>%
+    dplyr::collect() %>%
+    mutate_at(vars(latitude, longitude), ~lapply(.x, sodium::hex2bin)) %>%
+    mutate_at(vars(latitude, longitude), ~lapply(.x, sodium::simple_decrypt, key)) %>%
+    mutate_at(vars(latitude, longitude), ~lapply(.x, rawToChar)) %>%
+    mutate_at(vars(latitude, longitude), unlist)
+}

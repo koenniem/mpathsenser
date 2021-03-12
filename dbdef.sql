@@ -157,6 +157,17 @@ PRIMARY KEY (measurement_id),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS Error
+(
+measurement_id TEXT NOT NULL,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+message TEXT,
+PRIMARY KEY (measurement_id),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS Geofence
 (
 measurement_id TEXT NOT NULL,
