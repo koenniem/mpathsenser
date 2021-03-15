@@ -1,7 +1,8 @@
 # Functions in this package
 
-| ccopy               	| Copy CARP zip files to a new location                             	|
+| Function              | Description                                                           |
 |---------------------	|-------------------------------------------------------------------	|
+| ccopy               	| Copy CARP zip files to a new location                             	|
 | coverage            	| Create a coverage chart showing sampling rate                     	|
 | create_db           	| Create a new CARP database                                        	|
 | first_date          	| Extract the date of the first entry                               	|
