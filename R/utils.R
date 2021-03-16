@@ -43,6 +43,10 @@ ccopy <- function(from, to = getwd()) {
 #'
 #' @return A message indicating whether any files need to be fixed.
 #' @export
+#' @examples
+#' future::plan(future::multisession)
+#' files <- test_jsons()
+#' fix_jsons(files = files)
 fix_jsons <- function(path = getwd(), files = NULL, parallel = FALSE) {
 	# Find all JSON files that are _not_ zipped
 	# Thus, make sure you didn't unzip them yet, otherwise this may take a long time
@@ -53,13 +57,13 @@ fix_jsons <- function(path = getwd(), files = NULL, parallel = FALSE) {
 	}
 
 	if(parallel) {
-		progressr::with_progress({
-			future::plan(future::multisession)
-		})
+		future::plan(future::multisession)
 	}
 
 	if (length(jsonfiles > 0)) {
-		n_fixed <- fix_jsons_impl(jsonfiles)
+		progressr::with_progress({
+			n_fixed <- fix_jsons_impl(jsonfiles)
+		})
 	} else {
 		return(message("No JSON files found."))
 	}
@@ -109,9 +113,9 @@ fix_jsons_impl <- function(jsonfiles) {
 #' Test JSON files for being in the correct format.
 #'
 #' @param path The pathname of the JSON files.
-#' @param parallel A logical value whether you want to check in parallel. Useful for a lot of files.
+#' @param parallel A logical value whether you want to check in parallel. Useful when there are a lot of files. If you have already used \code{future::plan}, you can leave this parameter to \code{FALSE}.
 #'
-#' @return A message indicating if there are any files to fixes.
+#' @return A message indicating whether there were any issues and a character vector of the file names that need to be fixed. If there were no issues, no result is returned.
 #' @export
 test_jsons <- function(path = getwd(), parallel = FALSE) {
 	jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE)
@@ -137,9 +141,11 @@ test_jsons <- function(path = getwd(), parallel = FALSE) {
 
 	jsonfiles <- jsonfiles[missing]
 	if(length(jsonfiles) == 0) {
-		message("No problems found.")
+		message("No issues found.")
+		return(invisible(""))
 	} else {
-		message("There are issues in the following files: ", paste0(jsonfiles, collapse = ", "))
+		message("There were issues in somes files")
+		return(jsonfiles)
 	}
 }
 
@@ -149,7 +155,7 @@ test_jsons <- function(path = getwd(), parallel = FALSE) {
 #' with one function call.
 #'
 #' @param path The path to the directory containing the zip files.
-#' @param overwrite Logical value wheter you want to overwrite already existing zip files.
+#' @param overwrite Logical value whether you want to overwrite already existing zip files.
 #'
 #' @export
 unzip_carp <- function(path = getwd(), overwrite = FALSE) {
