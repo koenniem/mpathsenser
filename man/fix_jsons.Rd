@@ -26,3 +26,8 @@ Note: Be careful when running this function multiple times. In the case there ar
 many zips and no JSON files, it will be fast. However, when re-running the function,
 every previously unzipped JSON file will be checked for errors.
 }
+\examples{
+future::plan(future::multisession)
+files <- test_jsons()
+fix_jsons(files = files)
+}

@@ -99,7 +99,7 @@ clear_sensors_db <- function(db) {
 
 #' Get all processed files from a database
 #'
-#' @param db A database connection, as created by \link[CARP]{create_db()}.
+#' @param db A database connection, as created by \link[CARP]{create_db}.
 #'
 #' @return A data frame contain processed file for each participant and study.
 #' @export
@@ -110,7 +110,7 @@ get_processed_files <- function(db) {
 
 #' Get all participants
 #'
-#' @param db db A database connection, as created by \link[CARP]{create_db()}.
+#' @param db db A database connection, as created by \link[CARP]{create_db}.
 #' @param lazy Whether to evaluate lazily using \link[dbplyr]{dbplyr}.
 #'
 #' @return A data frame containing all participants.
@@ -126,7 +126,7 @@ get_participants <- function(db, lazy = FALSE) {
 
 #' Get all studies
 #'
-#' @param db db A database connection, as created by \link[CARP]{create_db()}.
+#' @param db db A database connection, as created by \link[CARP]{create_db}.
 #' @param lazy Whether to evaluate lazily using \link[dbplyr]{dbplyr}.
 #'
 #' @return A data frame containing all studies.
@@ -142,7 +142,7 @@ get_studies <- function(db, lazy = FALSE) {
 
 #' Get the number of rows sensors in a CARP database
 #'
-#' @param db db A database connection, as created by \link[CARP]{create_db()}.
+#' @param db db A database connection, as created by \link[CARP]{create_db}.
 #' @param sensor A character vector of one or multiple vectors. Use "All" for all sensors. See
 #' \link[CARP]{sensors} for a list of all available sensors.
 #'

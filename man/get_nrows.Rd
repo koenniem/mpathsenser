@@ -7,7 +7,7 @@
 get_nrows(db, sensor = "All")
 }
 \arguments{
-\item{db}{db A database connection, as created by \link[CARP]{create_db()}.}
+\item{db}{db A database connection, as created by \link[CARP]{create_db}.}
 
 \item{sensor}{A character vector of one or multiple vectors. Use "All" for all sensors. See
 \link[CARP]{sensors} for a list of all available sensors.}

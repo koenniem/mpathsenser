@@ -27,4 +27,6 @@ Imports:
     future,
     doFuture,
     globals(>= 0.14.0),
-    progressr
+    progressr,
+    magrittr
+

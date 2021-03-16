@@ -137,10 +137,11 @@ get_installed_apps <- function(db, participant_id = NULL) {
 #' @param startDate Optional search window specifying date where to begin search. Must be convertible to date using \code{link[base]{as.Date}}. Use \code{\link[CARP]{first_date}} to find the date of the first entry for a participant.
 #' @param endDate Optional search window specifying date where to end search. Must be convertible to date using \code{\link[base]{as.Date}}. Use \code{\link[CARP]{last_date}} to find the date of the last entry for a participant.
 #'
+#' @importFrom magrittr "%>%"
+#'
 #' @return A data frame containing a column "App" and a column "Usage" for the hourly app usage.
 #' @export
 #'
-#' @importFrom magrittr "%>%"
 get_app_usage <- function(db, participant_id = NULL,
                           startDate = NULL, endDate = NULL,
                           by = c("Total", "Day", "Hour")) {
@@ -255,11 +256,11 @@ n_screen_on <- function(db, participant_id, startDate = NULL, endDate = NULL, by
 
   if (is.null(by)) {
     out <- out %>%
-      dplyr::summarise(n = n()) %>%
+      dplyr::summarise(n = dplyr::n()) %>%
       dplyr::pull(n)
   } else if (by[1] == "Total" | by[1] == "total") {
     out <- out %>%
-      dplyr::summarise(n = n()) %>%
+      dplyr::summarise(n = dplyr::n()) %>%
       dplyr::pull(n)
   } else if (by[1] == "Hour" | by[1] == "hour") {
     out <- out %>%
@@ -274,7 +275,7 @@ n_screen_on <- function(db, participant_id, startDate = NULL, endDate = NULL, by
       dplyr::collect()
   } else { # Default case
     out <- out %>%
-      dplyr::summarise(n = n()) %>%
+      dplyr::summarise(n = dplyr::n()) %>%
       dplyr::pull(n)
   }
   return(out)
@@ -299,11 +300,11 @@ n_screen_unlocks <- function(db, participant_id, startDate = NULL, endDate = NUL
 
   if (is.null(by)) {
     out <- out %>%
-      dplyr::summarise(n = n()) %>%
+      dplyr::summarise(n = dplyr::n()) %>%
       dplyr::pull(n)
   } else if (by[1] == "Total" | by[1] == "total") {
     out <- out %>%
-      dplyr::summarise(n = n()) %>%
+      dplyr::summarise(n = dplyr::n()) %>%
       dplyr::pull(n)
   } else if (by[1] == "Hour" | by[1] == "hour") {
     out <- out %>%
@@ -318,7 +319,7 @@ n_screen_unlocks <- function(db, participant_id, startDate = NULL, endDate = NUL
       dplyr::collect()
   } else { # Default case
     out <- out %>%
-      dplyr::summarise(n = n()) %>%
+      dplyr::summarise(n = dplyr::n()) %>%
       dplyr::pull(n)
   }
   return(out)
@@ -340,9 +341,9 @@ n_screen_unlocks <- function(db, participant_id, startDate = NULL, endDate = NUL
 #' @export
 step_count <- function(db, participant_id, startDate = NULL, endDate = NULL) {
   get_data(db, "Pedometer", participant_id, startDate, endDate) %>%
-    dplyr::mutate(hour = strftime("%H", time)) %>%
+    dplyr::mutate(hour = STRFTIME("%H", time)) %>%
     dbplyr::window_order(date, time) %>%
-    dplyr::mutate(next_count = lead(step_count, default = NA)) %>%
+    dplyr::mutate(next_count = dplyr::lead(step_count, default = NA)) %>%
     dplyr::mutate(step_count = ifelse(step_count > next_count, 0, step_count)) %>%
     dplyr::mutate(steps = next_count - step_count) %>%
     dplyr::group_by(date, hour) %>%
@@ -409,10 +410,17 @@ moving_average <- function(db, sensor, participant_id, ..., n,
 }
 
 decrypt_gps <- function(data, key) {
+  if(!is.raw(key)) {
+    key <- sodium::hex2bin(key)
+  }
+
   data %>%
     dplyr::collect() %>%
-    mutate_at(vars(latitude, longitude), ~lapply(.x, sodium::hex2bin)) %>%
-    mutate_at(vars(latitude, longitude), ~lapply(.x, sodium::simple_decrypt, key)) %>%
-    mutate_at(vars(latitude, longitude), ~lapply(.x, rawToChar)) %>%
-    mutate_at(vars(latitude, longitude), unlist)
+    dplyr::mutate(
+      dplyr::across(c(latitude, longitude), ~ {
+        lapply(.x, sodium::hex2bin) %>%
+          lapply(sodium::simple_decrypt, key) %>%
+          lapply(rawToChar) %>%
+          unlist
+      }))
 }

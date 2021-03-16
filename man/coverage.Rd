@@ -8,7 +8,7 @@ coverage(
   db,
   participant_id,
   sensor = "All",
-  frequency,
+  frequency = CARP::freq,
   relative = TRUE,
   offset = "None",
   startDate = NULL,
@@ -34,7 +34,7 @@ coverage(
 \item{endDate}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating the latest date to show.Leave empty for all data. Must be used with \code{startDate}.}
 }
 \value{
-
+A ggplot of the coverage results.
 }
 \description{
 Only applicable to non-reactive sensors with "continuous" sampling

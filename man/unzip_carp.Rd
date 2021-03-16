@@ -9,7 +9,7 @@ unzip_carp(path = getwd(), overwrite = FALSE)
 \arguments{
 \item{path}{The path to the directory containing the zip files.}
 
-\item{overwrite}{Logical value wheter you want to overwrite already existing zip files.}
+\item{overwrite}{Logical value whether you want to overwrite already existing zip files.}
 }
 \description{
 Similar to \link[utils]{unzip}, but makes it easier to unzip all files in a given path

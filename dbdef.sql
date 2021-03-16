@@ -408,6 +408,8 @@ CREATE INDEX idx_connectivity ON Connectivity(participant_id);
 
 CREATE INDEX idx_device ON Device(participant_id);
 
+CREATE INDEX idx_error ON Error(participant_id);
+
 CREATE INDEX idx_geofence ON Geofence(participant_id);
 
 CREATE INDEX idx_gyroscope ON Gyroscope(participant_id);
@@ -456,6 +458,8 @@ CREATE INDEX date_connectivity ON Connectivity(date)
 
 CREATE INDEX date_device ON Device(date)
 
+CREATE INDEX date_error ON Error(date)
+
 CREATE INDEX date_geofence ON Geofence(date)
 
 CREATE INDEX date_gyroscope ON Gyroscope(date)
@@ -503,6 +507,8 @@ CREATE INDEX date_idx_calendar ON Calendar(participant_id, date)
 CREATE INDEX date_idx_connectivity ON Connectivity(participant_id, date)
 
 CREATE INDEX date_idx_device ON Device(participant_id, date)
+
+CREATE INDEX date_idx_error ON Error(participant_id, date)
 
 CREATE INDEX date_idx_geofence ON Geofence(participant_id, date)
 

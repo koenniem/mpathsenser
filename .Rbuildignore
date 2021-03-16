@@ -4,3 +4,11 @@
 ^docs$
 ^pkgdown$
 ^\.gitlab-ci\.yml$
+^.*\.db$
+^.*[.]db$
+^koen\.db$
+^test\.db$
+^carp\.db$
+^carp - Copy\.db$
+^pilot\.db$
+^pilot2\.db$
