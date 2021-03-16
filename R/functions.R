@@ -144,7 +144,6 @@ import_impl <- function(path, files, db_name) {
     data <- split(data, as.factor(data$sensor), drop = TRUE)
 
     # Drop useless data
-    # data[["error"]] <- NULL #TODO: save error messages
     data[["unknown"]] <- NULL
 
     # Call function for each sensor
@@ -213,7 +212,6 @@ freq <- c(
   Wifi = 60 # once per minute
 )
 
-
 #' Create a coverage chart showing sampling rate
 #'
 #' Only applicable to non-reactive sensors with "continuous" sampling
@@ -228,10 +226,11 @@ freq <- c(
 #' @param startDate A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.
 #' @param endDate A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating the latest date to show.Leave empty for all data. Must be used with \code{startDate}.
 #'
-#' @return
+#' @importFrom magrittr "%>%"
+#'
+#' @return A ggplot of the coverage results.
 #' @export
 #'
-#' @importFrom magrittr "%>%"
 #'
 #' @examples
 #' setwd("~/data")
@@ -262,7 +261,7 @@ freq <- c(
 coverage <- function(db,
                      participant_id,
                      sensor = "All",
-                     frequency,
+                     frequency = CARP::freq,
                      relative = TRUE,
                      offset = "None",
                      startDate = NULL,
@@ -318,7 +317,12 @@ coverage <- function(db,
     warning("Argument startDate/endDate and offset cannot be present at the same time.
 						Ignoring the offset argument.")
     offset <- NULL
-  } else if (!(is(startDate, "Date") | is.character(startDate)) |
+  } else if (is.null(startDate) & is.null(endDate)) {
+    startDate <- first_date(db, "Accelerometer", participant_id)
+    endDate <- last_date(db, "Accelerometer", participant_id)
+  }
+
+  else if (!(is(startDate, "Date") | is.character(startDate)) |
     !(is(endDate, "Date") | is.character(endDate))) {
     stop("startDate and endDate must be a character string or date.")
   }
@@ -349,7 +353,6 @@ coverage <- function(db,
     # } else
     if (!is.null(startDate) && !is.null(endDate)) {
       tmp <- tmp %>%
-        # mutate(date = Date(time)) %>%
         dplyr::filter(date >= startDate) %>%
         dplyr::filter(date <= endDate)
     }
@@ -380,7 +383,7 @@ coverage <- function(db,
   })
 
   # Collect into local tibble
-  data <- lapply(data, collect)
+  data <- lapply(data, dplyr::collect)
 
   # Force correct column types
   # In case one sensor comes back empty, columns are logical by default
@@ -442,4 +445,162 @@ coverage <- function(db,
     ) +
     ggplot2::theme_minimal() +
     ggplot2::ggtitle(paste0("Coverage for participant ", participant_id))
+}
+
+
+
+
+
+
+coverage <- function(db,
+                     participant_id,
+                     sensor = "All",
+                     frequency = CARP::freq,
+                     relative = TRUE,
+                     offset = "None",
+                     startDate = NULL,
+                     endDate = NULL) {
+  # Check db
+  if (!inherits(db, "DBIConnection")) {
+    stop("Argument db is not a database connection.")
+  }
+
+  if (!RSQLite::dbIsValid(db)) {
+    stop("Database is invalid.")
+  }
+
+  # Check sensors
+  if (length(sensor) == 1 && sensor == "All") {
+    sensor <- sensors
+  } else {
+    missing <- sensor[!(sensor %in% sensors)]
+    if (length(missing) != 0) {
+      stop(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
+    }
+  }
+
+  # Check participants
+  if (length(participant_id) > 1) {
+    stop("Only 1 participant per coverage chart allowed")
+  }
+
+  if (is.character(participant_id)) {
+    if (!(participant_id %in% get_participants(db)$participant_id)) {
+      stop("Participant_id not known.")
+    }
+  } else {
+    stop("participant_id must be a character string")
+  }
+
+  # Check frequency
+  if (!is.numeric(frequency) || is.null(names(frequency))) {
+    stop("Frequency is must be a named numeric vector")
+  }
+
+  # Check time subset
+  if (grepl("\\d day", offset)) {
+    offset <- paste0("-", offset)
+  } else if (is.null(offset) || (tolower(offset) == "none")) {
+    offset <- NULL
+  } else {
+    stop("Argument offset must be either 'None', 1 day, or 2, 3, 4, ... days.")
+  }
+
+  # Check startDate, endDate
+  if ((!is.null(startDate) && !is.null(endDate)) && !is.null(offset)) {
+    warning("Argument startDate/endDate and offset cannot be present at the same time.
+						Ignoring the offset argument.")
+    offset <- NULL
+  } else if (is.null(startDate) & is.null(endDate)) {
+    startDate <- first_date(db, "Accelerometer", participant_id)
+    endDate <- last_date(db, "Accelerometer", participant_id)
+  }
+
+  else if (!(is(startDate, "Date") | is.character(startDate)) |
+           !(is(endDate, "Date") | is.character(endDate))) {
+    stop("startDate and endDate must be a character string or date.")
+  }
+
+  # Retain only frequencies that appear in the sensor list
+  frequency <- frequency[names(frequency) %in% sensor]
+
+  # Get data from db - internal function
+  data <- coverage_impl(db, participant_id, frequency, startDate, endDate)
+
+  # Bind all together and make factors
+  data <- dplyr::bind_rows(data)
+  data$measure <- factor(data$measure)
+  data$measure <- factor(data$measure, levels = rev(levels(data$measure)))
+
+  # Plot
+  ggplot2::ggplot(data = data, mapping = ggplot2::aes(x = Hour, y = measure, fill = Coverage)) +
+    ggplot2::geom_tile() +
+    ggplot2::geom_text(mapping = ggplot2::aes(label = Coverage), colour = "white") +
+    ggplot2::scale_x_continuous(breaks = 0:23) +
+    ggplot2::scale_fill_gradientn(
+      colours = c("#d70525", "#645a6c", "#3F7F93"),
+      breaks = c(0, 0.5, 1),
+      labels = c(0, 0.5, 1),
+      limits = c(0, 1)
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::ggtitle(paste0("Coverage for participant ", participant_id))
+}
+
+coverage_impl <- function(db, participant_id, frequency, startDate, endDate) {
+  # Interesting bug/feature in dbplyr: If participant_id is used in the query,
+  # the index of the table is not used. Hence, we rename participant_id to p_id
+  p_id <- as.character(participant_id)
+
+  data <- furrr::future_map(.x = names(frequency), .f = ~ {
+    tmp_db <- open_db(db@dbname)
+
+    tmp <- dplyr::tbl(tmp_db, .x) %>%
+      dplyr::filter(participant_id == p_id) %>%
+      dplyr::select(measurement_id, time, date)
+
+    if (!is.null(startDate) && !is.null(endDate)) {
+      tmp <- tmp %>%
+        dplyr::filter(date >= startDate) %>%
+        dplyr::filter(date <= endDate)
+    }
+
+    # Remove duplicate IDs with _ for certain sensors
+    if (.x %in% c(
+      "Accelerometer", "AppUsage", "Bluetooth",
+      "Calendar", "Gyroscope", "TextMessage"
+    )) {
+      tmp <- tmp %>%
+        dplyr::mutate(measurement_id = substr(measurement_id, 1, 36)) %>%
+        dplyr::distinct()
+    }
+
+    tmp <- tmp %>%
+      dplyr::mutate(Hour = strftime("%H", time)) %>%
+      # dplyr::mutate(Date = date(time)) %>%
+      dplyr::count(date, Hour) %>%
+      dplyr::group_by(Hour) %>%
+      dplyr::summarise(Coverage = sum(n, na.rm = TRUE) / n())
+
+    tmp <- tmp %>%
+      dplyr::collect() %>%
+      dplyr::mutate(Hour = as.numeric(Hour),
+                    Coverage = as.numeric(Coverage))
+
+    RSQLite::dbDisconnect(tmp_db)
+
+    tmp %>%
+      # Calculate its relative target frequency ratio
+      dplyr::mutate(Coverage = round(Coverage / frequency[.x], 2)) %>%
+      # Pour into ggplot format
+      dplyr::mutate(measure = .x) %>%
+      # Complete missing hours with 0
+      tidyr::complete(Hour = 0:23,
+                      measure = .x,
+                      fill = list(Coverage = 0))
+  }, .options = furrr::furrr_options(seed = TRUE))
+
+  names(data) <- names(frequency)
+
+  data
 }
