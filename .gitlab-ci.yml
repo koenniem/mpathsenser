@@ -43,8 +43,8 @@ pages:
     stage: deploy
     tags:
         - pages
-    dependencies:
-        - testing
+    # dependencies:
+    #     - testing
     script:
         - ls
     artifacts:
