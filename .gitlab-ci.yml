@@ -2,7 +2,7 @@ image: rocker/tidyverse
 
 stages:
   - build
-  - test
+  # - test
   - deploy
 
 building:
