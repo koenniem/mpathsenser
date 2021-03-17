@@ -25,6 +25,8 @@ wouldn't make sense to extract the last date for a participant of the device inf
 last accelerometer measurement occurred a day later..
 }
 \examples{
+\dontrun{
 db <- open_db()
 first_date(db, "Accelerometer", "12345")
+}
 }

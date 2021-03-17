@@ -27,7 +27,9 @@ A convenience function to calculate the total acceleration in either or a local 
 tibble.
 }
 \examples{
+\dontrun{
 db <- open_db()
 tbl(db, "Accelerometer") \%>\%
   total_acceleration("total_acc")
+}
 }

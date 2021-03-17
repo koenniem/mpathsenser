@@ -40,7 +40,7 @@ A ggplot of the coverage results.
 Only applicable to non-reactive sensors with "continuous" sampling
 }
 \examples{
-setwd("~/data")
+\dontrun{
 fix_json()
 unzip()
 freq <- c(
@@ -65,4 +65,5 @@ coverage(
   startDate = "2021-01-01",
   endDate = "2021-05-01"
 )
+}
 }

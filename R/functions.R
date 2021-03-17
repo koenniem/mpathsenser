@@ -183,9 +183,11 @@ import_impl <- function(path, files, db_name) {
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' db <- open_db()
 #' tbl(db, "Accelerometer") %>%
 #'   total_acceleration("total_acc")
+#' }
 total_acceleration <- function(data, colname, x = x, y = y, z = z, gravity = 9.810467) {
   data %>%
     dplyr::mutate(!!colname := sqrt((x)^2 + (y)^2 + (z - gravity)^2))
@@ -233,7 +235,7 @@ freq <- c(
 #'
 #'
 #' @examples
-#' setwd("~/data")
+#' \dontrun{
 #' fix_json()
 #' unzip()
 #' freq <- c(
@@ -258,6 +260,7 @@ freq <- c(
 #'   startDate = "2021-01-01",
 #'   endDate = "2021-05-01"
 #' )
+#' }
 coverage <- function(db,
                      participant_id,
                      sensor = "All",

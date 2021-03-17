@@ -28,6 +28,7 @@ require a bit more pre-processing, such as app usage and screen time, more speci
 are available (e.g. \code{\link[CARP]{get_app_usage}} and \code{\link[CARP]{screen_duration}}).
 }
 \examples{
+\dontrun{
 # Open a database
 db <- open_db()
 
@@ -36,4 +37,5 @@ get_data(db, "Accelerometer", "12345")
 
 # Or within a specific window
 get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
+}
 }

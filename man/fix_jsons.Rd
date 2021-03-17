@@ -27,7 +27,9 @@ many zips and no JSON files, it will be fast. However, when re-running the funct
 every previously unzipped JSON file will be checked for errors.
 }
 \examples{
+\dontrun{
 future::plan(future::multisession)
 files <- test_jsons()
 fix_jsons(files = files)
+}
 }

@@ -19,6 +19,7 @@ Copy zip files from a source destination to an origin destination where they do 
 That is, it only updates the origin folder from the source folder.
 }
 \examples{
-library(CARP)
+\dontrun{
 ccopy("K:/data/myproject/", "~/myproject")
+}
 }

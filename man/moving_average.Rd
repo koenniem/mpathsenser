@@ -38,5 +38,7 @@ A tibble with the same columns as the input, modified to be a moving average.
 Moving average for values in CARP DB
 }
 \examples{
+\dontrun{
 get_moving_average(db, "Light", "27624", mean_lux, max_lux, n = 5)
+}
 }

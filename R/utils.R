@@ -11,8 +11,9 @@
 #' @export
 #'
 #' @examples
-#' library(CARP)
+#' \dontrun{
 #' ccopy("K:/data/myproject/", "~/myproject")
+#' }
 ccopy <- function(from, to = getwd()) {
 	# from <- "K:/GHUM-PPW-MICAS-OKPIV-PHD_KOEN-0800-A/emosense/"
 	from_list <- dir(path = from, pattern = "*.zip$")
@@ -44,9 +45,11 @@ ccopy <- function(from, to = getwd()) {
 #' @return A message indicating whether any files need to be fixed.
 #' @export
 #' @examples
+#' \dontrun{
 #' future::plan(future::multisession)
 #' files <- test_jsons()
 #' fix_jsons(files = files)
+#' }
 fix_jsons <- function(path = getwd(), files = NULL, parallel = FALSE) {
 	# Find all JSON files that are _not_ zipped
 	# Thus, make sure you didn't unzip them yet, otherwise this may take a long time

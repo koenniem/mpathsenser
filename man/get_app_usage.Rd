@@ -22,6 +22,8 @@ Leave empty to get data for all participants.}
 \item{startDate}{Optional search window specifying date where to begin search. Must be convertible to date using \code{link[base]{as.Date}}. Use \code{\link[CARP]{first_date}} to find the date of the first entry for a participant.}
 
 \item{endDate}{Optional search window specifying date where to end search. Must be convertible to date using \code{\link[base]{as.Date}}. Use \code{\link[CARP]{last_date}} to find the date of the last entry for a participant.}
+
+\item{by}{Either "Total", "Hour", or "Day" indicating how to summarise the results.}
 }
 \value{
 A data frame containing a column "App" and a column "Usage" for the hourly app usage.

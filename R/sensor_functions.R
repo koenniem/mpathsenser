@@ -16,6 +16,7 @@
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' # Open a database
 #' db <- open_db()
 #'
@@ -24,6 +25,7 @@
 #'
 #' # Or within a specific window
 #' get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
+#' }
 get_data <- function(db, sensor, participant_id = NULL, startDate = NULL, endDate = NULL) {
   out <- dplyr::tbl(db, sensor)
 
@@ -62,8 +64,10 @@ get_data <- function(db, sensor, participant_id = NULL, startDate = NULL, endDat
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' db <- open_db()
 #' first_date(db, "Accelerometer", "12345")
+#' }
 first_date <- function(db, sensor, participant_id = NULL) {
   query <- paste0("SELECT MIN(date) AS `min` FROM `", sensor, "`")
 
@@ -90,8 +94,10 @@ first_date <- function(db, sensor, participant_id = NULL) {
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' db <- open_db()
 #' first_date(db, "Accelerometer", "12345")
+#' }
 last_date <- function(db, sensor, participant_id = NULL) {
   query <- paste0("SELECT MAX(date) AS `max` FROM `", sensor, "`")
 
@@ -136,12 +142,12 @@ get_installed_apps <- function(db, participant_id = NULL) {
 #' Leave empty to get data for all participants.
 #' @param startDate Optional search window specifying date where to begin search. Must be convertible to date using \code{link[base]{as.Date}}. Use \code{\link[CARP]{first_date}} to find the date of the first entry for a participant.
 #' @param endDate Optional search window specifying date where to end search. Must be convertible to date using \code{\link[base]{as.Date}}. Use \code{\link[CARP]{last_date}} to find the date of the last entry for a participant.
+#' @param by Either "Total", "Hour", or "Day" indicating how to summarise the results.
 #'
 #' @importFrom magrittr "%>%"
 #'
 #' @return A data frame containing a column "App" and a column "Usage" for the hourly app usage.
 #' @export
-#'
 get_app_usage <- function(db, participant_id = NULL,
                           startDate = NULL, endDate = NULL,
                           by = c("Total", "Day", "Hour")) {
@@ -368,7 +374,9 @@ step_count <- function(db, participant_id, startDate = NULL, endDate = NULL) {
 #' @export
 #'
 #' @examples
+#' \dontrun{
 #' get_moving_average(db, "Light", "27624", mean_lux, max_lux, n = 5)
+#' }
 moving_average <- function(db, sensor, participant_id, ..., n,
                                startDate = NULL, endDate = NULL) {
   cols <- ensyms(...)
