@@ -1,0 +1,52 @@
+url: https://carp.pages.gitlab.kuleuven.be
+
+template:
+  package: tidytemplate
+
+home:
+  strip_header: true
+
+reference:
+- title: Loading data
+  contents:
+  - ccopy
+  - fix_jsons
+  - import
+  - test_jsons
+  - unzip_carp
+
+- title: Database functions
+  - create_db
+  - get_nrows
+  - get_processed_files
+  - open_db
+
+- title: Extract data
+  - coverage
+  - get_app_usage
+  - get_data
+  - get_installed_apps
+  - get_participants
+  - get_studies
+  - first_date
+  - last_date
+  - n_screen_on
+  - n_screen_unlocks
+  - step_count
+  - total_acceleration
+
+- title: Others
+  - freq
+  - moving_average
+  - sensors
+
+navbar:
+  components:
+    home: ~
+
+development:
+  mode: auto
+
+authors:
+  Koen Niemeijer:
+    href: http://krlmlr.info
