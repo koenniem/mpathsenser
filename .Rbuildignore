@@ -12,3 +12,6 @@
 ^carp - Copy\.db$
 ^pilot\.db$
 ^pilot2\.db$
+^\.github$
+^LICENSE\.md$
+^data-raw$

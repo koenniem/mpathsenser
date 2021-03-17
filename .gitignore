@@ -2,3 +2,6 @@
 .Rhistory
 *.db
 docs
+.Rdata
+.httr-oauth
+.DS_Store

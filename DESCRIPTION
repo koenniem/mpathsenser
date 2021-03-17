@@ -8,7 +8,7 @@ Authors@R:
            email = "koen.niemeijer@kuleuven.be",
            comment = c(ORCID = "0000-0002-0816-534X"))
 Description: Process and Analyse Data from CARP Mobile Sensing.
-License: file LICENSE
+License: MIT + file LICENSE
 BugReports: https://gitlab.kuleuven.be/u0134047/CARP/issues
 Encoding: UTF-8
 LazyData: true
@@ -34,4 +34,6 @@ Imports:
     globals(>= 0.14.0),
     progressr,
     magrittr
-
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
