@@ -20,11 +20,10 @@ ccopy <- function(from, to = getwd()) {
 	to_list <- dir(path = to, pattern = "*.zip$")
 	copy <- from_list[!(from_list %in% to_list)]
 	if (length(copy) == 0) {
-		message("No files left to copy")
-		return(invisible(TRUE))
+		return(message("No files left to copy"))
 	}
 	message(paste0("Copying ", length(copy), " files."))
-	copy <- paste0(from, copy)
+	copy <- normalizePath(paste0(from, "/", copy))
 	invisible(do.call(file.copy, list(from = copy, to = to, overwrite = FALSE)))
 }
 
@@ -54,7 +53,7 @@ fix_jsons <- function(path = getwd(), files = NULL, parallel = FALSE) {
 	# Find all JSON files that are _not_ zipped
 	# Thus, make sure you didn't unzip them yet, otherwise this may take a long time
 	if(is.null(files)) {
-		jsonfiles <- dir(path = path, pattern = "*.json$", TRUE)
+		jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE)
 	} else {
 		jsonfiles <- files
 	}
@@ -65,7 +64,7 @@ fix_jsons <- function(path = getwd(), files = NULL, parallel = FALSE) {
 
 	if (length(jsonfiles > 0)) {
 		progressr::with_progress({
-			n_fixed <- fix_jsons_impl(jsonfiles)
+			n_fixed <- fix_jsons_impl(path, jsonfiles)
 		})
 	} else {
 		return(message("No JSON files found."))
@@ -78,16 +77,22 @@ fix_jsons <- function(path = getwd(), files = NULL, parallel = FALSE) {
 	return(message("Fixed ", sum(n_fixed), " files"))
 }
 
-fix_jsons_impl <- function(jsonfiles) {
+fix_jsons_impl <- function(path, jsonfiles) {
 	p <- progressr::progressor(steps = length(jsonfiles))
 	furrr::future_map_int(jsonfiles, ~{
 		p()
-		file <- path.expand(paste0(path, "/", .x))
+		file <- normalizePath(paste0(path, "/", path.expand(.x)))
 		lines <- readLines(file)
-		eof <- lines[(length(lines) - 2):length(lines)]
+		if(length(lines) > 2) {
+			eof <- lines[(length(lines) - 2):length(lines)]
+		} else {
+			eof <- lines
+		}
 
 		# Cases where it can go wrong
-		if (eof[2] == "," & eof[3] == "{}]") {
+		if (eof[1] == "[") {
+			write("]", file, append = TRUE)
+		} else if (eof[2] == "," & eof[3] == "{}]") {
 			return(0L)
 		} else if (eof[1] == "{}]" & eof[2] == "]" & eof[3] == "]") {
 			write(lines[1:(length(lines) - 2)], file, append = FALSE)
@@ -132,7 +137,7 @@ test_jsons <- function(path = getwd(), parallel = FALSE) {
 		missing <- furrr::future_map_lgl(jsonfiles, ~{
 			p()
 			tryCatch({
-				rjson::fromJSON(file = paste0(path, "/", .x), simplify = FALSE)
+				rjson::fromJSON(file = normalizePath(paste0(path, "/", .x)), simplify = FALSE)
 				return(FALSE)
 			}, error = function(e) return(TRUE))
 		})
@@ -147,7 +152,7 @@ test_jsons <- function(path = getwd(), parallel = FALSE) {
 		message("No issues found.")
 		return(invisible(""))
 	} else {
-		message("There were issues in somes files")
+		warning("There were issues in some files")
 		return(jsonfiles)
 	}
 }
