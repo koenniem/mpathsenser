@@ -35,8 +35,8 @@ get_data <- function(db, sensor, participant_id = NULL, startDate = NULL, endDat
   }
 
   if (!is.null(startDate) && !is.null(endDate)) {
-    start.date <- is(as.Date(startDate), "Date")
-    end.date <- is(as.Date(endDate), "Date")
+    start.date <- methods::is(as.Date(startDate), "Date")
+    end.date <- methods::is(as.Date(endDate), "Date")
     if (start.date & end.date) {
       # out <- dplyr::mutate(out, date = DATE(time)) %>%
       out <- dplyr::filter(out, date >= startDate)
@@ -164,14 +164,14 @@ get_app_usage <- function(db, participant_id = NULL,
   } else if (by[1] == "Total" | by[1] == "total") {
     data <- data %>%
     	dplyr::group_by(date, app) %>%
-    	dplyr::slice(n()) %>%
+    	dplyr::slice(dplyr::n()) %>%
       dplyr::mutate(usage = usage / 60 / 60) %>%
       dplyr::group_by(app) %>%
       dplyr::summarise(usage = round(mean(usage), 2), .groups = "drop")
   } else if (by[1] == "Hour" | by[1] == "hour") {
     data <- data %>%
     	dplyr::group_by(date, app) %>%
-    	dplyr::mutate(prev_usage = lag(usage, default = 0)) %>%
+    	dplyr::mutate(prev_usage = dplyr::lag(usage, default = 0)) %>%
     	dplyr::mutate(hour = substr(time, 1, 2)) %>%
     	dplyr::group_by(date, app) %>%
     	dplyr::mutate(duration = usage - prev_usage) %>%
@@ -182,12 +182,12 @@ get_app_usage <- function(db, participant_id = NULL,
   } else if (by[1] == "Day" | by[1] == "day") {
     data <- data %>%
     	dplyr::group_by(date, app) %>%
-    	dplyr::slice(n()) %>%
+    	dplyr::slice(dplyr::n()) %>%
     	dplyr::mutate(usage = round(usage / 60 / 60, 2))
   } else { # Default case
     data <- data %>%
     	dplyr::group_by(date, app) %>%
-    	dplyr::slice(n()) %>%
+    	dplyr::slice(dplyr::n()) %>%
     	dplyr::mutate(usage = usage / 60 / 60)
   }
   return(data)
@@ -379,7 +379,7 @@ step_count <- function(db, participant_id, startDate = NULL, endDate = NULL) {
 #' }
 moving_average <- function(db, sensor, participant_id, ..., n,
                                startDate = NULL, endDate = NULL) {
-  cols <- ensyms(...)
+  cols <- dplyr::ensyms(...)
 
   # SELECT
   query <- "SELECT datetime, "
@@ -414,7 +414,7 @@ moving_average <- function(db, sensor, participant_id, ..., n,
   query <- paste0(query, ")")
 
   # Get data
-  dbGetQuery(db, query)
+  RSQLite::dbGetQuery(db, query)
 }
 
 decrypt_gps <- function(data, key) {

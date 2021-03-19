@@ -53,10 +53,7 @@ import <- function(path = getwd(),
 
   # Set up parallel backend
   if (parallel) {
-    doFuture::registerDoFuture()
     future::plan(future::multisession)
-  } else {
-    foreach::registerDoSEQ()
   }
 
   # Call on implementation with or without progress bar
@@ -86,13 +83,14 @@ import <- function(path = getwd(),
 
 import_impl <- function(path, files, db_name) {
   p <- progressr::progressor(length(files))
+
+  # furrr::map_walk(file, ~{})
   # foreach::`%dopar%`(foreach::foreach(i = 1:length(files)), {
   for (i in 1:length(files)) {
     # Update progress bar
     p(sprintf("x=%g", i))
-    # for(i in 1:length(files)) {
 
-    data <- rjson::fromJSON(file = paste0(path, "/", files[i]), simplify = FALSE)
+    data <- rjson::fromJSON(file = normalizePath(paste0(path, "/", files[i])), simplify = FALSE)
 
     # Check if it is not an empty file
     # Return NULL is true
@@ -333,8 +331,13 @@ coverage <- function(db,
   # Retain only frequencies that appear in the sensor list
   frequency <- frequency[names(frequency) %in% sensor]
 
+  # If relative, retain only sensors that have a frequency
+  if(relative) {
+    sensor <- names(frequency)
+  }
+
   # Get data from db - internal function
-  data <- coverage_impl(db, participant_id, frequency, startDate, endDate)
+  data <- coverage_impl(db, participant_id, sensor, frequency, relative, startDate, endDate)
 
   # Bind all together and make factors
   data <- dplyr::bind_rows(data)
@@ -356,12 +359,12 @@ coverage <- function(db,
     ggplot2::ggtitle(paste0("Coverage for participant ", participant_id))
 }
 
-coverage_impl <- function(db, participant_id, frequency, startDate, endDate) {
+coverage_impl <- function(db, participant_id, sensor, frequency, relative, startDate, endDate) {
   # Interesting bug/feature in dbplyr: If participant_id is used in the query,
   # the index of the table is not used. Hence, we rename participant_id to p_id
   p_id <- as.character(participant_id)
 
-  data <- furrr::future_map(.x = names(frequency), .f = ~ {
+  data <- furrr::future_map(.x = sensor, .f = ~ {
     tmp_db <- open_db(db@dbname)
 
     tmp <- dplyr::tbl(tmp_db, .x) %>%
@@ -398,9 +401,13 @@ coverage_impl <- function(db, participant_id, frequency, startDate, endDate) {
 
     RSQLite::dbDisconnect(tmp_db)
 
+    if (relative) {
+      tmp <- tmp %>%
+        # Calculate its relative target frequency ratio
+        dplyr::mutate(Coverage = round(Coverage / frequency[.x], 2))
+    }
+
     tmp %>%
-      # Calculate its relative target frequency ratio
-      dplyr::mutate(Coverage = round(Coverage / frequency[.x], 2)) %>%
       # Pour into ggplot format
       dplyr::mutate(measure = .x) %>%
       # Complete missing hours with 0

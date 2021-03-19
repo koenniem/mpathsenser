@@ -245,7 +245,7 @@ calendar_fun <- function(db, data) {
   data$body <- lapply(data$body, function(x) x$body$calendar_events)
   data$body <- lapply(data$body, function(x) {
     lapply(x, function(y) {
-      tibble(
+      dplyr::tibble(
         event_id = y[["event_id"]],
         calendar_id = y[["calendar_id"]],
         title = y[["title"]],
@@ -379,7 +379,7 @@ gyroscope_fun <- function(db, data) {
 }
 
 keyboard_fun <- function(db, data) {
-  error("Function not implemented")
+  stop("Function not implemented")
 }
 
 light_fun <- function(db, data) {
