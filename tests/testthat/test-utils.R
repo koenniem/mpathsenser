@@ -6,9 +6,19 @@ test_that("test_jsons", {
 test_that("fix_jsons", {
 		dir.create("broken/tmp")
 		files <- list.files("broken", "*.json$")
-		invisible(do.call(file.copy, list(from = file.path("broken/", files), to = "broken/tmp", overwrite = FALSE)))
+		invisible(do.call(
+			file.copy,
+			list(from = file.path("broken/", files),
+					 to = "broken/tmp",
+					 overwrite = FALSE
+			)))
 		expect_message(fix_jsons("./broken/"), "Fixed 7 files")
-		invisible(do.call(file.copy, list(from = file.path("broken/tmp", files), to = "broken", overwrite = TRUE)))
+		invisible(do.call(
+			file.copy,
+			list(from = file.path("broken/tmp", files),
+					 to = "broken",
+					 overwrite = TRUE
+			)))
 		unlink("broken/tmp", TRUE, TRUE)
 })
 
