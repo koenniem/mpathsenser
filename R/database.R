@@ -20,9 +20,9 @@ sensors <- c("Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "
 #' @return A database connection using prepared database schemas.
 #' @export
 create_db <- function(db_name = "carp.db", overwrite = FALSE) {
-	if(is.character(db_name)) {
-		if(file.exists(db_name)) {
-			if(overwrite) {
+	if (is.character(db_name)) {
+		if (file.exists(db_name)) {
+			if (overwrite) {
 				tryCatch(file.remove(db_name),
 								 warning = function(e) stop(warningCondition(e)),
 								 error = function(e) stop(errorCondition(e)))
@@ -36,7 +36,8 @@ create_db <- function(db_name = "carp.db", overwrite = FALSE) {
 	}
 
 	tryCatch({
-		script <- strsplit(paste0(readLines("dbdef.sql", warn = FALSE), collapse = "\n"),	"\n\n")[[1]]
+		fn <- system.file("extdata", "dbdef.sql", package = "CARP", mustWork = TRUE)
+		script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"),	"\n\n")[[1]]
 		for (statement in script) {
 			RSQLite::dbExecute(db, statement)
 		}
@@ -104,7 +105,7 @@ clear_sensors_db <- function(db) {
 #' @return A data frame contain processed file for each participant and study.
 #' @export
 get_processed_files <- function(db) {
-	if(!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+	if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
 	RSQLite::dbReadTable(db, "ProcessedFiles")
 }
 
@@ -116,8 +117,8 @@ get_processed_files <- function(db) {
 #' @return A data frame containing all participants.
 #' @export
 get_participants <- function(db, lazy = FALSE) {
-	if(!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
-	if(lazy) {
+	if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+	if (lazy) {
 		dplyr::tbl(db, "Participant")
 	} else {
 		RSQLite::dbReadTable(db, "Participant")
@@ -132,8 +133,8 @@ get_participants <- function(db, lazy = FALSE) {
 #' @return A data frame containing all studies.
 #' @export
 get_studies <- function(db, lazy = FALSE) {
-	if(!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
-	if(lazy) {
+	if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+	if (lazy) {
 		dplyr::tbl(db, "Study")
 	} else {
 		RSQLite::dbReadTable(db, "Study")
@@ -149,9 +150,9 @@ get_studies <- function(db, lazy = FALSE) {
 #' @return A named vector containing the number of rows for each sensor.
 #' @export
 get_nrows <- function(db, sensor = "All") {
-	if(!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+	if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
 
-	if(sensor == "All") {
+	if (sensor == "All") {
 		sensor <- sensors
 	}
 

@@ -6,15 +6,19 @@
 #' @param path The path to the file directory
 #' @param db Valid database connection.
 #' @param dbname If no database is provided, a new database dbname is created.
+#' @param overwrite_db If a database with the same \code{dbname}  already exists, should it be
+#' overwritten?
 #' @param backend Name of the database backend that is used. Currently, only RSQLite is supported.
 #' @param progress Logical value to show a progress bar or not.
-#' @param parallel Logical value which indicates whether to do reading in and processing in parallel.
+#' @param parallel Logical value which indicates whether to do reading in and processing
+#' in parallel.
 #'
 #' @return Invisible. Imported database can be reopened using \link[CARP]{open_db}.
 #' @export
 import <- function(path = getwd(),
                    db = NULL,
                    dbname = "carp.db",
+                   overwrite_db = TRUE,
                    backend = "RSQLite",
                    progress = TRUE,
                    parallel = FALSE
@@ -29,25 +33,33 @@ import <- function(path = getwd(),
 
   # Check backend and parallel constraint
   if (backend == "RSQLite" & parallel) {
-    warning("Parallel cannot be used when RSQLite is provided as a backend due to concurrency constraint. Setting parallel to false.")
+    warning("Parallel cannot be used when RSQLite is provided as a backend due to concurrency
+            constraint. Setting parallel to false.")
     parallel <- FALSE
+  }
+
+  # Check if database is valid
+  if(!is.null(db)) {
+    if (!DBI::dbIsValid(db)) {
+      stop("Database is not valid.")
+    }
   }
 
   # Set up database if not provided
   if (is.null(db)) {
-    db <- create_db(db_name = dbname)
+    db <- create_db(db_name = dbname, overwrite = overwrite_db)
   }
 
   # If there are no duplicate files
   # Proceed with the unsafe (but fast) check
   # to prevent duplicate insertion into db
   if (anyDuplicated(files) == 0) {
-    processedFiles <- get_processed_files(db)
+    processed_files <- get_processed_files(db)
     # Keep files _not_ already registered in db
-    files <- files[!(files %in% processedFiles$file_name)]
+    files <- files[!(files %in% processed_files$file_name)]
 
     if (length(files) == 0) {
-      return("No new files to process.")
+      return(message("No new files to process."))
     }
   }
 
@@ -70,8 +82,8 @@ import <- function(path = getwd(),
     future::plan(future::sequential)
   }
 
-  processedFiles <- get_processed_files(db)
-  complete <- all(files %in% processedFiles$file_name)
+  processed_files <- get_processed_files(db)
+  complete <- all(files %in% processed_files$file_name)
   if (complete) {
     message("All files were successfully written to the database.")
   } else {
@@ -86,7 +98,7 @@ import_impl <- function(path, files, db_name) {
 
   # furrr::map_walk(file, ~{})
   # foreach::`%dopar%`(foreach::foreach(i = 1:length(files)), {
-  for (i in 1:length(files)) {
+  for (i in seq_along(files)) {
     # Update progress bar
     p(sprintf("x=%g", i))
 
@@ -123,9 +135,9 @@ import_impl <- function(path, files, db_name) {
       participant_id = unique(data$participant_id),
       study_id = unique(data$study_id)
     )
-    processedFiles <- get_processed_files(tmp_db)
+    processed_files <- get_processed_files(tmp_db)
     matches <- dplyr::inner_join(this_file,
-      processedFiles,
+      processed_files,
       by = c("file_name", "participant_id", "study_id")
     )
     if (nrow(matches) > 0) {
@@ -147,7 +159,7 @@ import_impl <- function(path, files, db_name) {
     # Call function for each sensor
     tryCatch({
         RSQLite::dbWithTransaction(tmp_db, {
-          for(j in 1:length(data)) {
+          for(j in seq_along(data)) {
             # Get sensor name
             sensor <- names(data)[[j]]
             tmp <- data[[sensor]]
@@ -219,12 +231,17 @@ freq <- c(
 #' @param db A valid database connection. Schema must be that as it is created by
 #' \link[CARP]{open_db}.
 #' @param participant_id A character string of _one_ participant ID.
-#' @param sensor A character vector containing one or multiple sensors. See \code{\link[CARP]{sensors}} for a list of available sensors. Use "All" for all available sensors.
-#' @param frequency A named numeric vector with sensors as names and the number of expected samples per hour
-#' @param relative Show absolute number of measurements or relative to the expected number? Logical value.
+#' @param sensor A character vector containing one or multiple sensors. See
+#' \code{\link[CARP]{sensors}} for a list of available sensors. Use "All" for all available sensors.
+#' @param frequency A named numeric vector with sensors as names and the number of expected samples
+#' per hour
+#' @param relative Show absolute number of measurements or relative to the expected number?
+#' Logical value.
 #' @param offset Currently not used.
-#' @param startDate A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.
-#' @param endDate A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating the latest date to show.Leave empty for all data. Must be used with \code{startDate}.
+#' @param startDate A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
+#' the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.
+#' @param endDate A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
+#' the latest date to show.Leave empty for all data. Must be used with \code{startDate}.
 #'
 #' @importFrom magrittr "%>%"
 #'
@@ -265,8 +282,8 @@ coverage <- function(db,
                      frequency = CARP::freq,
                      relative = TRUE,
                      offset = "None",
-                     startDate = NULL,
-                     endDate = NULL) {
+                     start_date = NULL,
+                     end_date = NULL) {
   # Check db
   if (!inherits(db, "DBIConnection")) {
     stop("Argument db is not a database connection.")
@@ -314,17 +331,17 @@ coverage <- function(db,
   }
 
   # Check startDate, endDate
-  if ((!is.null(startDate) && !is.null(endDate)) && !is.null(offset)) {
+  if ((!is.null(start_date) && !is.null(end_date)) && !is.null(offset)) {
     warning("Argument startDate/endDate and offset cannot be present at the same time.
 						Ignoring the offset argument.")
     offset <- NULL
-  } else if (is.null(startDate) & is.null(endDate)) {
-    startDate <- first_date(db, "Accelerometer", participant_id)
-    endDate <- last_date(db, "Accelerometer", participant_id)
+  } else if (is.null(start_date) & is.null(end_date)) {
+    start_date <- first_date(db, "Accelerometer", participant_id)
+    end_date <- last_date(db, "Accelerometer", participant_id)
   }
 
-  else if (!(is(startDate, "Date") | is.character(startDate)) |
-           !(is(endDate, "Date") | is.character(endDate))) {
+  else if (!(is(start_date, "Date") | is.character(start_date)) |
+           !(is(end_date, "Date") | is.character(end_date))) {
     stop("startDate and endDate must be a character string or date.")
   }
 
@@ -332,12 +349,12 @@ coverage <- function(db,
   frequency <- frequency[names(frequency) %in% sensor]
 
   # If relative, retain only sensors that have a frequency
-  if(relative) {
+  if (relative) {
     sensor <- names(frequency)
   }
 
   # Get data from db - internal function
-  data <- coverage_impl(db, participant_id, sensor, frequency, relative, startDate, endDate)
+  data <- coverage_impl(db, participant_id, sensor, frequency, relative, start_date, end_date)
 
   # Bind all together and make factors
   data <- dplyr::bind_rows(data)
@@ -359,7 +376,7 @@ coverage <- function(db,
     ggplot2::ggtitle(paste0("Coverage for participant ", participant_id))
 }
 
-coverage_impl <- function(db, participant_id, sensor, frequency, relative, startDate, endDate) {
+coverage_impl <- function(db, participant_id, sensor, frequency, relative, start_date, end_date) {
   # Interesting bug/feature in dbplyr: If participant_id is used in the query,
   # the index of the table is not used. Hence, we rename participant_id to p_id
   p_id <- as.character(participant_id)
@@ -371,10 +388,10 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
       dplyr::filter(participant_id == p_id) %>%
       dplyr::select(measurement_id, time, date)
 
-    if (!is.null(startDate) && !is.null(endDate)) {
+    if (!is.null(start_date) && !is.null(end_date)) {
       tmp <- tmp %>%
-        dplyr::filter(date >= startDate) %>%
-        dplyr::filter(date <= endDate)
+        dplyr::filter(date >= start_date) %>%
+        dplyr::filter(date <= end_date)
     }
 
     # Remove duplicate IDs with _ for certain sensors
