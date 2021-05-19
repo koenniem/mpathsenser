@@ -8,6 +8,7 @@ import(
   path = getwd(),
   db = NULL,
   dbname = "carp.db",
+  overwrite_db = TRUE,
   backend = "RSQLite",
   progress = TRUE,
   parallel = FALSE
@@ -20,11 +21,15 @@ import(
 
 \item{dbname}{If no database is provided, a new database dbname is created.}
 
+\item{overwrite_db}{If a database with the same \code{dbname}  already exists, should it be
+overwritten?}
+
 \item{backend}{Name of the database backend that is used. Currently, only RSQLite is supported.}
 
 \item{progress}{Logical value to show a progress bar or not.}
 
-\item{parallel}{Logical value which indicates whether to do reading in and processing in parallel.}
+\item{parallel}{Logical value which indicates whether to do reading in and processing
+in parallel.}
 }
 \value{
 Invisible. Imported database can be reopened using \link[CARP]{open_db}.

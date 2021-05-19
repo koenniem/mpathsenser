@@ -11,8 +11,8 @@ coverage(
   frequency = CARP::freq,
   relative = TRUE,
   offset = "None",
-  startDate = NULL,
-  endDate = NULL
+  start_date = NULL,
+  end_date = NULL
 )
 }
 \arguments{
@@ -21,17 +21,22 @@ coverage(
 
 \item{participant_id}{A character string of \emph{one} participant ID.}
 
-\item{sensor}{A character vector containing one or multiple sensors. See \code{\link[CARP]{sensors}} for a list of available sensors. Use "All" for all available sensors.}
+\item{sensor}{A character vector containing one or multiple sensors. See
+\code{\link[CARP]{sensors}} for a list of available sensors. Use "All" for all available sensors.}
 
-\item{frequency}{A named numeric vector with sensors as names and the number of expected samples per hour}
+\item{frequency}{A named numeric vector with sensors as names and the number of expected samples
+per hour}
 
-\item{relative}{Show absolute number of measurements or relative to the expected number? Logical value.}
+\item{relative}{Show absolute number of measurements or relative to the expected number?
+Logical value.}
 
 \item{offset}{Currently not used.}
 
-\item{startDate}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.}
+\item{startDate}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
+the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.}
 
-\item{endDate}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating the latest date to show.Leave empty for all data. Must be used with \code{startDate}.}
+\item{endDate}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
+the latest date to show.Leave empty for all data. Must be used with \code{startDate}.}
 }
 \value{
 A ggplot of the coverage results.
