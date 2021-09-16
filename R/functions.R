@@ -31,7 +31,7 @@ import <- function(path = getwd(),
     stop("No JSON files found")
   }
 
-  # Check backend and parallel constraint
+  # Check back-end and parallel constraint
   if (backend == "RSQLite" & parallel) {
     warning("Parallel cannot be used when RSQLite is provided as a backend due to concurrency
             constraint. Setting parallel to false.")
@@ -43,11 +43,21 @@ import <- function(path = getwd(),
     if (!DBI::dbIsValid(db)) {
       stop("Database is not valid.")
     }
-  }
+  } else {
+    # Work with dbname
+    if (is.null(dbname)) {
+      stop("A valid database connection or path must be provided")
+    }
 
-  # Set up database if not provided
-  if (is.null(db)) {
-    db <- create_db(db_name = dbname, overwrite = overwrite_db)
+    # Try to open the database
+    tryCatch({
+      db <- open_db(path, dbname)
+    }, error = function(e) {
+      assign("db",
+             create_db(path, db_name = dbname, overwrite = overwrite_db),
+             envir = parent.env(environment())
+      )
+    })
   }
 
   # If there are no duplicate files
@@ -63,7 +73,7 @@ import <- function(path = getwd(),
     }
   }
 
-  # Set up parallel backend
+  # Set up parallel back-end
   if (parallel) {
     future::plan(future::multisession)
   }
@@ -104,10 +114,22 @@ import_impl <- function(path, files, db_name) {
 
     data <- rjson::fromJSON(file = normalizePath(paste0(path, "/", files[i])), simplify = FALSE)
 
+    # Open db
+    tmp_db <- open_db(NULL, db_name)
+
     # Check if it is not an empty file
-    # Return NULL is true
+    # Skip this file if empty
     if (length(data) == 0) {
-      return(NULL)
+      add_processed_file(tmp_db,
+                         data.frame(
+                           file_name = files[i],
+                           # TODO: Update extraction of participant_id with new file name
+                           participant_id = strsplit(files[i], "_")[[1]][2],
+                           study_id = "-1"
+                         )
+      )
+      RSQLite::dbDisconnect(tmp_db)
+      next
     }
 
     # Clean-up and extract the header and body
@@ -116,16 +138,16 @@ import_impl <- function(path, files, db_name) {
       body = lapply(data, function(x) x[2])
     )
     # Extract columns
-    data$study_id <- lapply(data$header, function(x) x$header$study_id)
-    data$participant_id <- lapply(data$header, function(x) x$header$user_id)
-    data$start_time <- lapply(data$header, function(x) x$header$start_time)
-    data$data_format <- lapply(data$header, function(x) x$header$data_format$namespace)
-    data$sensor <- lapply(data$header, function(x) x$header$data_format$name)
+    data$study_id <- lapply(data$header, function(x) x[[1]]$study_id)
+    data$device_role_name <- lapply(data$header, function(x) x[[1]]$device_role_name)
+    data$trigger_id <- lapply(data$header, function(x) x[[1]]$trigger_id)
+    data$participant_id <- lapply(data$header, function(x) x[[1]]$user_id)
+    data$start_time <- lapply(data$header, function(x) x[[1]]$start_time)
+    data$data_format <- lapply(data$header, function(x) x[[1]]$data_format$namespace)
+    data$sensor <- lapply(data$header, function(x) x[[1]]$data_format$name)
     data$header <- NULL
     data <- tidyr::unnest(data, c(study_id:sensor))
 
-    # Open db
-    tmp_db <- open_db(db_name)
 
     # Safe duplicate check before insertion
     # Check if file is already registered as processed
@@ -141,7 +163,7 @@ import_impl <- function(path, files, db_name) {
       by = c("file_name", "participant_id", "study_id")
     )
     if (nrow(matches) > 0) {
-      return(NULL) # File was already processed
+      next # File was already processed
     }
 
     # Populate study specifics to db
@@ -149,6 +171,9 @@ import_impl <- function(path, files, db_name) {
 
     # Add participants
     add_participant(db = tmp_db, data = dplyr::distinct(data, participant_id, study_id))
+
+    # Make sure top-level of data$body is called body and not carp_body as in the new version
+    data <- dplyr::mutate(data, body = purrr::modify(body, purrr::set_names, nm = "body"))
 
     # Divide et impera
     data <- split(data, as.factor(data$sensor), drop = TRUE)
@@ -382,7 +407,7 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
   p_id <- as.character(participant_id)
 
   data <- furrr::future_map(.x = sensor, .f = ~ {
-    tmp_db <- open_db(db@dbname)
+    tmp_db <- open_db(NULL, db@dbname)
 
     tmp <- dplyr::tbl(tmp_db, .x) %>%
       dplyr::filter(participant_id == p_id) %>%

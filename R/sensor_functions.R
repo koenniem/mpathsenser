@@ -1,6 +1,6 @@
 #' Generic helper function from extracting data from a CARP database
 #'
-#' This is a generic funcation to help extract data from a CARP database. For some sensors that
+#' This is a generic function to help extract data from a CARP database. For some sensors that
 #' require a bit more pre-processing, such as app usage and screen time, more specialised functions
 #' are available (e.g. \code{\link[CARP]{get_app_usage}} and \code{\link[CARP]{screen_duration}}).
 #'
@@ -9,10 +9,10 @@
 #' @param participant_id A character string identifying a single participant. Use
 #' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
 #' Leave empty to get data for all participants.
-#' @param startDate Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.
-#' @param endDate Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.
+#' @param start_date Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.
+#' @param end_date Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.
 #'
-#' @return A lazy \code{\link[dplyr]{tbl}} containg the requested data.
+#' @return A lazy \code{\link[dplyr]{tbl}} containing the requested data.
 #' @export
 #'
 #' @examples
@@ -26,7 +26,9 @@
 #' # Or within a specific window
 #' get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
 #' }
-get_data <- function(db, sensor, participant_id = NULL, startDate = NULL, endDate = NULL) {
+get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_date = NULL) {
+  if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+
   out <- dplyr::tbl(db, sensor)
 
   if (!is.null(participant_id)) {
@@ -34,13 +36,13 @@ get_data <- function(db, sensor, participant_id = NULL, startDate = NULL, endDat
     out <- dplyr::filter(out, participant_id == p_id)
   }
 
-  if (!is.null(startDate) && !is.null(endDate)) {
-    start.date <- methods::is(as.Date(startDate), "Date")
-    end.date <- methods::is(as.Date(endDate), "Date")
+  if (!is.null(start_date) && !is.null(end_date)) {
+    start.date <- methods::is(as.Date(start_date), "Date")
+    end.date <- methods::is(as.Date(end_date), "Date")
     if (start.date & end.date) {
       # out <- dplyr::mutate(out, date = DATE(time)) %>%
-      out <- dplyr::filter(out, date >= startDate)
-      out <- dplyr::filter(out, date <= endDate)
+      out <- dplyr::filter(out, date >= start_date)
+      out <- dplyr::filter(out, date <= end_date)
     }
   }
 
@@ -107,6 +109,49 @@ last_date <- function(db, sensor, participant_id = NULL) {
   RSQLite::dbGetQuery(db, query)[1, 1]
 }
 
+
+
+# Function for linking mobile sensing and ESM data
+link <- function(x, y, by, offset) {
+
+  if(is.null(x) || !is.data.frame(x)) stop("x must be a data frame")
+  if(is.null(y) || !is.data.frame(x)) stop("y must be a data frame")
+
+  if(is.expression(by)) by <- enquote(by)
+
+  # Match sensing data with ESM using a nested join
+  # Set a startTime (beep time - offset) and an endTime (beep time)
+  dat <- x %>%
+    # filter(participant_id == p_id) %>%
+    mutate(startTime = time + offset) %>%
+    select(participant_id, startTime, endTime = time) %>%
+    nest_join(sensing_dat, by = "participant_id", name = "data") %>%
+    group_by(participant_id, startTime, endTime) # Group each row to prevent weird behaviour
+
+  # Then, simply remove all rows in the nested tables that are not within the interval specified
+  # by startTime and endTime
+  if(offset < 0) {
+    res <- dat %>%
+      mutate(data = map(data, ~filter(., time >= startTime & time <= endTime)))
+  } else {
+    # Reverse logic if interval occurs after beep
+    res <- dat %>%
+      mutate(data = map(data, ~filter(., time >= endTime & time <= startTime)))
+  }
+
+  res
+}
+
+link2 <- function(db, sensor, participant_id, start_date, end_date) {
+  # Retrieve mobile sensing data from database
+  # sensing_dat <- get_data(db, sensor, participant_id) %>%
+  #   collect() %>%
+  #   mutate(time = ymd_hms(paste(date, time)))
+
+  # copy participant_id since it has the same name as a column
+  # p_id <- participant_id
+}
+
 #' Get installed apps
 #'
 #' Extract installed apps for one or all participants. Contrarily to other get_* functions in
@@ -160,7 +205,10 @@ get_app_usage <- function(db, participant_id = NULL,
     tidyr::drop_na(app, usage)
 
   if (is.null(by)) {
-
+    data <- data %>%
+      dplyr::group_by(date, app) %>%
+      dplyr::slice(dplyr::n()) %>%
+      dplyr::mutate(usage = usage / 60 / 60)
   } else if (by[1] == "Total" | by[1] == "total") {
     data <- data %>%
     	dplyr::group_by(date, app) %>%
@@ -194,6 +242,81 @@ get_app_usage <- function(db, participant_id = NULL,
 
   colnames(data) <- c("App", "Usage")
   data
+}
+
+#' Get a summary of physical activity (recognition)
+#'
+#' @param db A database connection to a CARP database.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#' @param confidence
+#' @param direction
+#' @param startDate
+#' @param endDate
+#' @param by
+#'
+#' @return
+#' @export
+#'
+#' @examples
+get_activity <- function(db, participant_id = NULL, confidence = 70, direction = "forward",
+                         startDate = NULL, endDate = NULL, by = c("Total", "Day", "Hour")) {
+  data <- get_data(db, "Activity", participant_id) %>%
+    dplyr::filter(confidence >= 70) %>%
+    compress_activity() %>%
+    dplyr::mutate(datetime = paste(date, time))
+
+  if (tolower(direction) == "forward" | tolower(direction) == "forwards") {
+    data <- data %>%
+      dplyr::mutate(duration = STRFTIME('%s', dplyr::lead(datetime)) - STRFTIME('%s', datetime))
+  } else if (tolower(direction) == "backward" | tolower(direction) == "backwards") {
+    data <- data %>%
+      dplyr::mutate(duration = STRFTIME('%s', datetime) - STRFTIME('%s', dplyr::lag(datetime)))
+  } else {
+    stop("Invalid direction")
+  }
+
+  if (is.null(by) || missing(by) || by[1] == "total" | by[1] == "Total") {
+    data <- data %>%
+    dplyr::group_by(type)
+  } else if (by[1] == "Hour") {
+    data <- data %>%
+      dplyr::mutate(hour = substr(time, 1, 2)) %>%
+      dplyr::group_by(type, date, hour)
+  } else if (by[1] == "Day") {
+    data <- data %>%
+      dplyr::group_by(type, date)
+  } else { # Default case
+    data <- data %>%
+      dplyr::group_by(type)
+  }
+
+  data %>%
+    dplyr::summarise(duration = sum(duration, na.rm = TRUE), .groups = "drop") %>%
+    dplyr::collect()
+}
+
+#' Get the device info for one or more participants
+#'
+#' @param db A database connection to a CARP database.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#'
+#' @return A data frame containing device info for each participant
+#' @export
+device_info <- function(db, participant_id = NULL) {
+  get_data(db, "Device", participant_id = participant_id) %>%
+    dplyr::select(participant_id, device_id:operating_system) %>%
+    dplyr::distinct() %>%
+    dplyr::collect()
+}
+
+compress_activity <- function(data, direction = "forward") {
+  data %>%
+    dbplyr::window_order(date, time) %>%
+    dplyr::filter(!(dplyr::lead(type) == type && dplyr::lag(type) == type))
 }
 
 #' Screen duration by hour or day
@@ -348,7 +471,7 @@ n_screen_unlocks <- function(db, participant_id, startDate = NULL, endDate = NUL
 step_count <- function(db, participant_id, startDate = NULL, endDate = NULL) {
   get_data(db, "Pedometer", participant_id, startDate, endDate) %>%
     dplyr::mutate(hour = STRFTIME("%H", time)) %>%
-    dbplyr::window_order(date, time) %>%
+    dplyr::arrange(date, time) %>%
     dplyr::mutate(next_count = dplyr::lead(step_count, default = NA)) %>%
     dplyr::mutate(step_count = ifelse(step_count > next_count, 0, step_count)) %>%
     dplyr::mutate(steps = next_count - step_count) %>%

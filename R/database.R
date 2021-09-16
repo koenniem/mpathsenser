@@ -13,30 +13,37 @@ sensors <- c("Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "
 
 #' Create a new CARP database
 #'
+#' @param path The path to the database.
 #' @param db_name The name of the database.
 #' @param overwrite In case a database with `db_name` already exists, indicate whether it should
 #' be overwritten or not. Otherwise, this option is ignored.
 #'
 #' @return A database connection using prepared database schemas.
 #' @export
-create_db <- function(db_name = "carp.db", overwrite = FALSE) {
-	if (is.character(db_name)) {
-		if (file.exists(db_name)) {
-			if (overwrite) {
-				tryCatch(file.remove(db_name),
-								 warning = function(e) stop(warningCondition(e)),
-								 error = function(e) stop(errorCondition(e)))
-			} else {
-				stop("Database db_name already exists. Use overwrite = TRUE to overwrite.")
-			}
+create_db <- function(path = getwd(), db_name = "carp.db", overwrite = FALSE) {
+	if (!is.character(db_name)) stop("Argument db_name must be a filename")
+	if (!is.character(path)) stop("Argument path must be a character string")
+
+	# Merge path and file name
+	db_name <- paste0(normalizePath(path), "\\", db_name)
+
+	# If db already exists, remove it or throw an error
+	if (file.exists(db_name)) {
+		if (overwrite) {
+			tryCatch(file.remove(db_name),
+							 warning = function(e) stop(warningCondition(e)),
+							 error = function(e) stop(errorCondition(e)))
+		} else {
+			stop(paste("Database", db_name, "already exists. Use overwrite = TRUE to overwrite."))
 		}
-		db <- RSQLite::dbConnect(RSQLite::SQLite(), db_name)
-	} else {
-		stop("Argument db_name must be a filename.")
 	}
 
+	# Create a new db instance
+	db <- RSQLite::dbConnect(RSQLite::SQLite(), db_name, winslash = "/")
+
+	# Populate the db with empty tables
 	tryCatch({
-		fn <- system.file("extdata", "dbdef.sql", package = "CARP", mustWork = TRUE)
+		fn <- system.file("extdata", "dbdef.sql", package = "CARP")
 		script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"),	"\n\n")[[1]]
 		for (statement in script) {
 			RSQLite::dbExecute(db, statement)
@@ -51,11 +58,20 @@ create_db <- function(db_name = "carp.db", overwrite = FALSE) {
 
 #' Open a CARP database
 #'
+#' @param path The path to the database. Use NULL to use the full path name in db_name.
 #' @param db_name The name of the database.
 #'
 #' @return A database connection.
 #' @export
-open_db <- function(db_name = "carp.db") {
+open_db <- function(path = getwd(), db_name = "carp.db") {
+	if (!is.character(db_name)) stop("Argument db_name must be a filename")
+	if (!(is.null(path) | is.character(path))) stop("Argument path must be a character string")
+
+	# Merge path and file name
+	if (!is.null(path)) {
+		db_name <- paste0(normalizePath(path), "\\", db_name)
+	}
+
 	if (!file.exists(db_name))
 		stop("There is no such file")
 	db <- DBI::dbConnect(RSQLite::SQLite(), db_name)
@@ -85,7 +101,8 @@ add_participant <- function(db, data) {
 add_processed_file <- function(db, data) {
 	RSQLite::dbExecute(db,
 	"INSERT INTO ProcessedFiles(file_name, study_id, participant_id)
-	VALUES(:file_name, :study_id, :participant_id);",
+	VALUES(:file_name, :study_id, :participant_id)
+	ON CONFLICT DO NOTHING;",
 	list(file_name = data$file_name, study_id = data$study_id, participant_id = data$participant_id))
 }
 
@@ -149,12 +166,18 @@ get_studies <- function(db, lazy = FALSE) {
 #'
 #' @return A named vector containing the number of rows for each sensor.
 #' @export
-get_nrows <- function(db, sensor = "All") {
+get_nrows <- function(db, sensor = "All", participant_id = NULL, start_date = NULL,
+											end_date = NULL) {
 	if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
 
-	if (sensor == "All") {
+	if (sensor[[1]] == "All") {
 		sensor <- sensors
 	}
 
-	sapply(sensor, function(x) RSQLite::dbGetQuery(db, paste0("SELECT COUNT(*) FROM ", x))[[1]])
+	# sapply(sensor, function(x) RSQLite::dbGetQuery(db, paste0("SELECT COUNT(*) FROM ", x))[[1]])
+	sapply(sensor, function(x) {
+		get_data(db, x, participant_id, start_date, end_date) %>%
+			dplyr::count() %>%
+			dplyr::pull(n)
+	})
 }

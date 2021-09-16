@@ -4,7 +4,13 @@
 \alias{get_nrows}
 \title{Get the number of rows sensors in a CARP database}
 \usage{
-get_nrows(db, sensor = "All")
+get_nrows(
+  db,
+  sensor = "All",
+  participant_id = NULL,
+  start_date = NULL,
+  end_date = NULL
+)
 }
 \arguments{
 \item{db}{db A database connection, as created by \link[CARP]{create_db}.}

@@ -4,10 +4,12 @@
 \alias{test_jsons}
 \title{Test JSON files for being in the correct format.}
 \usage{
-test_jsons(path = getwd(), parallel = FALSE)
+test_jsons(path = getwd(), db = NULL, parallel = FALSE)
 }
 \arguments{
 \item{path}{The pathname of the JSON files.}
+
+\item{db}{A CARP database connection (optional). If provided, will be used to check which files are already in the database and check only those JSON files which are not.}
 
 \item{parallel}{A logical value whether you want to check in parallel. Useful when there are a lot of files. If you have already used \code{future::plan}, you can leave this parameter to \code{FALSE}.}
 }

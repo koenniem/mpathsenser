@@ -4,9 +4,11 @@
 \alias{create_db}
 \title{Create a new CARP database}
 \usage{
-create_db(db_name = "carp.db", overwrite = FALSE)
+create_db(path = getwd(), db_name = "carp.db", overwrite = FALSE)
 }
 \arguments{
+\item{path}{The path to the database.}
+
 \item{db_name}{The name of the database.}
 
 \item{overwrite}{In case a database with \code{db_name} already exists, indicate whether it should

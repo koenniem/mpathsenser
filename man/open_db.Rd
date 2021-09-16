@@ -4,9 +4,11 @@
 \alias{open_db}
 \title{Open a CARP database}
 \usage{
-open_db(db_name = "carp.db")
+open_db(path = getwd(), db_name = "carp.db")
 }
 \arguments{
+\item{path}{The path to the database. Use NULL to use the full path name in db_name.}
+
 \item{db_name}{The name of the database.}
 }
 \value{

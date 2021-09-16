@@ -121,12 +121,17 @@ fix_jsons_impl <- function(path, jsonfiles) {
 #' Test JSON files for being in the correct format.
 #'
 #' @param path The pathname of the JSON files.
+#' @param db A CARP database connection (optional). If provided, will be used to check which files are already in the database and check only those JSON files which are not.
 #' @param parallel A logical value whether you want to check in parallel. Useful when there are a lot of files. If you have already used \code{future::plan}, you can leave this parameter to \code{FALSE}.
 #'
 #' @return A message indicating whether there were any issues and a character vector of the file names that need to be fixed. If there were no issues, no result is returned.
 #' @export
-test_jsons <- function(path = getwd(), parallel = FALSE) {
+test_jsons <- function(path = getwd(), db = NULL, parallel = FALSE) {
 	jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE)
+	if(!is.null(db)) {
+		processed_files <- get_processed_files(db)
+		jsonfiles <- jsonfiles[!(jsonfiles %in% processed_files$file_name)]
+	}
 
 	if(parallel) {
 		future::plan(future::multisession)
@@ -172,7 +177,7 @@ unzip_carp <- function(path = getwd(), overwrite = FALSE) {
 	tag.json <- substr(jsonfiles, 11, nchar(jsonfiles) - 5)
 	zipfiles <- dir(path = path, pattern = "*.zip$")
 	tag.zip <- sapply(strsplit(zipfiles, "carp-data-"), function(x) x[2])
-	tag.zip <- substr(tag.zip, 1, nchar(tag.zip) - 4)
+	tag.zip <- substr(tag.zip, 1, nchar(tag.zip) - 9)
 
 	# Do not unzip files that already exist as JSON file
 	if(!overwrite) {

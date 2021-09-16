@@ -53,6 +53,14 @@ safe.data.frame <- function(...) {
   x
 }
 
+safe.tibble <- function(...) {
+  x <- suppressWarnings(list(...))
+  x <- lapply(x, function(x) if (is.null(x)) NA else x)
+  x <- lapply(x, function(x) if (length(x) == 0) NA else x) # lists
+  x <- dplyr::as_tibble(x)
+  x
+}
+
 default_fun <- function(data) {
   data$body <- lapply(data$body, function(x) x$body)
   data <- dplyr::bind_cols(data, dplyr::bind_rows(data$body))
@@ -105,8 +113,8 @@ activity_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     confidence = data$confidence,
     type = data$type
   )
@@ -120,8 +128,8 @@ air_quality_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     air_quality_index = data$air_quality_index,
     air_quality_level = data$air_quality_level,
     source = data$source,
@@ -155,8 +163,8 @@ app_usage_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     start = data$start,
     end = data$end,
     usage = data$usage,
@@ -184,8 +192,8 @@ apps_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     apps = data$apps
   )
 
@@ -198,8 +206,8 @@ battery_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     battery_level = data$battery_level,
     battery_status = data$battery_status
   )
@@ -223,8 +231,8 @@ bluetooth_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     advertisement_name = data$advertisement_name,
     bluetooth_device_id = data$bluetooth_device_id,
     bluetooth_device_name = data$bluetooth_device_name,
@@ -238,14 +246,17 @@ bluetooth_fun <- function(db, data) {
 }
 
 # TODO: Check attendees
-# TODO: save to db
+# TODO: Check if multiple entries (from different calendars?) are possible
+# Currently, multiple entries are already possible but it's not clear why they are wrapped in
+# another list as well.
 calendar_fun <- function(db, data) {
   data$id <- sapply(data$body, function(x) x$body$id)
-  data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
+  data$start_time <- sapply(data$body, function(x) x$body$start_time)
   data$body <- lapply(data$body, function(x) x$body$calendar_events)
+
   data$body <- lapply(data$body, function(x) {
     lapply(x, function(y) {
-      dplyr::tibble(
+      tbl <- safe.tibble(
         event_id = y[["event_id"]],
         calendar_id = y[["calendar_id"]],
         title = y[["title"]],
@@ -253,11 +264,18 @@ calendar_fun <- function(db, data) {
         start = y[["start"]],
         end = y[["end"]],
         all_day = y[["all_day"]],
-        location = y[["location"]],
-        attendees = I(y[["attendees"]])
+        location = y[["location"]]
+        # attendees = I(y[["attendees"]])
       )
+      if (length(y[["attendees"]]) > 0) {
+        tbl$attendees <- list(y$attendees)
+      } else {
+        tbl$attendees <- NA
+      }
+      tbl
     })
   })
+
   data$body <- lapply(data$body, dplyr::bind_rows)
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
 
@@ -274,8 +292,8 @@ calendar_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     event_id = data$event_id,
     calendar_id = data$calendar_id,
     title = data$title,
@@ -296,8 +314,8 @@ connectivity_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     connectivity_status = data$connectivity_status
   )
 
@@ -310,8 +328,8 @@ device_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     device_id = data$device_id,
     hardware = data$hardware,
     device_name = data$device_name,
@@ -329,8 +347,8 @@ error_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     message = data$message
   )
 
@@ -388,8 +406,8 @@ light_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     mean_lux = data$mean_lux,
     std_lux = data$std_lux,
     min_lux = data$min_lux,
@@ -405,8 +423,8 @@ location_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     latitude = data$latitude,
     longitude = data$longitude,
     altitude = data$altitude,
@@ -425,8 +443,8 @@ memory_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     free_physical_memory = data$free_physical_memory,
     free_virtual_memory = data$free_virtual_memory
   )
@@ -460,8 +478,8 @@ noise_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     mean_decibel = data$mean_decibel,
     std_decibel = data$std_decibel,
     min_decibel = data$min_decibel,
@@ -503,8 +521,8 @@ pedometer_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     step_count = data$step_count
   )
 
@@ -517,8 +535,8 @@ screen_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     screen_event = data$screen_event
   )
 
@@ -565,8 +583,8 @@ weather_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     country = data$country,
     area_name = data$area_name,
     weather_main = data$weather_main,
@@ -597,8 +615,8 @@ wifi_fun <- function(db, data) {
   data <- safe.data.frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     ssid = data$ssid,
     bssid = data$bssid
   )
