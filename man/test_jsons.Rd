@@ -19,7 +19,7 @@ test_jsons(
 
 \item{db}{A CARP database connection (optional). If provided, will be used to check which files are already in the database and check only those JSON files which are not.}
 
-\item{parallel}{A logical value whether you want to check in parallel. Useful when there are a lot of files. If you have already used \link[\code{future::plan}]{future}, you can leave this parameter to \code{FALSE}.}
+\item{parallel}{A logical value whether you want to check in parallel. Useful when there are a lot of files. If you have already used \code{\link[future]{plan}}, you can leave this parameter to \code{FALSE}.}
 }
 \value{
 A message indicating whether there were any issues and a character vector of the file names that need to be fixed. If there were no issues, no result is returned.
