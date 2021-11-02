@@ -2,12 +2,12 @@
 % Please edit documentation in R/utils.R
 \name{fix_jsons}
 \alias{fix_jsons}
-\title{Fix JSON files}
+\title{Fix end-of-line of JSON files}
 \usage{
 fix_jsons(path = getwd(), files = NULL, parallel = FALSE)
 }
 \arguments{
-\item{path}{The pathname of the JSON files.}
+\item{path}{The path name of the JSON files.}
 
 \item{files}{Alternatively, a character list of the input files}
 
@@ -17,14 +17,9 @@ fix_jsons(path = getwd(), files = NULL, parallel = FALSE)
 A message indicating whether any files need to be fixed.
 }
 \description{
-When copying data directly coming from CARP, JSON files are often corrupt due to the
+When copying data directly coming from CARP, JSON files are sometimes corrupted due to the
 app not properly closing them. This function attempts to fix the most common
 problems associated with improper file closure by CARP.
-}
-\details{
-Note: Be careful when running this function multiple times. In the case there are
-many zips and no JSON files, it will be fast. However, when re-running the function,
-every previously unzipped JSON file will be checked for errors.
 }
 \examples{
 \dontrun{

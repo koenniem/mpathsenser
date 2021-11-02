@@ -4,12 +4,22 @@
 \alias{unzip_carp}
 \title{Unzip CARP output}
 \usage{
-unzip_carp(path = getwd(), overwrite = FALSE)
+unzip_carp(
+  path = getwd(),
+  overwrite = FALSE,
+  recursive = TRUE,
+  parallel = FALSE
+)
 }
 \arguments{
 \item{path}{The path to the directory containing the zip files.}
 
 \item{overwrite}{Logical value whether you want to overwrite already existing zip files.}
+
+\item{recursive}{Logical value indicating whether to unzip files in subdirectories as well. These
+files will then be unzipped in their respective subdirectory.}
+
+\item{parallel}{A logical value whether you want to check in parallel. Useful when there are a lot of files. If you have already used \code{future::plan}, you can leave this parameter to \code{FALSE}.}
 }
 \description{
 Similar to \link[utils]{unzip}, but makes it easier to unzip all files in a given path

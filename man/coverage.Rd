@@ -12,7 +12,8 @@ coverage(
   relative = TRUE,
   offset = "None",
   start_date = NULL,
-  end_date = NULL
+  end_date = NULL,
+  plot = TRUE
 )
 }
 \arguments{
@@ -32,11 +33,13 @@ Logical value.}
 
 \item{offset}{Currently not used.}
 
-\item{startDate}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
+\item{start_date}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
 the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.}
 
-\item{endDate}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
+\item{end_date}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
 the latest date to show.Leave empty for all data. Must be used with \code{startDate}.}
+
+\item{plot}{Whether to return a ggplot or its underlying data.}
 }
 \value{
 A ggplot of the coverage results.
@@ -67,8 +70,8 @@ coverage(
   participant_id = "12345",
   sensor = c("Accelerometer", "Gyroscope"),
   frequency = CARP::freq,
-  startDate = "2021-01-01",
-  endDate = "2021-05-01"
+  start_date = "2021-01-01",
+  end_date = "2021-05-01"
 )
 }
 }

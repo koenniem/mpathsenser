@@ -29,6 +29,7 @@ test_that("ccopy", {
 })
 
 test_that("unzip_carp", {
-	expect_message(unzip_carp(".", overwrite = TRUE), "Unzipping \\d files.")
+	expect_message(unzip_carp(".", overwrite = TRUE), "Unzipped \\d files.")
+	expect_message(unzip_carp(".", overwrite = FALSE), "No files found to unzip.")
 	suppressMessages(expect_warning(unzip_carp(".")))
 })

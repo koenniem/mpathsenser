@@ -11,6 +11,7 @@ import(
   overwrite_db = TRUE,
   backend = "RSQLite",
   progress = TRUE,
+  recursive = TRUE,
   parallel = FALSE
 )
 }
