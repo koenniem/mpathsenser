@@ -21,11 +21,12 @@ import <- function(path = getwd(),
                    overwrite_db = TRUE,
                    backend = "RSQLite",
                    progress = TRUE,
+                   recursive = TRUE,
                    parallel = FALSE
 ) {
 
   # Retrieve all JSON files
-  files <- dir(path = path, pattern = "*.json$")
+  files <- dir(path = path, pattern = "*.json$", recursive = recursive)
 
   if (length(files) == 0) {
     stop("No JSON files found")
@@ -112,7 +113,11 @@ import_impl <- function(path, files, db_name) {
     # Update progress bar
     p(sprintf("x=%g", i))
 
-    data <- rjson::fromJSON(file = normalizePath(paste0(path, "/", files[i])), simplify = FALSE)
+    # Try to read in the file. If the file is corrupted for some reason, skip this one
+    possible_error <- tryCatch({
+      data <- rjson::fromJSON(file = normalizePath(paste0(path, "/", files[i])), simplify = FALSE)
+    }, error = \(e) print(paste("Could not read", files[i])))
+    if(inherits(possible_error, "error")) next
 
     # Open db
     tmp_db <- open_db(NULL, db_name)
@@ -137,17 +142,32 @@ import_impl <- function(path, files, db_name) {
       header = lapply(data, function(x) x[1]),
       body = lapply(data, function(x) x[2])
     )
+
     # Extract columns
-    data$study_id <- lapply(data$header, function(x) x[[1]]$study_id)
-    data$device_role_name <- lapply(data$header, function(x) x[[1]]$device_role_name)
-    data$trigger_id <- lapply(data$header, function(x) x[[1]]$trigger_id)
-    data$participant_id <- lapply(data$header, function(x) x[[1]]$user_id)
-    data$start_time <- lapply(data$header, function(x) x[[1]]$start_time)
-    data$data_format <- lapply(data$header, function(x) x[[1]]$data_format$namespace)
-    data$sensor <- lapply(data$header, function(x) x[[1]]$data_format$name)
+    # Define a safe_extract function that leaves no room for NULLs, since unnest cannot handle
+    # a column full of NULLs
+    safe_extract <- function(vec, var) {
+      out <- lapply(vec, function(obs) {
+        tmp <- eval(parse(text = paste0("obs[[1]]$", var)))
+        if(is.null(tmp)) return(NULL) else return(tmp)
+      })
+      if(all(unlist(lapply(out, is.null))))
+        out <- rep("N/A", length(out))
+      return(out)
+    }
+    data$study_id <- safe_extract(data$header, "study_id")
+    data$device_role_name <- safe_extract(data$header, "device_role_name")
+    data$trigger_id <- safe_extract(data$header, "trigger_id")
+    data$participant_id <- safe_extract(data$header, "user_id")
+    data$start_time <- safe_extract(data$header, "start_time")
+    data$data_format <- safe_extract(data$header, "data_format$namespace")
+    data$sensor <- safe_extract(data$header, "data_format$name")
     data$header <- NULL
     data <- tidyr::unnest(data, c(study_id:sensor))
 
+    # Due to the hacky solution above, filter out rows where the participant_id is missing, usually
+    # in the last entry of a file
+    data <- data[!is.na(data$participant_id)&data$participant_id!="N/A",]
 
     # Safe duplicate check before insertion
     # Check if file is already registered as processed
@@ -263,10 +283,11 @@ freq <- c(
 #' @param relative Show absolute number of measurements or relative to the expected number?
 #' Logical value.
 #' @param offset Currently not used.
-#' @param startDate A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
+#' @param start_date A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
 #' the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.
-#' @param endDate A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
+#' @param end_date A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
 #' the latest date to show.Leave empty for all data. Must be used with \code{startDate}.
+#' @param plot Whether to return a ggplot or its underlying data.
 #'
 #' @importFrom magrittr "%>%"
 #'
@@ -297,8 +318,8 @@ freq <- c(
 #'   participant_id = "12345",
 #'   sensor = c("Accelerometer", "Gyroscope"),
 #'   frequency = CARP::freq,
-#'   startDate = "2021-01-01",
-#'   endDate = "2021-05-01"
+#'   start_date = "2021-01-01",
+#'   end_date = "2021-05-01"
 #' )
 #' }
 coverage <- function(db,
@@ -308,7 +329,8 @@ coverage <- function(db,
                      relative = TRUE,
                      offset = "None",
                      start_date = NULL,
-                     end_date = NULL) {
+                     end_date = NULL,
+                     plot = TRUE) {
   # Check db
   if (!inherits(db, "DBIConnection")) {
     stop("Argument db is not a database connection.")
@@ -342,8 +364,8 @@ coverage <- function(db,
   }
 
   # Check frequency
-  if (!is.numeric(frequency) || is.null(names(frequency))) {
-    stop("Frequency is must be a named numeric vector")
+  if (!relative && !is.numeric(frequency) | is.null(names(frequency))) {
+    stop("Frequency must be a named numeric vector")
   }
 
   # Check time subset
@@ -360,14 +382,16 @@ coverage <- function(db,
     warning("Argument startDate/endDate and offset cannot be present at the same time.
 						Ignoring the offset argument.")
     offset <- NULL
-  } else if (is.null(start_date) & is.null(end_date)) {
-    start_date <- first_date(db, "Accelerometer", participant_id)
-    end_date <- last_date(db, "Accelerometer", participant_id)
   }
-
-  else if (!(is(start_date, "Date") | is.character(start_date)) |
-           !(is(end_date, "Date") | is.character(end_date))) {
-    stop("startDate and endDate must be a character string or date.")
+  # Unnecesary since get_data retrieves all data anyway when no start or end date is specified
+  # else if (is.null(start_date) & is.null(end_date)) {
+    # start_date <- first_date(db, "Accelerometer", participant_id)
+    # end_date <- last_date(db, "Accelerometer", participant_id)
+  # }
+  else if ((!is.null(start_date) | !is.null(end_date)) &&
+           (!(is(start_date, "Date") | is.character(start_date)) |
+           !(is(end_date, "Date") | is.character(end_date)))) {
+    stop("start_date and end_date must be NULL, a character string, or date.")
   }
 
   # Retain only frequencies that appear in the sensor list
@@ -378,7 +402,7 @@ coverage <- function(db,
     sensor <- names(frequency)
   }
 
-  # Get data from db - internal function
+  # Calculate coverage from db - internal function
   data <- coverage_impl(db, participant_id, sensor, frequency, relative, start_date, end_date)
 
   # Bind all together and make factors
@@ -386,19 +410,25 @@ coverage <- function(db,
   data$measure <- factor(data$measure)
   data$measure <- factor(data$measure, levels = rev(levels(data$measure)))
 
-  # Plot
-  ggplot2::ggplot(data = data, mapping = ggplot2::aes(x = Hour, y = measure, fill = Coverage)) +
-    ggplot2::geom_tile() +
-    ggplot2::geom_text(mapping = ggplot2::aes(label = Coverage), colour = "white") +
-    ggplot2::scale_x_continuous(breaks = 0:23) +
-    ggplot2::scale_fill_gradientn(
-      colours = c("#d70525", "#645a6c", "#3F7F93"),
-      breaks = c(0, 0.5, 1),
-      labels = c(0, 0.5, 1),
-      limits = c(0, 1)
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::ggtitle(paste0("Coverage for participant ", participant_id))
+  # Plot the result if needed
+  if(plot) {
+    out <- ggplot2::ggplot(data = data,
+                           mapping = ggplot2::aes(x = Hour, y = measure, fill = Coverage)) +
+      ggplot2::geom_tile() +
+      ggplot2::geom_text(mapping = ggplot2::aes(label = Coverage), colour = "white") +
+      ggplot2::scale_x_continuous(breaks = 0:23) +
+      ggplot2::scale_fill_gradientn(
+        colours = c("#d70525", "#645a6c", "#3F7F93"),
+        breaks = c(0, 0.5, 1),
+        labels = c(0, 0.5, 1),
+        limits = c(0, 1)
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::ggtitle(paste0("Coverage for participant ", participant_id))
+    return(out)
+  } else {
+    return(data)
+  }
 }
 
 coverage_impl <- function(db, participant_id, sensor, frequency, relative, start_date, end_date) {
@@ -406,13 +436,16 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
   # the index of the table is not used. Hence, we rename participant_id to p_id
   p_id <- as.character(participant_id)
 
+  # Loop over each sensor and calculate the coverage rate for that sensor
   data <- furrr::future_map(.x = sensor, .f = ~ {
     tmp_db <- open_db(NULL, db@dbname)
 
+    # Extract the data for this participant and sensor
     tmp <- dplyr::tbl(tmp_db, .x) %>%
       dplyr::filter(participant_id == p_id) %>%
       dplyr::select(measurement_id, time, date)
 
+    # Filter by date if needed
     if (!is.null(start_date) && !is.null(end_date)) {
       tmp <- tmp %>%
         dplyr::filter(date >= start_date) %>%
@@ -420,15 +453,15 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
     }
 
     # Remove duplicate IDs with _ for certain sensors
-    if (.x %in% c(
-      "Accelerometer", "AppUsage", "Bluetooth",
-      "Calendar", "Gyroscope", "TextMessage"
-    )) {
+    if (.x %in% c("Accelerometer", "AppUsage", "Bluetooth",
+                  "Calendar", "Gyroscope", "TextMessage")) {
       tmp <- tmp %>%
         dplyr::mutate(measurement_id = substr(measurement_id, 1, 36)) %>%
         dplyr::distinct()
     }
 
+    # Calculate the number of average measurements per hour
+    # i.e. the sum of all measurements in that hour divided by n
     tmp <- tmp %>%
       dplyr::mutate(Hour = strftime("%H", time)) %>%
       # dplyr::mutate(Date = date(time)) %>%
@@ -436,29 +469,33 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
       dplyr::group_by(Hour) %>%
       dplyr::summarise(Coverage = sum(n, na.rm = TRUE) / n())
 
+    # Transfer the result to R's memory and ensure it's numeric
     tmp <- tmp %>%
       dplyr::collect() %>%
       dplyr::mutate(Hour = as.numeric(Hour),
                     Coverage = as.numeric(Coverage))
 
+    # Disconnect from the temporary database connection
     RSQLite::dbDisconnect(tmp_db)
 
+    # Calculate the relative target frequency ratio by dividing the average number of measurements
+    # per hour by the expected number of measurements
     if (relative) {
       tmp <- tmp %>%
-        # Calculate its relative target frequency ratio
         dplyr::mutate(Coverage = round(Coverage / frequency[.x], 2))
     }
 
     tmp %>%
       # Pour into ggplot format
       dplyr::mutate(measure = .x) %>%
-      # Complete missing hours with 0
+      # Fill in missing hours with 0
       tidyr::complete(Hour = 0:23,
                       measure = .x,
                       fill = list(Coverage = 0))
   }, .options = furrr::furrr_options(seed = TRUE))
 
-  names(data) <- names(frequency)
+  # Give the output list the sensor names
+  names(data) <- names(sensor)
 
   data
 }

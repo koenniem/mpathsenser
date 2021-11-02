@@ -82,6 +82,17 @@ open_db <- function(path = getwd(), db_name = "carp.db") {
 	return(db)
 }
 
+
+#' Close a database connection
+#'
+#' This is a convenience function that is simply a wrapper around \link[disconnect]{DBI}.
+#'
+#' @param db A database connection
+#' @export
+close_db <- function(db) {
+	DBI::dbDisconnect(db)
+}
+
 add_study <- function(db, data) {
 	RSQLite::dbExecute(db,
 	"INSERT INTO Study(study_id, data_format)
