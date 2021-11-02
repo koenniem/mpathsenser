@@ -110,47 +110,142 @@ last_date <- function(db, sensor, participant_id = NULL) {
 }
 
 
-
-# Function for linking mobile sensing and ESM data
-link <- function(x, y, by, offset) {
+#' Match y to the time scale of x
+#'
+#' Function for linking mobile sensing and ESM data
+#'
+#' assumption: both x and y have column "time" containing \link[datetimes]{DateTimeClasses}
+#'
+#' @param x,y A pair of data frames or data frame extensions (e.g. a tibble). Both \code{x} and \code{y} must have a column called \code{time}.
+#' @param by If NULL, the default, \code{*_join()} will perform a natural join, using all variables in common across \code{x} and \code{y}. A message lists the variables so that you can check they're correct; suppress the message by supplying by explicitly.
+#'
+#' To join by different variables on x and y, use a named vector. For example, \code{by = c("a" = "b")} will match \code{x$a} to \code{y$b}
+#'
+#' To join by multiple variables, use a vector with length > 1. For example, by = c("a", "b") will match \code{x$a} to \code{y$a} and \code{x$b} to \code{y$b}. Use a named vector to match different variables in x and y. For example, \code{by = c("a" = "b", "c" = "d")} will match \code{x$a} to \code{y$b} and \code{x$c} to \code{y$d}.
+#'
+#' To perform a cross-join, generating all combinations of \code{x} and \code{y}, use \code{by = character()}.
+#' @param offset The time window in which y is to be matched to x. Must be convertible to a period by \link[lubridate]{as.period}.
+#'
+#' @return A tibble with the data of \code{x} with a new column \code{data} with the matched data of \code{y} according to \code{offset}.
+#' @export
+link <- function(x, y, by = NULL, offset) {
 
   if(is.null(x) || !is.data.frame(x)) stop("x must be a data frame")
   if(is.null(y) || !is.data.frame(x)) stop("y must be a data frame")
+  if(!is.null(by) & !is.character(by)) stop("by must be a character vector of variables to join by")
+  if(is.null(offset) || !(is.character(offset) | lubridate::is.period(offset)))
+    stop("offset must be a character vector or a period")
 
-  if(is.expression(by)) by <- enquote(by)
+  if(is.character(offset)) offset <- lubridate::as.period(offset)
+  if(is.na(offset)) stop(paste("Invalid offset specified. Try something like '30 minutes' or",
+                               "lubridate::minutes(30). Note that negative values do not work when",
+                               "specifying character vectors, instead use minutes(-30)."))
+
+  # Check for time column
+  if(!("time" %in% colnames(x) & "time" %in% colnames(y)))
+    stop("column 'time' must be present in both x and y")
+  if(!is.POSIXt(x$time)) stop("column 'time' in x must be in a date time format")
+  if(!is.POSIXt(y$time)) stop("column 'time' in y must be in a date time format")
 
   # Match sensing data with ESM using a nested join
   # Set a startTime (beep time - offset) and an endTime (beep time)
-  dat <- x %>%
-    # filter(participant_id == p_id) %>%
-    mutate(startTime = time + offset) %>%
-    select(participant_id, startTime, endTime = time) %>%
-    nest_join(sensing_dat, by = "participant_id", name = "data") %>%
-    group_by(participant_id, startTime, endTime) # Group each row to prevent weird behaviour
+  res <- x %>%
+    dplyr::mutate(startTime = time + offset) %>%
+    dplyr::rename(endTime = time) %>%
+    dplyr::nest_join(y, by = by, name = "data") %>%
+    dplyr::mutate(id = row_number()) %>%
+    dplyr::group_by(id) # Group each row to prevent weird behaviour
 
   # Then, simply remove all rows in the nested tables that are not within the interval specified
   # by startTime and endTime
   if(offset < 0) {
-    res <- dat %>%
-      mutate(data = map(data, ~filter(., time >= startTime & time <= endTime)))
+    res <- res %>%
+      mutate(data = purrr::map(data, ~.[.$time >= startTime & .$time <= endTime,]))
   } else {
     # Reverse logic if interval occurs after beep
-    res <- dat %>%
-      mutate(data = map(data, ~filter(., time >= endTime & time <= startTime)))
+    res <- res %>%
+      mutate(data = purrr::map(data, ~.[.$time >= endTime & .$time <= startTime,]))
   }
+
+  res <- res %>%
+    ungroup() %>%
+    select(-c(id, startTime)) %>%
+    rename(time = endTime)
 
   res
 }
 
-link2 <- function(db, sensor, participant_id, start_date, end_date) {
-  # Retrieve mobile sensing data from database
-  # sensing_dat <- get_data(db, sensor, participant_id) %>%
-  #   collect() %>%
-  #   mutate(time = ymd_hms(paste(date, time)))
+#' Link two sensors OR one sensor and an external data frame
+#'
+#' This function is specific to CARP databases. It is a wrapper around \link[CARP]{link} but extracts data in the database for you.
+#'
+#' @param db A database connection to a CARP database.
+#' @param sensor_one The name of a primary sensor. See \link[CARP]{sensors} for a list of available sensors.
+#' @param sensor_two The name of a secondary sensor. See \link[CARP]{sensors} for a list of available sensors. Cannot be used together with \code{external}.
+#' @param offset The time window in which y is to be matched to x. Must be convertible to a period by \link[lubridate]{as.period}.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#' @param start_date Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.
+#' @param end_date Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.
+#' @param external Optionally, specify an external data frame. Cannot be used at the same time as a second sensor. This data frame must have a column called \code{time}.
+#' @param reverse Switch \code{sensor_one} with either \code{sensor_two} or \code{external}? Particularly useful in combination with \code{external}.
+#' @param ignore_large Safety override to prevent long wait times. Set to \code{TRUE} to do this function on lots of data.
+#'
+#' @return A tibble with the data of \code{sensor_one} with a new column \code{data} with the matched data of either \code{sensor_two} or \code{external} according to \code{offset}. The other way around when \code{reverse = TRUE}.
+#' @export
+link2 <- function(db, sensor_one, sensor_two = NULL, offset, participant_id = NULL,
+                  start_date = NULL, end_date = NULL, external = NULL, reverse = FALSE,
+                  ignore_large = FALSE) {
 
-  # copy participant_id since it has the same name as a column
-  # p_id <- participant_id
+  if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+  if (is.null(external) & is.null(sensor_two))
+    stop("either a second sensor or an external data frame must be supplied")
+  if (!is.null(external) & !is.null(sensor_two))
+    stop("only a second sensor or an external data frame can be supplied, but not both")
+  if (!is.null(external) && !is.data.frame(external)) stop("external must be a data frame")
+  if (!is.null(sensor_two) && !is.character(sensor_two))
+    stop("sensor_two must be a character vector")
+
+  # See if data is not incredibly large
+  if(!ignore_large) {
+    n <- sum(get_nrows(db, c(sensor_one, sensor_two), participant_id, start_date, end_date),
+             nrow(external))
+    if(n > 100000) {
+      stop("the total number of rows is higher than 100000. Use ignore_large = TRUE to continue")
+    }
+  }
+
+  if(!is.null(sensor_two)) {
+    dat_two <- get_data(db, sensor_two, participant_id, start_date, end_date) %>%
+      mutate(time = paste(date, time)) %>%
+      select(-date) %>%
+      collect() %>%
+      mutate(time = as.POSIXct(time))
+  } else {
+    dat_two <- external
+  }
+
+  # Get dates of dat_two to shrink dat_one as much as possible
+  dates <- unique(as.Date(dat_two$time))
+
+  dat_one <- get_data(db, sensor_one, participant_id, start_date, end_date) %>%
+    filter(date %in% dates) %>%
+    mutate(time = paste(date, time)) %>%
+    select(-date) %>%
+    collect() %>%
+    mutate(time = as.POSIXct(time))
+
+  if(reverse) {
+    tmp <- dat_one
+    dat_one <- dat_two
+    dat_two <- tmp
+  }
+
+  link(dat_one, dat_two, "participant_id", offset)
+
 }
+
 
 #' Get installed apps
 #'
@@ -185,8 +280,8 @@ get_installed_apps <- function(db, participant_id = NULL) {
 #' @param participant_id A character string identifying a single participant. Use
 #' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
 #' Leave empty to get data for all participants.
-#' @param startDate Optional search window specifying date where to begin search. Must be convertible to date using \code{link[base]{as.Date}}. Use \code{\link[CARP]{first_date}} to find the date of the first entry for a participant.
-#' @param endDate Optional search window specifying date where to end search. Must be convertible to date using \code{\link[base]{as.Date}}. Use \code{\link[CARP]{last_date}} to find the date of the last entry for a participant.
+#' @param start_date Optional search window specifying date where to begin search. Must be convertible to date using \code{link[base]{as.Date}}. Use \code{\link[CARP]{first_date}} to find the date of the first entry for a participant.
+#' @param end_date Optional search window specifying date where to end search. Must be convertible to date using \code{\link[base]{as.Date}}. Use \code{\link[CARP]{last_date}} to find the date of the last entry for a participant.
 #' @param by Either "Total", "Hour", or "Day" indicating how to summarise the results.
 #'
 #' @importFrom magrittr "%>%"
@@ -194,7 +289,7 @@ get_installed_apps <- function(db, participant_id = NULL) {
 #' @return A data frame containing a column "App" and a column "Usage" for the hourly app usage.
 #' @export
 get_app_usage <- function(db, participant_id = NULL,
-                          startDate = NULL, endDate = NULL,
+                          start_date = NULL, end_date = NULL,
                           by = c("Total", "Day", "Hour")) {
   if (!is.null(startDate) & is.null(endDate)) {
     endDate <- startDate
@@ -250,18 +345,18 @@ get_app_usage <- function(db, participant_id = NULL,
 #' @param participant_id A character string identifying a single participant. Use
 #' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
 #' Leave empty to get data for all participants.
-#' @param confidence
-#' @param direction
-#' @param startDate
-#' @param endDate
-#' @param by
+#' @param confidence The minimum confidence (0-100) that should be assigned to an observation by
+#' Activity Recognition.
+#' @param direction The directionality of the duration calculation, i.e. \eqn{t_{t-1} - t} or
+#' \eqn{t - t_{t+1}}.
+#' @param start_date Optional search window specifying date where to begin search. Must be convertible to date using \code{link[base]{as.Date}}. Use \code{\link[CARP]{first_date}} to find the date of the first entry for a participant.
+#' @param end_date Optional search window specifying date where to end search. Must be convertible to date using \code{\link[base]{as.Date}}. Use \code{\link[CARP]{last_date}} to find the date of the last entry for a participant.
+#' @param by Either "Total", "Hour", or "Day" indicating how to summarise the results.
 #'
-#' @return
+#' @return A data frame containing a column "activity" and a column "duration" for the hourly activity duration.
 #' @export
-#'
-#' @examples
 get_activity <- function(db, participant_id = NULL, confidence = 70, direction = "forward",
-                         startDate = NULL, endDate = NULL, by = c("Total", "Day", "Hour")) {
+                         start_date = NULL, end_date = NULL, by = c("Total", "Day", "Hour")) {
   data <- get_data(db, "Activity", participant_id) %>%
     dplyr::filter(confidence >= 70) %>%
     compress_activity() %>%
