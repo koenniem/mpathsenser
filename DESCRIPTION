@@ -26,13 +26,11 @@ Imports:
     purrr,
     ggplot2,
     rjson,
-    foreach,
+    jsonlite,
     future,
     furrr,
     sodium,
     tibble,
-    doFuture,
-    globals(>= 0.14.0),
     progressr,
     magrittr
 Suggests: 
