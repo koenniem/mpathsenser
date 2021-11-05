@@ -6,18 +6,19 @@
 #'
 #' @param from A path to copy files from.
 #' @param to A path to copy files to.
+#' @param recursive Should files from subdirectories be copied?
 #'
-#' @return Invisible result. Messages indicating how many files were copied.
+#' @return A message indicating how many files were copied.
 #' @export
 #'
 #' @examples
 #' \dontrun{
 #' ccopy("K:/data/myproject/", "~/myproject")
 #' }
-ccopy <- function(from, to = getwd()) {
+ccopy <- function(from, to = getwd(), recursive = TRUE) {
 	# from <- "K:/GHUM-PPW-MICAS-OKPIV-PHD_KOEN-0800-A/emosense/"
-	from_list <- dir(path = from, pattern = "*.zip$")
-	to_list <- dir(path = to, pattern = "*.zip$")
+	from_list <- dir(path = from, pattern = "*.zip$", recursive = recursive)
+	to_list <- dir(path = to, pattern = "*.zip$", recursive = recursive)
 	copy <- from_list[!(from_list %in% to_list)]
 	if (length(copy) == 0) {
 		return(message("No files left to copy"))
@@ -27,7 +28,7 @@ ccopy <- function(from, to = getwd()) {
 	invisible(do.call(file.copy, list(from = copy, to = to, overwrite = FALSE)))
 }
 
-#' Fix end-of-line of JSON files
+#' Fix the end of JSON files
 #'
 #' When copying data directly coming from CARP, JSON files are sometimes corrupted due to the
 #' app not properly closing them. This function attempts to fix the most common
@@ -35,6 +36,7 @@ ccopy <- function(from, to = getwd()) {
 #'
 #' @param path The path name of the JSON files.
 #' @param files Alternatively, a character list of the input files
+#' @param recursive Should the listing recurse into directories?
 #' @param parallel A logical value whether you want to check in parallel. Useful for a lot of files.
 #'
 #' @return A message indicating whether any files need to be fixed.
@@ -45,7 +47,7 @@ ccopy <- function(from, to = getwd()) {
 #' files <- test_jsons()
 #' fix_jsons(files = files)
 #' }
-fix_jsons <- function(path = getwd(), files = NULL, parallel = FALSE) {
+fix_jsons <- function(path = getwd(), files = NULL, recursive = TRUE, parallel = FALSE) {
 
 	if (is.null(path) || !is.character(path))
 		stop("path must be a character string of the path name")
@@ -55,7 +57,7 @@ fix_jsons <- function(path = getwd(), files = NULL, parallel = FALSE) {
 	# Find all JSON files that are _not_ zipped
 	# Thus, make sure you didn't unzip them yet, otherwise this may take a long time
 	if (is.null(files)) {
-		jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE, recursive = TRUE)
+		jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE, recursive = recursive)
 	} else {
 		jsonfiles <- files
 	}
@@ -94,26 +96,26 @@ fix_jsons_impl <- function(path, jsonfiles) {
 		}
 
 		# Cases where it can go wrong
-		if (eof[1] == "[") {
+		if (eof[1] == "[") { #1
 			write("]", file, append = TRUE)
 		} else if (eof[2] == "," & eof[3] == "{}]") {
 			return(0L)
-		} else if (eof[1] == "{}]" & eof[2] == "]" & eof[3] == "]") {
+		} else if (eof[1] == "{}]" & eof[2] == "]" & eof[3] == "]") { #2
 			write(lines[1:(length(lines) - 2)], file, append = FALSE)
-		} else if (eof[2] == "]" & eof[3] == "]") {
+		} else if (eof[2] == "]" & eof[3] == "]") { #3
 			write(lines[1:(length(lines) - 1)], file, append = FALSE)
-		} else if (eof[1] == "{}]" & eof[2] == "{}]" & eof[3] == "{}]") {
+		} else if (eof[1] == "{}]" & eof[2] == "{}]" & eof[3] == "{}]") { #4
 			write(lines[1:(length(lines) - 2)], file, append = FALSE)
-		} else if (eof[2] == "{}]" & eof[3] == "{}]") {
+		} else if (eof[2] == "{}]" & eof[3] == "{}]") { #5
 			write(lines[1:(length(lines) - 1)], file, append = FALSE)
-		} else if (eof[2] == "," & eof[3] == "]") {
+		} else if (eof[2] == "," & eof[3] == "]") { #6
 			write(lines[1:(length(lines) - 2)], file, append = FALSE)
 			write("]", file, append = TRUE)
-		} else if (eof[3] == ",") {
+		} else if (eof[3] == ",") { #7
 			write("{}]", file, append = TRUE)
-		} else if (eof[3] == "[") {
+		} else if (eof[3] == "[") { #8
 			write("]", file, append = TRUE)
-		} else if (nchar(eof[3]) > 3 && substr(eof[3], nchar(eof[3]) - 1, nchar(eof[3])) == "}}") {
+		} else if (nchar(eof[3]) > 3 && substr(eof[3], nchar(eof[3]) - 1, nchar(eof[3])) == "}}") { #9
 			write("]", file, append = TRUE)
 		} else {
 			return(0L)

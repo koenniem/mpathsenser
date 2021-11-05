@@ -2,14 +2,16 @@
 % Please edit documentation in R/utils.R
 \name{fix_jsons}
 \alias{fix_jsons}
-\title{Fix end-of-line of JSON files}
+\title{Fix the end of JSON files}
 \usage{
-fix_jsons(path = getwd(), files = NULL, parallel = FALSE)
+fix_jsons(path = getwd(), files = NULL, recursive = TRUE, parallel = FALSE)
 }
 \arguments{
 \item{path}{The path name of the JSON files.}
 
 \item{files}{Alternatively, a character list of the input files}
+
+\item{recursive}{Should the listing recurse into directories?}
 
 \item{parallel}{A logical value whether you want to check in parallel. Useful for a lot of files.}
 }

@@ -4,15 +4,17 @@
 \alias{ccopy}
 \title{Copy CARP zip files to a new location}
 \usage{
-ccopy(from, to = getwd())
+ccopy(from, to = getwd(), recursive = TRUE)
 }
 \arguments{
 \item{from}{A path to copy files from.}
 
 \item{to}{A path to copy files to.}
+
+\item{recursive}{Should files from subdirectories be copied?}
 }
 \value{
-Invisible result. Messages indicating how many files were copied.
+A message indicating how many files were copied.
 }
 \description{
 Copy zip files from a source destination to an origin destination where they do not yet exist.
