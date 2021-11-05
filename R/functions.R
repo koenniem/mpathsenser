@@ -10,6 +10,7 @@
 #' overwritten?
 #' @param backend Name of the database backend that is used. Currently, only RSQLite is supported.
 #' @param progress Logical value to show a progress bar or not.
+#' @param recursive Should the listing recurse into directories?
 #' @param parallel Logical value which indicates whether to do reading in and processing
 #' in parallel.
 #'
@@ -40,7 +41,7 @@ import <- function(path = getwd(),
   }
 
   # Check if database is valid
-  if(!is.null(db)) {
+  if (!is.null(db)) {
     if (!DBI::dbIsValid(db)) {
       stop("Database is not valid.")
     }
@@ -115,13 +116,13 @@ import_impl <- function(path, files, db_name) {
 
     # Try to read in the file. If the file is corrupted for some reason, skip this one
     file <- normalizePath(paste0(path, "/", files[i]))
-    if(!jsonlite::validate(readLines(file, warn = FALSE))) next
+    if (!jsonlite::validate(readLines(file, warn = FALSE))) next
 
     possible_error <- tryCatch({
       data <- rjson::fromJSON(file = file, simplify = FALSE)
     }, error = function(e) e)
 
-    if(inherits(possible_error, "error")) {
+    if (inherits(possible_error, "error")) {
       print(paste("Could not read", files[i]))
       next
     }
@@ -156,9 +157,9 @@ import_impl <- function(path, files, db_name) {
     safe_extract <- function(vec, var) {
       out <- lapply(vec, function(obs) {
         tmp <- eval(parse(text = paste0("obs[[1]]$", var)))
-        if(is.null(tmp)) return(NULL) else return(tmp)
+        if (is.null(tmp)) return(NULL) else return(tmp)
       })
-      if(all(unlist(lapply(out, is.null))))
+      if (all(unlist(lapply(out, is.null))))
         out <- rep("N/A", length(out))
       return(out)
     }
@@ -174,7 +175,7 @@ import_impl <- function(path, files, db_name) {
 
     # Due to the hacky solution above, filter out rows where the participant_id is missing, usually
     # in the last entry of a file
-    data <- data[!is.na(data$participant_id) & data$participant_id != "N/A",]
+    data <- data[!is.na(data$participant_id) & data$participant_id != "N/A", ]
 
     # Safe duplicate check before insertion
     # Check if file is already registered as processed
@@ -211,7 +212,7 @@ import_impl <- function(path, files, db_name) {
     # Call function for each sensor
     tryCatch({
       RSQLite::dbWithTransaction(tmp_db, {
-        for(j in seq_along(data)) {
+        for (j in seq_along(data)) {
           # Get sensor name
           sensor <- names(data)[[j]]
           tmp <- data[[sensor]]
@@ -293,9 +294,9 @@ freq <- c(
 #' Logical value.
 #' @param offset Currently not used.
 #' @param start_date A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
-#' the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.
+#' the earliest date to show. Leave empty for all data. Must be used with \code{end_date}.
 #' @param end_date A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
-#' the latest date to show.Leave empty for all data. Must be used with \code{startDate}.
+#' the latest date to show.Leave empty for all data. Must be used with \code{start_date}.
 #' @param plot Whether to return a ggplot or its underlying data.
 #'
 #' @importFrom magrittr "%>%"
@@ -386,9 +387,9 @@ coverage <- function(db,
     stop("Argument offset must be either 'None', 1 day, or 2, 3, 4, ... days.")
   }
 
-  # Check startDate, endDate
+  # Check start_date, end_date
   if ((!is.null(start_date) && !is.null(end_date)) && !is.null(offset)) {
-    warning("Argument startDate/endDate and offset cannot be present at the same time.
+    warning("Argument start_date/end_date and offset cannot be present at the same time.
 						Ignoring the offset argument.")
     offset <- NULL
   }
@@ -398,8 +399,8 @@ coverage <- function(db,
     # end_date <- last_date(db, "Accelerometer", participant_id)
   # }
   else if ((!is.null(start_date) | !is.null(end_date)) &&
-           (!(is(start_date, "Date") | is.character(start_date)) |
-           !(is(end_date, "Date") | is.character(end_date)))) {
+           (!(inherits(start_date, "Date") | is.character(start_date)) |
+           !(inherits(end_date, "Date") | is.character(end_date)))) {
     stop("start_date and end_date must be NULL, a character string, or date.")
   }
 
@@ -420,7 +421,7 @@ coverage <- function(db,
   data$measure <- factor(data$measure, levels = rev(levels(data$measure)))
 
   # Plot the result if needed
-  if(plot) {
+  if (plot) {
     out <- ggplot2::ggplot(data = data,
                            mapping = ggplot2::aes(x = Hour, y = measure, fill = Coverage)) +
       ggplot2::geom_tile() +

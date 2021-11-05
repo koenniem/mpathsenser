@@ -34,10 +34,10 @@ Logical value.}
 \item{offset}{Currently not used.}
 
 \item{start_date}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
-the earliest date to show. Leave empty for all data. Must be used with \code{endDate}.}
+the earliest date to show. Leave empty for all data. Must be used with \code{end_date}.}
 
 \item{end_date}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
-the latest date to show.Leave empty for all data. Must be used with \code{startDate}.}
+the latest date to show.Leave empty for all data. Must be used with \code{start_date}.}
 
 \item{plot}{Whether to return a ggplot or its underlying data.}
 }

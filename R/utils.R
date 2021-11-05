@@ -47,20 +47,20 @@ ccopy <- function(from, to = getwd()) {
 #' }
 fix_jsons <- function(path = getwd(), files = NULL, parallel = FALSE) {
 
-	if(is.null(path) || !is.character(path))
+	if (is.null(path) || !is.character(path))
 		stop("path must be a character string of the path name")
-	if(!is.null(files) && !is.character(files))
+	if (!is.null(files) && !is.character(files))
 		stop("files must be NULL or a character vector of file names")
 
 	# Find all JSON files that are _not_ zipped
 	# Thus, make sure you didn't unzip them yet, otherwise this may take a long time
-	if(is.null(files)) {
+	if (is.null(files)) {
 		jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE, recursive = TRUE)
 	} else {
 		jsonfiles <- files
 	}
 
-	if(parallel) {
+	if (parallel) {
 		future::plan(future::multisession)
 	}
 
@@ -74,7 +74,7 @@ fix_jsons <- function(path = getwd(), files = NULL, parallel = FALSE) {
 		return(message("No JSON files found."))
 	}
 
-	if(parallel) {
+	if (parallel) {
 		future::plan(future::sequential)
 	}
 
@@ -87,7 +87,7 @@ fix_jsons_impl <- function(path, jsonfiles) {
 		p()
 		file <- normalizePath(paste0(path, "/", path.expand(.x)))
 		lines <- readLines(file)
-		if(length(lines) > 2) {
+		if (length(lines) > 2) {
 			eof <- lines[(length(lines) - 2):length(lines)]
 		} else {
 			eof <- lines
@@ -126,10 +126,15 @@ fix_jsons_impl <- function(path, jsonfiles) {
 #'
 #' @param path The path name of the JSON files.
 #' @param files Alternatively, a character list of the input files.
-#' @param db A CARP database connection (optional). If provided, will be used to check which files are already in the database and check only those JSON files which are not.
-#' @param parallel A logical value whether you want to check in parallel. Useful when there are a lot of files. If you have already used \code{\link[future]{plan}}, you can leave this parameter to \code{FALSE}.
+#' @param db A CARP database connection (optional). If provided, will be used to check which files
+#' are already in the database and check only those JSON files which are not.
+#' @param recursive Should the listing recurse into directories?
+#' @param parallel A logical value whether you want to check in parallel. Useful when there are a
+#' lot of files. If you have already used \code{\link[future]{plan}}, you can leave this parameter
+#' to \code{FALSE}.
 #'
-#' @return A message indicating whether there were any issues and a character vector of the file names that need to be fixed. If there were no issues, no result is returned.
+#' @return A message indicating whether there were any issues and a character vector of the file
+#' names that need to be fixed. If there were no issues, no result is returned.
 #' @export
 test_jsons <- function(path = getwd(),
 											 files = NULL,
@@ -137,23 +142,23 @@ test_jsons <- function(path = getwd(),
 											 recursive = TRUE,
 											 parallel = FALSE) {
 
-	if(is.null(path) || !is.character(path))
+	if (is.null(path) || !is.character(path))
 		stop("path must be a character string of the path name")
-	if(!is.null(files) && !is.character(files))
+	if (!is.null(files) && !is.character(files))
 		stop("files must be NULL or a character vector of file names")
 
-	if(is.null(files)) {
+	if (is.null(files)) {
 		jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE, recursive = recursive)
 	} else {
 		jsonfiles <- files
 	}
 
-	if(!is.null(db)) {
+	if (!is.null(db)) {
 		processed_files <- get_processed_files(db)
 		jsonfiles <- jsonfiles[!(jsonfiles %in% processed_files$file_name)]
 	}
 
-	if(parallel) {
+	if (parallel) {
 		future::plan(future::multisession)
 	}
 
@@ -165,12 +170,12 @@ test_jsons <- function(path = getwd(),
 		})
 	})
 
-	if(parallel) {
+	if (parallel) {
 		future::plan(future::sequential)
 	}
 
 	jsonfiles <- jsonfiles[!missing]
-	if(length(jsonfiles) == 0) {
+	if (length(jsonfiles) == 0) {
 		message("No issues found.")
 		return(invisible(""))
 	} else {
@@ -188,15 +193,17 @@ test_jsons <- function(path = getwd(),
 #' @param overwrite Logical value whether you want to overwrite already existing zip files.
 #' @param recursive Logical value indicating whether to unzip files in subdirectories as well. These
 #' files will then be unzipped in their respective subdirectory.
-#' @param parallel A logical value whether you want to check in parallel. Useful when there are a lot of files. If you have already used \code{future::plan}, you can leave this parameter to \code{FALSE}.
+#' @param parallel A logical value whether you want to check in parallel. Useful when there are a
+#' lot of files. If you have already used \code{future::plan}, you can leave this parameter to
+#' \code{FALSE}.
 #'
 #' @export
 unzip_carp <- function(path = getwd(), overwrite = FALSE, recursive = TRUE, parallel = FALSE) {
-	if(is.null(path) || !is.character(path)) stop("path must be a character string")
-	if(is.null(overwrite) || !is.logical(overwrite)) stop("overwrite must be TRUE or FALSE")
-	if(is.null(recursive) || !is.logical(recursive)) stop("recursive must be TRUE or FALSE")
+	if (is.null(path) || !is.character(path)) stop("path must be a character string")
+	if (is.null(overwrite) || !is.logical(overwrite)) stop("overwrite must be TRUE or FALSE")
+	if (is.null(recursive) || !is.logical(recursive)) stop("recursive must be TRUE or FALSE")
 
-	if(parallel) {
+	if (parallel) {
 		future::plan(future::multisession)
 	}
 
@@ -218,11 +225,11 @@ unzip_carp <- function(path = getwd(), overwrite = FALSE, recursive = TRUE, para
 		unzipped_files <- unzip_impl(path, overwrite)
 	}
 
-	if(parallel) {
+	if (parallel) {
 		future::plan(future::sequential)
 	}
 
-	if(unzipped_files > 0) {
+	if (unzipped_files > 0) {
 		message(paste("Unzipped", unzipped_files, "files."))
 	} 	else {
 		message("No files found to unzip.")
@@ -232,14 +239,14 @@ unzip_carp <- function(path = getwd(), overwrite = FALSE, recursive = TRUE, para
 unzip_impl <- function(path, overwrite) {
 	# Get all json and zipfiles in the path
 	jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE)
-	tag.json <- sapply(strsplit(jsonfiles, "carp-data-"), function(x) x[2])
+	tag_json <- sapply(strsplit(jsonfiles, "carp-data-"), function(x) x[2])
 	zipfiles <- dir(path = path, pattern = "*.zip$", all.files = TRUE)
-	tag.zip <- sapply(strsplit(zipfiles, "carp-data-"), function(x) x[2])
-	tag.zip <- substr(tag.zip, 1, nchar(tag.zip) - 4)
+	tag_zip <- sapply(strsplit(zipfiles, "carp-data-"), function(x) x[2])
+	tag_zip <- substr(tag_zip, 1, nchar(tag_zip) - 4)
 
 	# Do not unzip files that already exist as JSON file
-	if(!overwrite) {
-		zipfiles <- zipfiles[!(tag.zip %in% tag.json)]
+	if (!overwrite) {
+		zipfiles <- zipfiles[!(tag_zip %in% tag_json)]
 	}
 
 

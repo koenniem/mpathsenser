@@ -10,5 +10,5 @@ close_db(db)
 \item{db}{A database connection}
 }
 \description{
-This is a convenience function that is simply a wrapper around \link[disconnect]{DBI}.
+This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
 }

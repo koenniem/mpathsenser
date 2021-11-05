@@ -3,6 +3,7 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^public$
 ^\.gitlab-ci\.yml$
 ^.*\.db$
 ^.*[.]db$

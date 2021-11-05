@@ -7,24 +7,34 @@
 link(x, y, by = NULL, offset)
 }
 \arguments{
-\item{x, y}{A pair of data frames or data frame extensions (e.g. a tibble). Both \code{x} and \code{y} must have a column called \code{time}.}
+\item{x, y}{A pair of data frames or data frame extensions (e.g. a tibble). Both \code{x} and
+\code{y} must have a column called \code{time}.}
 
-\item{by}{If NULL, the default, \code{*_join()} will perform a natural join, using all variables in common across \code{x} and \code{y}. A message lists the variables so that you can check they're correct; suppress the message by supplying by explicitly.
+\item{by}{If NULL, the default, \code{*_join()} will perform a natural join, using all variables
+in common across \code{x} and \code{y}. A message lists the variables so that you can check
+they're correct; suppress the message by supplying by explicitly.
 
-To join by different variables on x and y, use a named vector. For example, \code{by = c("a" = "b")} will match \code{x$a} to \code{y$b}
+To join by different variables on x and y, use a named vector. For example,
+\code{by = c("a" = "b")} will match \code{x$a} to \code{y$b}
 
-To join by multiple variables, use a vector with length > 1. For example, by = c("a", "b") will match \code{x$a} to \code{y$a} and \code{x$b} to \code{y$b}. Use a named vector to match different variables in x and y. For example, \code{by = c("a" = "b", "c" = "d")} will match \code{x$a} to \code{y$b} and \code{x$c} to \code{y$d}.
+To join by multiple variables, use a vector with length > 1. For example, by = c("a", "b") will
+match \code{x$a} to \code{y$a} and \code{x$b} to \code{y$b}. Use a named vector to match
+different variables in x and y. For example, \code{by = c("a" = "b", "c" = "d")} will match
+\code{x$a} to \code{y$b} and \code{x$c} to \code{y$d}.
 
-To perform a cross-join, generating all combinations of \code{x} and \code{y}, use \code{by = character()}.}
+To perform a cross-join, generating all combinations of \code{x} and \code{y}, use
+\code{by = character()}.}
 
-\item{offset}{The time window in which y is to be matched to x. Must be convertible to a period by \link[lubridate]{as.period}.}
+\item{offset}{The time window in which y is to be matched to x. Must be convertible to a period
+by \link[lubridate]{as.period}.}
 }
 \value{
-A tibble with the data of \code{x} with a new column \code{data} with the matched data of \code{y} according to \code{offset}.
+A tibble with the data of \code{x} with a new column \code{data} with the matched data
+of \code{y} according to \code{offset}.
 }
 \description{
 Function for linking mobile sensing and ESM data
 }
 \details{
-assumption: both x and y have column "time" containing \link[datetimes]{DateTimeClasses}
+assumption: both x and y have column "time" containing \link[base]{DateTimeClasses}
 }

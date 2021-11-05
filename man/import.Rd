@@ -29,6 +29,8 @@ overwritten?}
 
 \item{progress}{Logical value to show a progress bar or not.}
 
+\item{recursive}{Should the listing recurse into directories?}
+
 \item{parallel}{Logical value which indicates whether to do reading in and processing
 in parallel.}
 }

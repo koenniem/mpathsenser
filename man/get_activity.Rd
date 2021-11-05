@@ -27,14 +27,19 @@ Activity Recognition.}
 \item{direction}{The directionality of the duration calculation, i.e. \eqn{t_{t-1} - t} or
 \eqn{t - t_{t+1}}.}
 
-\item{start_date}{Optional search window specifying date where to begin search. Must be convertible to date using \code{link[base]{as.Date}}. Use \code{\link[CARP]{first_date}} to find the date of the first entry for a participant.}
+\item{start_date}{Optional search window specifying date where to begin search. Must be
+convertible to date using \code{link[base]{as.Date}}. Use \code{\link[CARP]{first_date}} to find
+the date of the first entry for a participant.}
 
-\item{end_date}{Optional search window specifying date where to end search. Must be convertible to date using \code{\link[base]{as.Date}}. Use \code{\link[CARP]{last_date}} to find the date of the last entry for a participant.}
+\item{end_date}{Optional search window specifying date where to end search. Must be convertible
+to date using \code{\link[base]{as.Date}}. Use \code{\link[CARP]{last_date}} to find the date of
+the last entry for a participant.}
 
 \item{by}{Either "Total", "Hour", or "Day" indicating how to summarise the results.}
 }
 \value{
-A data frame containing a column "activity" and a column "duration" for the hourly activity duration.
+A data frame containing a column "activity" and a column "duration" for the hourly
+activity duration.
 }
 \description{
 Get a summary of physical activity (recognition)

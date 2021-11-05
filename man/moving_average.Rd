@@ -10,8 +10,8 @@ moving_average(
   participant_id,
   ...,
   n,
-  startDate = NULL,
-  endDate = NULL
+  start_date = NULL,
+  end_date = NULL
 )
 }
 \arguments{
@@ -27,9 +27,13 @@ Leave empty to get data for all participants.}
 
 \item{n}{The number of observations to average over.}
 
-\item{startDate}{Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.}
+\item{start_date}{Optional search window specifying date where to begin search. Must be
+convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of
+the first entry for a participant.}
 
-\item{endDate}{Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.}
+\item{end_date}{Optional search window specifying date where to end search. Must be convertible
+to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last
+entry for a participant.}
 }
 \value{
 A tibble with the same columns as the input, modified to be a moving average.

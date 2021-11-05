@@ -7,8 +7,8 @@
 screen_duration(
   db,
   participant_id,
-  startDate = NULL,
-  endDate = NULL,
+  start_date = NULL,
+  end_date = NULL,
   by = c("Hour", "Day")
 )
 }
@@ -19,14 +19,21 @@ screen_duration(
 \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
 Leave empty to get data for all participants.}
 
-\item{startDate}{Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.}
+\item{start_date}{Optional search window specifying date where to begin search. Must be
+convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of
+the first entry for a participant.}
 
-\item{endDate}{Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.}
+\item{end_date}{Optional search window specifying date where to end search. Must be convertible
+to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last
+entry for a participant.}
 
-\item{by}{Either "Hour" or "Day" indicating how to summarise the results. Leave empty to get raw screen duration per measurement.}
+\item{by}{Either "Hour" or "Day" indicating how to summarise the results. Leave empty to get raw
+screen duration per measurement.}
 }
 \value{
-A tibble with either "hour" and "duration" columns or "date" and "duration" columns depending on the \code{by} argument. Alternatively, if no \code{by} is specified, a remote tibble is returned with the date, time, and duration since the previous measurement.
+A tibble with either "hour" and "duration" columns or "date" and "duration" columns
+depending on the \code{by} argument. Alternatively, if no \code{by} is specified, a remote
+tibble is returned with the date, time, and duration since the previous measurement.
 }
 \description{
 Calculate the screen duration time where the screen was \emph{unlocked} (i.e. not just on).

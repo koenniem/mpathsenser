@@ -7,8 +7,8 @@
 n_screen_on(
   db,
   participant_id,
-  startDate = NULL,
-  endDate = NULL,
+  start_date = NULL,
+  end_date = NULL,
   by = c("Total", "Hour", "Day")
 )
 }
@@ -19,14 +19,20 @@ n_screen_on(
 \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
 Leave empty to get data for all participants.}
 
-\item{startDate}{Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.}
+\item{start_date}{Optional search window specifying date where to begin search. Must be
+convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of
+the first entry for a participant.}
 
-\item{endDate}{Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.}
+\item{end_date}{Optional search window specifying date where to end search. Must be convertible
+to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last
+entry for a participant.}
 
-\item{by}{Either "Total", "Hour", or "Day" indicating how to summarise the results. Defaults to total.}
+\item{by}{Either "Total", "Hour", or "Day" indicating how to summarise the results. Defaults to
+total.}
 }
 \value{
-In case of grouping is by the total amount, returns a single numeric value. For date and hour grouping returns a tibble with columns "date" or "hour" and the number of screen on's "n".
+In case of grouping is by the total amount, returns a single numeric value. For date and
+hour grouping returns a tibble with columns "date" or "hour" and the number of screen on's "n".
 }
 \description{
 Get number of times screen turned on

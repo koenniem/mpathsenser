@@ -4,7 +4,7 @@
 \alias{step_count}
 \title{Get step count}
 \usage{
-step_count(db, participant_id, startDate = NULL, endDate = NULL)
+step_count(db, participant_id, start_date = NULL, end_date = NULL)
 }
 \arguments{
 \item{db}{A database connection to a CARP database.}
@@ -13,9 +13,13 @@ step_count(db, participant_id, startDate = NULL, endDate = NULL)
 \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
 Leave empty to get data for all participants.}
 
-\item{startDate}{Optional search window specifying date where to begin search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of the first entry for a participant.}
+\item{start_date}{Optional search window specifying date where to begin search. Must be
+convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of
+the first entry for a participant.}
 
-\item{endDate}{Optional search window specifying date where to end search. Must be convertible to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last entry for a participant.}
+\item{end_date}{Optional search window specifying date where to end search. Must be convertible
+to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last
+entry for a participant.}
 }
 \value{
 A tibble with the "date", "hour", and the number of "steps".
