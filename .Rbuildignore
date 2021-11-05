@@ -1,18 +1,14 @@
-^CARP\.Rproj$
+^.*\.Rproj$ 
+^\CARP.Rproj$
 ^\.Rproj\.user$
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
 ^public$
 ^\.gitlab-ci\.yml$
-^.*\.db$
-^.*[.]db$
-^koen\.db$
-^test\.db$
-^carp\.db$
-^carp - Copy\.db$
-^pilot\.db$
-^pilot2\.db$
 ^\.github$
 ^LICENSE\.md$
 ^data-raw$
+^README\.Rmd$ 
+^cran-comments\.md$
+^ci/lib$
