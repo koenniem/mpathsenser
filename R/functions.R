@@ -108,16 +108,23 @@ import_impl <- function(path, files, db_name) {
   p <- progressr::progressor(length(files))
 
   # furrr::map_walk(file, ~{})
-  # foreach::`%dopar%`(foreach::foreach(i = 1:length(files)), {
   for (i in seq_along(files)) {
+
     # Update progress bar
     p(sprintf("x=%g", i))
 
     # Try to read in the file. If the file is corrupted for some reason, skip this one
+    file <- normalizePath(paste0(path, "/", files[i]))
+    if(!jsonlite::validate(readLines(file, warn = FALSE))) next
+
     possible_error <- tryCatch({
-      data <- rjson::fromJSON(file = normalizePath(paste0(path, "/", files[i])), simplify = FALSE)
-    }, error = \(e) print(paste("Could not read", files[i])))
-    if(inherits(possible_error, "error")) next
+      data <- rjson::fromJSON(file = file, simplify = FALSE)
+    }, error = function(e) e)
+
+    if(inherits(possible_error, "error")) {
+      print(paste("Could not read", files[i]))
+      next
+    }
 
     # Open db
     tmp_db <- open_db(NULL, db_name)
@@ -167,7 +174,7 @@ import_impl <- function(path, files, db_name) {
 
     # Due to the hacky solution above, filter out rows where the participant_id is missing, usually
     # in the last entry of a file
-    data <- data[!is.na(data$participant_id)&data$participant_id!="N/A",]
+    data <- data[!is.na(data$participant_id) & data$participant_id != "N/A",]
 
     # Safe duplicate check before insertion
     # Check if file is already registered as processed
@@ -203,18 +210,20 @@ import_impl <- function(path, files, db_name) {
 
     # Call function for each sensor
     tryCatch({
-        RSQLite::dbWithTransaction(tmp_db, {
-          for(j in seq_along(data)) {
-            # Get sensor name
-            sensor <- names(data)[[j]]
-            tmp <- data[[sensor]]
-            which_sensor(tmp_db, tmp, sensor)
-          }
-        })
+      RSQLite::dbWithTransaction(tmp_db, {
+        for(j in seq_along(data)) {
+          # Get sensor name
+          sensor <- names(data)[[j]]
+          tmp <- data[[sensor]]
+          which_sensor(tmp_db, tmp, sensor)
+        }
+      })
 
-        # Add file to list of processed files
-        add_processed_file(tmp_db, this_file)
-      }, error = function(e) {}) # Empty for now
+      # Add file to list of processed files
+      add_processed_file(tmp_db, this_file)
+    }, error = function(e) {
+      print(paste0("transaction failed for file ", files[i]))
+    })
 
     # Close db connection of worker
     RSQLite::dbDisconnect(tmp_db)

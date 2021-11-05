@@ -161,10 +161,7 @@ test_jsons <- function(path = getwd(),
 		p <- progressr::progressor(steps = length(jsonfiles))
 		missing <- furrr::future_map_lgl(jsonfiles, ~{
 			p()
-			tryCatch({
-				rjson::fromJSON(file = normalizePath(paste0(path, "/", .x)), simplify = FALSE)
-				return(FALSE)
-			}, error = function(e) return(TRUE))
+			jsonlite::validate(readLines(normalizePath(paste0(path, "/", .x)), warn = FALSE))
 		})
 	})
 
@@ -172,7 +169,7 @@ test_jsons <- function(path = getwd(),
 		future::plan(future::sequential)
 	}
 
-	jsonfiles <- jsonfiles[missing]
+	jsonfiles <- jsonfiles[!missing]
 	if(length(jsonfiles) == 0) {
 		message("No issues found.")
 		return(invisible(""))
@@ -210,7 +207,7 @@ unzip_carp <- function(path = getwd(), overwrite = FALSE, recursive = TRUE, para
 		dirs <- dirs[2:length(dirs)]
 
 		progressr::with_progress({
-			p <- progressr::progressor(steps = length(jsonfiles))
+			p <- progressr::progressor(steps = length(dirs))
 			unzipped_files <- furrr::future_map_int(dirs, ~{
 				p()
 				unzip_impl(.x, overwrite)
