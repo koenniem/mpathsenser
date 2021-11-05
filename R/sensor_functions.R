@@ -151,7 +151,7 @@ link <- function(x, y, by = NULL, offset) {
   # Set a startTime (beep time - offset) and an endTime (beep time)
   res <- x %>%
     dplyr::mutate(startTime = time + offset) %>%
-    dplyr::rename(endTime = time) %>%
+    dplyr::mutate(endTime = time) %>%
     dplyr::nest_join(y, by = by, name = "data") %>%
     dplyr::mutate(id = row_number()) %>%
     dplyr::group_by(id) # Group each row to prevent weird behaviour
