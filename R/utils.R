@@ -89,14 +89,17 @@ fix_jsons_impl <- function(path, jsonfiles) {
 		p()
 		file <- normalizePath(paste0(path, "/", path.expand(.x)))
 		lines <- readLines(file)
-		if (length(lines) > 2) {
+
+		if (length(lines) == 0) {
+			return(0L)
+		} else if (length(lines) > 2) {
 			eof <- lines[(length(lines) - 2):length(lines)]
 		} else {
 			eof <- lines
 		}
 
 		# Cases where it can go wrong
-		if (eof[1] == "[") { #1
+		if (length(eof) == 1 & eof[1] == "[") { #1
 			write("]", file, append = TRUE)
 		} else if (eof[2] == "," & eof[3] == "{}]") {
 			return(0L)
@@ -168,7 +171,11 @@ test_jsons <- function(path = getwd(),
 		p <- progressr::progressor(steps = length(jsonfiles))
 		missing <- furrr::future_map_lgl(jsonfiles, ~{
 			p()
-			jsonlite::validate(readLines(normalizePath(paste0(path, "/", .x)), warn = FALSE))
+			str <- readLines(normalizePath(paste0(path, "/", .x)), warn = FALSE)
+			if (length(str) == 0) { # empty file
+				return(TRUE)
+			}
+		  jsonlite::validate(str)
 		})
 	})
 
