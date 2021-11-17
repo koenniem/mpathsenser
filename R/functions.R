@@ -116,10 +116,12 @@ import_impl <- function(path, files, db_name) {
 
     # Try to read in the file. If the file is corrupted for some reason, skip this one
     file <- normalizePath(paste0(path, "/", files[i]))
-    if (!jsonlite::validate(readLines(file, warn = FALSE))) next
+    file <- readLines(file, warn =FALSE)
+    file <- paste0(file, collapse = "")
+    if (!jsonlite::validate(file)) next
 
     possible_error <- tryCatch({
-      data <- rjson::fromJSON(file = file, simplify = FALSE)
+      data <- rjson::fromJSON(file, simplify = FALSE)
     }, error = function(e) e)
 
     if (inherits(possible_error, "error")) {
@@ -164,8 +166,10 @@ import_impl <- function(path, files, db_name) {
       return(out)
     }
     data$study_id <- safe_extract(data$header, "study_id")
-    data$device_role_name <- safe_extract(data$header, "device_role_name")
-    data$trigger_id <- safe_extract(data$header, "trigger_id")
+    # data$device_role_name <- safe_extract(data$header, "device_role_name")
+    # data$trigger_id <- safe_extract(data$header, "trigger_id")
+    data$device_role_name <- NULL
+    data$trigger_id <- NULL
     data$participant_id <- safe_extract(data$header, "user_id")
     data$start_time <- safe_extract(data$header, "start_time")
     data$data_format <- safe_extract(data$header, "data_format$namespace")
@@ -211,12 +215,18 @@ import_impl <- function(path, files, db_name) {
 
     # Call function for each sensor
     tryCatch({
+      data <- furrr::future_imap(data, ~which_sensor(.x, .y))
+
+      # Set names to capitals in accordance with the table names
+      names <- strsplit(names(data), "_")
+      names <- lapply(names, function(x)
+        paste0(toupper(substring(x, 1, 1)), substring(x, 2), collapse = ""))
+      names[names=="Apps"] <- "InstalledApps" # Except InstalledApps...
+      names(data) <- names
+
       RSQLite::dbWithTransaction(tmp_db, {
         for (j in seq_along(data)) {
-          # Get sensor name
-          sensor <- names(data)[[j]]
-          tmp <- data[[sensor]]
-          which_sensor(tmp_db, tmp, sensor)
+          save2db(tmp_db, names(data)[[j]], data[[j]])
         }
       })
 
@@ -229,33 +239,6 @@ import_impl <- function(path, files, db_name) {
     # Close db connection of worker
     RSQLite::dbDisconnect(tmp_db)
   }
-}
-
-
-#' Calculate total acceleration from x, y, and z coordinates
-#'
-#' A convenience function to calculate the total acceleration in either or a local or remote
-#' tibble.
-#'
-#' @param data A data frame or a remote data frame connection through \link[dplyr]{tbl}.
-#' @param colname The name of the newly added column containing the total acceleration.
-#' @param x Acceleration along the x-axis.
-#' @param y Acceleration along the y-axis.
-#' @param z Acceleration along the z-axis.
-#' @param gravity Gravity in meters per second. Defaults to 9.810467. Set to 0 to ignore.
-#'
-#' @return The input data with a column \code{colname} attached.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' db <- open_db()
-#' tbl(db, "Accelerometer") %>%
-#'   total_acceleration("total_acc")
-#' }
-total_acceleration <- function(data, colname, x = x, y = y, z = z, gravity = 9.810467) {
-  data %>%
-    dplyr::mutate(!!colname := sqrt((x)^2 + (y)^2 + (z - gravity)^2))
 }
 
 #' Measurement frequencies per sensor

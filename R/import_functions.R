@@ -15,33 +15,33 @@ save2db <- function(db, name, data) {
   })
 }
 
-which_sensor <- function(db, data, sensor) {
+which_sensor <- function(data, sensor) {
   switch(sensor,
-    accelerometer = accelerometer_fun(db, data),
-    activity = activity_fun(db, data),
-    air_quality = air_quality_fun(db, data),
-    app_usage = app_usage_fun(db, data),
-    apps = apps_fun(db, data),
-    battery = battery_fun(db, data),
-    bluetooth = bluetooth_fun(db, data),
-    calendar = calendar_fun(db, data),
-    connectivity = connectivity_fun(db, data),
-    device = device_fun(db, data),
-    error = error_fun(db, data),
-    geofence = geofence_fun(db, data),
-    gyroscope = gyroscope_fun(db, data),
-    keyboard = keyboard_fun(db, data),
-    light = light_fun(db, data),
-    location = location_fun(db, data),
-    memory = memory_fun(db, data),
-    mobility = mobility_fun(db, data),
-    noise = noise_fun(db, data),
-    phone_log = phone_log_fun(db, data),
-    pedometer = pedometer_fun(db, data),
-    screen = screen_fun(db, data),
-    text_message = text_message_fun(db, data),
-    weather = weather_fun(db, data),
-    wifi = wifi_fun(db, data)
+    accelerometer = accelerometer_fun(data),
+    activity = activity_fun(data),
+    air_quality = air_quality_fun(data),
+    app_usage = app_usage_fun(data),
+    apps = apps_fun(data),
+    battery = battery_fun(data),
+    bluetooth = bluetooth_fun(data),
+    calendar = calendar_fun(data),
+    connectivity = connectivity_fun(data),
+    device = device_fun(data),
+    error = error_fun(data),
+    geofence = geofence_fun(data),
+    gyroscope = gyroscope_fun(data),
+    keyboard = keyboard_fun(data),
+    light = light_fun(data),
+    location = location_fun(data),
+    memory = memory_fun(data),
+    mobility = mobility_fun(data),
+    noise = noise_fun(data),
+    phone_log = phone_log_fun(data),
+    pedometer = pedometer_fun(data),
+    screen = screen_fun(data),
+    text_message = text_message_fun(data),
+    weather = weather_fun(data),
+    wifi = wifi_fun(data)
   ) # default
 }
 
@@ -56,8 +56,8 @@ safe_data_frame <- function(...) {
 safe_tibble <- function(...) {
   x <- suppressWarnings(list(...))
   x <- lapply(x, function(x) if (is.null(x)) NA else x)
-  x <- lapply(x, function(x) if (length(x) == 0) NA else x) # lists
-  x <- dplyr::as_tibble(x)
+  x <- lapply(x, function(x) if (length(x[[1]]) == 0) NA else x) # lists
+  x <- tibble::as_tibble(x)
   x
 }
 
@@ -69,7 +69,7 @@ default_fun <- function(data) {
   data
 }
 
-accelerometer_fun <- function(db, data) {
+accelerometer_fun <- function(data) {
   # Determine whether this is a continuous accelerometer or periodic
   if (length(data$body[[1]]$body) == 5) {
     data <- default_fun(data)
@@ -78,18 +78,18 @@ accelerometer_fun <- function(db, data) {
   }
 
   # Put into right data format
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    time = substr(data$timestamp, 12, 23),
     x = data$x,
     y = data$y,
     z = data$z
   )
 
   # Save to database
-  save2db(db, "Accelerometer", data)
+  # save2db(db, "Accelerometer", data)
 }
 
 periodic_accelerometer_fun <- function(data) {
@@ -100,17 +100,16 @@ periodic_accelerometer_fun <- function(data) {
 
   # TODO: Consider unique ID constraint
   # Temporary fix
-  data <- dplyr::group_by(data, id)
-  data <- dplyr::mutate(data, id = paste0(id, "_", 1:dplyr::n()))
-  data <- dplyr::ungroup(data)
-
-  data
+  data %>%
+    dplyr::group_by(id) %>%
+    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
+    dplyr::ungroup()
 }
 
-activity_fun <- function(db, data) {
+activity_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -119,13 +118,13 @@ activity_fun <- function(db, data) {
     type = data$type
   )
 
-  save2db(db, "Activity", data)
+  # save2db(db, "Activity", data)
 }
 
-air_quality_fun <- function(db, data) {
+air_quality_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -138,10 +137,10 @@ air_quality_fun <- function(db, data) {
     longitude = data$longitude
   )
 
-  save2db(db, "AirQuality", data)
+  # save2db(db, "AirQuality", data)
 }
 
-app_usage_fun <- function(db, data) {
+app_usage_fun <- function(data) {
   data$body <- lapply(data$body, function(x) x$body)
   data$body <- suppressWarnings(lapply(data$body, dplyr::bind_rows))
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
@@ -156,11 +155,12 @@ app_usage_fun <- function(db, data) {
 
   # TODO: Consider unique ID constraint
   # Temporary fix
-  data <- dplyr::group_by(data, id)
-  data <- dplyr::mutate(data, id = paste0(id, "_", 1:dplyr::n()))
-  data <- dplyr::ungroup(data)
+  data <- data %>%
+    dplyr::group_by(id) %>%
+    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
+    dplyr::ungroup()
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -171,39 +171,50 @@ app_usage_fun <- function(db, data) {
     app = data$app
   )
 
-  save2db(db, "AppUsage", data)
+  # save2db(db, "AppUsage", data)
 }
 
 # TODO: Simplify and add timestamp and id
-apps_fun <- function(db, data) {
-  data$body <- lapply(data$body, function(x) x$body)
-  data$body <- lapply(data$body, function(x) {
-    tibble::tibble(
-      id = x$id,
-      timestamp = x$timestamp,
-      apps = list(x$installed_apps)
-    )
-  })
-  data <- tidyr::unnest(data, body, keep_empty = TRUE)
-  data$apps <- sapply(data$apps, function(x) paste0(x, collapse = "|"))
+apps_fun <- function(data) {
+  # data$body <- lapply(data$body, function(x) x$body)
+  # data$body <- lapply(data$body, function(x) {
+  #   tibble::tibble(
+  #     id = x$id,
+  #     # timestamp = x$timestamp,
+  #     apps = list(x$installed_apps)
+  #   )
+  # })
+  # data <- tidyr::unnest(data, body, keep_empty = TRUE)
+  # data$apps <- sapply(data$apps, function(x) paste0(x, collapse = "|"))
   # data <- tidyr::unnest(data, apps)
   # data$timestamp <- as.POSIXct(data$timestamp, "%Y-%m-%dT%H:%M:%S", tz="Europe/Brussels")
+  data <- default_fun(data)
+  if (!is.null(data$installed_apps)) {
+    data$installed_apps <- unlist(data$installed_apps, use.names = FALSE)
+  }
 
-  data <- safe_data_frame(
+  # TODO: Consider unique ID constraint
+  # Temporary fix
+  data <- data %>%
+    dplyr::group_by(id) %>%
+    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
+    dplyr::ungroup()
+
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
     time = substr(data$start_time, 12, 19),
-    apps = data$apps
+    apps = data$installed_apps
   )
 
-  save2db(db, "InstalledApps", data)
+  # save2db(db, "InstalledApps", data)
 }
 
-battery_fun <- function(db, data) {
+battery_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -212,10 +223,10 @@ battery_fun <- function(db, data) {
     battery_status = data$battery_status
   )
 
-  save2db(db, "Battery", data)
+  # save2db(db, "Battery", data)
 }
 
-bluetooth_fun <- function(db, data) {
+bluetooth_fun <- function(data) {
   data$id <- sapply(data$body, function(x) x$body$id)
   data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
   data$body <- lapply(data$body, function(x) x$body$scan_result)
@@ -224,11 +235,12 @@ bluetooth_fun <- function(db, data) {
 
   # TODO: Consider unique ID constraint
   # Temporary fix
-  data <- dplyr::group_by(data, id)
-  data <- dplyr::mutate(data, id = paste0(id, "_", 1:dplyr::n()))
-  data <- dplyr::ungroup(data)
+  data <- data %>%
+    dplyr::group_by(id) %>%
+    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
+    dplyr::ungroup()
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -242,54 +254,54 @@ bluetooth_fun <- function(db, data) {
     tx_power_level = data$tx_power_level
   )
 
-  save2db(db, "Bluetooth", data)
+  # save2db(db, "Bluetooth", data)
 }
 
 # TODO: Check attendees
 # TODO: Check if multiple entries (from different calendars?) are possible
 # Currently, multiple entries are already possible but it's not clear why they are wrapped in
 # another list as well.
-calendar_fun <- function(db, data) {
+calendar_fun <- function(data) {
   data$id <- sapply(data$body, function(x) x$body$id)
-  data$start_time <- sapply(data$body, function(x) x$body$start_time)
   data$body <- lapply(data$body, function(x) x$body$calendar_events)
 
   data$body <- lapply(data$body, function(x) {
     lapply(x, function(y) {
-      tbl <- safe_tibble(
-        event_id = y[["event_id"]],
-        calendar_id = y[["calendar_id"]],
-        title = y[["title"]],
-        description = y[["description"]],
-        start = y[["start"]],
-        end = y[["end"]],
-        all_day = y[["all_day"]],
-        location = y[["location"]]
-        # attendees = I(y[["attendees"]])
-      )
-      if (length(y[["attendees"]]) > 0) {
-        tbl$attendees <- list(y$attendees)
-      } else {
-        tbl$attendees <- NA
-      }
-      tbl
+      safe_tibble(
+        event_id = y$event_id,
+        calendar_id = y$calendar_id,
+        title = y$title,
+        description = y$description,
+        start = y$start,
+        end = y$end,
+        all_day = y$all_day,
+        location = y$location,
+        attendees = list(y$attendees))
     })
   })
 
   data$body <- lapply(data$body, dplyr::bind_rows)
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
 
-  if ("attendees" %in% colnames(data)) {
-    data$attendees <- sapply(data$attendees, function(x) paste0(x, collapse = ", "))
-  }
+  # Collapse attendees list
+  data$attendees <- sapply(data$attendees, function(x) {
+    if (!is.null(x)) {
+      x <- paste0(x, collapse = ", ")
+      if (x == "NA") {
+        x <- NA_character_
+      }
+      return(x)
+    } else NA_character_
+  })
 
   # TODO: Consider unique ID constraint
   # Temporary fix
-  data <- dplyr::group_by(data, id)
-  data <- dplyr::mutate(data, id = paste0(id, "_", 1:dplyr::n()))
-  data <- dplyr::ungroup(data)
+  data <- data %>%
+    dplyr::group_by(id) %>%
+    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
+    dplyr::ungroup()
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -305,13 +317,13 @@ calendar_fun <- function(db, data) {
     attendees = data$attendees
   )
 
-  save2db(db, "Calendar", data)
+  # save2db(db, "Calendar", data)
 }
 
-connectivity_fun <- function(db, data) {
+connectivity_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -319,17 +331,18 @@ connectivity_fun <- function(db, data) {
     connectivity_status = data$connectivity_status
   )
 
-  save2db(db, "Connectivity", data)
+  # save2db(db, "Connectivity", data)
 }
 
-device_fun <- function(db, data) {
+device_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
     time = substr(data$start_time, 12, 19),
+    platform = data$platform,
     device_id = data$device_id,
     hardware = data$hardware,
     device_name = data$device_name,
@@ -338,13 +351,13 @@ device_fun <- function(db, data) {
     operating_system = data$operating_system
   )
 
-  save2db(db, "Device", data)
+  # save2db(db, "Device", data)
 }
 
-error_fun <- function(db, data) {
+error_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -352,58 +365,56 @@ error_fun <- function(db, data) {
     message = data$message
   )
 
-  save2db(db, "Error", data)
+  # save2db(db, "Error", data)
 }
 
-geofence_fun <- function(db, data) {
+geofence_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     center = data$center,
     dwell = data$dwell,
     name = data$name,
     radius = data$radius,
     state = data$state
   )
-
-  save2db(db, "Geofence", data)
 }
 
-gyroscope_fun <- function(db, data) {
+# This function is now obsolote as it does exactly the same as accelerometer_fun
+# However, I'm keeping it here for the sake of clarity and backwards compatibility
+gyroscope_fun <- function(data) {
   # Determine whether this is a continuous accelerometer or periodic
-  if (length(data$body[[1]]$body) == 5) {
-    data <- default_fun(data)
-  } else {
-    data <- periodic_accelerometer_fun(data)
-  }
-
-  # Put into right data format
-  data <- safe_data_frame(
-    measurement_id = data$id,
-    participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
-    x = data$x,
-    y = data$y,
-    z = data$z
-  )
-
-  # Save to database
-  save2db(db, "Gyroscope", data)
+  # if (length(data$body[[1]]$body) == 5) {
+  #   data <- default_fun(data)
+  # } else {
+  #   data <- periodic_accelerometer_fun(data)
+  # }
+  #
+  # # Put into right data format
+  # safe_data_frame(
+  #   measurement_id = data$id,
+  #   participant_id = data$participant_id,
+  #   date = substr(data$timestamp, 1, 10),
+  #   time = substr(data$timestamp, 12, 23),
+  #   x = data$x,
+  #   y = data$y,
+  #   z = data$z
+  # )
+  accelerometer_fun(data)
 }
 
-keyboard_fun <- function(db, data) {
+keyboard_fun <- function(data) {
   stop("Function not implemented")
 }
 
-light_fun <- function(db, data) {
+light_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -413,14 +424,12 @@ light_fun <- function(db, data) {
     min_lux = data$min_lux,
     max_lux = data$max_lux
   )
-
-  save2db(db, "Light", data)
 }
 
-location_fun <- function(db, data) {
+location_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -434,13 +443,13 @@ location_fun <- function(db, data) {
     heading = data$heading
   )
 
-  save2db(db, "Location", data)
+  # save2db(db, "Location", data)
 }
 
-memory_fun <- function(db, data) {
+memory_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -449,18 +458,18 @@ memory_fun <- function(db, data) {
     free_virtual_memory = data$free_virtual_memory
   )
 
-  save2db(db, "Memory", data)
+  # save2db(db, "Memory", data)
 }
 
 # TODO: find out how this works
-mobility_fun <- function(db, data) {
+mobility_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     number_of_places = data$number_of_places,
     location_variance = data$location_variance,
     entropy = data$entropy,
@@ -469,13 +478,13 @@ mobility_fun <- function(db, data) {
     distance_travelled = data$distance_travelled
   )
 
-  save2db(db, "Mobility", data)
+  # save2db(db, "Mobility", data)
 }
 
-noise_fun <- function(db, data) {
+noise_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -486,10 +495,10 @@ noise_fun <- function(db, data) {
     max_decibel = data$max_decibel
   )
 
-  save2db(db, "Noise", data)
+  # save2db(db, "Noise", data)
 }
 
-phone_log_fun <- function(db, data) {
+phone_log_fun <- function(data) {
   data$id <- sapply(data$body, function(x) x$body$id)
   data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
   data$body <- lapply(data$body, function(x) x$body$phone_log)
@@ -499,7 +508,7 @@ phone_log_fun <- function(db, data) {
   })
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$timestamp, 1, 10),
@@ -512,13 +521,13 @@ phone_log_fun <- function(db, data) {
     number = data$number
   )
 
-  save2db(db, "PhoneLog", data)
+  # save2db(db, "PhoneLog", data)
 }
 
-pedometer_fun <- function(db, data) {
+pedometer_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -526,13 +535,13 @@ pedometer_fun <- function(db, data) {
     step_count = data$step_count
   )
 
-  save2db(db, "Pedometer", data)
+  # save2db(db, "Pedometer", data)
 }
 
-screen_fun <- function(db, data) {
+screen_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -540,11 +549,11 @@ screen_fun <- function(db, data) {
     screen_event = data$screen_event
   )
 
-  save2db(db, "Screen", data)
+  # save2db(db, "Screen", data)
 }
 
 # TODO: Check if text_message can be unnested
-text_message_fun <- function(db, data) {
+text_message_fun <- function(data) {
   # data <- default_fun(data)
   data$id <- sapply(data$body, function(x) x$body$id)
   data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
@@ -554,11 +563,12 @@ text_message_fun <- function(db, data) {
 
   # TODO: Consider unique ID constraint
   # Temporary fix
-  data <- dplyr::group_by(data, id)
-  data <- dplyr::mutate(data, id = paste0(id, "_", 1:dplyr::n()))
-  data <- dplyr::ungroup(data)
+  data <- data %>%
+    dplyr::group_by(id) %>%
+    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
+    dplyr::ungroup()
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$timestamp, 1, 10),
@@ -573,14 +583,14 @@ text_message_fun <- function(db, data) {
     state = data$state
   )
 
-  save2db(db, "TextMessage", data)
+  # save2db(db, "TextMessage", data)
 }
 
 # TODO: Check date, sunrise, and sunset time in UTC
-weather_fun <- function(db, data) {
+weather_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
@@ -595,6 +605,7 @@ weather_fun <- function(db, data) {
     longitude = data$longitude,
     pressure = data$pressure,
     wind_speed = data$wind_speed,
+    wind_degree = data$wind_degree,
     humidity = data$humidity,
     cloudiness = data$cloudiness,
     rain_last_hour = data$rain_last_hour,
@@ -606,20 +617,21 @@ weather_fun <- function(db, data) {
     temp_max = data$temp_max
   )
 
-  save2db(db, "Weather", data)
+  # save2db(db, "Weather", data)
 }
 
-wifi_fun <- function(db, data) {
+wifi_fun <- function(data) {
   data <- default_fun(data)
 
-  data <- safe_data_frame(
+  safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
     time = substr(data$start_time, 12, 19),
     ssid = data$ssid,
-    bssid = data$bssid
+    bssid = data$bssid,
+    ip = data$ip
   )
 
-  save2db(db, "Wifi", data)
+  # save2db(db, "Wifi", data)
 }

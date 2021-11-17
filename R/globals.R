@@ -28,6 +28,7 @@ utils::globalVariables(c(
   "participant_id",
   "prev_usage",
   "screen_event",
+  "sensor",
   "startTime",
   "steps",
   "study_id",
