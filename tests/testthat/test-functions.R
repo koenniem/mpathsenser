@@ -1,11 +1,17 @@
 
 test_that("import", {
+  path <- system.file("testdata", package = "CARP")
+  db <- create_db(path, "test.db", overwrite = TRUE)
+
   expect_message(import(
-    path = ".",
-    dbname = "test.db",
-    recursive = FALSE,
-    overwrite_db = TRUE
+    path = path,
+    db = db,
+    recursive = FALSE
   ))
+
+  if (DBI::dbIsValid(db)) {
+    DBI::dbDisconnect(db)
+  }
 })
 
 # test_that("coverage", {
