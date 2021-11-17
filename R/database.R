@@ -90,7 +90,31 @@ open_db <- function(path = getwd(), db_name = "carp.db") {
 #' @param db A database connection
 #' @export
 close_db <- function(db) {
-	DBI::dbDisconnect(db)
+	if (!is.null(db)) {
+		if (DBI::dbIsValid(db)) {
+			DBI::dbDisconnect(db)
+		}
+	}
+}
+
+#' Create indexes for a CARP database
+#'
+#' @param db A database connection
+#'
+#' @return
+#' @export
+index_db <- function(db) {
+	if (is.null(db) || !DBI::dbIsValid(db)) stop("Database connection is not valid")
+
+	tryCatch({
+		fn <- system.file("extdata", "indexes.sql", package = "CARP")
+		script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"),	"\n\n")[[1]]
+		for (statement in script) {
+			DBI::dbExecute(db, statement)
+		}
+	}, error = function(e) {
+		stop(e)
+	})
 }
 
 add_study <- function(db, data) {
