@@ -650,6 +650,31 @@ step_count <- function(db, participant_id, start_date = NULL, end_date = NULL) {
     dplyr::collect()
 }
 
+#' Calculate total acceleration from x, y, and z coordinates
+#'
+#' A convenience function to calculate the total acceleration in either or a local or remote
+#' tibble.
+#'
+#' @param data A data frame or a remote data frame connection through \link[dplyr]{tbl}.
+#' @param colname The name of the newly added column containing the total acceleration.
+#' @param x Acceleration along the x-axis.
+#' @param y Acceleration along the y-axis.
+#' @param z Acceleration along the z-axis.
+#' @param gravity Gravity in meters per second. Defaults to 9.810467. Set to 0 to ignore.
+#'
+#' @return The input data with a column \code{colname} attached.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' db <- open_db()
+#' tbl(db, "Accelerometer") %>%
+#'   total_acceleration("total_acc")
+#' }
+total_acceleration <- function(data, colname, x = x, y = y, z = z, gravity = 9.810467) {
+  data %>%
+    dplyr::mutate(!!colname := sqrt((x)^2 + (y)^2 + (z - gravity)^2))
+}
 
 #' Moving average for values in CARP DB
 #'
