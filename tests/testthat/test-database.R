@@ -164,5 +164,6 @@ test_that("get_study", {
 test_that("get_nrows", {
 	db <- open_db(system.file("testdata", package = "CARP"), "test.db")
 	expect_vector(get_nrows(db), integer(), length(sensors))
+	expect_s3_class(res_lazy, "tbl_SQLiteConnection")
 	DBI::dbDisconnect(db)
 })
