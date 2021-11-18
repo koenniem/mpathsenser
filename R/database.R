@@ -122,7 +122,7 @@ index_db <- function(db) {
 }
 
 add_study <- function(db, data) {
-	RSQLite::dbExecute(db,
+	DBI::dbExecute(db,
 	"INSERT INTO Study(study_id, data_format)
 	VALUES(:study_id, :data_format)
 	ON CONFLICT DO NOTHING;",
@@ -130,7 +130,7 @@ add_study <- function(db, data) {
 }
 
 add_participant <- function(db, data) {
-	RSQLite::dbExecute(db,
+	DBI::dbExecute(db,
 	"INSERT INTO Participant(participant_id, study_id)
 	VALUES(:participant_id, :study_id)
 	ON CONFLICT DO NOTHING;",
@@ -138,7 +138,7 @@ add_participant <- function(db, data) {
 }
 
 add_processed_files <- function(db, data) {
-	RSQLite::dbExecute(db,
+	DBI::dbExecute(db,
 	"INSERT INTO ProcessedFiles(file_name, study_id, participant_id)
 	VALUES(:file_name, :study_id, :participant_id)
 	ON CONFLICT DO NOTHING;",
@@ -146,7 +146,7 @@ add_processed_files <- function(db, data) {
 }
 
 clear_sensors_db <- function(db) {
-	res <- lapply(sensors, function(x) RSQLite::dbExecute(db, paste0("DELETE FROM ", x, ";")))
+	res <- lapply(sensors, function(x) DBI::dbExecute(db, paste0("DELETE FROM ", x, " WHERE 1;")))
 	names(res) <- sensors
 	res
 }

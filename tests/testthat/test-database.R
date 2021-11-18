@@ -109,6 +109,20 @@ test_that("add_processed_file", {
 	file.remove(system.file("testdata", "foo.db", package = "CARP"))
 })
 
+test_that("clear_sensors_db", {
+	path <- system.file("testdata", package = "CARP")
+	db <- import(path, dbname = "foo.db", recursive = FALSE)
+	db <- open_db(path, "foo.db")
+	original <- get_nrows(db)
+	res <- clear_sensors_db(db)
+	expect_type(res, "list")
+	expect_length(res, length(sensors))
+	expect_identical(Reduce(`+`, res), sum(original))
+	expect_identical(sum(get_nrows(db)), 0L)
+	close_db(db)
+	file.remove(system.file("testdata", "foo.db", package = "CARP"))
+})
+
 test_that("get_processed_files", {
 	db <- open_db(system.file("testdata", package = "CARP"), "test.db")
 	res <- get_processed_files(db)
@@ -124,22 +138,26 @@ test_that("get_processed_files", {
 test_that("get_participants", {
 	db <- open_db(system.file("testdata", package = "CARP"), "test.db")
 	res <- get_participants(db)
+	res_lazy <- get_participants(db, lazy = TRUE)
 	true <- data.frame(
 		participant_id = "27624",
 		study_id = "#99 - KU Leuven study"
 	)
 	expect_identical(res, true)
+	expect_s3_class(res_lazy, "tbl_SQLiteConnection")
 	DBI::dbDisconnect(db)
 })
 
 test_that("get_study", {
 	db <- open_db(system.file("testdata", package = "CARP"), "test.db")
 	res <- get_studies(db)
+	res_lazy <- get_studies(db, lazy = TRUE)
 	true <- data.frame(
 		study_id = "#99 - KU Leuven study",
 		data_format = "carp"
 	)
 	expect_identical(res, true)
+	expect_s3_class(res_lazy, "tbl_SQLiteConnection")
 	DBI::dbDisconnect(db)
 })
 
