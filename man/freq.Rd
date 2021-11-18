@@ -5,13 +5,29 @@
 \alias{freq}
 \title{Measurement frequencies per sensor}
 \format{
-An object of class \code{numeric} of length 12.
+An object of class \code{numeric} of length 11.
 }
 \usage{
 freq
 }
 \description{
 A numeric vector containing (an example) of the measurement frequencies per sensor.
-Such input is needed for \link[CARP]{coverage}.
+Such input is needed for \link[CARP]{coverage}. This vector contains the following information:
+}
+\details{
+\tabular{lll}{
+   Sensor \tab Frequency (per hour) \tab Full text \cr
+   Accelerometer \tab 720 \tab Once per 5 seconds. Can have multiple instances. \cr
+   AirQuality \tab 1 \tab Once per hour. \cr
+   AppUsage \tab 2 \tab Once every 30 minutes. Can have multiple instances. \cr
+   Bluetooth \tab 12 \tab Once every 5 minutes. Can have multiple instances. \cr
+   Gyroscope \tab 720 \tab Once per 5 seconds. Can have multiple instances. \cr
+   Light \tab 360 \tab Once per 10 seconds. \cr
+   Location \tab 60 \tab Once every 60 seconds. \cr
+   Memory \tab 60 \tab Once per minute \cr
+   Noise \tab 120 \tab Once every 30 seconds. Microhone cannot be used in the background in Android 11. \cr
+   Weather \tab 1 \tab Once per hour. \cr
+   Wifi \tab 60 \tab Once per minute. \cr
+}
 }
 \keyword{datasets}

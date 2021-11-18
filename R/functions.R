@@ -135,7 +135,7 @@ import_impl <- function(path, files, db_name) {
     # Check if it is not an empty file
     # Skip this file if empty
     if (length(data) == 0) {
-      add_processed_file(tmp_db,
+      add_processed_files(tmp_db,
                          data.frame(
                            file_name = files[i],
                            # TODO: Update extraction of participant_id with new file name
@@ -231,7 +231,7 @@ import_impl <- function(path, files, db_name) {
       })
 
       # Add file to list of processed files
-      add_processed_file(tmp_db, this_file)
+      add_processed_files(tmp_db, this_file)
     }, error = function(e) {
       print(paste0("transaction failed for file ", files[i]))
     })
@@ -244,7 +244,21 @@ import_impl <- function(path, files, db_name) {
 #' Measurement frequencies per sensor
 #'
 #' A numeric vector containing (an example) of the measurement frequencies per sensor.
-#' Such input is needed for \link[CARP]{coverage}.
+#' Such input is needed for \link[CARP]{coverage}. This vector contains the following information:
+#'
+#' Sensor | Frequency (per hour) | Full text
+#' -------|-----------|----------
+#' Accelerometer | 720 | Once per 5 seconds. Can have multiple instances.
+#' AirQuality | 1 | Once per hour.
+#' AppUsage | 2 | Once every 30 minutes. Can have multiple instances.
+#' Bluetooth | 12 | Once every 5 minutes. Can have multiple instances.
+#' Gyroscope | 720 | Once per 5 seconds. Can have multiple instances.
+#' Light | 360 | Once per 10 seconds.
+#' Location | 60 | Once every 60 seconds.
+#' Memory | 60 | Once per minute
+#' Noise | 120 | Once every 30 seconds. Microhone cannot be used in the background in Android 11.
+#' Weather | 1 | Once per hour.
+#' Wifi | 60 |  Once per minute.
 #'
 #' @export freq
 freq <- c(
@@ -257,7 +271,6 @@ freq <- c(
   Location = 60, # Once per 60 seconds
   Memory = 60, # Once per minute
   Noise = 120,
-  Pedometer = 1,
   Weather = 1,
   Wifi = 60 # once per minute
 )
