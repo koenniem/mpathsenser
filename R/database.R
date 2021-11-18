@@ -87,10 +87,14 @@ open_db <- function(path = getwd(), db_name = "carp.db") {
 #'
 #' This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
 #'
+#' This function returns invisibly regardless of whether the database is active, valid, or even
+#' exists.
+#'
 #' @param db A database connection
 #' @export
 close_db <- function(db) {
-	if (!is.null(db)) {
+	exists <- try(db, silent = TRUE)
+	if (inherits(exists, "SQLiteConnection") && !is.null(db)) {
 		if (DBI::dbIsValid(db)) {
 			DBI::dbDisconnect(db)
 		}
@@ -133,7 +137,7 @@ add_participant <- function(db, data) {
 	list(participant_id = data$participant_id, study_id = data$study_id))
 }
 
-add_processed_file <- function(db, data) {
+add_processed_files <- function(db, data) {
 	RSQLite::dbExecute(db,
 	"INSERT INTO ProcessedFiles(file_name, study_id, participant_id)
 	VALUES(:file_name, :study_id, :participant_id)
