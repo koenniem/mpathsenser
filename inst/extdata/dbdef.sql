@@ -1,6 +1,6 @@
 PRAGMA foreign_keys = 1;
 
-PRAGMA main.synchronous = 3;
+PRAGMA main.synchronous = 1;
 
 CREATE TABLE IF NOT EXISTS Study
 (
