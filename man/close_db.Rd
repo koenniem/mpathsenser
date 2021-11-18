@@ -13,6 +13,6 @@ close_db(db)
 This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
 }
 \details{
-This function returns invisibly regardless of whether the database is activek, valid, or even
+This function returns invisibly regardless of whether the database is active, valid, or even
 exists.
 }

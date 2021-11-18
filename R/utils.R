@@ -25,6 +25,7 @@ ccopy <- function(from, to = getwd(), recursive = TRUE) {
 	}
 	message(paste0("Copying ", length(copy), " files."))
 	copy <- normalizePath(paste0(from, "/", copy))
+	copy <- suppressWarnings(normalizePath(paste0(from, "/", copy)))
 	invisible(do.call(file.copy, list(from = copy, to = to, overwrite = FALSE)))
 }
 
@@ -87,7 +88,7 @@ fix_jsons_impl <- function(path, jsonfiles) {
 	p <- progressr::progressor(steps = length(jsonfiles))
 	furrr::future_map_int(jsonfiles, ~{
 		p()
-		file <- normalizePath(paste0(path, "/", path.expand(.x)))
+		file <- suppressWarnings(normalizePath(paste0(path, "/", .x)))
 		lines <- readLines(file)
 
 		if (length(lines) == 0) {
@@ -171,7 +172,7 @@ test_jsons <- function(path = getwd(),
 		p <- progressr::progressor(steps = length(jsonfiles))
 		missing <- furrr::future_map_lgl(jsonfiles, ~{
 			p()
-			str <- readLines(normalizePath(paste0(path, "/", .x)), warn = FALSE)
+			str <- readLines(suppressWarnings(normalizePath(paste0(path, "/", .x))), warn = FALSE)
 			if (length(str) == 0) { # empty file
 				return(TRUE)
 			}

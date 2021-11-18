@@ -25,7 +25,7 @@ create_db <- function(path = getwd(), db_name = "carp.db", overwrite = FALSE) {
 	if (!is.character(path)) stop("Argument path must be a character string")
 
 	# Merge path and file name
-	db_name <- paste0(normalizePath(path), "/", db_name)
+	db_name <- suppressWarnings(normalizePath(paste0(path, "/", db_name)))
 
 	# If db already exists, remove it or throw an error
 	if (file.exists(db_name)) {
@@ -69,7 +69,7 @@ open_db <- function(path = getwd(), db_name = "carp.db") {
 
 	# Merge path and file name
 	if (!is.null(path)) {
-		db_name <- paste0(normalizePath(path), "\\", db_name)
+		db_name <- suppressWarnings(normalizePath(paste0(path, "/", db_name)))
 	}
 
 	if (!file.exists(db_name))

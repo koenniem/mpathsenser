@@ -31,7 +31,7 @@ test_that("open_db", {
 	fake_db <- paste0(path, "/foo.db")
 
 	# Create a new (non-CARP db)
-	db <- DBI::dbConnect(RSQLite::SQLite(), fake_db, winslash = "/")
+	db <- DBI::dbConnect(RSQLite::SQLite(), fake_db)
 	DBI::dbExecute(db, "CREATE TABLE foo(bar INTEGER, PRIMARY KEY(bar));")
 	DBI::dbDisconnect(db)
 	expect_error(open_db(NULL, fake_db), "Sorry, this does not appear to be a CARP database.")

@@ -116,6 +116,7 @@ import_impl <- function(path, files, db_name) {
 
     # Try to read in the file. If the file is corrupted for some reason, skip this one
     file <- normalizePath(paste0(path, "/", files[i]))
+    file <- suppressWarnings(normalizePath(paste0(path, "/", files[i])))
     file <- readLines(file, warn =FALSE)
     file <- paste0(file, collapse = "")
     if (!jsonlite::validate(file)) next
