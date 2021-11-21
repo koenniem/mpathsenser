@@ -384,20 +384,22 @@ coverage <- function(db,
     stop("Argument offset must be either 'None', 1 day, or 2, 3, 4, ... days.")
   }
 
+  # Helper function for checking if a string is convertible to date
+  convert2date <- function(s) {
+    if (!inherits(s, "Date") & !is.character(s)) return(FALSE)
+    s <- try(as.Date(s), silent = TRUE)
+    if (inherits(s, "Date")) TRUE else FALSE
+  }
+
   # Check start_date, end_date
   if ((!is.null(start_date) && !is.null(end_date)) && !is.null(offset)) {
-    warning("Argument start_date/end_date and offset cannot be present at the same time.
-						Ignoring the offset argument.")
+    warning("Argument start_date/end_date and offset cannot be present at the same time. ",
+						"Ignoring the offset argument.")
     offset <- NULL
   }
-  # Unnecesary since get_data retrieves all data anyway when no start or end date is specified
-  # else if (is.null(start_date) & is.null(end_date)) {
-    # start_date <- first_date(db, "Accelerometer", participant_id)
-    # end_date <- last_date(db, "Accelerometer", participant_id)
-  # }
-  else if ((!is.null(start_date) | !is.null(end_date)) &&
-           (!(inherits(start_date, "Date") | is.character(start_date)) |
-           !(inherits(end_date, "Date") | is.character(end_date)))) {
+
+  else if (!(is.null(start_date) | convert2date(start_date)) ||
+           !(is.null(end_date) | convert2date(end_date))) {
     stop("start_date and end_date must be NULL, a character string, or date.")
   }
 
