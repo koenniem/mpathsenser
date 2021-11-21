@@ -42,7 +42,7 @@ which_sensor <- function(data, sensor) {
     text_message = text_message_fun(data),
     weather = weather_fun(data),
     wifi = wifi_fun(data)
-  ) # default
+  )
 }
 
 # Make a data frame, handling missing columns, filling with NA
@@ -87,9 +87,6 @@ accelerometer_fun <- function(data) {
     y = data$y,
     z = data$z
   )
-
-  # Save to database
-  # save2db(db, "Accelerometer", data)
 }
 
 periodic_accelerometer_fun <- function(data) {
@@ -117,8 +114,6 @@ activity_fun <- function(data) {
     confidence = data$confidence,
     type = data$type
   )
-
-  # save2db(db, "Activity", data)
 }
 
 air_quality_fun <- function(data) {
@@ -136,8 +131,6 @@ air_quality_fun <- function(data) {
     latitude = data$latitude,
     longitude = data$longitude
   )
-
-  # save2db(db, "AirQuality", data)
 }
 
 app_usage_fun <- function(data) {
@@ -170,8 +163,6 @@ app_usage_fun <- function(data) {
     usage = data$usage,
     app = data$app
   )
-
-  # save2db(db, "AppUsage", data)
 }
 
 # TODO: Simplify and add timestamp and id
@@ -207,8 +198,6 @@ apps_fun <- function(data) {
     time = substr(data$start_time, 12, 19),
     apps = data$installed_apps
   )
-
-  # save2db(db, "InstalledApps", data)
 }
 
 battery_fun <- function(data) {
@@ -223,7 +212,6 @@ battery_fun <- function(data) {
     battery_status = data$battery_status
   )
 
-  # save2db(db, "Battery", data)
 }
 
 bluetooth_fun <- function(data) {
@@ -253,8 +241,6 @@ bluetooth_fun <- function(data) {
     rssi = data$rssi,
     tx_power_level = data$tx_power_level
   )
-
-  # save2db(db, "Bluetooth", data)
 }
 
 # TODO: Check attendees
@@ -316,8 +302,6 @@ calendar_fun <- function(data) {
     location = data$location,
     attendees = data$attendees
   )
-
-  # save2db(db, "Calendar", data)
 }
 
 connectivity_fun <- function(data) {
@@ -330,8 +314,6 @@ connectivity_fun <- function(data) {
     time = substr(data$start_time, 12, 19),
     connectivity_status = data$connectivity_status
   )
-
-  # save2db(db, "Connectivity", data)
 }
 
 device_fun <- function(data) {
@@ -350,8 +332,6 @@ device_fun <- function(data) {
     device_model = data$device_model,
     operating_system = data$operating_system
   )
-
-  # save2db(db, "Device", data)
 }
 
 error_fun <- function(data) {
@@ -364,8 +344,6 @@ error_fun <- function(data) {
     time = substr(data$start_time, 12, 19),
     message = data$message
   )
-
-  # save2db(db, "Error", data)
 }
 
 geofence_fun <- function(data) {
@@ -384,7 +362,7 @@ geofence_fun <- function(data) {
   )
 }
 
-# This function is now obsolote as it does exactly the same as accelerometer_fun
+# This function is now obsolete as it does exactly the same as accelerometer_fun
 # However, I'm keeping it here for the sake of clarity and backwards compatibility
 gyroscope_fun <- function(data) {
   # Determine whether this is a continuous accelerometer or periodic
@@ -442,8 +420,6 @@ location_fun <- function(data) {
     speed_accuracy = data$speed_accuracy,
     heading = data$heading
   )
-
-  # save2db(db, "Location", data)
 }
 
 memory_fun <- function(data) {
@@ -457,8 +433,6 @@ memory_fun <- function(data) {
     free_physical_memory = data$free_physical_memory,
     free_virtual_memory = data$free_virtual_memory
   )
-
-  # save2db(db, "Memory", data)
 }
 
 # TODO: find out how this works
@@ -477,8 +451,6 @@ mobility_fun <- function(data) {
     home_stay = data$home_stay,
     distance_travelled = data$distance_travelled
   )
-
-  # save2db(db, "Mobility", data)
 }
 
 noise_fun <- function(data) {
@@ -494,8 +466,6 @@ noise_fun <- function(data) {
     min_decibel = data$min_decibel,
     max_decibel = data$max_decibel
   )
-
-  # save2db(db, "Noise", data)
 }
 
 phone_log_fun <- function(data) {
@@ -520,8 +490,6 @@ phone_log_fun <- function(data) {
     name = data$name,
     number = data$number
   )
-
-  # save2db(db, "PhoneLog", data)
 }
 
 pedometer_fun <- function(data) {
@@ -534,8 +502,6 @@ pedometer_fun <- function(data) {
     time = substr(data$start_time, 12, 19),
     step_count = data$step_count
   )
-
-  # save2db(db, "Pedometer", data)
 }
 
 screen_fun <- function(data) {
@@ -548,13 +514,10 @@ screen_fun <- function(data) {
     time = substr(data$start_time, 12, 19),
     screen_event = data$screen_event
   )
-
-  # save2db(db, "Screen", data)
 }
 
 # TODO: Check if text_message can be unnested
 text_message_fun <- function(data) {
-  # data <- default_fun(data)
   data$id <- sapply(data$body, function(x) x$body$id)
   data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
   data$body <- lapply(data$body, function(x) x$body$text_message)
@@ -571,8 +534,8 @@ text_message_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     address = data$address,
     body = data$body,
     text_date = data$date,
@@ -582,8 +545,6 @@ text_message_fun <- function(data) {
     size = data$size,
     state = data$state
   )
-
-  # save2db(db, "TextMessage", data)
 }
 
 # TODO: Check date, sunrise, and sunset time in UTC
@@ -616,8 +577,6 @@ weather_fun <- function(data) {
     temp_min = data$temp_min,
     temp_max = data$temp_max
   )
-
-  # save2db(db, "Weather", data)
 }
 
 wifi_fun <- function(data) {
@@ -632,6 +591,4 @@ wifi_fun <- function(data) {
     bssid = data$bssid,
     ip = data$ip
   )
-
-  # save2db(db, "Wifi", data)
 }
