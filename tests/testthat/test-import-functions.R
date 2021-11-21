@@ -1,5 +1,6 @@
 # Tests for import_functions.R
 
+# common_test ===========
 common_test <- function(sensor, ...) {
 	tibble::tibble(
 		body = list(...),
@@ -11,7 +12,7 @@ common_test <- function(sensor, ...) {
 	)
 }
 
-
+# unit_test ===========
 unit_test <- function(sensor, ...) {
 	# Define the input
 	dat <- common_test(sensor, list(
@@ -58,6 +59,43 @@ unit_test <- function(sensor, ...) {
 	expect_identical(res_which, true)
 }
 
+test_that("save2db", {
+	db <- create_db(system.file("testdata", package = "CARP"), "foo.db")
+	DBI::dbExecute(db, "INSERT INTO Study VALUES('12345', 'CARP')")
+	DBI::dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
+	db_size <- file.size(system.file("testdata", "foo.db", package = "CARP"))
+	expect_error(save2db(db, "Accelerometer", data.frame(
+		measurement_id = paste0("12345_", 1:100),
+		participant_id = "12345",
+		date = "2021-11-14",
+		time = "16:40:01.123",
+		x = 0.123456789,
+		y = 0.123456789,
+		z = 9.123456789
+	)), NA)
+	db_size2 <- file.size(system.file("testdata", "foo.db", package = "CARP"))
+	expect_gt(db_size2, db_size)
+
+	# Entry with the same ID should simply be skipped and give on error
+	expect_error(save2db(db, "Accelerometer", data.frame(
+		measurement_id = paste0("12345_", 1:100),
+		participant_id = "12345",
+		date = "2021-11-14",
+		time = "16:40:01.123",
+		x = 0.123456789,
+		y = 0.123456789,
+		z = 9.123456789
+	)), NA)
+	db_size3 <- file.size(system.file("testdata", "foo.db", package = "CARP"))
+	expect_identical(db_size2, db_size3)
+	expect_identical(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 100L)
+
+	# Cleanup
+	DBI::dbDisconnect(db)
+	file.remove(system.file("testdata", "foo.db", package = "CARP"))
+})
+
+# safe_data_frame  ===========
 test_that("safe_data_frame", {
 	dat <- data.frame(a = 1, b = NA)
 	res <- safe_data_frame(a = dat$a, b = dat$b, c = dat$c)
@@ -65,6 +103,7 @@ test_that("safe_data_frame", {
 	expect_identical(res, true)
 })
 
+# safe_tibble ===========
 test_that("safe_tibble", {
 	dat <- tibble::tibble(a = 1, b = NA, c = vector("list", 1))
 	dat2 <- tibble::tibble(a = 1, b = NA, c = vector("list", 0))
@@ -75,6 +114,7 @@ test_that("safe_tibble", {
 	expect_identical(res2, true)
 })
 
+# Accelerometer ===========
 test_that("accelerometer", {
 	dat <- common_test("accelerometer",
 										 list(
@@ -105,6 +145,7 @@ test_that("accelerometer", {
 	expect_identical(res_which, true)
 })
 
+# Gyroscope ===========
 test_that("gyroscope", {
 	dat <- common_test("gyroscope",
 										 list(
@@ -135,6 +176,7 @@ test_that("gyroscope", {
 	expect_identical(res_which, true)
 })
 
+# Periodic accelerometer ===========
 test_that("periodic_accelerometer", {
 	dat <- common_test("accelerometer",
 										 list(
@@ -191,6 +233,7 @@ test_that("periodic_accelerometer", {
 	expect_identical(res, true)
 })
 
+# Periodic gyroscope ===========
 test_that("periodic_gyroscope", {
 	dat <- common_test("gyroscope",
 										 list(
@@ -247,12 +290,14 @@ test_that("periodic_gyroscope", {
 	expect_identical(res, true)
 })
 
+# Activity ===========
 test_that("activity", {
 	unit_test("activity",
 						confidence = 80,
 						type = "WALKING")
 })
 
+# Air Quality ===========
 test_that("air_quality", {
 	unit_test("air_quality",
 						air_quality_index = 30,
@@ -263,6 +308,7 @@ test_that("air_quality", {
 						longitude = 4.12345678901234)
 })
 
+# Installed Apps ===========
 test_that("installed_apps", {
 	dat <- common_test("apps",
 										 list(
@@ -288,9 +334,21 @@ test_that("installed_apps", {
 	expect_identical(res_which, true)
 })
 
+# App usage ===========
 test_that("app_usage", {
-	dat <- common_test("accelerometer",
+	dat <- common_test("app_usage",
 										 list(
+										 	body = list(
+										 		id = "12345a",
+										 		timestamp = "2021-11-14T16:40:01.123456Z",
+										 		start = "2021-11-15T14:05:00.123456Z",
+										 		end = "2021-11-15T14:35.00.123456Z",
+										 		usage = list(
+										 			a = 10,
+										 			b = 5,
+										 			c = 7
+										 		)
+										 	),
 										 	body = list(
 										 		id = "12345a",
 										 		timestamp = "2021-11-14T16:40:01.123456Z",
@@ -305,8 +363,21 @@ test_that("app_usage", {
 										 )
 	)
 
+	dat2 <- common_test("app_usage",
+										 list(
+										 	body = list(
+										 		id = "12345a",
+										 		timestamp = "2021-11-14T16:40:01.123456Z",
+										 		start = "2021-11-15T14:05:00.123456Z",
+										 		end = "2021-11-15T14:35.00.123456Z"
+										 	)
+										 )
+	)
+
 	res <- app_usage_fun(dat)
+	res2 <- app_usage_fun(dat2)
 	res_which <- which_sensor(dat, "app_usage")
+	res_which2 <- which_sensor(dat2, "app_usage")
 	true <- data.frame(
 		measurement_id = c("12345a_1", "12345a_2", "12345a_3"),
 		participant_id = "12345",
@@ -317,18 +388,34 @@ test_that("app_usage", {
 		usage = c(10, 5, 7),
 		app = c("a", "b", "c")
 	)
+	true2 <- data.frame(
+		measurement_id = "12345a_1",
+		participant_id = "12345",
+		date = "2021-11-14",
+		time = "16:40:00",
+		start = "2021-11-15T14:05:00.123456Z",
+		end = "2021-11-15T14:35.00.123456Z",
+		usage = NA,
+		app = NA
+	)
 
 	expect_identical(res, res_which)
 	expect_identical(res, true)
 	expect_identical(res_which, true)
+
+	expect_identical(res2, res_which2)
+	expect_identical(res2, true2)
+	expect_identical(res_which2, true2)
 })
 
+# Battery ===========
 test_that("battery", {
 	unit_test("battery",
 						battery_level = 85,
 						battery_status = "discharging")
 })
 
+# Bluetooth ===========
 test_that("bluetooth", {
 	unit_test("bluetooth",
 						scan_result = list(
@@ -354,6 +441,7 @@ test_that("bluetooth", {
 	)
 })
 
+# Calendar ===========
 test_that("calendar", {
 	dat <- common_test("calendar",
 										 list(
@@ -372,7 +460,8 @@ test_that("calendar", {
 										 				location = "Microsoft Teams Meeting",
 										 				attendees = list(
 										 					"a",
-										 					"b"
+										 					"b",
+										 					NA
 										 				)
 										 			),
 										 			list(
@@ -416,7 +505,7 @@ test_that("calendar", {
 		end = "2021-11-14T13:30:00.000Z",
 		all_day = FALSE,
 		location = "Microsoft Teams Meeting",
-		attendees = c("a, b", NA, NA)
+		attendees = c("a, b, NA", NA, NA)
 	)
 
 	expect_identical(res, res_which)
@@ -424,11 +513,14 @@ test_that("calendar", {
 	expect_identical(res_which, true)
 })
 
+# Connectivity ===========
 test_that("connectivity", {
 	unit_test("connectivity",
 						connectivity_status = "wifi")
 })
 
+
+# Device ===========
 test_that("device", {
 	unit_test("device",
 						platform = "IOS",
@@ -440,15 +532,29 @@ test_that("device", {
 						operating_system = "iOS")
 })
 
+# Error ===========
 test_that("error", {
 	unit_test("error",
 						message = "WeatherStation plugin returned null.")
 })
 
-test_that("keyboard", {
-	expect_error(keyboard_fun(data.frame()), "Function not implemented")
+# Geofence ===========
+test_that("geofence", {
+	unit_test("geofence",
+						center = "e13344b52140327c0ffcc9b419692a2b3fdc6babf73ced8dc7de68bac3528966600f74dadf33a880907719e27668fdbf7e38cc58ccef2007625192adcb3d1969f1",
+						dwell = 123456,
+						name = "Home",
+						radius = 50,
+						state = "ENTER")
 })
 
+# Keyboard ===========
+test_that("keyboard", {
+	expect_error(keyboard_fun(data.frame()), "Function not implemented")
+	expect_error(which_sensor(data.frame(), "keyboard"), "Function not implemented")
+})
+
+# Light ===========
 test_that("light", {
 	unit_test("light",
 						mean_lux = 110,
@@ -457,6 +563,7 @@ test_that("light", {
 						max_lux = 200)
 })
 
+# Location ===========
 test_that("location", {
 	unit_test("location",
 						latitude= "e13344b52140327c0ffcc9b419692a2b3fdc6babf73ced8dc7de68bac3528966600f74dadf33a880907719e27668fdbf7e38cc58ccef2007625192adcb3d1969f1",
@@ -468,12 +575,14 @@ test_that("location", {
 						heading = 123.456789012354567)
 })
 
+# Memory  ===========
 test_that("memory", {
 	unit_test("memory",
 						free_physical_memory = 12345678,
 						free_virtual_memory = 123456789)
 })
 
+# Mobility ===========
 test_that("mobility", {
 	unit_test("mobility",
 						number_of_places = 1,
@@ -484,6 +593,7 @@ test_that("mobility", {
 						distance_travelled = 0)
 })
 
+# Noise ===========
 test_that("noise", {
 	unit_test("noise",
 						mean_decibel = 50.123456789,
@@ -492,24 +602,73 @@ test_that("noise", {
 						max_decibel = 80.123456789)
 })
 
-test_that("light", {
-	unit_test("light",
-						mean_lux = 110,
-						std_lux = 5,
-						min_lux = 0,
-						max_lux = 200)
-})
-
+# Pedometer ===========
 test_that("pedometer", {
 	unit_test("pedometer",
 						step_count = 12345)
 })
 
+# Screen ===========
 test_that("screen", {
 	unit_test("screen",
 						screen_event = "SCREEN_OFF")
 })
 
+# Text message ===========
+test_that("text_message", {
+	dat <- common_test("text_message",
+										 list(
+										 	body = list(
+										 		id = "12345a",
+										 		start_time = "2021-11-14T16:40:01.123456Z",
+										 		text_message = list(
+										 		list(
+										 			address = "123",
+										 			body = "abc",
+										 			date = "2021-11-13",
+										 			date_sent = "2021-11-13T13:00:00.123456T",
+										 			is_read = TRUE,
+										 			kind = "outgoing",
+										 			size = 12345,
+										 			state = "sent"
+										 		),
+										 		list(
+										 			address = "456",
+										 			body = "def",
+										 			date = "2021-11-12",
+										 			date_sent = "2021-11-12T14:00:00.123456T",
+										 			is_read = FALSE,
+										 			kind = "incoming",
+										 			size = 67890,
+										 			state = "received"
+										 		)
+										 	)
+										 )
+										 )
+	)
+	res <- text_message_fun(dat)
+	res_which <- which_sensor(dat, "text_message")
+	true <- data.frame(
+		measurement_id = c("12345a_1", "12345a_2"),
+		participant_id = "12345",
+		date = "2021-11-14",
+		time = "16:40:00",
+		address = c("123", "456"),
+		body = c("abc", "def"),
+		text_date = c("2021-11-13", "2021-11-12"),
+		date_sent = c("2021-11-13T13:00:00.123456T", "2021-11-12T14:00:00.123456T"),
+		is_read = c(TRUE, FALSE),
+		kind = c("outgoing", "incoming"),
+		size = c(12345, 67890),
+		state = c("sent", "received")
+	)
+
+	expect_identical(res, res_which)
+	expect_identical(res, true)
+	expect_identical(res_which, true)
+})
+
+# Weather ===========
 test_that("weather", {
 	unit_test("weather",
 						country = "BE",
@@ -534,6 +693,7 @@ test_that("weather", {
 						temp_max = 14.123456789012345)
 })
 
+# Wifi ===========
 test_that("wifi", {
 	unit_test("wifi",
 						ssid = "84f4004087530a720eca1db5408ac0389b16b346",
