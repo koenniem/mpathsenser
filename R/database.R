@@ -105,7 +105,6 @@ close_db <- function(db) {
 #'
 #' @param db A database connection
 #'
-#' @return
 #' @export
 index_db <- function(db) {
 	if (is.null(db) || !DBI::dbIsValid(db)) stop("Database connection is not valid")
@@ -121,27 +120,71 @@ index_db <- function(db) {
 	})
 }
 
+#' Split a subset of a database into another database
+#'
+#' @param old_db A CARP database connection from where the data will be transferred.
+#' @param new_db A CARP database connection where the data will be transferred to. If no new_db is
+#' specified, a path (and possibly a db_name) must be specified for \link[CARP]{create_db} to
+#' create a new database.
+#' @param sensor A character vector containing one or multiple sensors. See
+#' \code{\link[CARP]{sensors}} for a list of available sensors. Use "All" for all available sensors.
+#' @param path The path to the database. Use NULL to use the full path name in db_name.
+#' @param db_name The name of the database.
+#'
+#' @export
+split_db <- function(old_db, new_db = NULL, sensor, path = getwd(), db_name = "carp.db") {
+	# Check sensors
+	if (length(sensor) == 1 && sensor == "All") {
+		sensor <- sensors
+	} else {
+		missing <- sensor[!(sensor %in% sensors)]
+		if (length(missing) != 0) {
+			stop(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
+		}
+	}
+
+	# If no new database is specified, create a new one
+	no_db_specified <- FALSE
+	if (is.null(new_db)) {
+		no_db_specified <- TRUE
+		new_db <- create_db(path, db_name)
+		message(paste0("New database created in ", path))
+	}
+
+	# Attach new database to old database
+	DBI::dbExecute(old_db, paste0("ATTACH DATABASE '", new_db@dbname, "' AS new_db"))
+
+	# Copy all specified sensors
+	for (i in seq_along(sensor)) {
+		DBI::dbExecute(old_db, paste("INSERT OR IGNORE INTO new_db.", sensor[i], "SELECT * FROM ", sensor[i]))
+	}
+
+	# Detach
+	DBI::dbExecute(old_db, "DETACH DATABASE new_db")
+
+	if (no_db_specified) {
+		close_db(new_db)
+	}
+}
+
 add_study <- function(db, data) {
 	DBI::dbExecute(db,
-	"INSERT INTO Study(study_id, data_format)
-	VALUES(:study_id, :data_format)
-	ON CONFLICT DO NOTHING;",
+	"INSERT OR IGNORE INTO Study(study_id, data_format)
+	VALUES(:study_id, :data_format);",
 	list(study_id = data$study_id, data_format = data$data_format))
 }
 
 add_participant <- function(db, data) {
 	DBI::dbExecute(db,
-	"INSERT INTO Participant(participant_id, study_id)
-	VALUES(:participant_id, :study_id)
-	ON CONFLICT DO NOTHING;",
+	"INSERT OR IGNORE INTO Participant(participant_id, study_id)
+	VALUES(:participant_id, :study_id);",
 	list(participant_id = data$participant_id, study_id = data$study_id))
 }
 
 add_processed_files <- function(db, data) {
 	DBI::dbExecute(db,
-	"INSERT INTO ProcessedFiles(file_name, study_id, participant_id)
-	VALUES(:file_name, :study_id, :participant_id)
-	ON CONFLICT DO NOTHING;",
+	"INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)
+	VALUES(:file_name, :study_id, :participant_id);",
 	list(file_name = data$file_name, study_id = data$study_id, participant_id = data$participant_id))
 }
 
