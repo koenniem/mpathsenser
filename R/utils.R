@@ -16,7 +16,6 @@
 #' ccopy("K:/data/myproject/", "~/myproject")
 #' }
 ccopy <- function(from, to = getwd(), recursive = TRUE) {
-	# from <- "K:/GHUM-PPW-MICAS-OKPIV-PHD_KOEN-0800-A/emosense/"
 	from_list <- dir(path = from, pattern = "*.zip$", recursive = recursive)
 	to_list <- dir(path = to, pattern = "*.zip$", recursive = recursive)
 	copy <- from_list[!(from_list %in% to_list)]
@@ -24,9 +23,8 @@ ccopy <- function(from, to = getwd(), recursive = TRUE) {
 		return(message("No files left to copy"))
 	}
 	message(paste0("Copying ", length(copy), " files."))
-	copy <- normalizePath(paste0(from, "/", copy))
-	copy <- suppressWarnings(normalizePath(paste0(from, "/", copy)))
-	invisible(do.call(file.copy, list(from = copy, to = to, overwrite = FALSE)))
+	to_copy <- suppressWarnings(normalizePath(paste0(from, "/", copy)))
+	invisible(do.call(file.copy, list(from = to_copy, to = to, overwrite = FALSE)))
 }
 
 #' Fix the end of JSON files
@@ -259,15 +257,15 @@ unzip_impl <- function(path, overwrite) {
 		zipfiles <- zipfiles[!(tag_zip %in% tag_json)]
 	}
 
-
 	if (length(zipfiles) > 0) {
 		# TODO: implement error handling in case unzipping fails
 		# (e.g. unexpected end of data)
-		invisible(lapply(paste0(path, "/", zipfiles),
-										 utils::unzip,
-										 exdir = path,
-										 overwrite = overwrite
-		))
+		invisible(lapply(zipfiles, function(x) {
+			utils::unzip(zipfile = file.path(path, zipfiles),
+									 overwrite = overwrite,
+									 junkpaths = TRUE,
+									 exdir = path)
+		}))
 	}
 	return(length(zipfiles))
 }
