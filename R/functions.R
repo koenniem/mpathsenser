@@ -116,8 +116,7 @@ import_impl <- function(path, files, db_name) {
 
     # Try to read in the file. If the file is corrupted for some reason, skip this one
     file <- normalizePath(paste0(path, "/", files[i]))
-    file <- suppressWarnings(normalizePath(paste0(path, "/", files[i])))
-    file <- readLines(file, warn =FALSE)
+    file <- readLines(file, warn = FALSE)
     file <- paste0(file, collapse = "")
     if (!jsonlite::validate(file)) next
 
@@ -139,8 +138,7 @@ import_impl <- function(path, files, db_name) {
       add_processed_files(tmp_db,
                          data.frame(
                            file_name = files[i],
-                           # TODO: Update extraction of participant_id with new file name
-                           participant_id = strsplit(files[i], "_")[[1]][2],
+                           participant_id = sub(".*?([0-9]{5}).*", "\\1", files[i]),
                            study_id = "-1"
                          )
       )
@@ -276,7 +274,7 @@ freq <- c(
   Wifi = 60 # once per minute
 )
 
-#' Create a coverage chart showing sampling rate
+#' Create a coverage chart of the sampling rate
 #'
 #' Only applicable to non-reactive sensors with "continuous" sampling
 #'
