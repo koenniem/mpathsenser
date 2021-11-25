@@ -23,3 +23,8 @@ The distance between point 1 and 2 in kilometers.
 \description{
 Calculate the great-circle distance between two points using the Haversine function.
 }
+\examples{
+fra <- c(50.03333, 8.570556) # Frankfurt Airport
+ord <- c(41.97861, -87.90472) # Chicago O'Hare International Airport
+haversine(fra[1], fra[2], ord[1], ord[2]) # 6971.059 km
+}

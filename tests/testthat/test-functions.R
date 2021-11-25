@@ -9,6 +9,14 @@ test_that("import", {
     db = db,
     recursive = FALSE
   ), "All files were successfully written to the database.")
+
+  expect_warning(import(
+    path = path,
+    dbname = "test2.db",
+    recursive = TRUE # Includes broken files
+  ), "Some files could not be written to the database.")
+
+  file.remove(system.file("testdata", "test2.db", package = "CARP"))
 })
 
 test_that("coverage", {
