@@ -125,19 +125,28 @@ test_that("accelerometer", {
 										 		y = 0.123456789,
 										 		z = 9.123456789
 										 	)
+										 ),
+										 list(
+										 	body = list(
+										 		id = "12345b",
+										 		timestamp = "2021-11-14T16:40:01.123456Z",
+										 		x = NA,
+										 		y = NA,
+										 		z = NA
+										 	)
 										 )
 	)
 
 	res <- accelerometer_fun(dat)
 	res_which <- which_sensor(dat, "accelerometer")
 	true <- data.frame(
-		measurement_id = "12345a",
+		measurement_id = c("12345a", "12345b"),
 		participant_id = "12345",
 		date = "2021-11-14",
 		time = "16:40:01.123",
-		x = 0.123456789,
-		y = 0.123456789,
-		z = 9.123456789
+		x = c(0.123456789, NA),
+		y = c(0.123456789, NA),
+		z = c(9.123456789, NA)
 	)
 
 	expect_identical(res, res_which)
@@ -156,19 +165,28 @@ test_that("gyroscope", {
 										 		y = 0.123456789,
 										 		z = 9.123456789
 										 	)
+										 ),
+										 list(
+										 	body = list(
+										 		id = "12345b",
+										 		timestamp = "2021-11-14T16:40:01.123456Z",
+										 		x = NA,
+										 		y = NA,
+										 		z = NA
+										 	)
 										 )
 	)
 
 	res <- gyroscope_fun(dat)
 	res_which <- which_sensor(dat, "gyroscope")
 	true <- data.frame(
-		measurement_id = "12345a",
+		measurement_id = c("12345a", "12345b"),
 		participant_id = "12345",
 		date = "2021-11-14",
 		time = "16:40:01.123",
-		x = 0.123456789,
-		y = 0.123456789,
-		z = 9.123456789
+		x = c(0.123456789, NA),
+		y = c(0.123456789, NA),
+		z = c(9.123456789, NA)
 	)
 
 	expect_identical(res, res_which)
@@ -218,17 +236,37 @@ test_that("periodic_accelerometer", {
 										 			)
 										 		)
 										 	)
+										 ),
+										 list(
+										 	body = list(
+										 		id = "12345c",
+										 		timestamp = "2021-11-14T16:40:01.123456Z",
+										 		data = list(
+										 			list(
+										 				timestamp = "2021-11-14T16:40:01.223456Z",
+										 				x = NA,
+										 				y = NA,
+										 				z = NA
+										 			),
+										 			list(
+										 				timestamp = "2021-11-14T16:40:01.323456Z",
+										 				x = NA,
+										 				y = NA,
+										 				z = NA
+										 			)
+										 		)
+										 	)
 										 )
 	)
 	res <- accelerometer_fun(dat)
 	true <- data.frame(
-		measurement_id = c("12345a_1", "12345a_2", "12345b_1", "12345b_2"),
-		participant_id = rep("12345", 2),
+		measurement_id = c("12345a_1", "12345a_2", "12345b_1", "12345b_2", "12345c_1", "12345c_2"),
+		participant_id = rep("12345", 3),
 		date = "2021-11-14",
-		time = rep(c("16:40:01.223","16:40:01.323"), 2),
-		x = rep(1.12345, 4),
-		y = rep(-0.1234, 4),
-		z = rep(0.123456, 4)
+		time = rep(c("16:40:01.223","16:40:01.323"), 3),
+		x = c(rep(1.12345, 4), NA, NA),
+		y = c(rep(-0.1234, 4), NA, NA),
+		z = c(rep(0.123456, 4), NA, NA)
 	)
 	expect_identical(res, true)
 })
@@ -275,17 +313,37 @@ test_that("periodic_gyroscope", {
 										 			)
 										 		)
 										 	)
+										 ),
+										 list(
+										 	body = list(
+										 		id = "12345c",
+										 		timestamp = "2021-11-14T16:40:01.123456Z",
+										 		data = list(
+										 			list(
+										 				timestamp = "2021-11-14T16:40:01.223456Z",
+										 				x = NA,
+										 				y = NA,
+										 				z = NA
+										 			),
+										 			list(
+										 				timestamp = "2021-11-14T16:40:01.323456Z",
+										 				x = NA,
+										 				y = NA,
+										 				z = NA
+										 			)
+										 		)
+										 	)
 										 )
 	)
 	res <- gyroscope_fun(dat)
 	true <- data.frame(
-		measurement_id = c("12345a_1", "12345a_2", "12345b_1", "12345b_2"),
-		participant_id = rep("12345", 2),
+		measurement_id = c("12345a_1", "12345a_2", "12345b_1", "12345b_2", "12345c_1", "12345c_2"),
+		participant_id = rep("12345", 3),
 		date = "2021-11-14",
-		time = rep(c("16:40:01.223","16:40:01.323"), 2),
-		x = rep(1.12345, 4),
-		y = rep(-0.1234, 4),
-		z = rep(0.123456, 4)
+		time = rep(c("16:40:01.223","16:40:01.323"), 3),
+		x = c(rep(1.12345, 4), NA, NA),
+		y = c(rep(-0.1234, 4), NA, NA),
+		z = c(rep(0.123456, 4), NA, NA)
 	)
 	expect_identical(res, true)
 })
@@ -295,6 +353,9 @@ test_that("activity", {
 	unit_test("activity",
 						confidence = 80,
 						type = "WALKING")
+	unit_test("activity",
+						confidence = NA,
+						type = NA)
 })
 
 # Air Quality ===========
@@ -306,6 +367,13 @@ test_that("air_quality", {
 						place = "Aarschot, Belgium",
 						latitude = 50.12345678901234,
 						longitude = 4.12345678901234)
+	unit_test("air_quality",
+						air_quality_index = NA,
+						air_quality_level = NA,
+						source = NA,
+						place = NA,
+						latitude = NA,
+						longitude = NA)
 })
 
 # Installed Apps ===========
@@ -316,17 +384,22 @@ test_that("installed_apps", {
 										 		id = "12345a",
 										 		timestamp = "2021-11-14T16:40:01.123456Z",
 										 		installed_apps = list("a", "b", "c")
-										 	)
-										 )
+										 	)),
+										 	list(
+										 		body = list(
+										 		id = "12345a",
+										 		timestamp = "2021-11-14T16:40:01.123456Z",
+										 		installed_apps = list()
+										 	))
 	)
 	res <- apps_fun(dat)
 	res_which <- which_sensor(dat, "apps")
 	true <- data.frame(
-		measurement_id = c("12345a_1", "12345a_2", "12345a_3"),
+		measurement_id = c("12345a_1", "12345a_2", "12345a_3", "12345a_4"),
 		participant_id = "12345",
 		date = "2021-11-14",
 		time = "16:40:00",
-		apps = c("a", "b", "c")
+		app = c("a", "b", "c", NA)
 	)
 
 	expect_identical(res, res_which)
@@ -348,9 +421,11 @@ test_that("app_usage", {
 										 			b = 5,
 										 			c = 7
 										 		)
-										 	),
+										 	)
+										 ),
+										 list(
 										 	body = list(
-										 		id = "12345a",
+										 		id = "12345b",
 										 		timestamp = "2021-11-14T16:40:01.123456Z",
 										 		start = "2021-11-15T14:05:00.123456Z",
 										 		end = "2021-11-15T14:35.00.123456Z",
@@ -360,52 +435,34 @@ test_that("app_usage", {
 										 			c = 7
 										 		)
 										 	)
-										 )
-	)
-
-	dat2 <- common_test("app_usage",
+										 ),
 										 list(
 										 	body = list(
-										 		id = "12345a",
+										 		id = "12345c",
 										 		timestamp = "2021-11-14T16:40:01.123456Z",
-										 		start = "2021-11-15T14:05:00.123456Z",
-										 		end = "2021-11-15T14:35.00.123456Z"
+										 		start = NA,
+										 		end = NA,
+										 		usage = list()
 										 	)
 										 )
 	)
 
 	res <- app_usage_fun(dat)
-	res2 <- app_usage_fun(dat2)
 	res_which <- which_sensor(dat, "app_usage")
-	res_which2 <- which_sensor(dat2, "app_usage")
 	true <- data.frame(
-		measurement_id = c("12345a_1", "12345a_2", "12345a_3"),
+		measurement_id = c("12345a_1", "12345a_2", "12345a_3", "12345b_1", "12345b_2", "12345b_3", "12345c_1"),
 		participant_id = "12345",
 		date = "2021-11-14",
 		time = "16:40:00",
-		start = "2021-11-15T14:05:00.123456Z",
-		end = "2021-11-15T14:35.00.123456Z",
-		usage = c(10, 5, 7),
-		app = c("a", "b", "c")
-	)
-	true2 <- data.frame(
-		measurement_id = "12345a_1",
-		participant_id = "12345",
-		date = "2021-11-14",
-		time = "16:40:00",
-		start = "2021-11-15T14:05:00.123456Z",
-		end = "2021-11-15T14:35.00.123456Z",
-		usage = NA,
-		app = NA
+		start = c(rep("2021-11-15T14:05:00.123456Z", 6), NA),
+		end = c(rep("2021-11-15T14:35.00.123456Z", 6), NA),
+		usage = c(rep(c(10, 5, 7), 2), NA),
+		app = c(rep(c("a", "b", "c"), 2), "")
 	)
 
 	expect_identical(res, res_which)
 	expect_identical(res, true)
 	expect_identical(res_which, true)
-
-	expect_identical(res2, res_which2)
-	expect_identical(res2, true2)
-	expect_identical(res_which2, true2)
 })
 
 # Battery ===========
@@ -413,32 +470,85 @@ test_that("battery", {
 	unit_test("battery",
 						battery_level = 85,
 						battery_status = "discharging")
+	unit_test("battery",
+						battery_level = NA,
+						battery_status = NA)
 })
 
 # Bluetooth ===========
 test_that("bluetooth", {
-	unit_test("bluetooth",
-						scan_result = list(
+	dat <- common_test("bluetooth",
 							list(
-								advertisement_name = "123abc",
-								bluetooth_device_id = "def456",
-								bluetooth_device_name = "789abc",
-								bluetooth_device_type = "le",
-								connectable = TRUE,
-								tx_power_level = 50,
-								rssi = -70
+								body = list(
+									id = "12345a",
+									timestamp = "2021-11-14T16:40:00.123456Z",
+									scan_result = list(
+										list(
+											advertisement_name = "123abc",
+											bluetooth_device_id = "def456",
+											bluetooth_device_name = "789abc",
+											bluetooth_device_type = "le",
+											connectable = TRUE,
+											tx_power_level = 50,
+											rssi = -70
+										),
+										list(
+											advertisement_name = "123abc",
+											bluetooth_device_id = "def456",
+											bluetooth_device_name = "789abc",
+											bluetooth_device_type = "le",
+											connectable = TRUE,
+											tx_power_level = 50,
+											rssi = -70
+										)
+									)
+								)
 							),
 							list(
-								advertisement_name = "123abc",
-								bluetooth_device_id = "def456",
-								bluetooth_device_name = "789abc",
-								bluetooth_device_type = "le",
-								connectable = TRUE,
-								tx_power_level = 50,
-								rssi = -70
+								body = list(
+									id = "12345b",
+									timestamp = "2021-11-14T16:40:00.123456Z",
+									scan_result = list(
+										list(
+											advertisement_name = NA,
+											bluetooth_device_id = NA,
+											bluetooth_device_name = NA,
+											bluetooth_device_type = NA,
+											connectable = NA,
+											tx_power_level = NA,
+											rssi = NA
+										)
+									)
+								)
+							),
+							list(
+								body = list(
+									id = "12345c",
+									timestamp = "2021-11-14T16:40:00.123456Z",
+									scan_result = list()
+								)
 							)
-						)
 	)
+
+	res <- bluetooth_fun(dat)
+	res_which <- which_sensor(dat, "bluetooth")
+	true <- data.frame(
+		measurement_id = c("12345a_1", "12345a_2", "12345b_1", "12345c_1"),
+		participant_id = "12345",
+		date = "2021-11-14",
+		time = "16:40:00",
+		advertisement_name = c("123abc", "123abc", NA, NA),
+		bluetooth_device_id = c("def456", "def456", NA, NA),
+		bluetooth_device_name = c("789abc", "789abc", NA, NA),
+		bluetooth_device_type = c("le", "le", NA, NA),
+		connectable = c(TRUE, TRUE, NA, NA),
+		rssi = c(-70, -70, NA, NA),
+		tx_power_level = c(50, 50, NA, NA)
+	)
+
+	expect_identical(res, res_which)
+	expect_identical(res, true)
+	expect_identical(res_which, true)
 })
 
 # Calendar ===========
@@ -447,13 +557,12 @@ test_that("calendar", {
 										 list(
 										 	body = list(
 										 		id = "12345a",
-										 		timestamp = "2021-11-14T16:40:01.123456Z",
 										 		calendar_events = list(
 										 			list(
-										 				event_id = "2F65B0DC-71DE-FE06-0740-0C55292406ED:B74C2CB09DEBFF8A5BFDA",
-										 				calendar_id = "C3EC959A-1385-4DB5-6F7F-CEC281D12D72",
-										 				title = "cdd072aceed4665e7290ad11f8bf8b772edc0123",
-										 				description = "631487392a0468f564736a0aba9659998c7462aa",
+										 				event_id = "8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9",
+										 				calendar_id = "45ED76B4-87A1-D7E0-FA93-A7A1F64CF3E7",
+										 				title = "96475fc78435bef84354fc05dd185ac944c5c3c1",
+										 				description = "81af04ac942e1bbf4f3c638b086395dfabe2164a",
 										 				start = "2021-11-14T13:00:00.000Z",
 										 				end = "2021-11-14T13:30:00.000Z",
 										 				all_day = FALSE,
@@ -465,10 +574,10 @@ test_that("calendar", {
 										 				)
 										 			),
 										 			list(
-										 				event_id = "2F65B0DC-71DE-FE06-0740-0C55292406ED:B74C2CB09DEBFF8A5BFDA",
-										 				calendar_id = "C3EC959A-1385-4DB5-6F7F-CEC281D12D72",
-										 				title = "cdd072aceed4665e7290ad11f8bf8b772edc0123",
-										 				description = "631487392a0468f564736a0aba9659998c7462aa",
+										 				event_id = "8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9",
+										 				calendar_id = "45ED76B4-87A1-D7E0-FA93-A7A1F64CF3E7",
+										 				title = "96475fc78435bef84354fc05dd185ac944c5c3c1",
+										 				description = "81af04ac942e1bbf4f3c638b086395dfabe2164a",
 										 				start = "2021-11-14T13:00:00.000Z",
 										 				end = "2021-11-14T13:30:00.000Z",
 										 				all_day = FALSE,
@@ -476,10 +585,10 @@ test_that("calendar", {
 										 				attendees = vector("list", 0)
 										 			),
 										 			list(
-										 				event_id = "2F65B0DC-71DE-FE06-0740-0C55292406ED:B74C2CB09DEBFF8A5BFDA",
-										 				calendar_id = "C3EC959A-1385-4DB5-6F7F-CEC281D12D72",
-										 				title = "cdd072aceed4665e7290ad11f8bf8b772edc0123",
-										 				description = "631487392a0468f564736a0aba9659998c7462aa",
+										 				event_id = "8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9",
+										 				calendar_id = "45ED76B4-87A1-D7E0-FA93-A7A1F64CF3E7",
+										 				title = "96475fc78435bef84354fc05dd185ac944c5c3c1",
+										 				description = "81af04ac942e1bbf4f3c638b086395dfabe2164a",
 										 				start = "2021-11-14T13:00:00.000Z",
 										 				end = "2021-11-14T13:30:00.000Z",
 										 				all_day = FALSE,
@@ -487,25 +596,31 @@ test_that("calendar", {
 										 			)
 										 		)
 										 	)
+										 ),
+										 list(
+										 	body = list(
+										 		id = "12345b",
+										 		calendar_events = list()
+										 	)
 										 )
 	)
 
 	res <- calendar_fun(dat)
 	res_which <- which_sensor(dat, "calendar")
 	true <- data.frame(
-		measurement_id = c("12345a_1", "12345a_2", "12345a_3"),
+		measurement_id = c("12345a_1", "12345a_2", "12345a_3", "12345b_1"),
 		participant_id = "12345",
 		date = "2021-11-14",
 		time = "16:40:00",
-		event_id = "2F65B0DC-71DE-FE06-0740-0C55292406ED:B74C2CB09DEBFF8A5BFDA",
-		calendar_id = "C3EC959A-1385-4DB5-6F7F-CEC281D12D72",
-		title = "cdd072aceed4665e7290ad11f8bf8b772edc0123",
-		description = "631487392a0468f564736a0aba9659998c7462aa",
-		start = "2021-11-14T13:00:00.000Z",
-		end = "2021-11-14T13:30:00.000Z",
-		all_day = FALSE,
-		location = "Microsoft Teams Meeting",
-		attendees = c("a, b, NA", NA, NA)
+		event_id = c(rep("8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9", 3), NA),
+		calendar_id = c(rep("45ED76B4-87A1-D7E0-FA93-A7A1F64CF3E7", 3), NA),
+		title = c(rep("96475fc78435bef84354fc05dd185ac944c5c3c1", 3), NA),
+		description = c(rep("81af04ac942e1bbf4f3c638b086395dfabe2164a", 3), NA),
+		start = c(rep("2021-11-14T13:00:00.000Z", 3), NA),
+		end = c(rep("2021-11-14T13:30:00.000Z", 3), NA),
+		all_day = c(rep(FALSE, 3), NA),
+		location = c(rep("Microsoft Teams Meeting", 3), NA),
+		attendees = c("a, b, NA", NA, NA, NA)
 	)
 
 	expect_identical(res, res_which)
@@ -517,6 +632,8 @@ test_that("calendar", {
 test_that("connectivity", {
 	unit_test("connectivity",
 						connectivity_status = "wifi")
+	unit_test("connectivity",
+						connectivity_status = NA)
 })
 
 
@@ -530,22 +647,38 @@ test_that("device", {
 						device_manufacturer = "Apple",
 						device_model = "iPhone",
 						operating_system = "iOS")
+	unit_test("device",
+						platform = NA,
+						device_id = NA,
+						hardware = NA,
+						device_name = NA,
+						device_manufacturer = NA,
+						device_model = NA,
+						operating_system = NA)
 })
 
 # Error ===========
 test_that("error", {
 	unit_test("error",
 						message = "WeatherStation plugin returned null.")
+	unit_test("error",
+						message = NA)
 })
 
 # Geofence ===========
 test_that("geofence", {
 	unit_test("geofence",
-						center = "e13344b52140327c0ffcc9b419692a2b3fdc6babf73ced8dc7de68bac3528966600f74dadf33a880907719e27668fdbf7e38cc58ccef2007625192adcb3d1969f1",
+						center = "ed1007174d0668bb262d702652f3b3f81d6be2d6e08db967810f8d128a0042014cc8e04792d8cdfe51da2158fd3efbedaf23fc02da9e5fea4c896ecb81c81672bf",
 						dwell = 123456,
 						name = "Home",
 						radius = 50,
 						state = "ENTER")
+	unit_test("geofence",
+						center = NA,
+						dwell = NA,
+						name = NA,
+						radius = NA,
+						state = NA)
 })
 
 # Keyboard ===========
@@ -561,18 +694,31 @@ test_that("light", {
 						std_lux = 5,
 						min_lux = 0,
 						max_lux = 200)
+	unit_test("light",
+						mean_lux = NA,
+						std_lux = NA,
+						min_lux = NA,
+						max_lux = NA)
 })
 
 # Location ===========
 test_that("location", {
 	unit_test("location",
-						latitude= "e13344b52140327c0ffcc9b419692a2b3fdc6babf73ced8dc7de68bac3528966600f74dadf33a880907719e27668fdbf7e38cc58ccef2007625192adcb3d1969f1",
-						longitude = "773549b214208436841554c01423535062f5a248142bf8b7e1707e69fd351abb67045a330337d236482f54601724e4f7f3c5f53608bdafec7f01713b8f7e2422a6",
+						latitude= "69daf931cc38118ce450d5bfd9437324d1ad9b463e22d97a3ec5338c5de1f3a3a5bfc163eabdc8b0c99320b0c6fbc6ca4be89dac7db9d1f1d86fb1776534dddc89",
+						longitude = "1704226c422d7182cc960e6630b5f69a2c7ce8de2e673574fc7fb89fbab4e2c2d848aa30920abb2396de254666213f087f3c929da0b57b7257a58dc166b1ef1db1",
 						altitude = 4.123456789012345,
 						accuracy = 8.123456789012354,
 						speed = 5.123456879012345,
 						speed_accuracy = 0,
 						heading = 123.456789012354567)
+	unit_test("location",
+						latitude= NA,
+						longitude = NA,
+						altitude = NA,
+						accuracy = NA,
+						speed = NA,
+						speed_accuracy = NA,
+						heading = NA)
 })
 
 # Memory  ===========
@@ -580,6 +726,9 @@ test_that("memory", {
 	unit_test("memory",
 						free_physical_memory = 12345678,
 						free_virtual_memory = 123456789)
+	unit_test("memory",
+						free_physical_memory = NA,
+						free_virtual_memory = NA)
 })
 
 # Mobility ===========
@@ -591,6 +740,13 @@ test_that("mobility", {
 						normalized_entropy = 0,
 						home_stay = -1,
 						distance_travelled = 0)
+	unit_test("mobility",
+						number_of_places = NA,
+						location_variance = NA,
+						entropy = NA,
+						normalized_entropy = NA,
+						home_stay = NA,
+						distance_travelled = NA)
 })
 
 # Noise ===========
@@ -600,18 +756,27 @@ test_that("noise", {
 						std_decibel = 10.123456789,
 						min_decibel = 5.123456789,
 						max_decibel = 80.123456789)
+	unit_test("noise",
+						mean_decibel = NA,
+						std_decibel = NA,
+						min_decibel = NA,
+						max_decibel = NA)
 })
 
 # Pedometer ===========
 test_that("pedometer", {
 	unit_test("pedometer",
 						step_count = 12345)
+	unit_test("pedometer",
+						step_count = NA)
 })
 
 # Screen ===========
 test_that("screen", {
 	unit_test("screen",
 						screen_event = "SCREEN_OFF")
+	unit_test("screen",
+						screen_event = NA)
 })
 
 # Text message ===========
@@ -644,23 +809,30 @@ test_that("text_message", {
 										 		)
 										 	)
 										 )
+										 ),
+										 list(
+										 	body = list(
+										 		id ="12345b",
+										 		start_time = "2021-11-14T16:40:01.123456Z",
+										 		text_message = list()
+										 	)
 										 )
 	)
 	res <- text_message_fun(dat)
 	res_which <- which_sensor(dat, "text_message")
 	true <- data.frame(
-		measurement_id = c("12345a_1", "12345a_2"),
+		measurement_id = c("12345a_1", "12345a_2", "12345b_1"),
 		participant_id = "12345",
 		date = "2021-11-14",
 		time = "16:40:00",
-		address = c("123", "456"),
-		body = c("abc", "def"),
-		text_date = c("2021-11-13", "2021-11-12"),
-		date_sent = c("2021-11-13T13:00:00.123456T", "2021-11-12T14:00:00.123456T"),
-		is_read = c(TRUE, FALSE),
-		kind = c("outgoing", "incoming"),
-		size = c(12345, 67890),
-		state = c("sent", "received")
+		address = c("123", "456", NA),
+		body = c("abc", "def", NA),
+		text_date = c("2021-11-13", "2021-11-12", NA),
+		date_sent = c("2021-11-13T13:00:00.123456T", "2021-11-12T14:00:00.123456T", NA),
+		is_read = c(TRUE, FALSE, NA),
+		kind = c("outgoing", "incoming", NA),
+		size = c(12345, 67890, NA),
+		state = c("sent", "received", NA)
 	)
 
 	expect_identical(res, res_which)
@@ -675,15 +847,15 @@ test_that("weather", {
 						area_name = "Arrondissement Leuven",
 						weather_main = "Clouds",
 						weather_description = "broken clouds",
-						sunrise = "2021-11-14T08:01:00.000",
-						sunset = "2021-11-14T18:35:00.000",
+						sunrise = "2021-11-14T08:00:00.000",
+						sunset = "2021-11-14T19:00:00.000",
 						latitude = 50.1234,
 						longitude = 4.1234,
 						pressure = 1020,
-						wind_speed = 6.25,
-						wind_degree = 110,
-						humidity = 82,
-						cloudiness = 75,
+						wind_speed = 5.75,
+						wind_degree = 140,
+						humidity = 85,
+						cloudiness = 77,
 						rain_last_hour = NA,
 						rain_last_3hours = NA,
 						snow_last_hour = NA,
@@ -691,12 +863,37 @@ test_that("weather", {
 						temperature = 13.123456789012345,
 						temp_min = 12.123456789012345,
 						temp_max = 14.123456789012345)
+	unit_test("weather",
+						country = NA,
+						area_name = NA,
+						weather_main = NA,
+						weather_description = NA,
+						sunrise = NA,
+						sunset = NA,
+						latitude = NA,
+						longitude = NA,
+						pressure = NA,
+						wind_speed = NA,
+						wind_degree = NA,
+						humidity = NA,
+						cloudiness = NA,
+						rain_last_hour = NA,
+						rain_last_3hours = NA,
+						snow_last_hour = NA,
+						snow_last_3hours = NA,
+						temperature = NA,
+						temp_min = NA,
+						temp_max = NA)
 })
 
 # Wifi ===========
 test_that("wifi", {
 	unit_test("wifi",
-						ssid = "84f4004087530a720eca1db5408ac0389b16b346",
-						bssid = "52ba0ac0edffccac15f10f4e099208e22a603784",
-						ip = "10.15.21.05")
+						ssid = "318e527d52bb2f775c79d84a5c888614ca772b30",
+						bssid = "e412411ff32dcf879275b33882643ee2d328a56a",
+						ip = "10.11.31.06")
+	unit_test("wifi",
+						ssid = NA,
+						bssid = NA,
+						ip = NA)
 })

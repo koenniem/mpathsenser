@@ -127,9 +127,9 @@ test_that("get_processed_files", {
 	db <- open_db(system.file("testdata", package = "CARP"), "test.db")
 	res <- get_processed_files(db)
 	true <- data.frame(
-		file_name = "test.json",
-		participant_id = "27624",
-		study_id = "#99 - KU Leuven study"
+		file_name = c("empty.json", "test.json"),
+		participant_id = c("empty.json", "12345"),
+		study_id = c("-1", "test-study")
 	)
 	expect_identical(res, true)
 	DBI::dbDisconnect(db)
@@ -140,8 +140,8 @@ test_that("get_participants", {
 	res <- get_participants(db)
 	res_lazy <- get_participants(db, lazy = TRUE)
 	true <- data.frame(
-		participant_id = "27624",
-		study_id = "#99 - KU Leuven study"
+		participant_id = "12345",
+		study_id = "test-study"
 	)
 	expect_identical(res, true)
 	expect_s3_class(res_lazy, "tbl_SQLiteConnection")
@@ -153,7 +153,7 @@ test_that("get_study", {
 	res <- get_studies(db)
 	res_lazy <- get_studies(db, lazy = TRUE)
 	true <- data.frame(
-		study_id = "#99 - KU Leuven study",
+		study_id = "test-study",
 		data_format = "carp"
 	)
 	expect_identical(res, true)

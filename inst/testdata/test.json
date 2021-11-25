@@ -1,32 +1,958 @@
 [
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:15:58.557282Z","data_format":{"namespace":"carp","name":"accelerometer"}},"body":{"id":"5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e","timestamp":"2021-02-25T15:15:58.557282Z","data":[{"timestamp":"2021-02-25T15:15:58.742208Z","x":-0.12734355032444,"y":0.3048965036869049,"z":9.814506530761719},{"timestamp":"2021-02-25T15:15:58.942764Z","x":-0.128301739692688,"y":0.30777108669281006,"z":9.812589645385742},{"timestamp":"2021-02-25T15:15:59.143328Z","x":-0.12542715668678284,"y":0.30298012495040894,"z":9.814506530761719},{"timestamp":"2021-02-25T15:15:59.343891Z","x":-0.12734355032444,"y":0.3068128824234009,"z":9.818339347839355},{"timestamp":"2021-02-25T15:15:59.544454Z","x":-0.128301739692688,"y":0.3048965036869049,"z":9.818339347839355}]}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:03.189216Z","data_format":{"namespace":"carp","name":"air_quality"}},"body":{"id":"5fcd9250-777c-11eb-be9c-370a464b78b8","timestamp":"2021-02-25T15:16:03.189216Z","air_quality_index":51,"source":"RIVM - Rijksinstituut voor Volksgezondheid en Milieum, Landelijk Meetnet Luchtkwaliteit","place":"Klotterpeellaan, De Rips","latitude":51.535901,"longitude":5.808593,"air_quality_level":"MODERATE"}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:01.659430Z","data_format":{"namespace":"carp","name":"apps"}},"body":{"id":"5ee41cb0-777c-11eb-bbcb-4b37c3bed433","timestamp":"2021-02-25T15:16:01.659430Z","installed_apps":["NS","Recycle!","Skype for Business","Wifi Analyzer","Mi Doc Viewer (Powered by WPS)","Docs","Authenticator","WhatsApp","Slides", "Telenet","Duolingo","Google Play Services for AR","Headspace","BBC News","Twilight","Bitmoji","Clock","eduroamCAT","ING Banking","SNCB","Wallpaper Carousel","Coronalert","Google Play Music","Mi Remote","Files by Google","Wikipedia","Drive","Word","Mobile Device Information Provider","Fit","Calculator","Buienalarm","mynexuzhealth","Google Play Movies & TV","Mi Community","Netflix","VLC","Photos","Spotify","App vault","Firefox","Translate","Xtra","Google Play Books","Home","Booking.com","rif is fun","Google PDF Viewer","itsme","Styles & wallpapers","m-Path","Keep notes","Google VR Services","Mi Credit","Creditcards","Google Play Games","Google News","Disney+","Teams","HP Print Service Plugin"]}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:01.178830Z","data_format":{"namespace":"carp","name":"app_usage"}},"body":{"id":"5e9adeb0-777c-11eb-a373-675b95dfc266","timestamp":"2021-02-25T15:16:01.178830Z","start":"2021-02-25T15:14:43.748432Z","end":"2021-02-25T15:16:01.042328Z","usage":{"kuleuven":525,"securitycenter":18,"home":230,"systemui":3,"permissioncontroller":10,"powerkeeper":2,"settings":33}}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:01.251156Z","data_format":{"namespace":"carp","name":"battery"}},"body":{"id":"5ea5db30-777c-11eb-8685-2bd60b994624","timestamp":"2021-02-25T15:16:01.251156Z","battery_level":100,"battery_status":"charging"}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:01.540978Z","data_format":{"namespace":"carp","name":"calendar"}},"body":{"id":"5ed21b50-777c-11eb-b0d5-db0e8e2b0c32","timestamp":"2021-02-25T15:16:01.540978Z","calendar_events":[{"event_id":"279","calendar_id":"3","title":"40a33c89cdb719f2e27f47e225cc3300abcca0f9","description":"da39a3ee5e6b4b0d3255bfef95601890afd80709","start":"2021-02-26T12:45:00.000Z","end":"2021-02-26T14:00:00.000Z","all_day":false,"location":"","attendees":["b0e9b9547de9ce9bcec418bf7bf58c351baaa89c"]},{"event_id":"262","calendar_id":"8","title":"c4ffc1e14c7b3622a7c5bb44cefe62198fc9e190","description":"da39a3ee5e6b4b0d3255bfef95601890afd80709","start":"2021-02-26T13:10:00.000Z","end":"2021-02-26T13:35:00.000Z","all_day":false,"location":"02. Leuven","attendees":[]}]}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:01.244465Z","data_format":{"namespace":"carp","name":"connectivity"}},"body":{"id":"5ea4c9c0-777c-11eb-b7de-396a87e8e886","timestamp":"2021-02-25T15:16:01.244465Z","connectivity_status":"wifi"}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:01.055827Z","data_format":{"namespace":"carp","name":"device"}},"body":{"id":"5e881a00-777c-11eb-be61-13094c65d0b2","timestamp":"2021-02-25T15:16:01.055827Z","platform":"Android","device_id":"QKQ1.200628.002","hardware":"qcom","device_name":"gauguin","device_manufacturer":"Xiaomi","device_model":"M2007J17G","operating_system":"REL"}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:15:58.558056Z","data_format":{"namespace":"carp","name":"gyroscope"}},"body":{"id":"5d0aefe0-777c-11eb-a2f2-b99488644ef5","timestamp":"2021-02-25T15:15:58.558056Z","data":[{"timestamp":"2021-02-25T15:15:58.782271Z","x":-0.0003741947002708912,"y":-0.003209952265024185,"z":0.021946871653199196},{"timestamp":"2021-02-25T15:15:58.982795Z","x":-0.000054615666158497334,"y":-0.0006000570137985051,"z":0.00010896776802837849},{"timestamp":"2021-02-25T15:15:59.183350Z","x":0.0001584370620548725,"y":-0.0001739516155794263,"z":0.00010896776802837849},{"timestamp":"2021-02-25T15:15:59.384026Z","x":0.0001584370620548725,"y":-0.00038700434379279613,"z":0.00010896776802837849}]}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:00.177034Z","data_format":{"namespace":"carp","name":"light"}},"body":{"id":"5e01fa10-777c-11eb-8edb-cff634b7a67b","timestamp":"2021-02-25T15:16:00.177034Z","mean_lux":985.0,"std_lux":0.0,"min_lux":985,"max_lux":985}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:03.498771Z","data_format":{"namespace":"carp","name":"location"}},"body":{"id":"5ffcb8a0-777c-11eb-9b4b-5103ae05d90d","timestamp":"2021-02-25T15:16:03.498771Z","time":"2021-02-25T15:16:02.442Z","latitude":"90ef5391e03561757eeedb4ee950cf7e653344227d43ae74431a8d9512fe0676fed307cb80651a19d2855a2ea67c2d2af5f2dac22e72888f3f20","longitude":"54de1592edf5fa6b79dd9fe1f2f32a76ad75ba1cfd73d5c29bc604dd6efda26b045a1bf2f7ee91ddbb7762a72fab56e7d28f63a8e78d8b0214","altitude":73.6599984741211,"accuracy":23.649999618530273,"speed":0.9318629503250122,"speed_accuracy":2.731226921081543,"heading":41.00154495239258}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:00.176416Z","data_format":{"namespace":"carp","name":"noise"}},"body":{"id":"5e01d300-777c-11eb-a04e-17550e6cae6b","timestamp":"2021-02-25T15:16:00.176416Z","mean_decibel":44.339935893389594,"std_decibel":5.291759591080439,"min_decibel":36.83996116816266,"max_decibel":72.7680532296671}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:01.269215Z","data_format":{"namespace":"carp","name":"pedometer"}},"body":{"id":"5ea89a50-777c-11eb-8c91-3f093a6e6e87","timestamp":"2021-02-25T15:16:01.269215Z","step_count":23314}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:01.219174Z","data_format":{"namespace":"carp","name":"phone_log"}},"body":{"id":"5ea0f930-777c-11eb-9f96-677641f4136b","timestamp":"2021-02-25T15:16:01.219174Z","phone_log":[]}}
-,
-{"header":{"study_id":"#99 - KU Leuven study","user_id":"27624","start_time":"2021-02-25T15:16:01.433055Z","data_format":{"namespace":"carp","name":"weather"}},"body":{"id":"5ec1c7a0-777c-11eb-bae8-aba307832d9c","timestamp":"2021-02-25T15:16:01.433055Z","country":"NL","area_name":"Leuven","weather_main":"Clouds","weather_description":"overcast clouds","date":"2021-02-25T16:14:44.000","sunrise":"2021-02-25T07:30:28.000","sunset":"2021-02-25T18:09:29.000","latitude":51.4703,"longitude":5.8131,"pressure":1025.0,"wind_speed":3.09,"wind_degree":250.0,"humidity":51.0,"cloudiness":90.0,"rain_last_hour":0.0,"rain_last3_hours":0.0,"snow_last_hour":0.0,"snow_last3_hours":0.0,"temperature":17.340000000000032,"temp_min":17.0,"temp_max":17.78000000000003}}
-,
-{}]
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T13:59:59.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "accelerometer"
+			}
+		},
+		"body": {
+			"id": "15d06c62-3b69-5a1d-21b1-bf82ddc573bf",
+			"data": [
+				{
+					"timestamp": "2021-11-14T13:59:59.000000Z"
+				}
+			]
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "accelerometer"
+			}
+		},
+		"body": {
+			"id": "268f6135-70ac-f96a-f800-0d8f6bb6ffa6",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"data": [
+				{
+					"timestamp": "2021-11-14T14:00:00.000000Z",
+					"x": -0.45947299565606,
+					"y": 0.66402153964424,
+					"z": 9.34531187528098
+				},
+				{
+					"timestamp": "2021-11-14T14:00:00.200000Z",
+					"x": -0.31261359042355,
+					"y": 0.37969748447006,
+					"z": 9.19530456721872
+				},
+				{
+					"timestamp": "2021-11-14T14:00:00.400000Z",
+					"x": -0.92950401127219,
+					"y": 0.40856299984702,
+					"z": 9.55071386678994
+				},
+				{
+					"timestamp": "2021-11-14T14:00:00.600000Z",
+					"x": -0.57727191720589,
+					"y": 0.91639749921748,
+					"z": 9.861390738568487
+				},
+				{
+					"timestamp": "2021-11-14T14:00:00.800000Z",
+					"x": -0.29951507561905,
+					"y": 0.362559743517898,
+					"z": 9.38065402300287
+				}
+			]
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T13:59:59.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "activity"
+			}
+		},
+		"body": {
+			"id": "fbf85cd7-6d37-53a8-5c44-ad8fe13ef7ac",
+			"timestamp": "2021-11-14T13:59:59.000000Z"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "activity"
+			}
+		},
+		"body": {
+			"id": "ef96364c-d1f4-5f73-ce40-277f078e3d0f",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"confidence": 100,
+			"type": "WALKING"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:01.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "activity"
+			}
+		},
+		"body": {
+			"id": "5ba54e77-4bcf-c8d1-17ff-71b9ed908897",
+			"timestamp": "2021-11-14T14:00:01.000000Z",
+			"confidence": 99,
+			"type": "STILL"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T13:59:59.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "air_quality"
+			}
+		},
+		"body": {
+			"id": "d8dc5bea-6184-bafb-d65c-0a180aa21eb0",
+			"timestamp": "2021-11-14T13:59:59.000000Z"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "air_quality"
+			}
+		},
+		"body": {
+			"id": "c68f94a8-1992-8ce5-0d29-8290c75679c7",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"air_quality_index": 31,
+			"source": "IRCEL-CELINE - Belgian Interregional Environment Agency",
+			"place": "Aarschot, Belgium",
+			"latitude": 50.43555,
+			"longitude": 4.146731,
+			"air_quality_level": "MODERATE"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T13:59:59.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "apps"
+			}
+		},
+		"body": {
+			"id": "b7eacaef-a4ff-90c0-c5a2-7e293dee7721",
+			"timestamp": "2021-11-14T13:59:59.000000Z"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "apps"
+			}
+		},
+		"body": {
+			"id": "c48c62ac-a738-0ee0-586d-29ab0acff25a",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"installed_apps": [
+				"WhatsApp",
+				"Google Play Services for AR",
+				"BBC News",
+				"Clock",
+				"Google Play Music",
+				"Mobile Device Information Provider",
+				"Calculator",
+				"Google Play Movies & TV",
+				"Photos",
+				"Google Play Books",
+				"Home",
+				"Google PDF Viewer",
+				"m-Path Sense",
+				"Google VR Services",
+				"Google Play Games",
+				"Google News"
+			]
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T13:59:59.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "app_usage"
+			}
+		},
+		"body": {
+			"id": "2c3de6bf-e63d-4c47-8d14-36b9505d8968",
+			"timestamp": "2021-11-14T13:59:59.000000Z"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "app_usage"
+			}
+		},
+		"body": {
+			"id": "2e3f8f0a-9de1-f328-6a2e-29b168925179",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"start": "2021-11-14T14:00:00.000000Z",
+			"end": "2021-11-14T14:30:00.000000Z",
+			"usage": {
+				"kuleuven": 525,
+				"securitycenter": 18,
+				"home": 230,
+				"systemui": 3,
+				"permissioncontroller": 10,
+				"powerkeeper": 2,
+				"settings": 33
+			}
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "battery"
+			}
+		},
+		"body": {
+			"id": "1cc3b19c-a56a-ebc0-cd55-d5faf928c6c8",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"battery_level": 100,
+			"battery_status": "charging"
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "battery"
+			}
+		},
+		"carp_body": {
+			"id": "8a224e06-6587-6be6-b7e8-a85fea1d974f",
+			"battery_level": 99,
+			"battery_status": "discharging"
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:02:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "battery"
+			}
+		},
+		"carp_body": {
+			"id": "ebd712d8-eb84-dea9-5b98-e9f16b2e0533"
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "bluetooth"
+			}
+		},
+		"carp_body": {
+			"id": "fff452f8-f927-86ca-b853-5236f25ec7dd",
+			"scan_result": [
+				{
+					"advertisement_name": "ace4ec2999d033ac6b76def024d53507dc6eafbb",
+					"bluetooth_device_id": "a94074e7b729cf573aa9e34218c4318b04b62560",
+					"bluetooth_device_name": "915e4ac54400e2304392f1a2d123561853295e50",
+					"bluetooth_device_type": "unknown",
+					"connectable": false,
+					"tx_power_level": 100,
+					"rssi": -84
+				},
+				{
+					"advertisement_name": "3dbd32cf6327dd01fd0fab96d4e202686d5e0e96",
+					"bluetooth_device_id": "9b0cbfcbee534e034b1dec3b2057f7c310bf01d9",
+					"bluetooth_device_name": "761dd8aa1f57e662a05d0b601b508b2694ed4275",
+					"bluetooth_device_type": "le",
+					"connectable": true,
+					"rssi": -91
+				}
+			]
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "bluetooth"
+			}
+		},
+		"carp_body": {
+			"id": "88cf67a2-16d0-e7cc-2be5-6296d7a0f0b3"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "calendar"
+			}
+		},
+		"body": {
+			"id": "7b050885-ad2f-3cd3-9217-5eb876e3c5c1",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"calendar_events": [
+				{
+					"event_id": "279",
+					"calendar_id": "3",
+					"title": "f4984b61b560744d74f08ea659bb3a2275537f31",
+					"description": "28a74980d7bebc37dbc9cfa949871ce83edc2b26",
+					"start": "2021-11-14T14:00:00.000Z",
+					"end": "2021-11-14T14:30:00.000Z",
+					"all_day": false,
+					"location": "PSI",
+					"attendees": [
+						"c87ec7481c056ea2c88541cd41b966a9f8114d51"
+					]
+				},
+				{
+					"event_id": "262",
+					"calendar_id": "8",
+					"title": "7fb8bab16fd45110007e30e1d6dd4a7f6811bc8d",
+					"description": "3d4e4a2d7dac35a3264e7026b798c7dde2b39675",
+					"start": "2021-11-14T14:30:00.000Z",
+					"end": "2021-11-14T15:00:00.000Z",
+					"all_day": false,
+					"location": "02. Leuven",
+					"attendees": []
+				}
+			]
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "calendar"
+			}
+		},
+		"carp_body": {
+			"id": "5bafebd2-3d01-2355-0ad4-5e1f697b690f"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "connectivity"
+			}
+		},
+		"body": {
+			"id": "27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"connectivity_status": "wifi"
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "connectivity"
+			}
+		},
+		"carp_body": {
+			"id": "2d430c2a-5b16-1dce-0e2f-c049c44e3729"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-13T13:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "device"
+			}
+		},
+		"body": {
+			"id": "bce3c272-3e06-4c84-f533-5bbbeaaac049",
+			"timestamp": "2021-11-13T13:00:00.000000Z",
+			"platform": "Android",
+			"device_id": "QKQ1.200628.002",
+			"hardware": "qcom",
+			"device_name": "gauguin",
+			"device_manufacturer": "Xiaomi",
+			"device_model": "M2007J17G",
+			"operating_system": "REL"
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T13:00:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "device"
+			}
+		},
+		"carp_body": {
+			"id": "ac1230a8-ed5f-4ded-7fca-7693a5ab4124",
+			"platform": "Android",
+			"device_id": "QKQ1.200628.002",
+			"hardware": "qcom",
+			"device_name": "gauguin",
+			"device_manufacturer": "Xiaomi",
+			"device_model": "M2007J17G",
+			"operating_system": "REL"
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "device"
+			}
+		},
+		"carp_body": {
+			"id": "138b9204-a313-96f3-89de-42bc2ac9d1e9"
+		}
+	},
+		{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "error"
+			}
+		},
+		"body": {
+			"id": "df74ca23-3d0f-fcb1-70b9-12b2051c1115",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"message": "AirQuality Probe Exception: SocketException: Failed host lookup: 'api.waqi.info' (OS Error: nodename nor servname provided, or not known, errno = 8)"
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "error"
+			}
+		},
+		"carp_body": {
+			"id": "b1c326ff-e96b-059f-7f1b-72d3384b7222"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "gyroscope"
+			}
+		},
+		"body": {
+			"id": "ce0cc1bf-f071-91b5-19c8-4b3b789e64a2",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"data": [
+				{
+					"timestamp": "2021-11-14T14:00:00.000000Z",
+					"x": -0.0003741947002708912,
+					"y": -0.003209952265024185,
+					"z": 0.021946871653199197
+				},
+				{
+					"timestamp": "2021-11-14T14:00:00.200000Z",
+					"x": -0.000054615666158497336,
+					"y": -0.0006000570137985051,
+					"z": 0.00010896776802837849
+				},
+				{
+					"timestamp": "2021-11-14T14:00:00.400000Z",
+					"x": 0.0001584370620548725,
+					"y": -0.0001739516155794263,
+					"z": 0.00010896776802837849
+				},
+				{
+					"timestamp": "2021-11-14T14:00:00.600000Z",
+					"x": 0.0001584370620548725,
+					"y": -0.00038700434379279613,
+					"z": 0.00010896776802837849
+				},
+				{
+					"timestamp": "2021-11-14T14:00:00.800000Z",
+					"x": 0.0001584370620548725,
+					"y": -0.00038700434379279613,
+					"z": 0.00010896776802837849
+				}
+			]
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:01.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "gyroscope"
+			}
+		},
+		"carp_body": {
+			"id": "06bce1d4-b4a9-d1f1-2f06-cc76d872a61d",
+			"data": [
+				{
+					"timestamp": "2021-11-14T14:00:01.000000Z"
+				}
+			]
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "light"
+			}
+		},
+		"body": {
+			"id": "23d93a4e-7ff8-f057-828d-c728c9466f8a",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"mean_lux": 353.0,
+			"std_lux": 80.2,
+			"min_lux": 20.1,
+			"max_lux": 985.0
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:10.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "light"
+			}
+		},
+		"carp_body": {
+			"id": "9199095d-acc1-737d-3029-5089738c6079"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "location"
+			}
+		},
+		"body": {
+			"id": "24d0a408-a87c-2ea4-80c0-23a964a16675",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"time": "2021-11-14T14:00:00.000Z",
+			"latitude": "beb3005c45cb250b9841b9aae0637fa5610c45ce206ca38494f7f74a6cbdf8566cdf0d8967e9422bb857a4d87c2e6c08d85f162525a8f9d6a72a8",
+			"longitude": "8a4f368c36ab8e6e9dcbca9d7ef88a313f48e841e77746c54f1ca5b1887cd56f123d8ba36e92465e5483ebbd335b242ff8fade5b31a43e20dd851",
+			"altitude": 71.7784264646543,
+			"accuracy": 22.1168141708386,
+			"speed": 0.467787307347347,
+			"speed_accuracy": 1.9150350848860985,
+			"heading": 35.5130489970395
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "location"
+			}
+		},
+		"carp_body": {
+			"id": "62db94d7-2155-f867-b7c4-f878681ec736"
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "memory"
+			}
+		},
+		"carp_body": {
+			"id": "7f2fbe8b-af33-0078-137e-ed21c0f97b10",
+			"free_physical_memory": 2027336609,
+			"free_virtual_memory": 233377575
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "memory"
+			}
+		},
+		"carp_body": {
+			"id": "7e3eb79e-56b2-441d-c7ab-890ba478b923"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "mobility"
+			}
+		},
+		"body": {
+			"id": "95d7c9e8-bf65-1d89-264a-6d43e9c98e25",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"number_of_places": 6,
+			"location_variance": 0.23215435050720577,
+			"entropy": 1.6472347857577632,
+			"normalized_entropy": 0.3990261427129516,
+			"home_stay": -1.0,
+			"distance_travelled": 0.0
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "mobility"
+			}
+		},
+		"carp_body": {
+			"id": "6b789772-18ae-ce5f-b522-a38793023e1d"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "noise"
+			}
+		},
+		"body": {
+			"id": "5fc9ecdf-c62c-955c-e59d-d6c4a2ee9a2a",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"mean_decibel": 42.96355291627242,
+			"std_decibel": 4.971839655603458,
+			"min_decibel": 34.28953420758226,
+			"max_decibel": 71.89397530750392
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "noise"
+			}
+		},
+		"carp_body": {
+			"id": "6ab8de47-fdfd-b2bd-bba1-6b6641906835"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "pedometer"
+			}
+		},
+		"body": {
+			"id": "5ea89a50-777c-11eb-8c91-3f093a6e6e87",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"step_count": 1000
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:01.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "pedometer"
+			}
+		},
+		"carp_body": {
+			"id": "50dc55c0-356c-11ec-b60d-ddab48d96f4a",
+			"step_count": 1001
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:02.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "pedometer"
+			}
+		},
+		"carp_body": {
+			"id": "af026c22-1d7f-6bb0-b492-9d705c5bdda8"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "phone_log"
+			}
+		},
+		"body": {
+			"id": "5ea0f930-777c-11eb-9f96-677641f4136b",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"phone_log": []
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "screen"
+			}
+		},
+		"carp_body": {
+			"id": "c40b2459-e598-8fdb-7925-e55ed3048baf"
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:01.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "screen"
+			}
+		},
+		"carp_body": {
+			"id": "28560428-b12d-e753-f5d4-61c1d51fcd58",
+			"screen_event": "SCREEN_ON"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "weather"
+			}
+		},
+		"body": {
+			"id": "d42140e5-d91b-8ec5-87fd-f003e4fdcdf3",
+			"timestamp": "2021-11-14T14:00:00.000000Z",
+			"country": "BE",
+			"area_name": "Arrondissement Leuven",
+			"weather_main": "Clouds",
+			"weather_description": "overcast clouds",
+			"date": "2021-11-14T14:00:00.000",
+			"sunrise": "2021-11-14T07:30:00.000",
+			"sunset": "2021-11-14T18:00:00.000",
+			"latitude": 50.1234,
+			"longitude": 4.1234,
+			"pressure": 1000.0,
+			"wind_speed": 3.12,
+			"wind_degree": 250.0,
+			"humidity": 50.0,
+			"cloudiness": 90.0,
+			"rain_last_hour": 0.0,
+			"rain_last3_hours": 0.0,
+			"snow_last_hour": 0.0,
+			"snow_last3_hours": 0.0,
+			"temperature": 17.123456789,
+			"temp_min": 17.0,
+			"temp_max": 17.123456789
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "weather"
+			}
+		},
+		"carp_body": {
+			"id": "84f92625-1c56-fdd8-18ed-5fffa8f69e6c"
+		}
+	},
+	{
+		"header": {
+			"study_id": "test-study",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:00:00.000000Z",
+			"data_format": {
+				"namespace": "carp",
+				"name": "wifi"
+			}
+		},
+		"body": {
+			"id": "59ce179b-3a3c-42d8-6e5c-6a1030545e92",
+			"timestamp": "2021-11-14T14:00:00.000000Z"
+		}
+	},
+	{
+		"carp_header": {
+			"study_id": "test-study",
+			"device_role_name": "masterphone",
+			"trigger_id": "1",
+			"user_id": "12345",
+			"start_time": "2021-11-14T14:01:00.000000Z",
+			"data_format": {
+				"namespace": "dk.cachet.carp",
+				"name": "wifi"
+			}
+		},
+		"carp_body": {
+			"id": "0392ed98-a2d5-fcd1-2ec5-ac13dd865f9a",
+			"ssid": "878779215c977eefd2c434d71a0e172aa19b66e1",
+			"bssid": "2f054f4cbb48bb589f40e82ac0433912d1db3931",
+			"ip": "10.415.918.389"
+		}
+	}
+]

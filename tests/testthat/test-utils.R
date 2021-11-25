@@ -19,14 +19,19 @@ test_that("fix_jsons", {
 
 test_that("ccopy", {
   path <- system.file("testdata", package = "CARP")
+  broken_path <- system.file("testdata", "broken", package = "CARP")
+  utils::zip(paste0(path, "/test.zip"), system.file("testdata", "test.json", package = "CARP"))
   expect_message(ccopy(path, path), "No files left to copy")
-  suppressMessages(expect_invisible(ccopy(path, paste0(path, "/broken/"))))
-  invisible(suppressWarnings(file.remove(paste0(path, "/broken/test.zip"))))
+  expect_message(ccopy(path, broken_path), "Copying 1 files\\.")
+  file.remove(paste0(path, "/broken/test.zip"))
+  file.remove(system.file("testdata", "test.zip", package = "CARP"))
 })
 
 test_that("unzip_carp", {
   path <- system.file("testdata", package = "CARP")
-  expect_message(unzip_carp(path, recursive = FALSE, overwrite = TRUE), "Unzipped \\d files.")
-  expect_message(unzip_carp(path, recursive = FALSE, overwrite = FALSE), "No files found to unzip.")
+  utils::zip(paste0(path, "/test.zip"), system.file("testdata", "test.json", package = "CARP"))
+  expect_message(unzip_carp(path, recursive = FALSE, overwrite = TRUE), "Unzipped 1 files.")
+  expect_message(unzip_carp(path, recursive = TRUE, overwrite = FALSE), "No files found to unzip.")
   expect_error(unzip_carp(1), "path must be a character string")
+  file.remove(system.file("testdata", "test.zip", package = "CARP"))
 })

@@ -7,6 +7,7 @@ utils::globalVariables(c(
   "Hour",
   "STRFTIME",
   "app",
+  "apps",
   "data",
   "data_format",
   "datetime",

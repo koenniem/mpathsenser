@@ -7,8 +7,8 @@ save2db <- function(db, name, data) {
     names <- colnames(data)
 
     query <- paste0(
-      "INSERT INTO ", name, "(", paste0(names, collapse = ", "), ") VALUES(",
-      paste0(":", names, collapse = ", "), ") ON CONFLICT DO NOTHING;"
+      "INSERT OR IGNORE INTO ", name, "(", paste0(names, collapse = ", "), ") VALUES(",
+      paste0(":", names, collapse = ", "), ");"
     )
 
     RSQLite::dbExecute(db, query, data)
@@ -165,24 +165,33 @@ app_usage_fun <- function(data) {
   )
 }
 
-# TODO: Simplify and add timestamp and id
+# TODO: Simplify
 apps_fun <- function(data) {
-  # data$body <- lapply(data$body, function(x) x$body)
-  # data$body <- lapply(data$body, function(x) {
-  #   tibble::tibble(
-  #     id = x$id,
-  #     # timestamp = x$timestamp,
-  #     apps = list(x$installed_apps)
-  #   )
-  # })
-  # data <- tidyr::unnest(data, body, keep_empty = TRUE)
+  data$body <- lapply(data$body, function(x) x$body)
+  data$body <- lapply(data$body, function(x) {
+    tibble::tibble(
+      id = x$id,
+      timestamp = x$timestamp,
+      apps = list(x$installed_apps)
+    )
+  })
+
+  # Wow
+  data <- tidyr::unnest(data, body, keep_empty = TRUE)
+  data <- tidyr::unnest(data, apps, keep_empty = TRUE)
+  data <- tidyr::unnest(data, apps, keep_empty = TRUE)
   # data$apps <- sapply(data$apps, function(x) paste0(x, collapse = "|"))
   # data <- tidyr::unnest(data, apps)
   # data$timestamp <- as.POSIXct(data$timestamp, "%Y-%m-%dT%H:%M:%S", tz="Europe/Brussels")
-  data <- default_fun(data)
-  if (!is.null(data$installed_apps)) {
-    data$installed_apps <- unlist(data$installed_apps, use.names = FALSE)
-  }
+  #
+  # data <- default_fun(data)
+  # if (!is.null(data$installed_apps)) {
+  #   data$installed_apps <- unlist(data$installed_apps, use.names = FALSE)
+  # }
+  # browser()
+  # data$body <- lapply(data$body, function(x) x$body)
+  # data$body <- lapply(data$body, dplyr::bind_rows)
+  # data$body <- tidyr::unnest(installed_apps, keep_empty = TRUE)
 
   # TODO: Consider unique ID constraint
   # Temporary fix
@@ -196,7 +205,7 @@ apps_fun <- function(data) {
     participant_id = data$participant_id,
     date = substr(data$start_time, 1, 10),
     time = substr(data$start_time, 12, 19),
-    apps = data$installed_apps
+    app = data$apps
   )
 }
 
