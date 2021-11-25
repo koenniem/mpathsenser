@@ -9,9 +9,6 @@ index_db(db)
 \arguments{
 \item{db}{A database connection}
 }
-\value{
-
-}
 \description{
 Create indexes for a CARP database
 }

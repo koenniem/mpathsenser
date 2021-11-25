@@ -2,7 +2,7 @@
 % Please edit documentation in R/functions.R
 \name{coverage}
 \alias{coverage}
-\title{Create a coverage chart showing sampling rate}
+\title{Create a coverage chart of the sampling rate}
 \usage{
 coverage(
   db,

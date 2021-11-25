@@ -697,7 +697,7 @@ total_acceleration <- function(data, colname, x = x, y = y, z = z, gravity = 9.8
 #'
 #' @examples
 #' \dontrun{
-#' get_moving_average(db, "Light", "27624", mean_lux, max_lux, n = 5)
+#' get_moving_average(db, "Light", "12345", mean_lux, max_lux, n = 5)
 #' }
 moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL, end_date = NULL) {
   cols <- dplyr::ensyms(...)
@@ -736,20 +736,4 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
 
   # Get data
   RSQLite::dbGetQuery(db, query)
-}
-
-decrypt_gps <- function(data, key) {
-  if (!is.raw(key)) {
-    key <- sodium::hex2bin(key)
-  }
-
-  data %>%
-    dplyr::collect() %>%
-    dplyr::mutate(
-      dplyr::across(c(latitude, longitude), ~ {
-        lapply(.x, sodium::hex2bin) %>%
-          lapply(sodium::simple_decrypt, key) %>%
-          lapply(rawToChar) %>%
-          unlist
-      }))
 }
