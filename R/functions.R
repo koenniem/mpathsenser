@@ -134,7 +134,7 @@ import_impl <- function(path, files, db_name) {
 
     # Check if it is not an empty file
     # Skip this file if empty
-    if (length(data) == 0) {
+    if (length(data) == 0 | identical(data, list()) | identical(data, list(list()))) {
       add_processed_files(tmp_db,
                          data.frame(
                            file_name = files[i],
