@@ -2,18 +2,18 @@
 % Please edit documentation in R/location_functions.R
 \name{haversine}
 \alias{haversine}
-\title{Calculate the Great-Circle Distance between two points in meters}
+\title{Calculate the Great-Circle Distance between two points in kilometers}
 \usage{
-haversine(lon1, lat1, lon2, lat2, r = 6371)
+haversine(lat1, lon1, lat2, lon2, r = 6371)
 }
 \arguments{
-\item{lon1}{The longitude of point 1 in degrees.}
-
 \item{lat1}{The latitude of point 1 in degrees.}
 
-\item{lon2}{The longitude of point 2 in degrees.}
+\item{lon1}{The longitude of point 1 in degrees.}
 
 \item{lat2}{The latitude of point 2 in degrees.}
+
+\item{lon2}{The longitude of point 2 in degrees.}
 
 \item{r}{The average earth radius (6371 km by default).}
 }

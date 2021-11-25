@@ -29,7 +29,7 @@ rad2deg <- function(rad) {
 	rad * 180 / pi
 }
 
-#' Calculate the Great-Circle Distance between two points in meters
+#' Calculate the Great-Circle Distance between two points in kilometers
 #'
 #' Calculate the great-circle distance between two points using the Haversine function.
 #'
@@ -41,18 +41,23 @@ rad2deg <- function(rad) {
 #'
 #' @return The distance between point 1 and 2 in kilometers.
 #' @export
-haversine <- function(lon1, lat1, lon2, lat2, r = 6371) {
-	lon1 <- deg2rad(lon1)
+#'
+#' @examples
+# fra <- c(50.03333, 8.570556) # Frankfurt Airport
+# ord <- c(41.97861, -87.90472) # Chicago O'Hare International Airport
+# haversine(fra[1], fra[2], ord[1], ord[2]) # 6971.059 km
+haversine <- function(lat1, lon1, lat2, lon2, r = 6371) {
 	lat1 <- deg2rad(lat1)
-	lon2 <- deg2rad(lon2)
+	lon1 <- deg2rad(lon1)
 	lat2 <- deg2rad(lat2)
+	lon2 <- deg2rad(lon2)
 
 	dlon <- lon2 - lon1
 	dlat <- lat2 - lat1
 	a <- sin(dlat / 2)^2 + cos(lat1) * cos(lat2) * sin(dlon / 2)^2
 	c <- 2 * atan2(sqrt(a), sqrt(1 - a))
 	d <- r * c
-	d * 1000
+	d
 }
 
 location_variance <- function(lat, lon, time) {
