@@ -260,12 +260,14 @@ unzip_impl <- function(path, overwrite) {
 	if (length(zipfiles) > 0) {
 		# TODO: implement error handling in case unzipping fails
 		# (e.g. unexpected end of data)
-		invisible(lapply(zipfiles, function(x) {
-			utils::unzip(zipfile = file.path(path, zipfiles),
-									 overwrite = overwrite,
-									 junkpaths = TRUE,
-									 exdir = path)
-		}))
+		lapply(zipfiles, function(x) {
+			tryCatch({
+				invisible(utils::unzip(zipfile = file.path(path, x),
+										 overwrite = overwrite,
+										 junkpaths = TRUE,
+										 exdir = path))
+			}, error = function(e) print(paste0("Failed to unzip", x)))
+		})
 	}
 	return(length(zipfiles))
 }
