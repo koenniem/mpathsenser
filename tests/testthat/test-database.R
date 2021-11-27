@@ -140,8 +140,8 @@ test_that("get_participants", {
 	res <- get_participants(db)
 	res_lazy <- get_participants(db, lazy = TRUE)
 	true <- data.frame(
-		participant_id = "12345",
-		study_id = "test-study"
+		participant_id = c("empty.json", "12345"),
+		study_id = c("-1", "test-study")
 	)
 	expect_identical(res, true)
 	expect_s3_class(res_lazy, "tbl_SQLiteConnection")
@@ -153,8 +153,8 @@ test_that("get_study", {
 	res <- get_studies(db)
 	res_lazy <- get_studies(db, lazy = TRUE)
 	true <- data.frame(
-		study_id = "test-study",
-		data_format = "carp"
+		study_id = c("-1", "test-study"),
+		data_format = c(NA, "carp")
 	)
 	expect_identical(res, true)
 	expect_s3_class(res_lazy, "tbl_SQLiteConnection")

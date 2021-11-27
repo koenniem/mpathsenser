@@ -2,7 +2,7 @@
 # If the measurement already exists, skip that measurement
 save2db <- function(db, name, data) {
   tryCatch({
-    RSQLite::dbAppendTable(db, name, data)
+    DBI::dbAppendTable(db, name, data)
   }, error = function(e) {
     names <- colnames(data)
 
@@ -11,7 +11,7 @@ save2db <- function(db, name, data) {
       paste0(":", names, collapse = ", "), ");"
     )
 
-    RSQLite::dbExecute(db, query, data)
+    DBI::dbExecute(db, query, data)
   })
 }
 
@@ -92,15 +92,21 @@ accelerometer_fun <- function(data) {
 periodic_accelerometer_fun <- function(data) {
   data$id <- sapply(data$body, function(x) x$body$id)
   data$body <- lapply(data$body, function(x) x$body$data)
-  data$body <- lapply(data$body, dplyr::bind_rows)
+
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
+
+  data$timestamp <- lapply(data$body, function(x) x$timestamp)
+  data$x <- lapply(data$body, function(x) x$x)
+  data$y <- lapply(data$body, function(x) x$y)
+  data$z <- lapply(data$body, function(x) x$z)
+  data$body <- NULL
+  data <- tidyr::unnest(data, timestamp:z)
 
   # TODO: Consider unique ID constraint
   # Temporary fix
-  data %>%
-    dplyr::group_by(id) %>%
-    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
-    dplyr::ungroup()
+  ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
+  data$id <- paste0(data$id, "_", ids)
+  data
 }
 
 activity_fun <- function(data) {
@@ -148,10 +154,8 @@ app_usage_fun <- function(data) {
 
   # TODO: Consider unique ID constraint
   # Temporary fix
-  data <- data %>%
-    dplyr::group_by(id) %>%
-    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
-    dplyr::ungroup()
+  ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
+  data$id <- paste0(data$id, "_", ids)
 
   safe_data_frame(
     measurement_id = data$id,
@@ -195,10 +199,8 @@ apps_fun <- function(data) {
 
   # TODO: Consider unique ID constraint
   # Temporary fix
-  data <- data %>%
-    dplyr::group_by(id) %>%
-    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
-    dplyr::ungroup()
+  ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
+  data$id <- paste0(data$id, "_", ids)
 
   safe_data_frame(
     measurement_id = data$id,
@@ -232,10 +234,8 @@ bluetooth_fun <- function(data) {
 
   # TODO: Consider unique ID constraint
   # Temporary fix
-  data <- data %>%
-    dplyr::group_by(id) %>%
-    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
-    dplyr::ungroup()
+  ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
+  data$id <- paste0(data$id, "_", ids)
 
   safe_data_frame(
     measurement_id = data$id,
@@ -257,44 +257,48 @@ bluetooth_fun <- function(data) {
 # Currently, multiple entries are already possible but it's not clear why they are wrapped in
 # another list as well.
 calendar_fun <- function(data) {
+  # browser()
   data$id <- sapply(data$body, function(x) x$body$id)
   data$body <- lapply(data$body, function(x) x$body$calendar_events)
 
-  data$body <- lapply(data$body, function(x) {
-    lapply(x, function(y) {
-      safe_tibble(
-        event_id = y$event_id,
-        calendar_id = y$calendar_id,
-        title = y$title,
-        description = y$description,
-        start = y$start,
-        end = y$end,
-        all_day = y$all_day,
-        location = y$location,
-        attendees = list(y$attendees))
+  if (!is.null(data$body[[1]])) {
+    data$body <- lapply(data$body, function(x) {
+      lapply(x, function(y) {
+        safe_tibble(
+          event_id = y$event_id,
+          calendar_id = y$calendar_id,
+          title = y$title,
+          description = y$description,
+          start = y$start,
+          end = y$end,
+          all_day = y$all_day,
+          location = y$location,
+          attendees = list(y$attendees))
+      })
     })
-  })
+  }
+
 
   data$body <- lapply(data$body, dplyr::bind_rows)
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
 
   # Collapse attendees list
-  data$attendees <- sapply(data$attendees, function(x) {
-    if (!is.null(x)) {
-      x <- paste0(x, collapse = ", ")
-      if (x == "NA") {
-        x <- NA_character_
-      }
-      return(x)
-    } else NA_character_
-  })
+  if(any("attendees" == colnames(data))) {
+    data$attendees <- sapply(data$attendees, function(x) {
+      if (!is.null(x)) {
+        x <- paste0(x, collapse = ", ")
+        if (x == "NA") {
+          x <- NA_character_
+        }
+        return(x)
+      } else NA_character_
+    })
+  }
 
   # TODO: Consider unique ID constraint
   # Temporary fix
-  data <- data %>%
-    dplyr::group_by(id) %>%
-    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
-    dplyr::ungroup()
+  ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
+  data$id <- paste0(data$id, "_", ids)
 
   safe_data_frame(
     measurement_id = data$id,
@@ -535,10 +539,8 @@ text_message_fun <- function(data) {
 
   # TODO: Consider unique ID constraint
   # Temporary fix
-  data <- data %>%
-    dplyr::group_by(id) %>%
-    dplyr::mutate(id = paste0(id, "_", 1:dplyr::n())) %>%
-    dplyr::ungroup()
+  ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
+  data$id <- paste0(data$id, "_", ids)
 
   safe_data_frame(
     measurement_id = data$id,

@@ -33,5 +33,9 @@ utils::globalVariables(c(
   "startTime",
   "steps",
   "study_id",
-  "usage"
+  "timestamp",
+  "usage",
+  "x",
+  "y",
+  "z"
 ))

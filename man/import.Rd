@@ -31,8 +31,9 @@ overwritten?}
 
 \item{recursive}{Should the listing recurse into directories?}
 
-\item{parallel}{Logical value which indicates whether to do reading in and processing
-in parallel.}
+\item{parallel}{A value that indicates whether to do reading in and processing
+in parallel. If this argument is a number, this indicates the number of workers that will be
+used.}
 }
 \value{
 Invisible. Imported database can be reopened using \link[CARP]{open_db}.

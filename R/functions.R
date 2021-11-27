@@ -11,8 +11,9 @@
 #' @param backend Name of the database backend that is used. Currently, only RSQLite is supported.
 #' @param progress Logical value to show a progress bar or not.
 #' @param recursive Should the listing recurse into directories?
-#' @param parallel Logical value which indicates whether to do reading in and processing
-#' in parallel.
+#' @param parallel A value that indicates whether to do reading in and processing
+#' in parallel. If this argument is a number, this indicates the number of workers that will be
+#' used.
 #'
 #' @return Invisible. Imported database can be reopened using \link[CARP]{open_db}.
 #' @export
@@ -34,11 +35,11 @@ import <- function(path = getwd(),
   }
 
   # Check back-end and parallel constraint
-  if (backend == "RSQLite" & parallel) {
-    warning("Parallel cannot be used when RSQLite is provided as a backend due to concurrency
-            constraint. Setting parallel to false.")
-    parallel <- FALSE
-  }
+  # if (backend == "RSQLite" & parallel) {
+  #   warning("Parallel cannot be used when RSQLite is provided as a backend due to concurrency
+  #           constraint. Setting parallel to false.")
+  #   parallel <- FALSE
+  # }
 
   # Check if database is valid
   if (!is.null(db)) {
@@ -71,54 +72,103 @@ import <- function(path = getwd(),
     files <- files[!(files %in% processed_files$file_name)]
 
     if (length(files) == 0) {
+      DBI::dbDisconnect(db)
       return(message("No new files to process."))
     }
   }
 
   # Set up parallel back-end
-  if (parallel) {
-    future::plan(future::multisession)
+  if (!is.null(parallel)) {
+    if (is.numeric(parallel)) {
+      future::plan(future::multisession, workers = parallel)
+    } else if (parallel) {
+      future::plan(future::multisession)
+    }
   }
 
   # Call on implementation with or without progress bar
   if (progress) {
     progressr::with_progress({
-      import_impl(path, files, db@dbname)
+
+      files <- split(files, ceiling(seq_along(files) / 12))
+      p <- progressr::progressor(steps = length(files))
+
+      for(i in seq_along(files)) {
+
+        # Update progress bar
+        p(sprintf("x=%g", i))
+
+        # Get data from the files, in parallel if needed
+        res <- furrr::future_map_dfr(files[[i]], ~import_impl(path, .x, db@dbname),
+                                     .options = furrr::furrr_options(seed = TRUE))
+
+        # Interesting feature in purrr::transpose. If the names would not be explicitly set, it
+        # would only take the names of the first entry of the list. So, if some sensors would be
+        # present in the first entry (e.g. low sampling sensors like Device), it would disappear
+        # from the data altogether.
+
+        data <- purrr::compact(res$data)
+        res$data <- NULL # memory efficiency
+        data <- purrr::transpose(data, .names = sort(c("Error", sensors)))
+        data <- lapply(data, dplyr::bind_rows)
+        data <- purrr::compact(data)
+
+        DBI::dbWithTransaction(db, {
+          add_study(db, unique(res$studies))
+          add_participant(db, unique(res$participants))
+
+          for (j in seq_along(data)) {
+            save2db(db, names(data)[[j]], data[[j]])
+          }
+          # Add file to list of processed files
+          add_processed_files(db, res$file)
+        })
+      }
     })
   } else {
     import_impl(path, files, db@dbname)
   }
 
   # Return to sequential processing
-  if (parallel) {
-    future::plan(future::sequential)
+  if (!is.null(parallel)) {
+    if (is.numeric(parallel)) {
+      future::plan(future::sequential)
+    } else if (parallel) {
+      future::plan(future::sequential)
+    }
   }
 
   processed_files <- get_processed_files(db)
-  complete <- all(files %in% processed_files$file_name)
+  complete <- all(unlist(files, use.names = FALSE) %in% processed_files$file_name)
   if (complete) {
     message("All files were successfully written to the database.")
   } else {
     warning("Some files could not be written to the database.")
   }
 
-  RSQLite::dbDisconnect(db)
+  DBI::dbDisconnect(db)
 }
 
 import_impl <- function(path, files, db_name) {
-  p <- progressr::progressor(length(files))
+  out <- list(studies = data.frame(study_id = character(),
+                                 data_format = character()),
+              participants = data.frame(study_id = character(length(files)),
+                                        participant_id = character(length(files))),
+              file = data.frame(file_name = character(length(files)),
+                                study_id = character(length(files)),
+                                participant_id = character(length(files))),
+              data = vector("list", length(files)))
 
-  # furrr::map_walk(file, ~{})
   for (i in seq_along(files)) {
-
-    # Update progress bar
-    p(sprintf("x=%g", i))
 
     # Try to read in the file. If the file is corrupted for some reason, skip this one
     file <- normalizePath(paste0(path, "/", files[i]))
     file <- readLines(file, warn = FALSE)
     file <- paste0(file, collapse = "")
-    if (!jsonlite::validate(file)) next
+    if (!jsonlite::validate(file)) {
+      print(paste0("Invalid JSON in file ", files[i]))
+      next
+    }
 
     possible_error <- tryCatch({
       data <- rjson::fromJSON(file, simplify = FALSE)
@@ -129,20 +179,16 @@ import_impl <- function(path, files, db_name) {
       next
     }
 
-    # Open db
-    tmp_db <- open_db(NULL, db_name)
-
     # Check if it is not an empty file
-    # Skip this file if empty
+    # Skip this file if empty, but add it to the list of processed file to register this incident
+    # and to avoid having to do it again
     if (length(data) == 0 | identical(data, list()) | identical(data, list(list()))) {
-      add_processed_files(tmp_db,
-                         data.frame(
-                           file_name = files[i],
-                           participant_id = sub(".*?([0-9]{5}).*", "\\1", files[i]),
-                           study_id = "-1"
-                         )
-      )
-      RSQLite::dbDisconnect(tmp_db)
+      p_id <-  sub(".*?([0-9]{5}).*", "\\1", files[i])
+      out$studies[i, ] <- c(study_id = "-1", data_format = NA)
+      out$participants[i, ] <- c(study_id = "-1", participant_id = p_id)
+      out$file[i, ] <- c(file_name = files[i],
+                         study_id = "-1",
+                         participant_id = p_id)
       next
     }
 
@@ -157,10 +203,10 @@ import_impl <- function(path, files, db_name) {
     # a column full of NULLs
     safe_extract <- function(vec, var) {
       out <- lapply(vec, function(obs) {
-        tmp <- eval(parse(text = paste0("obs[[1]]$", var)))
+        tmp <- obs[[1]][[var]]
         if (is.null(tmp)) return(NULL) else return(tmp)
       })
-      if (all(unlist(lapply(out, is.null))))
+      if (all(vapply(out, is.null, logical(1), USE.NAMES = FALSE)))
         out <- rep("N/A", length(out))
       return(out)
     }
@@ -171,8 +217,9 @@ import_impl <- function(path, files, db_name) {
     data$trigger_id <- NULL
     data$participant_id <- safe_extract(data$header, "user_id")
     data$start_time <- safe_extract(data$header, "start_time")
-    data$data_format <- safe_extract(data$header, "data_format$namespace")
-    data$sensor <- safe_extract(data$header, "data_format$name")
+    data$data_format <- lapply(data$header, function(x) x[[1]]["data_format"])
+    data$sensor <- safe_extract(data$data_format, "name")
+    data$data_format <- safe_extract(data$data_format, "namespace")
     data$header <- NULL
     data <- tidyr::unnest(data, c(study_id:sensor))
 
@@ -180,28 +227,33 @@ import_impl <- function(path, files, db_name) {
     # in the last entry of a file
     data <- data[!is.na(data$participant_id) & data$participant_id != "N/A", ]
 
+    # Open db
+    tmp_db <- open_db(NULL, db_name)
+
     # Safe duplicate check before insertion
     # Check if file is already registered as processed
     # Now using the participant_id and study_id as
     this_file <- data.frame(
       file_name = files[i],
-      participant_id = unique(data$participant_id),
-      study_id = unique(data$study_id)
+      study_id = unique(data$study_id),
+      participant_id = unique(data$participant_id)
     )
+
     processed_files <- get_processed_files(tmp_db)
     matches <- dplyr::inner_join(this_file,
       processed_files,
       by = c("file_name", "participant_id", "study_id")
     )
     if (nrow(matches) > 0) {
+      DBI::dbDisconnect(tmp_db)
       next # File was already processed
     }
 
     # Populate study specifics to db
-    add_study(db = tmp_db, data = dplyr::distinct(data, study_id, data_format))
+    study_id <- dplyr::distinct(data, study_id, data_format)
 
     # Add participants
-    add_participant(db = tmp_db, data = dplyr::distinct(data, participant_id, study_id))
+    participant_id <- dplyr::distinct(data, participant_id, study_id)
 
     # Make sure top-level of data$body is called body and not carp_body as in the new version
     data <- dplyr::mutate(data, body = purrr::modify(body, purrr::set_names, nm = "body"))
@@ -214,7 +266,7 @@ import_impl <- function(path, files, db_name) {
 
     # Call function for each sensor
     tryCatch({
-      data <- furrr::future_imap(data, ~which_sensor(.x, .y))
+      data <- purrr::imap(data, ~which_sensor(.x, .y))
 
       # Set names to capitals in accordance with the table names
       names <- strsplit(names(data), "_")
@@ -223,21 +275,20 @@ import_impl <- function(path, files, db_name) {
       names[names=="Apps"] <- "InstalledApps" # Except InstalledApps...
       names(data) <- names
 
-      RSQLite::dbWithTransaction(tmp_db, {
-        for (j in seq_along(data)) {
-          save2db(tmp_db, names(data)[[j]], data[[j]])
-        }
-      })
+      out$studies <- rbind(out$studies, study_id)
+      out$participants[i, ] <- participant_id
+      out$file[i, ] <- this_file # Save to output
+      out$data[[i]] <- data
 
-      # Add file to list of processed files
-      add_processed_files(tmp_db, this_file)
     }, error = function(e) {
-      print(paste0("transaction failed for file ", files[i]))
+      print(paste0("processing failed for file ", files[i]))
     })
 
     # Close db connection of worker
-    RSQLite::dbDisconnect(tmp_db)
+    DBI::dbDisconnect(tmp_db)
   }
+
+  out
 }
 
 #' Measurement frequencies per sensor
@@ -341,7 +392,7 @@ coverage <- function(db,
     stop("Argument db is not a database connection.")
   }
 
-  if (!RSQLite::dbIsValid(db)) {
+  if (!DBI::dbIsValid(db)) {
     stop("Database is invalid.")
   }
 
@@ -483,7 +534,7 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
                     Coverage = as.numeric(Coverage))
 
     # Disconnect from the temporary database connection
-    RSQLite::dbDisconnect(tmp_db)
+    DBI::dbDisconnect(tmp_db)
 
     # Calculate the relative target frequency ratio by dividing the average number of measurements
     # per hour by the expected number of measurements
