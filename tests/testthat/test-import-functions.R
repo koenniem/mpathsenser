@@ -65,7 +65,7 @@ test_that("save2db", {
 	DBI::dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
 	db_size <- file.size(system.file("testdata", "foo.db", package = "CARP"))
 	expect_error(save2db(db, "Accelerometer", data.frame(
-		measurement_id = paste0("12345_", 1:100),
+		measurement_id = paste0("12345_", 1:1000),
 		participant_id = "12345",
 		date = "2021-11-14",
 		time = "16:40:01.123",
@@ -78,7 +78,7 @@ test_that("save2db", {
 
 	# Entry with the same ID should simply be skipped and give on error
 	expect_error(save2db(db, "Accelerometer", data.frame(
-		measurement_id = paste0("12345_", 1:100),
+		measurement_id = paste0("12345_", 1:1000),
 		participant_id = "12345",
 		date = "2021-11-14",
 		time = "16:40:01.123",
@@ -88,7 +88,7 @@ test_that("save2db", {
 	)), NA)
 	db_size3 <- file.size(system.file("testdata", "foo.db", package = "CARP"))
 	expect_identical(db_size2, db_size3)
-	expect_identical(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 100L)
+	expect_identical(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1000L)
 
 	# Cleanup
 	DBI::dbDisconnect(db)
