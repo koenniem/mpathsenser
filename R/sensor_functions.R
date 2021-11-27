@@ -31,7 +31,7 @@
 #' get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
 #' }
 get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_date = NULL) {
-  if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+  if (!DBI::dbIsValid(db)) stop("Database connection is not valid")
 
   out <- dplyr::tbl(db, sensor)
 
@@ -81,7 +81,7 @@ first_date <- function(db, sensor, participant_id = NULL) {
   if (!is.null(participant_id)) {
     query <- paste0(query, " WHERE (`participant_id` = '", participant_id, "')")
   }
-  RSQLite::dbGetQuery(db, query)[1, 1]
+  DBI::dbGetQuery(db, query)[1, 1]
 }
 
 #' Extract the date of the last entry
@@ -111,7 +111,7 @@ last_date <- function(db, sensor, participant_id = NULL) {
   if (!is.null(participant_id)) {
     query <- paste0(query, " WHERE (`participant_id` = '", participant_id, "')")
   }
-  RSQLite::dbGetQuery(db, query)[1, 1]
+  DBI::dbGetQuery(db, query)[1, 1]
 }
 
 
@@ -227,7 +227,7 @@ link2 <- function(db, sensor_one, sensor_two = NULL, offset, participant_id = NU
                   start_date = NULL, end_date = NULL, external = NULL, reverse = FALSE,
                   ignore_large = FALSE) {
 
-  if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+  if (!DBI::dbIsValid(db)) stop("Database connection is not valid")
   if (is.null(external) & is.null(sensor_two))
     stop("either a second sensor or an external data frame must be supplied")
   if (!is.null(external) & !is.null(sensor_two))
@@ -735,5 +735,5 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
   query <- paste0(query, ")")
 
   # Get data
-  RSQLite::dbGetQuery(db, query)
+  DBI::dbGetQuery(db, query)
 }

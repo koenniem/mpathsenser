@@ -64,7 +64,7 @@ test_that("coverage", {
                  "Argument offset must be either \\'None\\', 1 day, or 2, 3, 4, \\.\\.\\. days\\.")
 
   # Cleanup
-  RSQLite::dbDisconnect(db)
+  DBI::dbDisconnect(db)
 })
 
 test_that("freq", {

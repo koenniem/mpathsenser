@@ -39,17 +39,17 @@ create_db <- function(path = getwd(), db_name = "carp.db", overwrite = FALSE) {
 	}
 
 	# Create a new db instance
-	db <- RSQLite::dbConnect(RSQLite::SQLite(), db_name, winslash = "/")
+	db <- DBI::dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
 
 	# Populate the db with empty tables
 	tryCatch({
 		fn <- system.file("extdata", "dbdef.sql", package = "CARP")
 		script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"),	"\n\n")[[1]]
 		for (statement in script) {
-			RSQLite::dbExecute(db, statement)
+			DBI::dbExecute(db, statement)
 		}
 	}, error = function(e) {
-		RSQLite::dbDisconnect(db)
+		DBI::dbDisconnect(db)
 		stop(e)
 	})
 
@@ -75,8 +75,8 @@ open_db <- function(path = getwd(), db_name = "carp.db") {
 	if (!file.exists(db_name))
 		stop("There is no such file")
 	db <- DBI::dbConnect(RSQLite::SQLite(), db_name)
-	if (!RSQLite::dbExistsTable(db, "Participant")) {
-		RSQLite::dbDisconnect(db)
+	if (!DBI::dbExistsTable(db, "Participant")) {
+		DBI::dbDisconnect(db)
 		stop("Sorry, this does not appear to be a CARP database.")
 	}
 	return(db)
@@ -154,9 +154,15 @@ split_db <- function(old_db, new_db = NULL, sensor, path = getwd(), db_name = "c
 	# Attach new database to old database
 	DBI::dbExecute(old_db, paste0("ATTACH DATABASE '", new_db@dbname, "' AS new_db"))
 
+	# Copy participants, studies, processed_files
+	DBI::dbExecute(old_db, "INSERT OR IGNORE INTO new_db.Study SELECT * FROM Study")
+	DBI::dbExecute(old_db, "INSERT OR IGNORE INTO new_db.Participant SELECT * FROM Participant")
+	DBI::dbExecute(old_db, "INSERT OR IGNORE INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles")
+
+
 	# Copy all specified sensors
 	for (i in seq_along(sensor)) {
-		DBI::dbExecute(old_db, paste("INSERT OR IGNORE INTO new_db.", sensor[i], "SELECT * FROM ", sensor[i]))
+		DBI::dbExecute(old_db, paste0("INSERT OR IGNORE INTO new_db.", sensor[i], " SELECT * FROM ", sensor[i]))
 	}
 
 	# Detach
@@ -204,8 +210,8 @@ clear_sensors_db <- function(db) {
 #' @return A data frame contain processed file for each participant and study.
 #' @export
 get_processed_files <- function(db) {
-	if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
-	RSQLite::dbReadTable(db, "ProcessedFiles")
+	if (!DBI::dbIsValid(db)) stop("Database connection is not valid")
+	DBI::dbReadTable(db, "ProcessedFiles")
 }
 
 #' Get all participants
@@ -216,11 +222,11 @@ get_processed_files <- function(db) {
 #' @return A data frame containing all participants.
 #' @export
 get_participants <- function(db, lazy = FALSE) {
-	if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+	if (!DBI::dbIsValid(db)) stop("Database connection is not valid")
 	if (lazy) {
 		dplyr::tbl(db, "Participant")
 	} else {
-		RSQLite::dbReadTable(db, "Participant")
+		DBI::dbReadTable(db, "Participant")
 	}
 }
 
@@ -232,11 +238,11 @@ get_participants <- function(db, lazy = FALSE) {
 #' @return A data frame containing all studies.
 #' @export
 get_studies <- function(db, lazy = FALSE) {
-	if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+	if (!DBI::dbIsValid(db)) stop("Database connection is not valid")
 	if (lazy) {
 		dplyr::tbl(db, "Study")
 	} else {
-		RSQLite::dbReadTable(db, "Study")
+		DBI::dbReadTable(db, "Study")
 	}
 }
 
@@ -259,13 +265,13 @@ get_studies <- function(db, lazy = FALSE) {
 #' @export
 get_nrows <- function(db, sensor = "All", participant_id = NULL, start_date = NULL,
 											end_date = NULL) {
-	if (!RSQLite::dbIsValid(db)) stop("Database connection is not valid")
+	if (!DBI::dbIsValid(db)) stop("Database connection is not valid")
 
 	if (sensor[[1]] == "All") {
 		sensor <- sensors
 	}
 
-	# sapply(sensor, function(x) RSQLite::dbGetQuery(db, paste0("SELECT COUNT(*) FROM ", x))[[1]])
+	# sapply(sensor, function(x) DBI::dbGetQuery(db, paste0("SELECT COUNT(*) FROM ", x))[[1]])
 	sapply(sensor, function(x) {
 		get_data(db, x, participant_id, start_date, end_date) %>%
 			dplyr::count() %>%
