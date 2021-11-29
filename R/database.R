@@ -82,7 +82,6 @@ open_db <- function(path = getwd(), db_name = "carp.db") {
 	return(db)
 }
 
-
 #' Close a database connection
 #'
 #' This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
@@ -132,7 +131,8 @@ index_db <- function(db) {
 #' @param db_name The name of the database.
 #'
 #' @export
-split_db <- function(old_db, new_db = NULL, sensor, path = getwd(), db_name = "carp.db") {
+split_db <- function(old_db, new_db = NULL, sensor = "All", path = getwd(), db_name = "carp.db") {
+	if (is.null(old_db) || !DBI::dbIsValid(old_db)) stop("Database connection is not valid")
 	# Check sensors
 	if (length(sensor) == 1 && sensor == "All") {
 		sensor <- sensors
@@ -147,8 +147,14 @@ split_db <- function(old_db, new_db = NULL, sensor, path = getwd(), db_name = "c
 	no_db_specified <- FALSE
 	if (is.null(new_db)) {
 		no_db_specified <- TRUE
-		new_db <- create_db(path, db_name)
-		message(paste0("New database created in ", path))
+
+		if (!file.exists(file.path(path, db_name))) {
+			new_db <- create_db(path, db_name)
+			message(paste0("New database created in ", path))
+		} else {
+			stop(paste0("A file in ", path, " with the name ", db_name, " already exists. Please choose ",
+									"a different name or path or remove the file."))
+		}
 	}
 
 	# Attach new database to old database

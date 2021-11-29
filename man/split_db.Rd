@@ -4,7 +4,13 @@
 \alias{split_db}
 \title{Split a subset of a database into another database}
 \usage{
-split_db(old_db, new_db = NULL, sensor, path = getwd(), db_name = "carp.db")
+split_db(
+  old_db,
+  new_db = NULL,
+  sensor = "All",
+  path = getwd(),
+  db_name = "carp.db"
+)
 }
 \arguments{
 \item{old_db}{A CARP database connection from where the data will be transferred.}

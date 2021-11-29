@@ -42,6 +42,33 @@ test_that("open_db", {
 	DBI::dbDisconnect(db)
 })
 
+test_that("split_db", {
+	path <- system.file("testdata", package = "CARP")
+	db <- open_db(path, "test.db")
+
+	new_db <- create_db(path, "split.db")
+	split_db(db, new_db, sensor = "All")
+	expect_identical(get_nrows(db), get_nrows(new_db))
+	close_db(new_db)
+	file.remove(file.path(path, "split.db"))
+
+	split_db(db, sensor = "Accelerometer", path = path, db_name = "split.db")
+	new_db <- open_db(path, "split.db")
+	true <- c(6L, rep(0L, 23))
+	names(true) <- sensors
+	expect_identical(get_nrows(new_db), true)
+
+	expect_error(split_db(db, sensor = "Accelerometer", path =path, db_name = "split.db"),
+							 paste0("A file in ", path, " with the name split.db already exists. Please choose ",
+							 			 "a different name or path or remove the file."))
+	close_db(new_db)
+	file.remove(file.path(path, "split.db"))
+
+	DBI::dbDisconnect(db)
+	expect_error(split_db(db, sensor = "Accelerometer", path = path, db_name = "split.db"),
+							 "Database connection is not valid")
+})
+
 test_that("close_db", {
 	db <- open_db(system.file("testdata", package = "CARP"), "test.db")
 	expect_error(close_db(db), NA)
