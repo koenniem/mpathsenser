@@ -11,7 +11,7 @@ Process and Analyse Data from CARP Mobile Sensing.
 \seealso{
 Useful links:
 \itemize{
-  \item Report bugs at \url{https://gitlab.kuleuven.be/u0134047/CARP/issues}
+  \item Report bugs at \url{https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/CARP/issues}
 }
 
 }

@@ -40,15 +40,16 @@ get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_d
     out <- dplyr::filter(out, participant_id == p_id)
   }
 
-  if (!is.null(start_date) && !is.null(end_date)) {
-    maybe_date <- function(x) {
-      !is.na(as.Date(as.character(x), tz = "UTC", format = "%Y-%m-%d"))
-    }
-    if (maybe_date(start_date) & maybe_date(end_date)) {
-      # out <- dplyr::mutate(out, date = DATE(time)) %>%
-      out <- dplyr::filter(out, date >= start_date)
-      out <- dplyr::filter(out, date <= end_date)
-    }
+  maybe_date <- function(x) {
+    !is.na(as.Date(as.character(x), tz = "UTC", format = "%Y-%m-%d"))
+  }
+
+  if (!is.null(start_date) && maybe_date(start_date)) {
+    out <- dplyr::filter(out, date >= start_date)
+  }
+
+  if (!is.null(end_date) && maybe_date(end_date)) {
+    out <- dplyr::filter(out, date <= end_date)
   }
 
   out
@@ -146,16 +147,16 @@ last_date <- function(db, sensor, participant_id = NULL) {
 link <- function(x, y, by = NULL, offset) {
 
   if (is.null(x) || !is.data.frame(x)) stop("x must be a data frame")
-  if (is.null(y) || !is.data.frame(x)) stop("y must be a data frame")
-  if (!is.null(by) & !is.character(by))
+  if (is.null(y) || !is.data.frame(y)) stop("y must be a data frame")
+  if (!is.null(by) && !is.character(by))
     stop("by must be a character vector of variables to join by")
-  if (is.null(offset) || !(is.character(offset) | lubridate::is.period(offset)))
-    stop("offset must be a character vector or a period")
+  if (is.null(offset) || !(is.character(offset) | lubridate::is.period(offset) | is.numeric(offset)))
+    stop("offset must be a character vector, numeric vector, or a period")
 
-  if (is.character(offset)) offset <- lubridate::as.period(offset)
+  if (is.character(offset) | is.numeric(offset)) offset <- lubridate::as.period(offset)
   if (is.na(offset)) stop(paste("Invalid offset specified. Try something like '30 minutes' or",
                                "lubridate::minutes(30). Note that negative values do not work when",
-                               "specifying character vectors, instead use minutes(-30)."))
+                               "specifying character vectors, instead use minutes(-30) or -1800."))
 
   # Check for time column
   if (!("time" %in% colnames(x) & "time" %in% colnames(y)))
@@ -175,18 +176,21 @@ link <- function(x, y, by = NULL, offset) {
   # Then, simply remove all rows in the nested tables that are not within the interval specified
   # by startTime and endTime
   if (offset < 0) {
-    res <- res %>%
-      dplyr::mutate(data = purrr::map(data, ~.[.data$time >= startTime & .data$time <= endTime, ]))
+    res$data <- purrr::pmap(list(res$data, res$startTime, res$endTime),
+                            function(data, startTime, endTime) {
+                              data[data$time >= startTime & data$time <= endTime, ]
+                            })
   } else {
     # Reverse logic if interval occurs after beep
-    res <- res %>%
-      dplyr::mutate(data = purrr::map(data, ~.[.data$time >= endTime & .data$time <= startTime, ]))
+    res$data <- purrr::pmap(list(res$data, res$startTime, res$endTime),
+                            function(data, startTime, endTime) {
+                              data[data$time >= endTime & data$time <= startTime, ]
+                            })
   }
 
   res <- res %>%
     dplyr::ungroup() %>%
-    dplyr::select(-c(id, startTime)) %>%
-    dplyr::rename(time = endTime)
+    dplyr::select(-c(id, startTime, endTime))
 
   res
 }
@@ -265,9 +269,14 @@ link2 <- function(db, sensor_one, sensor_two = NULL, offset, participant_id = NU
     dplyr::collect() %>%
     dplyr::mutate(time = as.POSIXct(time))
 
-  if (reverse) {
+
+  if (is.null(external) & reverse) {
     tmp <- dat_one
     dat_one <- dat_two
+    dat_two <- tmp
+  } else if (!is.null(external) & !reverse) {
+    tmp <- dat_one
+    dat_one <- external
     dat_two <- tmp
   }
 
@@ -290,13 +299,11 @@ link2 <- function(db, sensor_one, sensor_two = NULL, offset, participant_id = NU
 #' @return A character vector of app names.
 #' @export
 get_installed_apps <- function(db, participant_id = NULL) {
-  data <- get_data(db, "InstalledApps", participant_id)
-  data <- dplyr::collect(data)
-  apps <- paste0(data$apps, collapse = "|")
-  apps <- strsplit(apps, "|", fixed = TRUE)
-  apps <- unique(unlist(apps))
-  apps <- sort(apps)
-  apps
+  get_data(db, "InstalledApps", participant_id) %>%
+    dplyr::filter(!is.na(app)) %>%
+    dplyr::distinct(app) %>%
+    dplyr::arrange(app) %>%
+    dplyr::collect()
 }
 
 
@@ -330,23 +337,21 @@ get_app_usage <- function(db, participant_id = NULL,
   data <- get_data(db, "AppUsage", participant_id, start_date, end_date) %>%
     dplyr::select(date, time, app, usage) %>%
     dplyr::collect() %>%
-    tidyr::drop_na(app, usage)
+    tidyr::drop_na(app, usage) %>%
+    dplyr::group_by(date, app)
 
   if (is.null(by)) {
     data <- data %>%
-      dplyr::group_by(date, app) %>%
       dplyr::slice(dplyr::n()) %>%
       dplyr::mutate(usage = usage / 60 / 60)
   } else if (by[1] == "Total" | by[1] == "total") {
     data <- data %>%
-    	dplyr::group_by(date, app) %>%
     	dplyr::slice(dplyr::n()) %>%
       dplyr::mutate(usage = usage / 60 / 60) %>%
       dplyr::group_by(app) %>%
       dplyr::summarise(usage = round(mean(usage), 2), .groups = "drop")
   } else if (by[1] == "Hour" | by[1] == "hour") {
     data <- data %>%
-    	dplyr::group_by(date, app) %>%
     	dplyr::mutate(prev_usage = dplyr::lag(usage, default = 0)) %>%
     	dplyr::mutate(hour = substr(time, 1, 2)) %>%
     	dplyr::group_by(date, app) %>%
@@ -357,12 +362,10 @@ get_app_usage <- function(db, participant_id = NULL,
       tidyr::complete(hour = 0:23, app, fill = list(n = 0))
   } else if (by[1] == "Day" | by[1] == "day") {
     data <- data %>%
-    	dplyr::group_by(date, app) %>%
     	dplyr::slice(dplyr::n()) %>%
     	dplyr::mutate(usage = round(usage / 60 / 60, 2))
   } else { # Default case
     data <- data %>%
-    	dplyr::group_by(date, app) %>%
     	dplyr::slice(dplyr::n()) %>%
     	dplyr::mutate(usage = usage / 60 / 60)
   }
