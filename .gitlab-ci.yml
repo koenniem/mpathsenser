@@ -56,7 +56,6 @@ building:
     - Rscript -e 'install.packages("rcmdcheck")'
     - Rscript -e 'remotes::install_local(upgrade = "never")'
     - Rscript -e 'devtools::document()'
-    - Rscript -e 'devtools::test(reporter =  "location")'
     - R -e 'rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "warning", check_dir = "check")'
   tags:
     - okp

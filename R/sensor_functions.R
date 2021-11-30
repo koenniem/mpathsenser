@@ -161,8 +161,11 @@ link <- function(x, y, by = NULL, offset) {
   # Check for time column
   if (!("time" %in% colnames(x) & "time" %in% colnames(y)))
     stop("column 'time' must be present in both x and y")
-  if (!lubridate::is.POSIXt(x$time)) stop("column 'time' in x must be in a date time format")
-  if (!lubridate::is.POSIXt(y$time)) stop("column 'time' in y must be in a date time format")
+  if (!lubridate::is.POSIXct(x$time)) stop("column 'time' in x must be a POSIXct")
+  if (!lubridate::is.POSIXct(y$time)) stop("column 'time' in y must be a POSIXct")
+
+  # Do not perform matching when x and y are identical
+  if (identical(x, y) || isTRUE(dplyr::all_equal(x, y))) stop("x and y are identical")
 
   # Match sensing data with ESM using a nested join
   # Set a startTime (beep time - offset) and an endTime (beep time)
@@ -171,7 +174,7 @@ link <- function(x, y, by = NULL, offset) {
     dplyr::mutate(endTime = time) %>%
     dplyr::nest_join(y, by = by, name = "data") %>%
     dplyr::mutate(id = dplyr::row_number()) %>%
-    dplyr::group_by(id) # Group each row to prevent weird behaviour
+    dplyr::group_by(id)  # Group each row to prevent weird behaviour
 
   # Then, simply remove all rows in the nested tables that are not within the interval specified
   # by startTime and endTime
@@ -254,7 +257,7 @@ link2 <- function(db, sensor_one, sensor_two = NULL, offset, participant_id = NU
       dplyr::mutate(time = paste(date, time)) %>%
       dplyr::select(-date) %>%
       dplyr::collect() %>%
-      dplyr::mutate(time = as.POSIXct(time))
+      dplyr::mutate(time = as.POSIXct(time, format = "%F %H:%M:%OS"))
   } else {
     dat_two <- external
   }
@@ -267,7 +270,7 @@ link2 <- function(db, sensor_one, sensor_two = NULL, offset, participant_id = NU
     dplyr::mutate(time = paste(date, time)) %>%
     dplyr::select(-date) %>%
     dplyr::collect() %>%
-    dplyr::mutate(time = as.POSIXct(time))
+    dplyr::mutate(time = as.POSIXct(time, format = "%F %H:%M:%OS"))
 
 
   if (is.null(external) & reverse) {

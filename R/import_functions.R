@@ -257,7 +257,6 @@ bluetooth_fun <- function(data) {
 # Currently, multiple entries are already possible but it's not clear why they are wrapped in
 # another list as well.
 calendar_fun <- function(data) {
-  # browser()
   data$id <- sapply(data$body, function(x) x$body$id)
   data$body <- lapply(data$body, function(x) x$body$calendar_events)
 

@@ -83,25 +83,25 @@ test_that("last_date", {
 ## link ===============
 test_that("link", {
 	dat1 <- data.frame(
-		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
-						 as.POSIXct("2021-11-14 15:00:00")),
-		participant_id = "12345",
-		item_one = c(40, 50, 60)
+		time = rep(c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
+						 as.POSIXct("2021-11-14 15:00:00")), 2),
+		participant_id = c(rep("12345", 3), rep("23456", 3)),
+		item_one = rep(c(40, 50, 60), 2)
 	)
 
 	dat2 <- data.frame(
-		time = seq.POSIXt(as.POSIXct("2021-11-14 12:50:00"), by = "5 min", length.out = 30),
-		participant_id = "12345",
-		x = 1:30
+		time = rep(seq.POSIXt(as.POSIXct("2021-11-14 12:50:00"), by = "5 min", length.out = 30), 2),
+		participant_id = c(rep("12345", 30), rep("23456", 30)),
+		x = rep(1:30, 2)
 	)
 
 	res <- link(dat1, dat2, "participant_id", -1800)
 	true <- tibble::tibble(
-		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
-						 as.POSIXct("2021-11-14 15:00:00")),
-		participant_id = "12345",
-		item_one = c(40, 50, 60),
-		data = list(
+		time = rep(c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
+								 as.POSIXct("2021-11-14 15:00:00")), 2),
+		participant_id = c(rep("12345", 3), rep("23456", 3)),
+		item_one = rep(c(40, 50, 60), 2),
+		data = rep(list(
 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 12:50:00"),
 																			 length.out = 3, by = "5 min"),
 										 x = 1:3),
@@ -111,17 +111,17 @@ test_that("link", {
 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 14:30:00"),
 																			 length.out = 7, by = "5 min"),
 										 x = 21:27)
-		)
+		), 2)
 	)
 	expect_equal(res, true)
 
 	res <- link(dat1, dat2, "participant_id", 1800)
 	true <- tibble::tibble(
-		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
-						 as.POSIXct("2021-11-14 15:00:00")),
-		participant_id = "12345",
-		item_one = c(40, 50, 60),
-		data = list(
+		time = rep(c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
+						 as.POSIXct("2021-11-14 15:00:00")), 2),
+		participant_id = c(rep("12345", 3), rep("23456", 3)),
+		item_one = rep(c(40, 50, 60), 2),
+		data =  rep(list(
 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 13:00:00"),
 																			 length.out = 7, by = "5 min"),
 										 x = 3:9),
@@ -131,7 +131,7 @@ test_that("link", {
 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 15:00:00"),
 																			 length.out = 4, by = "5 min"),
 										 x = 27:30)
-		)
+		), 2)
 	)
 	expect_equal(res, true)
 
@@ -141,9 +141,9 @@ test_that("link", {
 							 "by must be a character vector of variables to join by")
 
 	expect_error(link(dplyr::mutate(dat1, time = as.character(time)), dat2, offset = -1800),
-							 "column 'time' in x must be in a date time format")
+							 "column 'time' in x must be a POSIXct")
 	expect_error(link(dat1, dplyr::mutate(dat2, time = as.character(time)), offset = -1800),
-							 "column 'time' in y must be in a date time format")
+							 "column 'time' in y must be a POSIXct")
 	expect_error(link(dat1, dat2, offset = TRUE),
 							 "offset must be a character vector, numeric vector, or a period")
 	expect_error(link(dat1, dat2, offset = "1800"),
@@ -263,11 +263,12 @@ test_that("link2", {
 	add_participant(db, data.frame(study_id = "test-study", participant_id = "12345"))
 
 	sens_value <- seq.int(0, 10, length.out = 50001)
+	time_value <- seq.POSIXt(as.POSIXct("2021-11-14 14:00:00.000", format = "%F %H:%M:%OS"), by = "sec", length.out = 50001)
 	acc <- data.frame(
 		measurement_id = paste0("id_", 1:50001),
 		participant_id = "12345",
 		date = "2021-11-14",
-		time = seq.POSIXt(as.POSIXct("2021-11-14 14:00:00"), by = "sec", length.out = 50001),
+		time = strftime(time_value, format = "%H:%M:%OS3"),
 		x = sens_value,
 		y = sens_value,
 		z = sens_value
@@ -277,7 +278,8 @@ test_that("link2", {
 	DBI::dbWriteTable(db, "Gyroscope", acc, overwrite = TRUE)
 	expect_error(link2(db, "Accelerometer", "Gyroscope", offset = 30),
 							 "the total number of rows is higher than 100000. Use ignore_large = TRUE to continue")
-	expect_error(link2(db, "Accelerometer", "Gyroscope", offset = 30, ignore_large = TRUE), NA)
+	expect_error(link2(db, "Accelerometer", "Gyroscope", offset = 30, ignore_large = TRUE),
+							 "x and y are identical")
 	DBI::dbDisconnect(db)
 	file.remove(file.path(path, "big.db"))
 })
