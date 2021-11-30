@@ -59,7 +59,7 @@ building:
     - Rscript -e 'devtools::test()'
     - R -e 'rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "warning", check_dir = "check")'
   tags:
-  #  - okp
+    - okp
 
 # To have the coverage percentage appear as a gitlab badge follow these
 # instructions:
@@ -83,7 +83,7 @@ coverage:
             - public
         expire_in: 30 days
     tags:
-    #  - okp
+      - okp
 
 # To produce a code coverage report as a GitLab page see
 # https://about.gitlab.com/2016/11/03/publish-code-coverage-report-with-gitlab-pages/
@@ -104,7 +104,7 @@ integration:
             - docs
         expire_in: 30 days
     tags:
-    #  - okp
+      - okp
 
 integration-test:
     stage: pkgdown-move
@@ -130,7 +130,7 @@ integration-test:
             - public
         expire_in: 30 days
     tags:
-    #  - okp
+      - okp
 
 integration-production:
     stage: pkgdown-move
@@ -151,7 +151,7 @@ integration-production:
             - public
         expire_in: 30 days
     tags:
-    #  - okp
+      - okp
 
 integration-master:
     stage: pkgdown-move
@@ -172,7 +172,7 @@ integration-master:
             - public
         expire_in: 30 days
     tags:
-    #  - okp
+      - okp
 
 pages:
     stage: deploy
@@ -186,5 +186,5 @@ pages:
         - production
         - test-ci
     tags:
-    #  - okp
+      - okp
 

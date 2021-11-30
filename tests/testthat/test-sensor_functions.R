@@ -77,205 +77,206 @@ test_that("last_date", {
 	DBI::dbDisconnect(db)
 })
 
-test_that("link", {
-	dat1 <- data.frame(
-		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
-						 as.POSIXct("2021-11-14 15:00:00")),
-		participant_id = "12345",
-		item_one = c(40, 50, 60)
-	)
-
-	dat2 <- data.frame(
-		time = seq.POSIXt(as.POSIXct("2021-11-14 12:50:00"), by = "5 min", length.out = 30),
-		participant_id = "12345",
-		x = 1:30
-	)
-
-	res <- link(dat1, dat2, "participant_id", -1800)
-	true <- tibble::tibble(
-		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
-						 as.POSIXct("2021-11-14 15:00:00")),
-		participant_id = "12345",
-		item_one = c(40, 50, 60),
-		data = list(
-			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 12:50:00"),
-																			 length.out = 3, by = "5 min"),
-										 x = 1:3),
-			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 13:30:00"),
-																			 length.out = 7, by = "5 min"),
-										 x = 9:15),
-			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 14:30:00"),
-																			 length.out = 7, by = "5 min"),
-										 x = 21:27)
-		)
-	)
-	expect_equal(res, true)
-
-	res <- link(dat1, dat2, "participant_id", 1800)
-	true <- tibble::tibble(
-		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
-						 as.POSIXct("2021-11-14 15:00:00")),
-		participant_id = "12345",
-		item_one = c(40, 50, 60),
-		data = list(
-			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 13:00:00"),
-																			 length.out = 7, by = "5 min"),
-										 x = 3:9),
-			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 14:00:00"),
-																			 length.out = 7, by = "5 min"),
-										 x = 15:21),
-			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 15:00:00"),
-																			 length.out = 4, by = "5 min"),
-										 x = 27:30)
-		)
-	)
-	expect_equal(res, true)
-
-	expect_error(link(1, dat2, "participant_id", -1800), "x must be a data frame")
-	expect_error(link(dat1, 1, "participant_id", -1800), "y must be a data frame")
-	expect_error(link(dat1, dat2, 12345, -1800),
-							 "by must be a character vector of variables to join by")
-	expect_error(link(dplyr::mutate(dat1, time = as.character(time)), dat2, offset = -1800),
-							 "column 'time' in x must be in a date time format")
-	expect_error(link(dat1, dplyr::mutate(dat2, time = as.character(time)), offset = -1800),
-							 "column 'time' in y must be in a date time format")
-	expect_error(link(dat1, dat2, offset = TRUE),
-							 "offset must be a character vector, numeric vector, or a period")
-	expect_error(link(dat1, dat2, offset = "1800"),
-							 paste("Invalid offset specified\\. Try something like '30 minutes' or",
-							 "lubridate::minutes\\(30\\)\\. Note that negative values do not work when",
-							 "specifying character vectors, instead use minutes\\(-30\\) or -1800\\."))
-	expect_error(link(dplyr::select(dat1, -time), dat2, offset = -1800),
-							 "column 'time' must be present in both x and y")
-	expect_error(link(dat1, dplyr::select(dat2, -time), offset = -1800),
-							 "column 'time' must be present in both x and y")
-})
-
-test_that("link2", {
-	path <- system.file("testdata", package = "CARP")
-	db <- open_db(path, "test.db")
-	dat1 <- data.frame(
-		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
-						 as.POSIXct("2021-11-14 15:00:00")),
-		participant_id = "12345",
-		item_one = c(40, 50, 60)
-	)
-
-	res <- link2(db, "Activity", "Connectivity", offset = 1800)
-	true <- tibble::tibble(
-		measurement_id = c("fbf85cd7-6d37-53a8-5c44-ad8fe13ef7ac",
-											 "ef96364c-d1f4-5f73-ce40-277f078e3d0f",
-											 "5ba54e77-4bcf-c8d1-17ff-71b9ed908897"),
-		participant_id = "12345",
-		time = as.POSIXct(c("2021-11-14 13:59:59", "2021-11-14 14:00:00", "2021-11-14 14:00:01")),
-		confidence = c(NA, 100L, 99L),
-		type = c(NA, "WALKING", "STILL"),
-		data = list(
-			tibble::tibble(
-				measurement_id = c("27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
-													 "2d430c2a-5b16-1dce-0e2f-c049c44e3729"),
-				time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00")),
-				connectivity_status = c("wifi", NA)
-			),
-			tibble::tibble(
-				measurement_id = c("27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
-													 "2d430c2a-5b16-1dce-0e2f-c049c44e3729"),
-				time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00")),
-				connectivity_status = c("wifi", NA)
-			),
-			tibble::tibble(
-				measurement_id = "2d430c2a-5b16-1dce-0e2f-c049c44e3729",
-				time = as.POSIXct("2021-11-14 14:01:00"),
-				connectivity_status = NA_character_
-			)
-		)
-	)
-	expect_identical(res, true)
-
-	res <- link2(db, "Activity", "Connectivity", offset = 1800, reverse = TRUE)
-	true <- tibble::tibble(
-		measurement_id = c("27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
-											 "2d430c2a-5b16-1dce-0e2f-c049c44e3729"),
-		participant_id = "12345",
-		time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00")),
-		connectivity_status = c("wifi", NA),
-		data = list(
-			tibble::tibble(
-				measurement_id = c("ef96364c-d1f4-5f73-ce40-277f078e3d0f",
-													 "5ba54e77-4bcf-c8d1-17ff-71b9ed908897"),
-				time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:00:01")),
-				confidence = c(100L, 99L),
-				type = c("WALKING", "STILL"),
-			),
-			tibble::tibble(
-				measurement_id = character(0),
-				time = structure(numeric(0), tzone = "", class = c("POSIXct", "POSIXt")),
-				confidence = integer(0),
-				type = character(0)
-			)
-		)
-	)
-	expect_identical(res, true)
-
-
-	res <- link2(db, "Activity", external = dat1, offset = 1800)
-	true <- tibble::tibble(
-		dat1,
-		data = list(
-			tibble::tibble(measurement_id = character(0),
-										 time = structure(numeric(0), tzone = "", class = c("POSIXct", "POSIXt")),
-										 confidence = integer(0L),
-										 type = character(0)),
-			tibble::tibble(measurement_id = c("ef96364c-d1f4-5f73-ce40-277f078e3d0f",
-																				"5ba54e77-4bcf-c8d1-17ff-71b9ed908897"),
-										 time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:00:01")),
-										 confidence = c(100L, 99L),
-										 type = c("WALKING", "STILL")),
-			tibble::tibble(measurement_id = character(0),
-										 time = structure(numeric(0), tzone = "", class = c("POSIXct", "POSIXt")),
-										 confidence = integer(0),
-										 type = character(0))
-			)
-	)
-	expect_identical(res, true)
-
-	expect_error(link2(db, "Activity", 1:10, -1800), "sensor_two must be a character vector")
-	expect_error(link2(db, "Activity", offset = -1800, external = "Bluetooth"),
-										 "external must be a data frame")
-	expect_error(link2(db, "Activity", "Bluetooth", -1800, external = dat1),
-							 "only a second sensor or an external data frame can be supplied, but not both")
-	expect_error(link2(db, "Activity", offset = -1800),
-							 "either a second sensor or an external data frame must be supplied")
-	DBI::dbDisconnect(db)
-	expect_error(link2(db, "Activity", "Bluetooth", -1800), "Database connection is not valid")
-
-	db <- create_db(path, "big.db")
-	add_study(db, data.frame(study_id = "test-study", data_format = "CARP"))
-	add_participant(db, data.frame(study_id = "test-study", participant_id = "12345"))
-	DBI::dbWriteTable(db, "Accelerometer", data.frame(
-		measurement_id = paste0("id_", 1:50001),
-		participant_id = "12345",
-		date = "2021-11-14",
-		time = seq.POSIXt(as.POSIXct("2021-11-14 14:00:00"), by = "sec", length.out = 50001),
-		x = seq.int(0, 10, length.out = 50001),
-		y = seq.int(0, 10, length.out = 50001),
-		z = seq.int(0, 10, length.out = 50001)
-	), append = TRUE)
-	DBI::dbWriteTable(db, "Gyroscope", data.frame(
-		measurement_id = paste0("id_", 1:50001),
-		participant_id = "12345",
-		date = "2021-11-14",
-		time = seq.POSIXt(as.POSIXct("2021-11-14 14:00:00"), by = "sec", length.out = 50001),
-		x = seq.int(0, 10, length.out = 50001),
-		y = seq.int(0, 10, length.out = 50001),
-		z = seq.int(0, 10, length.out = 50001)
-	), append = TRUE)
-	expect_error(link2(db, "Accelerometer", "Gyroscope", offset = 30),
-							 "the total number of rows is higher than 100000. Use ignore_large = TRUE to continue")
-	expect_error(link2(db, "Accelerometer", "Gyroscope", offset = 30, ignore_large = TRUE), NA)
-	DBI::dbDisconnect(db)
-	file.remove(file.path(path, "big.db"))
-})
+# test_that("link", {
+# 	dat1 <- data.frame(
+# 		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
+# 						 as.POSIXct("2021-11-14 15:00:00")),
+# 		participant_id = "12345",
+# 		item_one = c(40, 50, 60)
+# 	)
+#
+# 	dat2 <- data.frame(
+# 		time = seq.POSIXt(as.POSIXct("2021-11-14 12:50:00"), by = "5 min", length.out = 30),
+# 		participant_id = "12345",
+# 		x = 1:30
+# 	)
+#
+# 	res <- link(dat1, dat2, "participant_id", -1800)
+# 	true <- tibble::tibble(
+# 		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
+# 						 as.POSIXct("2021-11-14 15:00:00")),
+# 		participant_id = "12345",
+# 		item_one = c(40, 50, 60),
+# 		data = list(
+# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 12:50:00"),
+# 																			 length.out = 3, by = "5 min"),
+# 										 x = 1:3),
+# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 13:30:00"),
+# 																			 length.out = 7, by = "5 min"),
+# 										 x = 9:15),
+# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 14:30:00"),
+# 																			 length.out = 7, by = "5 min"),
+# 										 x = 21:27)
+# 		)
+# 	)
+# 	expect_equal(res, true)
+#
+# 	res <- link(dat1, dat2, "participant_id", 1800)
+# 	true <- tibble::tibble(
+# 		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
+# 						 as.POSIXct("2021-11-14 15:00:00")),
+# 		participant_id = "12345",
+# 		item_one = c(40, 50, 60),
+# 		data = list(
+# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 13:00:00"),
+# 																			 length.out = 7, by = "5 min"),
+# 										 x = 3:9),
+# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 14:00:00"),
+# 																			 length.out = 7, by = "5 min"),
+# 										 x = 15:21),
+# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 15:00:00"),
+# 																			 length.out = 4, by = "5 min"),
+# 										 x = 27:30)
+# 		)
+# 	)
+# 	expect_equal(res, true)
+#
+# 	expect_error(link(1, dat2, "participant_id", -1800), "x must be a data frame")
+# 	expect_error(link(dat1, 1, "participant_id", -1800), "y must be a data frame")
+# 	expect_error(link(dat1, dat2, 12345, -1800),
+# 							 "by must be a character vector of variables to join by")
+#
+# 	expect_error(link(dplyr::mutate(dat1, time = as.character(time)), dat2, offset = -1800),
+# 							 "column 'time' in x must be in a date time format")
+# 	expect_error(link(dat1, dplyr::mutate(dat2, time = as.character(time)), offset = -1800),
+# 							 "column 'time' in y must be in a date time format")
+# 	expect_error(link(dat1, dat2, offset = TRUE),
+# 							 "offset must be a character vector, numeric vector, or a period")
+# 	expect_error(link(dat1, dat2, offset = "1800"),
+# 							 paste("Invalid offset specified\\. Try something like '30 minutes' or",
+# 							 "lubridate::minutes\\(30\\)\\. Note that negative values do not work when",
+# 							 "specifying character vectors, instead use minutes\\(-30\\) or -1800\\."))
+# 	expect_error(link(dplyr::select(dat1, -time), dat2, offset = -1800),
+# 							 "column 'time' must be present in both x and y")
+# 	expect_error(link(dat1, dplyr::select(dat2, -time), offset = -1800),
+# 							 "column 'time' must be present in both x and y")
+# })
+#
+# test_that("link2", {
+# 	path <- system.file("testdata", package = "CARP")
+# 	db <- open_db(path, "test.db")
+# 	dat1 <- data.frame(
+# 		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
+# 						 as.POSIXct("2021-11-14 15:00:00")),
+# 		participant_id = "12345",
+# 		item_one = c(40, 50, 60)
+# 	)
+#
+# 	res <- link2(db, "Activity", "Connectivity", offset = 1800)
+# 	true <- tibble::tibble(
+# 		measurement_id = c("fbf85cd7-6d37-53a8-5c44-ad8fe13ef7ac",
+# 											 "ef96364c-d1f4-5f73-ce40-277f078e3d0f",
+# 											 "5ba54e77-4bcf-c8d1-17ff-71b9ed908897"),
+# 		participant_id = "12345",
+# 		time = as.POSIXct(c("2021-11-14 13:59:59", "2021-11-14 14:00:00", "2021-11-14 14:00:01")),
+# 		confidence = c(NA, 100L, 99L),
+# 		type = c(NA, "WALKING", "STILL"),
+# 		data = list(
+# 			tibble::tibble(
+# 				measurement_id = c("27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
+# 													 "2d430c2a-5b16-1dce-0e2f-c049c44e3729"),
+# 				time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00")),
+# 				connectivity_status = c("wifi", NA)
+# 			),
+# 			tibble::tibble(
+# 				measurement_id = c("27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
+# 													 "2d430c2a-5b16-1dce-0e2f-c049c44e3729"),
+# 				time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00")),
+# 				connectivity_status = c("wifi", NA)
+# 			),
+# 			tibble::tibble(
+# 				measurement_id = "2d430c2a-5b16-1dce-0e2f-c049c44e3729",
+# 				time = as.POSIXct("2021-11-14 14:01:00"),
+# 				connectivity_status = NA_character_
+# 			)
+# 		)
+# 	)
+# 	expect_identical(res, true)
+#
+# 	res <- link2(db, "Activity", "Connectivity", offset = 1800, reverse = TRUE)
+# 	true <- tibble::tibble(
+# 		measurement_id = c("27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
+# 											 "2d430c2a-5b16-1dce-0e2f-c049c44e3729"),
+# 		participant_id = "12345",
+# 		time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00")),
+# 		connectivity_status = c("wifi", NA),
+# 		data = list(
+# 			tibble::tibble(
+# 				measurement_id = c("ef96364c-d1f4-5f73-ce40-277f078e3d0f",
+# 													 "5ba54e77-4bcf-c8d1-17ff-71b9ed908897"),
+# 				time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:00:01")),
+# 				confidence = c(100L, 99L),
+# 				type = c("WALKING", "STILL"),
+# 			),
+# 			tibble::tibble(
+# 				measurement_id = character(0),
+# 				time = structure(numeric(0), tzone = "", class = c("POSIXct", "POSIXt")),
+# 				confidence = integer(0),
+# 				type = character(0)
+# 			)
+# 		)
+# 	)
+# 	expect_identical(res, true)
+#
+#
+# 	res <- link2(db, "Activity", external = dat1, offset = 1800)
+# 	true <- tibble::tibble(
+# 		dat1,
+# 		data = list(
+# 			tibble::tibble(measurement_id = character(0),
+# 										 time = structure(numeric(0), tzone = "", class = c("POSIXct", "POSIXt")),
+# 										 confidence = integer(0L),
+# 										 type = character(0)),
+# 			tibble::tibble(measurement_id = c("ef96364c-d1f4-5f73-ce40-277f078e3d0f",
+# 																				"5ba54e77-4bcf-c8d1-17ff-71b9ed908897"),
+# 										 time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:00:01")),
+# 										 confidence = c(100L, 99L),
+# 										 type = c("WALKING", "STILL")),
+# 			tibble::tibble(measurement_id = character(0),
+# 										 time = structure(numeric(0), tzone = "", class = c("POSIXct", "POSIXt")),
+# 										 confidence = integer(0),
+# 										 type = character(0))
+# 			)
+# 	)
+# 	expect_identical(res, true)
+#
+# 	expect_error(link2(db, "Activity", 1:10, -1800), "sensor_two must be a character vector")
+# 	expect_error(link2(db, "Activity", offset = -1800, external = "Bluetooth"),
+# 										 "external must be a data frame")
+# 	expect_error(link2(db, "Activity", "Bluetooth", -1800, external = dat1),
+# 							 "only a second sensor or an external data frame can be supplied, but not both")
+# 	expect_error(link2(db, "Activity", offset = -1800),
+# 							 "either a second sensor or an external data frame must be supplied")
+# 	DBI::dbDisconnect(db)
+# 	expect_error(link2(db, "Activity", "Bluetooth", -1800), "Database connection is not valid")
+#
+# 	db <- create_db(path, "big.db")
+# 	add_study(db, data.frame(study_id = "test-study", data_format = "CARP"))
+# 	add_participant(db, data.frame(study_id = "test-study", participant_id = "12345"))
+# 	DBI::dbWriteTable(db, "Accelerometer", data.frame(
+# 		measurement_id = paste0("id_", 1:50001),
+# 		participant_id = "12345",
+# 		date = "2021-11-14",
+# 		time = seq.POSIXt(as.POSIXct("2021-11-14 14:00:00"), by = "sec", length.out = 50001),
+# 		x = seq.int(0, 10, length.out = 50001),
+# 		y = seq.int(0, 10, length.out = 50001),
+# 		z = seq.int(0, 10, length.out = 50001)
+# 	), append = TRUE)
+# 	DBI::dbWriteTable(db, "Gyroscope", data.frame(
+# 		measurement_id = paste0("id_", 1:50001),
+# 		participant_id = "12345",
+# 		date = "2021-11-14",
+# 		time = seq.POSIXt(as.POSIXct("2021-11-14 14:00:00"), by = "sec", length.out = 50001),
+# 		x = seq.int(0, 10, length.out = 50001),
+# 		y = seq.int(0, 10, length.out = 50001),
+# 		z = seq.int(0, 10, length.out = 50001)
+# 	), append = TRUE)
+# 	expect_error(link2(db, "Accelerometer", "Gyroscope", offset = 30),
+# 							 "the total number of rows is higher than 100000. Use ignore_large = TRUE to continue")
+# 	expect_error(link2(db, "Accelerometer", "Gyroscope", offset = 30, ignore_large = TRUE), NA)
+# 	DBI::dbDisconnect(db)
+# 	file.remove(file.path(path, "big.db"))
+# })
 
 
 
