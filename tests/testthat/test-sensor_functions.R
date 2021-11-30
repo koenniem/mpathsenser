@@ -77,81 +77,81 @@ test_that("last_date", {
 	DBI::dbDisconnect(db)
 })
 
-# test_that("link", {
-# 	dat1 <- data.frame(
-# 		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
-# 						 as.POSIXct("2021-11-14 15:00:00")),
-# 		participant_id = "12345",
-# 		item_one = c(40, 50, 60)
-# 	)
-#
-# 	dat2 <- data.frame(
-# 		time = seq.POSIXt(as.POSIXct("2021-11-14 12:50:00"), by = "5 min", length.out = 30),
-# 		participant_id = "12345",
-# 		x = 1:30
-# 	)
-#
-# 	res <- link(dat1, dat2, "participant_id", -1800)
-# 	true <- tibble::tibble(
-# 		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
-# 						 as.POSIXct("2021-11-14 15:00:00")),
-# 		participant_id = "12345",
-# 		item_one = c(40, 50, 60),
-# 		data = list(
-# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 12:50:00"),
-# 																			 length.out = 3, by = "5 min"),
-# 										 x = 1:3),
-# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 13:30:00"),
-# 																			 length.out = 7, by = "5 min"),
-# 										 x = 9:15),
-# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 14:30:00"),
-# 																			 length.out = 7, by = "5 min"),
-# 										 x = 21:27)
-# 		)
-# 	)
-# 	expect_equal(res, true)
-#
-# 	res <- link(dat1, dat2, "participant_id", 1800)
-# 	true <- tibble::tibble(
-# 		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
-# 						 as.POSIXct("2021-11-14 15:00:00")),
-# 		participant_id = "12345",
-# 		item_one = c(40, 50, 60),
-# 		data = list(
-# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 13:00:00"),
-# 																			 length.out = 7, by = "5 min"),
-# 										 x = 3:9),
-# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 14:00:00"),
-# 																			 length.out = 7, by = "5 min"),
-# 										 x = 15:21),
-# 			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 15:00:00"),
-# 																			 length.out = 4, by = "5 min"),
-# 										 x = 27:30)
-# 		)
-# 	)
-# 	expect_equal(res, true)
-#
-# 	expect_error(link(1, dat2, "participant_id", -1800), "x must be a data frame")
-# 	expect_error(link(dat1, 1, "participant_id", -1800), "y must be a data frame")
-# 	expect_error(link(dat1, dat2, 12345, -1800),
-# 							 "by must be a character vector of variables to join by")
-#
-# 	expect_error(link(dplyr::mutate(dat1, time = as.character(time)), dat2, offset = -1800),
-# 							 "column 'time' in x must be in a date time format")
-# 	expect_error(link(dat1, dplyr::mutate(dat2, time = as.character(time)), offset = -1800),
-# 							 "column 'time' in y must be in a date time format")
-# 	expect_error(link(dat1, dat2, offset = TRUE),
-# 							 "offset must be a character vector, numeric vector, or a period")
-# 	expect_error(link(dat1, dat2, offset = "1800"),
-# 							 paste("Invalid offset specified\\. Try something like '30 minutes' or",
-# 							 "lubridate::minutes\\(30\\)\\. Note that negative values do not work when",
-# 							 "specifying character vectors, instead use minutes\\(-30\\) or -1800\\."))
-# 	expect_error(link(dplyr::select(dat1, -time), dat2, offset = -1800),
-# 							 "column 'time' must be present in both x and y")
-# 	expect_error(link(dat1, dplyr::select(dat2, -time), offset = -1800),
-# 							 "column 'time' must be present in both x and y")
-# })
-#
+test_that("link", {
+	dat1 <- data.frame(
+		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
+						 as.POSIXct("2021-11-14 15:00:00")),
+		participant_id = "12345",
+		item_one = c(40, 50, 60)
+	)
+
+	dat2 <- data.frame(
+		time = seq.POSIXt(as.POSIXct("2021-11-14 12:50:00"), by = "5 min", length.out = 30),
+		participant_id = "12345",
+		x = 1:30
+	)
+
+	res <- link(dat1, dat2, "participant_id", -1800)
+	true <- tibble::tibble(
+		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
+						 as.POSIXct("2021-11-14 15:00:00")),
+		participant_id = "12345",
+		item_one = c(40, 50, 60),
+		data = list(
+			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 12:50:00"),
+																			 length.out = 3, by = "5 min"),
+										 x = 1:3),
+			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 13:30:00"),
+																			 length.out = 7, by = "5 min"),
+										 x = 9:15),
+			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 14:30:00"),
+																			 length.out = 7, by = "5 min"),
+										 x = 21:27)
+		)
+	)
+	expect_equal(res, true)
+
+	res <- link(dat1, dat2, "participant_id", 1800)
+	true <- tibble::tibble(
+		time = c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
+						 as.POSIXct("2021-11-14 15:00:00")),
+		participant_id = "12345",
+		item_one = c(40, 50, 60),
+		data = list(
+			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 13:00:00"),
+																			 length.out = 7, by = "5 min"),
+										 x = 3:9),
+			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 14:00:00"),
+																			 length.out = 7, by = "5 min"),
+										 x = 15:21),
+			tibble::tibble(time = seq.POSIXt(from = as.POSIXct("2021-11-14 15:00:00"),
+																			 length.out = 4, by = "5 min"),
+										 x = 27:30)
+		)
+	)
+	expect_equal(res, true)
+
+	expect_error(link(1, dat2, "participant_id", -1800), "x must be a data frame")
+	expect_error(link(dat1, 1, "participant_id", -1800), "y must be a data frame")
+	expect_error(link(dat1, dat2, 12345, -1800),
+							 "by must be a character vector of variables to join by")
+
+	expect_error(link(dplyr::mutate(dat1, time = as.character(time)), dat2, offset = -1800),
+							 "column 'time' in x must be in a date time format")
+	expect_error(link(dat1, dplyr::mutate(dat2, time = as.character(time)), offset = -1800),
+							 "column 'time' in y must be in a date time format")
+	expect_error(link(dat1, dat2, offset = TRUE),
+							 "offset must be a character vector, numeric vector, or a period")
+	expect_error(link(dat1, dat2, offset = "1800"),
+							 paste("Invalid offset specified\\. Try something like '30 minutes' or",
+							 "lubridate::minutes\\(30\\)\\. Note that negative values do not work when",
+							 "specifying character vectors, instead use minutes\\(-30\\) or -1800\\."))
+	expect_error(link(dplyr::select(dat1, -time), dat2, offset = -1800),
+							 "column 'time' must be present in both x and y")
+	expect_error(link(dat1, dplyr::select(dat2, -time), offset = -1800),
+							 "column 'time' must be present in both x and y")
+})
+
 # test_that("link2", {
 # 	path <- system.file("testdata", package = "CARP")
 # 	db <- open_db(path, "test.db")
