@@ -15,7 +15,7 @@ haversine(lat1, lon1, lat2, lon2, r = 6371)
 
 \item{lon2}{The longitude of point 2 in degrees.}
 
-\item{r}{The average earth radius (6371 km by default).}
+\item{r}{The average earth radius.}
 }
 \value{
 The distance between point 1 and 2 in kilometers.
