@@ -1,15 +1,30 @@
 #' Import CARP files into a database (CARP data scheme)
 #'
+#' Import JSON files from m-Path Sense into a structured database. This function is the bread and butter of this package, as it creates (or rather fills) the
+#' database that (almost) all the other functions use.
+#'
+#' \code{import} is highly customisable in the sense that you can specify which sensors to import
+#' (even though there may be more in the files) and it also allows batching for a speedier writing
+#' process. If \code{parallel} is \code{TRUE}, it is recommended to \code{batch_size} be a scalar
+#' multiple of the number of CPUs the parallel cluster can use. If a single JSON file in the batch
+#' causes and error, the batch is terminated (but not the function) and it is up to the user to fix
+#' the file. This means that if \code{batch_size} is large, many files will not be processed. Set
+#' \code{batch_size} to 1 for sequential file processing (i.e. one-by-one).
+#'
 #' Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
-#' `parallel` option is disabled.
+#' `parallel` option is disabled. To get an indication of the progress so far, set one of the
+#' \link[progressr]{handlers} using the \code{progressr} package, e.g.
+#' \code{progressr::handlers("progress")}.
 #'
 #' @param path The path to the file directory
 #' @param db Valid database connection.
 #' @param dbname If no database is provided, a new database dbname is created.
 #' @param overwrite_db If a database with the same \code{dbname}  already exists, should it be
 #' overwritten?
+#' @param sensors Select one or multiple sensors as in \code{\link[CARP]{sensors}}.
+#' Leave NULL to extract all sensor data.
+#' @param batch_size The number of files that are to be processed in a single batch.
 #' @param backend Name of the database backend that is used. Currently, only RSQLite is supported.
-#' @param progress Logical value to show a progress bar or not.
 #' @param recursive Should the listing recurse into directories?
 #' @param parallel A value that indicates whether to do reading in and processing
 #' in parallel. If this argument is a number, this indicates the number of workers that will be
@@ -21,8 +36,9 @@ import <- function(path = getwd(),
                    db = NULL,
                    dbname = "carp.db",
                    overwrite_db = TRUE,
+                   sensors = NULL,
+                   batch_size = 24,
                    backend = "RSQLite",
-                   progress = TRUE,
                    recursive = TRUE,
                    parallel = FALSE
 ) {
@@ -86,47 +102,55 @@ import <- function(path = getwd(),
     }
   }
 
-  # Call on implementation with or without progress bar
-  if (progress) {
-    progressr::with_progress({
+  # Call on implementation
+  files <- split(files, ceiling(seq_along(files) / batch_size))
+  p <- progressr::progressor(steps = length(files)) # Progress vbar
 
-      files <- split(files, ceiling(seq_along(files) / 12))
-      p <- progressr::progressor(steps = length(files))
+  for(i in seq_along(files)) {
 
-      for(i in seq_along(files)) {
+    # Get data from the files, in parallel if needed
+    res <- furrr::future_map(files[[i]], ~import_impl(path, .x, db@dbname, sensors),
+                             .options = furrr::furrr_options(seed = TRUE))
 
-        # Update progress bar
-        p(sprintf("x=%g", i))
+    res <- purrr::transpose(res)
+    res$data <- purrr::flatten(res$data)
+    res$studies <- dplyr::bind_rows(res$studies)
+    res$participants <- dplyr::bind_rows(res$participants)
+    res$file <- dplyr::bind_rows(res$file)
 
-        # Get data from the files, in parallel if needed
-        res <- furrr::future_map_dfr(files[[i]], ~import_impl(path, .x, db@dbname),
-                                     .options = furrr::furrr_options(seed = TRUE))
+    # Interesting feature in purrr::transpose. If the names would not be explicitly set, it
+    # would only take the names of the first entry of the list. So, if some sensors would be
+    # present in the first entry (e.g. low sampling sensors like Device), it would disappear
+    # from the data altogether.
 
-        # Interesting feature in purrr::transpose. If the names would not be explicitly set, it
-        # would only take the names of the first entry of the list. So, if some sensors would be
-        # present in the first entry (e.g. low sampling sensors like Device), it would disappear
-        # from the data altogether.
+    # Turn data list inside out, drop NULLs and bind sensors from different files together
+    data <- purrr::compact(res$data)
+    res$data <- NULL # memory efficiency
+    data <- purrr::transpose(data, .names = sort(sensors))
+    data <- lapply(data, dplyr::bind_rows)
+    data <- purrr::compact(data)
+    data <- lapply(data, dplyr::distinct) # Filter out duplicate rows (for some reason)
 
-        data <- purrr::compact(res$data)
-        res$data <- NULL # memory efficiency
-        data <- purrr::transpose(data, .names = sort(c("Error", sensors)))
-        data <- lapply(data, dplyr::bind_rows)
-        data <- purrr::compact(data)
+    # Write all data as a single transaction
+    tryCatch({
+      DBI::dbWithTransaction(db, {
+        add_study(db, unique(res$studies))
+        add_participant(db, unique(res$participants))
 
-        DBI::dbWithTransaction(db, {
-          add_study(db, unique(res$studies))
-          add_participant(db, unique(res$participants))
+        for (j in seq_along(data)) {
+          save2db(db, names(data)[[j]], data[[j]])
+        }
 
-          for (j in seq_along(data)) {
-            save2db(db, names(data)[[j]], data[[j]])
-          }
-          # Add file to list of processed files
-          add_processed_files(db, res$file)
-        })
-      }
-    })
-  } else {
-    import_impl(path, files, db@dbname)
+        # Add files to list of processed files
+        add_processed_files(db, res$file)
+      })
+      }, error = function(e) {
+        print(paste0("transaction failed for file ", files[i]))
+      })
+
+
+    # Update progress bar
+    p(sprintf("Added %g out of %g", i * batch_size, length(files) * batch_size))
   }
 
   # Return to sequential processing
@@ -149,7 +173,7 @@ import <- function(path = getwd(),
   DBI::dbDisconnect(db)
 }
 
-import_impl <- function(path, files, db_name) {
+import_impl <- function(path, files, db_name, sensors) {
   out <- list(studies = data.frame(study_id = character(),
                                  data_format = character()),
               participants = data.frame(study_id = character(length(files)),
@@ -165,6 +189,16 @@ import_impl <- function(path, files, db_name) {
     file <- normalizePath(paste0(path, "/", files[i]))
     file <- readLines(file, warn = FALSE)
     file <- paste0(file, collapse = "")
+    if (file == "") {
+      p_id <-  sub(".*?([0-9]{5}).*", "\\1", files[i])
+      out$studies[i, ] <- c(study_id = "-1", data_format = NA)
+      out$participants[i, ] <- c(study_id = "-1", participant_id = p_id)
+      out$file[i, ] <- c(file_name = files[i],
+                         study_id = "-1",
+                         participant_id = p_id)
+      next
+    }
+
     if (!jsonlite::validate(file)) {
       print(paste0("Invalid JSON in file ", files[i]))
       next
@@ -184,7 +218,7 @@ import_impl <- function(path, files, db_name) {
     # and to avoid having to do it again
     if (length(data) == 0 | identical(data, list()) | identical(data, list(list()))) {
       p_id <-  sub(".*?([0-9]{5}).*", "\\1", files[i])
-      out$studies[i, ] <- c(study_id = "-1", data_format = NA)
+      out$studies <- rbind(out$studies, data.frame(study_id = "-1", data_format = NA))
       out$participants[i, ] <- c(study_id = "-1", participant_id = p_id)
       out$file[i, ] <- c(file_name = files[i],
                          study_id = "-1",
@@ -232,19 +266,19 @@ import_impl <- function(path, files, db_name) {
 
     # Safe duplicate check before insertion
     # Check if file is already registered as processed
-    # Now using the participant_id and study_id as
+    # Now using the participant_id and study_id
     this_file <- data.frame(
       file_name = files[i],
       study_id = unique(data$study_id),
       participant_id = unique(data$participant_id)
     )
 
-    processed_files <- get_processed_files(tmp_db)
-    matches <- dplyr::inner_join(this_file,
-      processed_files,
-      by = c("file_name", "participant_id", "study_id")
-    )
-    if (nrow(matches) > 0) {
+    matches <- DBI::dbGetQuery(tmp_db,
+                               paste0("SELECT COUNT(*) AS `n` FROM `ProcessedFiles` ",
+                                      "WHERE (`file_name` = '", this_file$file_name, "' ",
+                                      "AND `participant_id` = '", this_file$participant_id, "' ",
+                                      "AND `study_id` = '", this_file$study_id, "')"))[1, 1]
+    if (matches > 0) {
       DBI::dbDisconnect(tmp_db)
       next # File was already processed
     }
@@ -264,15 +298,21 @@ import_impl <- function(path, files, db_name) {
     # Drop useless data
     data[["unknown"]] <- NULL
 
+    # Set names to capitals in accordance with the table names
+    names <- strsplit(names(data), "_")
+    names <- lapply(names, function(x)
+      paste0(toupper(substring(x, 1, 1)), substring(x, 2), collapse = ""))
+    names[names=="Apps"] <- "InstalledApps" # Except InstalledApps...
+
+    # Select sensors, if not NULL
+    if (!is.null(sensors)) {
+      data <- data[names %in% sensors]
+      names <-names[names %in% sensors]
+    }
+
     # Call function for each sensor
     tryCatch({
       data <- purrr::imap(data, ~which_sensor(.x, .y))
-
-      # Set names to capitals in accordance with the table names
-      names <- strsplit(names(data), "_")
-      names <- lapply(names, function(x)
-        paste0(toupper(substring(x, 1, 1)), substring(x, 2), collapse = ""))
-      names[names=="Apps"] <- "InstalledApps" # Except InstalledApps...
       names(data) <- names
 
       out$studies <- rbind(out$studies, study_id)

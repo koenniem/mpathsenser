@@ -19,6 +19,8 @@ Imports:
     stats,
     DBI,
     RSQLite,
+    curl,
+    rlang,
     tidyr,
     dplyr,
     dbplyr,
@@ -32,7 +34,9 @@ Imports:
     tibble,
     progressr,
     magrittr,
-    lubridate
+    lubridate,
+    dbx,
+    rvest
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

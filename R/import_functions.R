@@ -4,17 +4,25 @@ save2db <- function(db, name, data) {
   tryCatch({
     DBI::dbAppendTable(db, name, data)
   }, error = function(e) {
-    names <- colnames(data)
-
-    query <- paste0(
-      "INSERT OR IGNORE INTO ", name, "(", paste0(names, collapse = ", "), ") VALUES(",
-      paste0(":", names, collapse = ", "), ");"
-    )
-
-    DBI::dbExecute(db, query, data)
+    print("Falling back to UPSERT method")
+    # browser()
+    # names <- colnames(data)
+    #
+    # query <- paste0(
+    #   "INSERT OR IGNORE INTO ", name, "(", paste0(names, collapse = ", "), ") VALUES(",
+    #   paste0(":", names, collapse = ", "), ");"
+    # )
+    #
+    # DBI::dbSendStatement(db, query, data)
+    dbx::dbxUpsert(db, name, data,
+                   where_cols = c("measurement_id"),
+                   skip_existing = TRUE)
   })
 }
 
+# This function is needed because calling the function on the fly from the sensor name (i.e. dynamic
+# evaluation) poses a problem from the globals package, which would then not include these import
+# functions in the futures.
 which_sensor <- function(data, sensor) {
   switch(sensor,
     accelerometer = accelerometer_fun(data),

@@ -9,8 +9,9 @@ import(
   db = NULL,
   dbname = "carp.db",
   overwrite_db = TRUE,
+  sensors = NULL,
+  batch_size = 24,
   backend = "RSQLite",
-  progress = TRUE,
   recursive = TRUE,
   parallel = FALSE
 )
@@ -25,9 +26,12 @@ import(
 \item{overwrite_db}{If a database with the same \code{dbname}  already exists, should it be
 overwritten?}
 
-\item{backend}{Name of the database backend that is used. Currently, only RSQLite is supported.}
+\item{sensors}{Select one or multiple sensors as in \code{\link[CARP]{sensors}}.
+Leave NULL to extract all sensor data.}
 
-\item{progress}{Logical value to show a progress bar or not.}
+\item{batch_size}{The number of files that are to be processed in a single batch.}
+
+\item{backend}{Name of the database backend that is used. Currently, only RSQLite is supported.}
 
 \item{recursive}{Should the listing recurse into directories?}
 
@@ -39,6 +43,20 @@ used.}
 Invisible. Imported database can be reopened using \link[CARP]{open_db}.
 }
 \description{
+Import JSON files from m-Path Sense into a structured database. This function is the bread and butter of this package, as it creates (or rather fills) the
+database that (almost) all the other functions use.
+}
+\details{
+\code{import} is highly customisable in the sense that you can specify which sensors to import
+(even though there may be more in the files) and it also allows batching for a speedier writing
+process. If \code{parallel} is \code{TRUE}, it is recommended to \code{batch_size} be a scalar
+multiple of the number of CPUs the parallel cluster can use. If a single JSON file in the batch
+causes and error, the batch is terminated (but not the function) and it is up to the user to fix
+the file. This means that if \code{batch_size} is large, many files will not be processed. Set
+\code{batch_size} to 1 for sequential file processing (i.e. one-by-one).
+
 Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
-\code{parallel} option is disabled.
+\code{parallel} option is disabled. To get an indication of the progress so far, set one of the
+\link[progressr]{handlers} using the \code{progressr} package, e.g.
+\code{progressr::handlers("progress")}.
 }
