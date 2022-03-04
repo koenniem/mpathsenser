@@ -7,7 +7,7 @@
 #' sensors
 #' @export sensors
 sensors <- c("Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "Bluetooth",
-						 "Calendar", "Connectivity", "Device", "Geofence", "Gyroscope", "InstalledApps",
+						 "Calendar", "Connectivity", "Device", "Error", "Geofence", "Gyroscope", "InstalledApps",
 						 "Keyboard", "Light", "Location", "Memory", "Mobility", "Noise",
 						 "Pedometer", "PhoneLog", "Screen", "TextMessage", "Weather", "Wifi")
 
@@ -74,7 +74,7 @@ open_db <- function(path = getwd(), db_name = "carp.db") {
 
 	if (!file.exists(db_name))
 		stop("There is no such file")
-	db <- DBI::dbConnect(RSQLite::SQLite(), db_name)
+	db <- DBI::dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
 	if (!DBI::dbExistsTable(db, "Participant")) {
 		DBI::dbDisconnect(db)
 		stop("Sorry, this does not appear to be a CARP database.")
@@ -119,10 +119,15 @@ index_db <- function(db) {
 	})
 }
 
-#' Split a subset of a database into another database
+vacuum_db <- function(db) {
+	if (is.null(db) || !DBI::dbIsValid(db)) stop("Database connection is not valid")
+	DBI::dbExecute(db, "VACUUM")
+}
+
+#' Copy (a subset of) a database to another database
 #'
-#' @param old_db A CARP database connection from where the data will be transferred.
-#' @param new_db A CARP database connection where the data will be transferred to. If no new_db is
+#' @param from_db A CARP database connection from where the data will be transferred.
+#' @param to_db A CARP database connection where the data will be transferred to. If no new_db is
 #' specified, a path (and possibly a db_name) must be specified for \link[CARP]{create_db} to
 #' create a new database.
 #' @param sensor A character vector containing one or multiple sensors. See
@@ -131,8 +136,8 @@ index_db <- function(db) {
 #' @param db_name The name of the database.
 #'
 #' @export
-split_db <- function(old_db, new_db = NULL, sensor = "All", path = getwd(), db_name = "carp.db") {
-	if (is.null(old_db) || !DBI::dbIsValid(old_db)) stop("Database connection is not valid")
+copy_db <- function(from_db, to_db = NULL, sensor = "All", path = getwd(), db_name = "carp.db") {
+	if (is.null(from_db) || !DBI::dbIsValid(from_db)) stop("Database connection is not valid")
 	# Check sensors
 	if (length(sensor) == 1 && sensor == "All") {
 		sensor <- sensors
@@ -145,11 +150,11 @@ split_db <- function(old_db, new_db = NULL, sensor = "All", path = getwd(), db_n
 
 	# If no new database is specified, create a new one
 	no_db_specified <- FALSE
-	if (is.null(new_db)) {
+	if (is.null(to_db)) {
 		no_db_specified <- TRUE
 
 		if (!file.exists(file.path(path, db_name))) {
-			new_db <- create_db(path, db_name)
+			to_db <- create_db(path, db_name)
 			message(paste0("New database created in ", path))
 		} else {
 			stop(paste0("A file in ", path, " with the name ", db_name, " already exists. Please choose ",
@@ -158,46 +163,47 @@ split_db <- function(old_db, new_db = NULL, sensor = "All", path = getwd(), db_n
 	}
 
 	# Attach new database to old database
-	DBI::dbExecute(old_db, paste0("ATTACH DATABASE '", new_db@dbname, "' AS new_db"))
+	DBI::dbExecute(from_db, paste0("ATTACH DATABASE '", to_db@dbname, "' AS new_db"))
 
 	# Copy participants, studies, processed_files
-	DBI::dbExecute(old_db, "INSERT OR IGNORE INTO new_db.Study SELECT * FROM Study")
-	DBI::dbExecute(old_db, "INSERT OR IGNORE INTO new_db.Participant SELECT * FROM Participant")
-	DBI::dbExecute(old_db, "INSERT OR IGNORE INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles")
+	DBI::dbExecute(from_db, "INSERT OR IGNORE INTO new_db.Study SELECT * FROM Study")
+	DBI::dbExecute(from_db, "INSERT OR IGNORE INTO new_db.Participant SELECT * FROM Participant")
+	DBI::dbExecute(from_db, "INSERT OR IGNORE INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles")
 
 
 	# Copy all specified sensors
 	for (i in seq_along(sensor)) {
-		DBI::dbExecute(old_db, paste0("INSERT OR IGNORE INTO new_db.", sensor[i], " SELECT * FROM ", sensor[i]))
+		DBI::dbExecute(from_db, paste0("INSERT OR IGNORE INTO new_db.", sensor[i],
+																	 " SELECT * FROM ", sensor[i]))
 	}
 
 	# Detach
-	DBI::dbExecute(old_db, "DETACH DATABASE new_db")
+	DBI::dbExecute(from_db, "DETACH DATABASE new_db")
 
 	if (no_db_specified) {
-		close_db(new_db)
+		close_db(to_db)
 	}
 }
 
 add_study <- function(db, data) {
 	DBI::dbExecute(db,
-	"INSERT OR IGNORE INTO Study(study_id, data_format)
+								 "INSERT OR IGNORE INTO Study(study_id, data_format)
 	VALUES(:study_id, :data_format);",
-	list(study_id = data$study_id, data_format = data$data_format))
+								 list(study_id = data$study_id, data_format = data$data_format))
 }
 
 add_participant <- function(db, data) {
 	DBI::dbExecute(db,
-	"INSERT OR IGNORE INTO Participant(participant_id, study_id)
+								 "INSERT OR IGNORE INTO Participant(participant_id, study_id)
 	VALUES(:participant_id, :study_id);",
-	list(participant_id = data$participant_id, study_id = data$study_id))
+								 list(participant_id = data$participant_id, study_id = data$study_id))
 }
 
 add_processed_files <- function(db, data) {
 	DBI::dbExecute(db,
-	"INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)
+								 "INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)
 	VALUES(:file_name, :study_id, :participant_id);",
-	list(file_name = data$file_name, study_id = data$study_id, participant_id = data$participant_id))
+								 list(file_name = data$file_name, study_id = data$study_id, participant_id = data$participant_id))
 }
 
 clear_sensors_db <- function(db) {
