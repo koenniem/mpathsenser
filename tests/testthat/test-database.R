@@ -1,7 +1,7 @@
 # Tests for database.R
 
 test_that("sensors-vec", {
-	expect_vector(sensors, character(), size = 24)
+	expect_vector(sensors, character(), size = 25)
 })
 
 test_that("create_db", {
@@ -42,30 +42,30 @@ test_that("open_db", {
 	DBI::dbDisconnect(db)
 })
 
-test_that("split_db", {
+test_that("copy_db", {
 	path <- system.file("testdata", package = "CARP")
 	db <- open_db(path, "test.db")
 
-	new_db <- create_db(path, "split.db")
-	split_db(db, new_db, sensor = "All")
+	new_db <- create_db(path, "copy.db")
+	copy_db(db, new_db, sensor = "All")
 	expect_identical(get_nrows(db), get_nrows(new_db))
 	close_db(new_db)
-	file.remove(file.path(path, "split.db"))
+	file.remove(file.path(path, "copy.db"))
 
-	split_db(db, sensor = "Accelerometer", path = path, db_name = "split.db")
-	new_db <- open_db(path, "split.db")
-	true <- c(6L, rep(0L, 23))
+	copy_db(db, sensor = "Accelerometer", path = path, db_name = "copy.db")
+	new_db <- open_db(path, "copy.db")
+	true <- c(6L, rep(0L, 24))
 	names(true) <- sensors
 	expect_identical(get_nrows(new_db), true)
 
-	expect_error(split_db(db, sensor = "Accelerometer", path =path, db_name = "split.db"),
-							 paste0("A file in ", path, " with the name split.db already exists. Please choose ",
+	expect_error(copy_db(db, sensor = "Accelerometer", path =path, db_name = "copy.db"),
+							 paste0("A file in ", path, " with the name copy.db already exists. Please choose ",
 							 			 "a different name or path or remove the file."))
 	close_db(new_db)
-	file.remove(file.path(path, "split.db"))
+	file.remove(file.path(path, "copy.db"))
 
 	DBI::dbDisconnect(db)
-	expect_error(split_db(db, sensor = "Accelerometer", path = path, db_name = "split.db"),
+	expect_error(copy_db(db, sensor = "Accelerometer", path = path, db_name = "copy.db"),
 							 "Database connection is not valid")
 })
 

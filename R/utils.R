@@ -66,11 +66,9 @@ fix_jsons <- function(path = getwd(), files = NULL, recursive = TRUE, parallel =
 	}
 
 	if (length(jsonfiles > 0)) {
-		progressr::with_progress({
-			# Test if files are still corrupted
-			jsonfiles <- suppressWarnings(test_jsons(path, jsonfiles))
-			n_fixed <- fix_jsons_impl(path, jsonfiles)
-		})
+		# Test if files are still corrupted
+		jsonfiles <- suppressWarnings(test_jsons(path, jsonfiles))
+		n_fixed <- fix_jsons_impl(path, jsonfiles)
 	} else {
 		return(message("No JSON files found."))
 	}
@@ -166,17 +164,15 @@ test_jsons <- function(path = getwd(),
 		future::plan(future::multisession)
 	}
 
-	progressr::with_progress({
-		p <- progressr::progressor(steps = length(jsonfiles))
-		missing <- furrr::future_map_lgl(jsonfiles, ~{
-			p()
-			str <- readLines(suppressWarnings(normalizePath(paste0(path, "/", .x))), warn = FALSE)
-			if (length(str) == 0) { # empty file
-				return(TRUE)
-			}
-		  jsonlite::validate(str)
-		})
-	})
+	p <- progressr::progressor(steps = length(jsonfiles))
+	missing <- furrr::future_map_lgl(jsonfiles, ~{
+		p()
+		str <- readLines(suppressWarnings(normalizePath(paste0(path, "/", .x))), warn = FALSE)
+		if (length(str) == 0) { # empty file
+			return(TRUE)
+		}
+		jsonlite::validate(str)
+	}, .options = furrr::furrr_options(seed = TRUE))
 
 	if (parallel) {
 		future::plan(future::sequential)
@@ -221,14 +217,12 @@ unzip_carp <- function(path = getwd(), overwrite = FALSE, recursive = TRUE, para
 		dirs <- list.dirs(path = path, recursive = TRUE)
 		dirs <- dirs[2:length(dirs)]
 
-		progressr::with_progress({
-			p <- progressr::progressor(steps = length(dirs))
-			unzipped_files <- furrr::future_map_int(dirs, ~{
-				p()
-				unzip_impl(.x, overwrite)
-			})
-			unzipped_files <- sum(unzipped_files)
+		p <- progressr::progressor(steps = length(dirs))
+		unzipped_files <- furrr::future_map_int(dirs, ~{
+			p()
+			unzip_impl(.x, overwrite)
 		})
+		unzipped_files <- sum(unzipped_files)
 	} else {
 		unzipped_files <- unzip_impl(path, overwrite)
 	}

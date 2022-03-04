@@ -83,8 +83,7 @@ test_that("last_date", {
 ## link ===============
 test_that("link", {
 	dat1 <- data.frame(
-		time = rep(c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
-						 as.POSIXct("2021-11-14 15:00:00")), 2),
+		time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 3), 2),
 		participant_id = c(rep("12345", 3), rep("23456", 3)),
 		item_one = rep(c(40, 50, 60), 2)
 	)
