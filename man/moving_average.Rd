@@ -23,7 +23,7 @@ moving_average(
 \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
 Leave empty to get data for all participants.}
 
-\item{...}{Unquoted names of columns of the \code{sensor} table.}
+\item{...}{Unquoted names of columns of the \code{sensor} table to average over.}
 
 \item{n}{The number of observations to average over.}
 

@@ -310,6 +310,46 @@ get_installed_apps <- function(db, participant_id = NULL) {
 }
 
 
+#' Find the category of an app on the Google Play Store
+#'
+#' This function scrapes the Google Play Store by using \code{name} as the search term. From there
+#' it selects the first result in the list and its corresponding category and package name.
+#'
+#' @param name The name of the app to search for.
+#' @param num Which result should be selected in the list of search results. Defaults to one.
+#'
+#' @return A list containing the following fields:
+#'
+#' | | |
+#' |-------|-----------|
+#'| package | the package name that was selected from the Google Play search|
+#'| genre | the corresponding genre of this package|
+#'
+#' @export
+#'
+#' @examples
+#' app_category("whatsapp")
+#'
+#' # Example of a generic app name where we can't find a specific app
+#' app_category("weather") # Weather forecast channel
+#'
+#' # Get OnePlus weather
+#' app_category("net.oneplus.weather")
+app_category <- function(name, num = 1) {
+  name <- paste0(strsplit(name, " ")[[1]], collapse = "%20")
+  session <- rvest::session(paste0("https://play.google.com/store/search?q=", name, "&c=apps"))
+  links <- rvest::html_elements(session, css = ".JC71ub")
+  links <- rvest::html_attr(links, "href")
+  session <- rvest::session_jump_to(session, links[num])
+
+  genre <- rvest::html_nodes(session, xpath = '//*[@itemprop="genre"]')
+
+  list(package = gsub("^.+?(?<=\\?id=)", "", links[num], perl = TRUE),
+       genre = rvest::html_text(genre))
+
+}
+
+
 #' Get app usage per hour
 #'
 #' This function extracts app usage per hour for either one or multiple participants. If multiple
@@ -447,7 +487,7 @@ get_activity <- function(db, participant_id = NULL, confidence = 70, direction =
 #' @export
 device_info <- function(db, participant_id = NULL) {
   get_data(db, "Device", participant_id = participant_id) %>%
-    dplyr::select(participant_id, device_id:operating_system) %>%
+    dplyr::select(participant_id, device_id:platform) %>%
     dplyr::distinct() %>%
     dplyr::collect()
 }
@@ -656,32 +696,6 @@ step_count <- function(db, participant_id, start_date = NULL, end_date = NULL) {
     dplyr::collect()
 }
 
-#' Calculate total acceleration from x, y, and z coordinates
-#'
-#' A convenience function to calculate the total acceleration in either or a local or remote
-#' tibble.
-#'
-#' @param data A data frame or a remote data frame connection through \link[dplyr]{tbl}.
-#' @param colname The name of the newly added column containing the total acceleration.
-#' @param x Acceleration along the x-axis.
-#' @param y Acceleration along the y-axis.
-#' @param z Acceleration along the z-axis.
-#' @param gravity Gravity in meters per second. Defaults to 9.810467. Set to 0 to ignore.
-#'
-#' @return The input data with a column \code{colname} attached.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' db <- open_db()
-#' tbl(db, "Accelerometer") %>%
-#'   total_acceleration("total_acc")
-#' }
-total_acceleration <- function(data, colname, x = x, y = y, z = z, gravity = 9.810467) {
-  data %>%
-    dplyr::mutate(!!colname := sqrt((x)^2 + (y)^2 + (z - gravity)^2))
-}
-
 #' Moving average for values in CARP DB
 #'
 #' @param db A database connection to a CARP database.
@@ -689,7 +703,7 @@ total_acceleration <- function(data, colname, x = x, y = y, z = z, gravity = 9.8
 #' @param participant_id A character string identifying a single participant. Use
 #' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
 #' Leave empty to get data for all participants.
-#' @param ... Unquoted names of columns of the \code{sensor} table.
+#' @param ... Unquoted names of columns of the \code{sensor} table to average over.
 #' @param n The number of observations to average over.
 #' @param start_date Optional search window specifying date where to begin search. Must be
 #' convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of
@@ -706,7 +720,7 @@ total_acceleration <- function(data, colname, x = x, y = y, z = z, gravity = 9.8
 #' get_moving_average(db, "Light", "12345", mean_lux, max_lux, n = 5)
 #' }
 moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL, end_date = NULL) {
-  cols <- dplyr::ensyms(...)
+  cols <- rlang::ensyms(...)
 
   # SELECT
   query <- "SELECT datetime, "
@@ -742,4 +756,70 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
 
   # Get data
   DBI::dbGetQuery(db, query)
+}
+
+
+#' Identify gaps in CARP mobile sensing data
+#'
+#' Oftentimes in mobile sensing, gaps appear in the data as a result of the participant
+#' accidentally closing the app or the operating system killing the app to save power. This can
+#' lead to issues later on during data analysis when it becomes unclear whether there are no
+#' measurements because no events occurred or because the app quit in that period. For example,
+#' if no screen on/off event occur in a 6-hour period, it can either mean the participant did not
+#' turn on their phone in that period or that the app simply quit and potential events were missed.
+#' In the latter case, the 6-hour missing period has to be compensated by either removing this
+#' interval altogether or by subtracting the gap from the interval itself (see examples).
+#'
+#' While any sensor can be used for identifying gaps, it is best to choose a sensor with a very
+#' high, near-continuous sample rate such as the accelerometer or gyroscope. This function then
+#' creates time between two subsequent measurements and returns the period in which this time was
+#' larger than \code{max_gap}.
+#'
+#' Note that the \code{from} and \code{to} columns in the output are character vectors in UTC time.
+#'
+#' @param db A database connection to a CARP database.
+#' @param participant_id A character string identifying a single participant. Use
+#' \code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+#' Leave empty to get data for all participants.
+#' @param max_gap The maximum time (in seconds) between to subsequent measurements.
+#' @param sensor The name of a sensor to use for identifying gaps. See \link[CARP]{sensors} for a list of available sensors.
+#'
+#' @return A lazy tibble containing the time period of the gaps.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Find the gaps for a participant and convert to datetime
+#' gaps <- identify_gaps(db, "12345", max_gap = 60) %>%
+#'   mutate(across(c(to, from), ymd_hms)) %>%
+#'   mutate(across(c(to, from), with_tz, "Europe/Brussels"))
+#'
+#' # Get some sensor data and calculate a statistic, e.g. the time spent walking
+#' # You can also do this with larger intervals, e.g. the time spent walking per hour
+#' walking_time <- get_data(db, "Activity", "12345") %>%
+#'   collect() %>%
+#'   mutate(datetime = ymd_hms(paste(date, time))) %>%
+#'   mutate(datetime = with_tz(datetime, "Europe/Brussels")) %>%
+#'   arrange(datetime) %>%
+#'   mutate(prev_time = lag(datetime)) %>%
+#'   mutate(duration = datetime - prev_time) %>%
+#'   filter(type == "WALKING")
+#'
+#' # Find out if a gap occurs in the time intervals
+#' walking_time %>%
+#'   rowwise() %>%
+#'   mutate(gap = any(gaps$from >= prev_time & gaps$to <= datetime))
+#' }
+identify_gaps <- function(db, participant_id = NULL, max_gap = 60, sensor = "Accelerometer") {
+  get_data(db, sensor, participant_id) %>%
+    dplyr::mutate(datetime = DATETIME(paste(date, time))) %>%
+    dplyr::select(participant_id, datetime) %>%
+    dplyr::group_by(participant_id) %>%
+    dbplyr::window_order(datetime) %>%
+    dplyr::mutate(to = dplyr::lag(datetime)) %>%
+    dplyr::mutate(gap = STRFTIME('%s', datetime) - STRFTIME('%s', to)) %>%
+    dplyr::filter(gap >= 60) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(participant_id, from = datetime, to, gap) %>%
+    dplyr::collect()
 }
