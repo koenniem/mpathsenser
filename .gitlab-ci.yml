@@ -54,7 +54,7 @@ building:
     - mkdir -p $R_LIBS
     - Rscript -e 'install.packages("remotes")'
     - Rscript -e 'install.packages("rcmdcheck")'
-    - Rscript -e 'remotes::install_local(upgrade = "never")'
+    - Rscript -e 'remotes::install_local(upgrade = "never", force = TRUE)'
     - Rscript -e 'devtools::document()'
     - R -e 'rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "warning", check_dir = "check")'
   tags:
