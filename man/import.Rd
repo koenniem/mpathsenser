@@ -2,12 +2,12 @@
 % Please edit documentation in R/functions.R
 \name{import}
 \alias{import}
-\title{Import CARP files into a database (CARP data scheme)}
+\title{Import mpathsenser files into a database (mpathsenser data scheme)}
 \usage{
 import(
   path = getwd(),
   db = NULL,
-  dbname = "carp.db",
+  dbname = "sense.db",
   overwrite_db = TRUE,
   sensors = NULL,
   batch_size = 24,
@@ -26,7 +26,7 @@ import(
 \item{overwrite_db}{If a database with the same \code{dbname}  already exists, should it be
 overwritten?}
 
-\item{sensors}{Select one or multiple sensors as in \code{\link[CARP]{sensors}}.
+\item{sensors}{Select one or multiple sensors as in \code{\link[mpathsenser]{sensors}}.
 Leave NULL to extract all sensor data.}
 
 \item{batch_size}{The number of files that are to be processed in a single batch.}
@@ -40,10 +40,11 @@ in parallel. If this argument is a number, this indicates the number of workers 
 used.}
 }
 \value{
-Invisible. Imported database can be reopened using \link[CARP]{open_db}.
+Invisible. Imported database can be reopened using \link[mpathsenser]{open_db}.
 }
 \description{
-Import JSON files from m-Path Sense into a structured database. This function is the bread and butter of this package, as it creates (or rather fills) the
+Import JSON files from m-Path Sense into a structured database. This function is the bread and
+butter of this package, as it creates (or rather fills) the
 database that (almost) all the other functions use.
 }
 \details{
@@ -58,5 +59,13 @@ the file. This means that if \code{batch_size} is large, many files will not be 
 Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
 \code{parallel} option is disabled. To get an indication of the progress so far, set one of the
 \link[progressr]{handlers} using the \code{progressr} package, e.g.
-\code{progressr::handlers("progress")}.
+\code{progressr::handlers('progress')}.
 }
+\section{Progress}{
+
+You can be updated of the progress by this function by using the
+\code{\link[progressr]{progress}} package. See \code{progressr}'s
+\href{https://cran.r-project.org/web/packages/progressr/vignettes/progressr-intro.html}{vignette}
+on how to subscribe to these updates.
+}
+

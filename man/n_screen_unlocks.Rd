@@ -13,27 +13,27 @@ n_screen_unlocks(
 )
 }
 \arguments{
-\item{db}{A database connection to a CARP database.}
+\item{db}{A database connection to an m-Path Sense database.}
 
 \item{participant_id}{A character string identifying a single participant. Use
-\code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+\code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 Leave empty to get data for all participants.}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
-convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of
-the first entry for a participant.}
+convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
+date of the first entry for a participant.}
 
 \item{end_date}{Optional search window specifying date where to end search. Must be convertible
-to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last
-entry for a participant.}
+to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
+last entry for a participant.}
 
-\item{by}{Either "Total", "Hour", or "Day" indicating how to summarise the results. Defaults to
+\item{by}{Either 'Total', 'Hour', or 'Day' indicating how to summarise the results. Defaults to
 total.}
 }
 \value{
 In case of grouping is by the total amount, returns a single numeric value. For date and
-hour grouping returns a tibble with columns "date" or "hour" and the number of screen unlocks
-"n".
+hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen unlocks
+'n'.
 }
 \description{
 Get number of screen unlocks

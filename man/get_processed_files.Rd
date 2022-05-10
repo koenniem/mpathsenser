@@ -7,7 +7,7 @@
 get_processed_files(db)
 }
 \arguments{
-\item{db}{A database connection, as created by \link[CARP]{create_db}.}
+\item{db}{A database connection, as created by \link[mpathsenser]{create_db}.}
 }
 \value{
 A data frame contain processed file for each participant and study.

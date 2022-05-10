@@ -8,7 +8,7 @@ coverage(
   db,
   participant_id,
   sensor = "All",
-  frequency = CARP::freq,
+  frequency = mpathsenser::freq,
   relative = TRUE,
   offset = "None",
   start_date = NULL,
@@ -18,12 +18,13 @@ coverage(
 }
 \arguments{
 \item{db}{A valid database connection. Schema must be that as it is created by
-\link[CARP]{open_db}.}
+\link[mpathsenser]{open_db}.}
 
 \item{participant_id}{A character string of \emph{one} participant ID.}
 
 \item{sensor}{A character vector containing one or multiple sensors. See
-\code{\link[CARP]{sensors}} for a list of available sensors. Use "All" for all available sensors.}
+\code{\link[mpathsenser]{sensors}} for a list of available sensors. Use 'All' for all
+available sensors.}
 
 \item{frequency}{A named numeric vector with sensors as names and the number of expected samples
 per hour}
@@ -45,7 +46,7 @@ the latest date to show.Leave empty for all data. Must be used with \code{start_
 A ggplot of the coverage results.
 }
 \description{
-Only applicable to non-reactive sensors with "continuous" sampling
+Only applicable to non-reactive sensors with 'continuous' sampling
 }
 \examples{
 \dontrun{
@@ -67,11 +68,11 @@ freq <- c(
 )
 coverage(
   db = db,
-  participant_id = "12345",
-  sensor = c("Accelerometer", "Gyroscope"),
-  frequency = CARP::freq,
-  start_date = "2021-01-01",
-  end_date = "2021-05-01"
+  participant_id = '12345',
+  sensor = c('Accelerometer', 'Gyroscope'),
+  frequency = mpathsenser::freq,
+  start_date = '2021-01-01',
+  end_date = '2021-05-01'
 )
 }
 }

@@ -2,9 +2,9 @@
 % Please edit documentation in R/database.R
 \name{open_db}
 \alias{open_db}
-\title{Open a CARP database}
+\title{Open a mpathsenser database}
 \usage{
-open_db(path = getwd(), db_name = "carp.db")
+open_db(path = getwd(), db_name = "sense.db")
 }
 \arguments{
 \item{path}{The path to the database. Use NULL to use the full path name in db_name.}
@@ -15,5 +15,5 @@ open_db(path = getwd(), db_name = "carp.db")
 A database connection.
 }
 \description{
-Open a CARP database
+Open a mpathsenser database
 }

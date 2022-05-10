@@ -2,7 +2,7 @@
 % Please edit documentation in R/database.R
 \name{index_db}
 \alias{index_db}
-\title{Create indexes for a CARP database}
+\title{Create indexes for a mpathsenser database}
 \usage{
 index_db(db)
 }
@@ -10,5 +10,5 @@ index_db(db)
 \item{db}{A database connection}
 }
 \description{
-Create indexes for a CARP database
+Create indexes for a mpathsenser database
 }

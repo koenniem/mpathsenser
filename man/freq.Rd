@@ -11,8 +11,9 @@ An object of class \code{numeric} of length 11.
 freq
 }
 \description{
-A numeric vector containing (an example) of the measurement frequencies per sensor.
-Such input is needed for \link[CARP]{coverage}. This vector contains the following information:
+A numeric vector containing (an example) of example measurement frequencies per sensor.
+Such input is needed for \link[mpathsenser]{coverage}. This vector contains the following
+information:
 }
 \details{
 \tabular{lll}{

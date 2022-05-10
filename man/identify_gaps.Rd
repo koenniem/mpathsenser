@@ -2,7 +2,7 @@
 % Please edit documentation in R/sensor_functions.R
 \name{identify_gaps}
 \alias{identify_gaps}
-\title{Identify gaps in CARP mobile sensing data}
+\title{Identify gaps in mpathsenser mobile sensing data}
 \usage{
 identify_gaps(
   db,
@@ -12,15 +12,16 @@ identify_gaps(
 )
 }
 \arguments{
-\item{db}{A database connection to a CARP database.}
+\item{db}{A database connection to an m-Path Sense database.}
 
 \item{participant_id}{A character string identifying a single participant. Use
-\code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+\code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 Leave empty to get data for all participants.}
 
 \item{max_gap}{The maximum time (in seconds) between to subsequent measurements.}
 
-\item{sensor}{The name of a sensor to use for identifying gaps. See \link[CARP]{sensors} for a list of available sensors.}
+\item{sensor}{The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
+sensors.}
 }
 \value{
 A lazy tibble containing the time period of the gaps.
@@ -46,20 +47,20 @@ Note that the \code{from} and \code{to} columns in the output are character vect
 \examples{
 \dontrun{
 # Find the gaps for a participant and convert to datetime
-gaps <- identify_gaps(db, "12345", max_gap = 60) \%>\%
+gaps <- identify_gaps(db, '12345', max_gap = 60) \%>\%
   mutate(across(c(to, from), ymd_hms)) \%>\%
-  mutate(across(c(to, from), with_tz, "Europe/Brussels"))
+  mutate(across(c(to, from), with_tz, 'Europe/Brussels'))
 
 # Get some sensor data and calculate a statistic, e.g. the time spent walking
 # You can also do this with larger intervals, e.g. the time spent walking per hour
-walking_time <- get_data(db, "Activity", "12345") \%>\%
+walking_time <- get_data(db, 'Activity', '12345') \%>\%
   collect() \%>\%
   mutate(datetime = ymd_hms(paste(date, time))) \%>\%
-  mutate(datetime = with_tz(datetime, "Europe/Brussels")) \%>\%
+  mutate(datetime = with_tz(datetime, 'Europe/Brussels')) \%>\%
   arrange(datetime) \%>\%
   mutate(prev_time = lag(datetime)) \%>\%
   mutate(duration = datetime - prev_time) \%>\%
-  filter(type == "WALKING")
+  filter(type == 'WALKING')
 
 # Find out if a gap occurs in the time intervals
 walking_time \%>\%

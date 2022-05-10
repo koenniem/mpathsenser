@@ -2,9 +2,9 @@
 % Please edit documentation in R/database.R
 \name{create_db}
 \alias{create_db}
-\title{Create a new CARP database}
+\title{Create a new mpathsenser database}
 \usage{
-create_db(path = getwd(), db_name = "carp.db", overwrite = FALSE)
+create_db(path = getwd(), db_name = "sense.db", overwrite = FALSE)
 }
 \arguments{
 \item{path}{The path to the database.}
@@ -18,5 +18,5 @@ be overwritten or not. Otherwise, this option is ignored.}
 A database connection using prepared database schemas.
 }
 \description{
-Create a new CARP database
+Create a new mpathsenser database
 }

@@ -17,8 +17,8 @@ test_jsons(
 
 \item{files}{Alternatively, a character list of the input files.}
 
-\item{db}{A CARP database connection (optional). If provided, will be used to check which files
-are already in the database and check only those JSON files which are not.}
+\item{db}{A mpathsenser database connection (optional). If provided, will be used to check
+which files are already in the database and check only those JSON files which are not.}
 
 \item{recursive}{Should the listing recurse into directories?}
 
@@ -33,3 +33,11 @@ names that need to be fixed. If there were no issues, no result is returned.
 \description{
 Test JSON files for being in the correct format.
 }
+\section{Progress}{
+
+You can be updated of the progress by this function by using the
+\code{\link[progressr]{progress}} package. See \code{progressr}'s
+\href{https://cran.r-project.org/web/packages/progressr/vignettes/progressr-intro.html}{vignette}
+on how to subscribe to these updates.
+}
+

@@ -2,7 +2,7 @@
 % Please edit documentation in R/sensor_functions.R
 \name{moving_average}
 \alias{moving_average}
-\title{Moving average for values in CARP DB}
+\title{Moving average for values in an mpathsenser database}
 \usage{
 moving_average(
   db,
@@ -15,34 +15,34 @@ moving_average(
 )
 }
 \arguments{
-\item{db}{A database connection to a CARP database.}
+\item{db}{A database connection to an m-Path Sense database.}
 
-\item{sensor}{The name of a sensor. See \link[CARP]{sensors} for a list of available sensors.}
+\item{sensor}{The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
+sensors.}
 
-\item{participant_id}{A character string identifying a single participant. Use
-\code{\link[CARP]{get_participants}} to retrieve all participants from the database.
-Leave empty to get data for all participants.}
+\item{participant_id}{A character string identifying a single participant. Use get_participants
+to retrieve all participants from the database.}
 
 \item{...}{Unquoted names of columns of the \code{sensor} table to average over.}
 
 \item{n}{The number of observations to average over.}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
-convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of
-the first entry for a participant.}
+convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
+date of the first entry for a participant.}
 
 \item{end_date}{Optional search window specifying date where to end search. Must be convertible
-to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last
-entry for a participant.}
+to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
+last entry for a participant.}
 }
 \value{
 A tibble with the same columns as the input, modified to be a moving average.
 }
 \description{
-Moving average for values in CARP DB
+Moving average for values in an mpathsenser database
 }
 \examples{
 \dontrun{
-get_moving_average(db, "Light", "12345", mean_lux, max_lux, n = 5)
+get_moving_average(db, 'Light', '12345', mean_lux, max_lux, n = 5)
 }
 }

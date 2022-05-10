@@ -7,16 +7,17 @@
 first_date(db, sensor, participant_id = NULL)
 }
 \arguments{
-\item{db}{A database connection to a CARP database.}
+\item{db}{A database connection to an m-Path Sense database.}
 
-\item{sensor}{The name of a sensor. See \link[CARP]{sensors} for a list of available sensors.}
+\item{sensor}{The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
+sensors.}
 
 \item{participant_id}{A character string identifying a single participant. Use
-\code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+\code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 Leave empty to get data for all participants.}
 }
 \value{
-A string in the format "YYYY-mm-dd" of the first entry date.
+A string in the format 'YYYY-mm-dd' of the first entry date.
 }
 \description{
 A helper function for extracting the first date of entry of (of one or all participant) of one
@@ -27,6 +28,6 @@ first device measurement occurred a day later.
 \examples{
 \dontrun{
 db <- open_db()
-first_date(db, "Accelerometer", "12345")
+first_date(db, 'Accelerometer', '12345')
 }
 }

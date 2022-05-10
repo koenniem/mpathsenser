@@ -19,10 +19,18 @@ fix_jsons(path = getwd(), files = NULL, recursive = TRUE, parallel = FALSE)
 A message indicating whether any files need to be fixed.
 }
 \description{
-When copying data directly coming from CARP, JSON files are sometimes corrupted due to the
-app not properly closing them. This function attempts to fix the most common
-problems associated with improper file closure by CARP.
+When copying data directly coming from m-Path Sense, JSON files are sometimes corrupted due to
+the app not properly closing them. This function attempts to fix the most common
+problems associated with improper file closure by m-Path Sense.
 }
+\section{Progress}{
+
+You can be updated of the progress by this function by using the
+\code{\link[progressr]{progress}} package. See \code{progressr}'s
+\href{https://cran.r-project.org/web/packages/progressr/vignettes/progressr-intro.html}{vignette}
+on how to subscribe to these updates.
+}
+
 \examples{
 \dontrun{
 future::plan(future::multisession)

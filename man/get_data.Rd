@@ -2,34 +2,36 @@
 % Please edit documentation in R/sensor_functions.R
 \name{get_data}
 \alias{get_data}
-\title{Generic helper function from extracting data from a CARP database}
+\title{Generic helper function from extracting data from an m-Path Sense database}
 \usage{
 get_data(db, sensor, participant_id = NULL, start_date = NULL, end_date = NULL)
 }
 \arguments{
-\item{db}{A database connection to a CARP database.}
+\item{db}{A database connection to an m-Path Sense database.}
 
-\item{sensor}{The name of a sensor. See \link[CARP]{sensors} for a list of available sensors.}
+\item{sensor}{The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
+sensors.}
 
 \item{participant_id}{A character string identifying a single participant. Use
-\code{\link[CARP]{get_participants}} to retrieve all participants from the database.
+\code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 Leave empty to get data for all participants.}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
-convertible to date using \link[base]{as.Date}. Use \link[CARP]{first_date} to find the date of
-the first entry for a participant.}
+convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
+date of the first entry for a participant.}
 
 \item{end_date}{Optional search window specifying date where to end search. Must be convertible
-to date using \link[base]{as.Date}. Use \link[CARP]{last_date} to find the date of the last
-entry for a participant.}
+to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
+last entry for a participant.}
 }
 \value{
 A lazy \code{\link[dplyr]{tbl}} containing the requested data.
 }
 \description{
-This is a generic function to help extract data from a CARP database. For some sensors that
-require a bit more pre-processing, such as app usage and screen time, more specialised functions
-are available (e.g. \code{\link[CARP]{get_app_usage}} and \code{\link[CARP]{screen_duration}}).
+This is a generic function to help extract data from an m-Path sense database. For some sensors
+that require a bit more pre-processing, such as app usage and screen time, more specialised
+functions are available (e.g. \code{\link[mpathsenser]{get_app_usage}} and
+\code{\link[mpathsenser]{screen_duration}}).
 }
 \examples{
 \dontrun{
@@ -37,9 +39,9 @@ are available (e.g. \code{\link[CARP]{get_app_usage}} and \code{\link[CARP]{scre
 db <- open_db()
 
 # Retrieve some data
-get_data(db, "Accelerometer", "12345")
+get_data(db, 'Accelerometer', '12345')
 
 # Or within a specific window
-get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
+get_data(db, 'Accelerometer', '12345', '2021-01-01', '2021-01-05')
 }
 }

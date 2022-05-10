@@ -9,18 +9,19 @@ copy_db(
   to_db = NULL,
   sensor = "All",
   path = getwd(),
-  db_name = "carp.db"
+  db_name = "sense.db"
 )
 }
 \arguments{
-\item{from_db}{A CARP database connection from where the data will be transferred.}
+\item{from_db}{A mpathsenser database connection from where the data will be transferred.}
 
-\item{to_db}{A CARP database connection where the data will be transferred to. If no new_db is
-specified, a path (and possibly a db_name) must be specified for \link[CARP]{create_db} to
-create a new database.}
+\item{to_db}{A mpathsenser database connection where the data will be transferred to. If no
+new_db is specified, a path (and possibly a db_name) must be specified for
+\link[mpathsenser]{create_db} to create a new database.}
 
 \item{sensor}{A character vector containing one or multiple sensors. See
-\code{\link[CARP]{sensors}} for a list of available sensors. Use "All" for all available sensors.}
+\code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
+sensors.}
 
 \item{path}{The path to the database. Use NULL to use the full path name in db_name.}
 

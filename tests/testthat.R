@@ -1,4 +1,4 @@
 library(testthat)
-library(CARP)
+library(mpathsenser)
 
-test_check("CARP")
+test_check("mpathsenser")

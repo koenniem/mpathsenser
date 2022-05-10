@@ -15,11 +15,11 @@ in common across \code{x} and \code{y}. A message lists the variables so that yo
 they're correct; suppress the message by supplying by explicitly.
 
 To join by different variables on x and y, use a named vector. For example,
-\code{by = c("a" = "b")} will match \code{x$a} to \code{y$b}
+\code{by = c('a' = 'b')} will match \code{x$a} to \code{y$b}
 
-To join by multiple variables, use a vector with length > 1. For example, by = c("a", "b") will
+To join by multiple variables, use a vector with length > 1. For example, by = c('a', 'b') will
 match \code{x$a} to \code{y$a} and \code{x$b} to \code{y$b}. Use a named vector to match
-different variables in x and y. For example, \code{by = c("a" = "b", "c" = "d")} will match
+different variables in x and y. For example, \code{by = c('a' = 'b', 'c' = 'd')} will match
 \code{x$a} to \code{y$b} and \code{x$c} to \code{y$d}.
 
 To perform a cross-join, generating all combinations of \code{x} and \code{y}, use
@@ -36,5 +36,5 @@ of \code{y} according to \code{offset}.
 Function for linking mobile sensing and ESM data
 }
 \details{
-assumption: both x and y have column "time" containing \link[base]{DateTimeClasses}
+assumption: both x and y have column 'time' containing \link[base]{DateTimeClasses}
 }

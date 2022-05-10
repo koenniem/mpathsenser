@@ -1,30 +1,27 @@
-# First, try to simply add the data to the table
-# If the measurement already exists, skip that measurement
+# First, try to simply add the data to the table If the measurement already exists,
+# skip that measurement
 save2db <- function(db, name, data) {
   tryCatch({
     DBI::dbAppendTable(db, name, data)
   }, error = function(e) {
     print("Falling back to UPSERT method")
-    # browser()
-    # names <- colnames(data)
-    #
-    # query <- paste0(
-    #   "INSERT OR IGNORE INTO ", name, "(", paste0(names, collapse = ", "), ") VALUES(",
-    #   paste0(":", names, collapse = ", "), ");"
-    # )
-    #
-    # DBI::dbSendStatement(db, query, data)
-    dbx::dbxUpsert(db, name, data,
-                   where_cols = c("measurement_id"),
-                   skip_existing = TRUE)
+
+    dbx::dbxUpsert(
+      db,
+      name,
+      data,
+      where_cols = c("measurement_id"),
+      skip_existing = TRUE
+    )
   })
 }
 
-# This function is needed because calling the function on the fly from the sensor name (i.e. dynamic
-# evaluation) poses a problem from the globals package, which would then not include these import
-# functions in the futures.
+# This function is needed because calling the function on the fly from the sensor name
+# (i.e. dynamic evaluation) poses a problem from the globals package, which would then not
+# include these import functions in the futures.
 which_sensor <- function(data, sensor) {
-  switch(sensor,
+  switch(
+    sensor,
     accelerometer = accelerometer_fun(data),
     activity = activity_fun(data),
     air_quality = air_quality_fun(data),
@@ -56,15 +53,27 @@ which_sensor <- function(data, sensor) {
 # Make a data frame, handling missing columns, filling with NA
 safe_data_frame <- function(...) {
   x <- suppressWarnings(list(...))
-  x <- lapply(x, function(x) if (is.null(x)) NA else x)
+  x <- lapply(x, function(x)
+    if (is.null(x))
+      NA
+    else
+      x)
   x <- as.data.frame(x)
   x
 }
 
 safe_tibble <- function(...) {
   x <- suppressWarnings(list(...))
-  x <- lapply(x, function(x) if (is.null(x)) NA else x)
-  x <- lapply(x, function(x) if (length(x[[1]]) == 0) NA else x) # lists
+  x <- lapply(x, function(x)
+    if (is.null(x))
+      NA
+    else
+      x)
+  x <- lapply(x, function(x)
+    if (length(x[[1]]) == 0)
+      NA
+    else
+      x)  # lists
   x <- tibble::as_tibble(x)
   x
 }
@@ -110,8 +119,7 @@ periodic_accelerometer_fun <- function(data) {
   data$body <- NULL
   data <- tidyr::unnest(data, timestamp:z)
 
-  # TODO: Consider unique ID constraint
-  # Temporary fix
+  # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
   data$id <- paste0(data$id, "_", ids)
   data
@@ -160,8 +168,7 @@ app_usage_fun <- function(data) {
     data$usage <- NA
   }
 
-  # TODO: Consider unique ID constraint
-  # Temporary fix
+  # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
   data$id <- paste0(data$id, "_", ids)
 
@@ -187,27 +194,13 @@ apps_fun <- function(data) {
       apps = list(x$installed_apps)
     )
   })
-
-  # Wow
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
   data <- tidyr::unnest(data, apps, keep_empty = TRUE)
   data <- tidyr::unnest(data, apps, keep_empty = TRUE)
-  # data$apps <- sapply(data$apps, function(x) paste0(x, collapse = "|"))
-  # data <- tidyr::unnest(data, apps)
-  # data$timestamp <- as.POSIXct(data$timestamp, "%Y-%m-%dT%H:%M:%S", tz="Europe/Brussels")
-  #
-  # data <- default_fun(data)
-  # if (!is.null(data$installed_apps)) {
-  #   data$installed_apps <- unlist(data$installed_apps, use.names = FALSE)
-  # }
-  # browser()
-  # data$body <- lapply(data$body, function(x) x$body)
-  # data$body <- lapply(data$body, dplyr::bind_rows)
-  # data$body <- tidyr::unnest(installed_apps, keep_empty = TRUE)
 
-  # TODO: Consider unique ID constraint
-  # Temporary fix
-  ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
+  # TODO: Consider unique ID constraint Temporary fix
+  ids <-
+    stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
   data$id <- paste0(data$id, "_", ids)
 
   safe_data_frame(
@@ -240,8 +233,7 @@ bluetooth_fun <- function(data) {
   data$body <- lapply(data$body, dplyr::bind_rows)
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
 
-  # TODO: Consider unique ID constraint
-  # Temporary fix
+  # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
   data$id <- paste0(data$id, "_", ids)
 
@@ -260,13 +252,14 @@ bluetooth_fun <- function(data) {
   )
 }
 
-# TODO: Check attendees
-# TODO: Check if multiple entries (from different calendars?) are possible
-# Currently, multiple entries are already possible but it's not clear why they are wrapped in
-# another list as well.
+# TODO: Check attendees TODO: Check if multiple entries (from different calendars?) are possible
+# Currently, multiple entries are already possible but it's not clear why they are
+# wrapped in another list as well.
 calendar_fun <- function(data) {
-  data$id <- sapply(data$body, function(x) x$body$id)
-  data$body <- lapply(data$body, function(x) x$body$calendar_events)
+  data$id <- sapply(data$body, function(x)
+    x$body$id)
+  data$body <- lapply(data$body, function(x)
+    x$body$calendar_events)
 
   if (!is.null(data$body[[1]])) {
     data$body <- lapply(data$body, function(x) {
@@ -280,7 +273,8 @@ calendar_fun <- function(data) {
           end = y$end,
           all_day = y$all_day,
           location = y$location,
-          attendees = list(y$attendees))
+          attendees = list(y$attendees)
+        )
       })
     })
   }
@@ -290,7 +284,7 @@ calendar_fun <- function(data) {
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
 
   # Collapse attendees list
-  if(any("attendees" == colnames(data))) {
+  if (any("attendees" == colnames(data))) {
     data$attendees <- sapply(data$attendees, function(x) {
       if (!is.null(x)) {
         x <- paste0(x, collapse = ", ")
@@ -298,13 +292,14 @@ calendar_fun <- function(data) {
           x <- NA_character_
         }
         return(x)
-      } else NA_character_
+      } else
+        NA_character_
     })
   }
 
-  # TODO: Consider unique ID constraint
-  # Temporary fix
-  ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
+  # TODO: Consider unique ID constraint Temporary fix
+  ids <-
+    stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
   data$id <- paste0(data$id, "_", ids)
 
   safe_data_frame(
@@ -385,23 +380,6 @@ geofence_fun <- function(data) {
 # This function is now obsolete as it does exactly the same as accelerometer_fun
 # However, I'm keeping it here for the sake of clarity and backwards compatibility
 gyroscope_fun <- function(data) {
-  # Determine whether this is a continuous accelerometer or periodic
-  # if (length(data$body[[1]]$body) == 5) {
-  #   data <- default_fun(data)
-  # } else {
-  #   data <- periodic_accelerometer_fun(data)
-  # }
-  #
-  # # Put into right data format
-  # safe_data_frame(
-  #   measurement_id = data$id,
-  #   participant_id = data$participant_id,
-  #   date = substr(data$timestamp, 1, 10),
-  #   time = substr(data$timestamp, 12, 23),
-  #   x = data$x,
-  #   y = data$y,
-  #   z = data$z
-  # )
   accelerometer_fun(data)
 }
 
@@ -493,8 +471,9 @@ phone_log_fun <- function(data) {
   data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
   data$body <- lapply(data$body, function(x) x$body$phone_log)
   data$body <- lapply(data$body, dplyr::bind_rows)
-  data$body <- lapply(data$body, function(x) { # Replace double timestamp name
-      colnames(x)[colnames(x) == "timestamp"] <- "datetime"
+  data$body <- lapply(data$body, function(x) {
+    # Replace double timestamp name
+    colnames(x)[colnames(x) == "timestamp"] <- "datetime"
   })
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
 
@@ -544,8 +523,7 @@ text_message_fun <- function(data) {
   data$body <- lapply(data$body, dplyr::bind_rows)
   data <- tidyr::unnest(data, body, keep_empty = TRUE)
 
-  # TODO: Consider unique ID constraint
-  # Temporary fix
+  # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
   data$id <- paste0(data$id, "_", ids)
 

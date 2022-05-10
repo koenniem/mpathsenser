@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{ccopy}
 \alias{ccopy}
-\title{Copy CARP zip files to a new location}
+\title{Copy mpathsenser zip files to a new location}
 \usage{
 ccopy(from, to = getwd(), recursive = TRUE)
 }
@@ -22,6 +22,6 @@ That is, it only updates the origin folder from the source folder.
 }
 \examples{
 \dontrun{
-ccopy("K:/data/myproject/", "~/myproject")
+ccopy('K:/data/myproject/', '~/myproject')
 }
 }

@@ -1,5 +1,5 @@
-^.*\.Rproj$ 
-^\CARP.Rproj$
+^.*\.Rproj$
+^mpathsenser\.Rproj$
 ^\.Rproj\.user$
 ^_pkgdown\.yml$
 ^docs$
@@ -9,7 +9,9 @@
 ^\.github$
 ^LICENSE\.md$
 ^data-raw$
-^README\.Rmd$ 
+^README\.Rmd$
 ^cran-comments\.md$
 ^ci/lib$
 ^contributing\.md$
+^binary_latest\.zip$
+^revdep$
