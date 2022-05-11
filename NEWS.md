@@ -1,5 +1,3 @@
-<!-- NEWS.md is maintained by https://cynkra.github.io/fledge, do not edit -->
-
-- Same as previous version.
-
-
+# mpathsenser 1.0.0
+* Initial release on CRAN
+* Changed the name to mpathsenser
