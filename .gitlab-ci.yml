@@ -1,4 +1,4 @@
-image: rocker/r-ver:latest
+image: rocker/tidyverse:latest
 
 variables:
   GIT_DEPTH: 10
@@ -48,7 +48,7 @@ commit-man:
 
 building:
   stage: build
-  image: rocker/r-ver:$VERSION
+  image: rocker/tidyverse:$VERSION
   parallel:
       matrix:
           - VERSION: ['latest', 'devel']
