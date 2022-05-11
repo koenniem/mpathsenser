@@ -67,7 +67,7 @@ We can also check what device they are using (which can be found in the Device t
 device_info(db = db)
 ```
 
-To find out how much data there is in this database, look at the number of rows as an indication. You mahy notice from running this function that it's not exactly fast. That's because it is a lot of data. So be careful when computing things, or you'll be stuck for a long time (especially when working with accelerometer and gyroscope)
+To find out how much data there is in this database, look at the number of rows as an indication. You may notice from running this function that it's not exactly fast. That's because it is a lot of data. So be careful when computing things, or you'll be stuck for a long time (especially when working with accelerometer and gyroscope)
 
 ```r
 get_nrows(db)
