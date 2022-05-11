@@ -31,7 +31,7 @@ with one function call.
 
 You can be updated of the progress by this function by using the
 \code{\link[progressr]{progress}} package. See \code{progressr}'s
-\href{https://cran.r-project.org/web/packages/progressr/vignettes/progressr-intro.html}{vignette}
+\href{https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html}{vignette}
 on how to subscribe to these updates.
 }
 

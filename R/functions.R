@@ -20,7 +20,7 @@
 #' @section Progress:
 #' You can be updated of the progress by this function by using the
 #' \code{\link[progressr]{progress}} package. See \code{progressr}'s
-#' \href{https://cran.r-project.org/web/packages/progressr/vignettes/progressr-intro.html}{vignette}
+#' \href{https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html}{vignette}
 #' on how to subscribe to these updates.
 #'
 #' @param path The path to the file directory
@@ -414,6 +414,7 @@ freq <- c(
 #' @param end_date A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
 #' the latest date to show.Leave empty for all data. Must be used with \code{start_date}.
 #' @param plot Whether to return a ggplot or its underlying data.
+#'
 #'
 #' @return A ggplot of the coverage results.
 #' @export

@@ -57,8 +57,6 @@ building:
     - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "never", force = TRUE)'
     - Rscript -e 'devtools::document()'
     - R -e 'rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "warning", check_dir = "check")'
-  tags:
-    - okp
 
 # To have the coverage percentage appear as a gitlab badge follow these
 # instructions:
@@ -81,8 +79,6 @@ coverage:
         paths:
             - public
         expire_in: 30 days
-    tags:
-      - okp
 
 # To produce a code coverage report as a GitLab page see
 # https://about.gitlab.com/2016/11/03/publish-code-coverage-report-with-gitlab-pages/
@@ -102,8 +98,6 @@ integration:
         paths:
             - docs
         expire_in: 30 days
-    tags:
-      - okp
 
 integration-test:
     stage: pkgdown-move
@@ -128,8 +122,6 @@ integration-test:
         paths:
             - public
         expire_in: 30 days
-    tags:
-      - okp
 
 integration-production:
     stage: pkgdown-move
@@ -149,8 +141,6 @@ integration-production:
         paths:
             - public
         expire_in: 30 days
-    tags:
-      - okp
 
 integration-master:
     stage: pkgdown-move
@@ -170,8 +160,6 @@ integration-master:
         paths:
             - public
         expire_in: 30 days
-    tags:
-      - okp
 
 pages:
     stage: deploy
@@ -184,6 +172,4 @@ pages:
         - master
         - production
         - test-ci
-    tags:
-      - okp
 
