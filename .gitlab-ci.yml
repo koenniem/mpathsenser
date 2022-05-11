@@ -48,6 +48,11 @@ commit-man:
 
 building:
   stage: build
+  image: rocker/r-ver:$VERSION
+  parallel:
+      matrix:
+          - VERSION: ['latest', 'devel']
+
   script:
     - apt-get update -qq && apt-get install -y libharfbuzz-dev libfribidi-dev
     - echo "Library path for packages :" $R_LIBS
