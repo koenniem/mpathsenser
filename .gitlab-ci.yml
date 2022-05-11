@@ -1,4 +1,4 @@
-image: rocker/verse
+image: rocker/r-ver
 
 variables:
   GIT_DEPTH: 10
