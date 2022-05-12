@@ -60,7 +60,7 @@ building:
     - Rscript -e 'install.packages("remotes")'
     - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "never", force = TRUE)'
     - Rscript -e 'devtools::document()'
-    - R -e 'devtools::check(manual = FALSE, cran = TRUE, remote = TRUE, incoming = TRUE, force_suggests = TRUE, error_on = "warning")
+    - R -e 'devtools::check(manual = FALSE, cran = TRUE, remote = TRUE, incoming = TRUE, force_suggests = TRUE, error_on = "warning")'
 
 # To have the coverage percentage appear as a gitlab badge follow these
 # instructions:
