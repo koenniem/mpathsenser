@@ -58,10 +58,9 @@ building:
     - echo "Library path for packages :" $R_LIBS
     - mkdir -p $R_LIBS
     - Rscript -e 'install.packages("remotes")'
-    - Rscript -e 'install.packages("rcmdcheck")'
     - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "never", force = TRUE)'
     - Rscript -e 'devtools::document()'
-    - R -e 'rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "warning", check_dir = "check")'
+    - R -e 'devtools::check(manual = FALSE, cran = TRUE, remote = TRUE, incoming = TRUE, force_suggests = TRUE, error_on = "warning")
 
 # To have the coverage percentage appear as a gitlab badge follow these
 # instructions:
@@ -77,7 +76,7 @@ coverage:
         - master
         - production
     script:
-        - Rscript -e 'remotes::install_local(upgrade = "never")'
+        - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "never", force = TRUE)'
         - Rscript -e 'remotes::install_cran(c("covr", "DT"), upgrade = "never")'
         - Rscript -e 'covr::gitlab(quiet = FALSE)'
     artifacts:
