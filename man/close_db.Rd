@@ -7,12 +7,12 @@
 close_db(db)
 }
 \arguments{
-\item{db}{A database connection}
+\item{db}{A database connection to an m-Path Sense database.}
+}
+\value{
+\code{cose_db} returns invisibly regardless of whether the database is active, valid,
+or even exists.
 }
 \description{
 This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
-}
-\details{
-This function returns invisibly regardless of whether the database is active, valid, or even
-exists.
 }

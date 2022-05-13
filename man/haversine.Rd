@@ -18,7 +18,7 @@ haversine(lat1, lon1, lat2, lon2, r = 6371)
 \item{r}{The average earth radius.}
 }
 \value{
-The distance between point 1 and 2 in kilometers.
+A numeric value of the distance between point 1 and 2 in kilometers.
 }
 \description{
 Calculate the great-circle distance between two points using the Haversine function.

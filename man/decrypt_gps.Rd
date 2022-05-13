@@ -12,8 +12,11 @@ decrypt_gps(data, key)
 \item{key}{A curve25519 public key}
 }
 \value{
-The non-lazy decrypted GPS data
+A tibble containing the non-lazy, decrypted GPS data
 }
 \description{
-Decrypt GPS data from a curve25519 public key
+By default, the latitude and longitude of the GPS data collected by m-Path Sense will be encrypted
+using an asymmetric curve25519 key to provide extra protection for these highly sensitive data.
+This function takes the entire location data set and decrypts its longitude and latitude columns
+using the provided \code{key}.
 }

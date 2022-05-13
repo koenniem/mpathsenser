@@ -10,6 +10,9 @@ An object of class \code{character} of length 25.
 \usage{
 sensors
 }
+\value{
+A character vector containing all sensor names supported by \code{mpathsenser}.
+}
 \description{
 A list containing all available sensors in this package you can work with. This variable was
 created so it is easier to use in your own functions, e.g. to loop over sensors.

@@ -30,7 +30,7 @@ last entry for a participant.}
 \item{by}{Either 'Total', 'Hour', or 'Day' indicating how to summarise the results.}
 }
 \value{
-A data frame containing a column 'App' and a column 'Usage' for the hourly app usage.
+A data frame containing a column 'app' and a column 'usage' for the hourly app usage.
 }
 \description{
 This function extracts app usage per hour for either one or multiple participants. If multiple

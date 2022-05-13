@@ -14,7 +14,7 @@ get_installed_apps(db, participant_id = NULL)
 Leave empty to get data for all participants.}
 }
 \value{
-A character vector of app names.
+A tibble containing app names.
 }
 \description{
 Extract installed apps for one or all participants. Contrarily to other get_* functions in

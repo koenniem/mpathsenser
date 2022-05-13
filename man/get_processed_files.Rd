@@ -10,7 +10,8 @@ get_processed_files(db)
 \item{db}{A database connection, as created by \link[mpathsenser]{create_db}.}
 }
 \value{
-A data frame contain processed file for each participant and study.
+A data frame containing the \code{file_name}, \code{participant_id}, and \code{study_id}
+of the processed files.
 }
 \description{
 Get all processed files from a database

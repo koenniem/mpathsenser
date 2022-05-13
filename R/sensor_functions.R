@@ -306,7 +306,7 @@ link2 <- function(db,
 #' \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 #' Leave empty to get data for all participants.
 #'
-#' @return A character vector of app names.
+#' @return A tibble containing app names.
 #' @export
 get_installed_apps <- function(db, participant_id = NULL) {
   get_data(db, "InstalledApps", participant_id) %>%
@@ -456,7 +456,7 @@ app_category_impl <- function(name, num) {
 #' @inheritParams get_data
 #' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results.
 #'
-#' @return A data frame containing a column 'App' and a column 'Usage' for the hourly app usage.
+#' @return A data frame containing a column 'app' and a column 'usage' for the hourly app usage.
 #' @export
 get_app_usage <- function(db,
                           participant_id = NULL,
@@ -503,9 +503,6 @@ get_app_usage <- function(db,
       dplyr::mutate(usage = usage / 60 / 60)
   }
   return(data)
-
-  colnames(data) <- c("App", "Usage")
-  data
 }
 
 #' Get a summary of physical activity (recognition)
@@ -517,7 +514,7 @@ get_app_usage <- function(db,
 #' \eqn{t - t_{t+1}}.
 #' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results.
 #'
-#' @return A data frame containing a column 'activity' and a column 'duration' for the hourly
+#' @return A tibble containing a column 'activity' and a column 'duration' for the hourly
 #' activity duration.
 #' @export
 get_activity <- function(db,
@@ -567,7 +564,7 @@ get_activity <- function(db,
 #'
 #' @inheritParams get_data
 #'
-#' @return A data frame containing device info for each participant
+#' @return A tibble containing device info for each participant
 #' @export
 device_info <- function(db, participant_id = NULL) {
   get_data(db, "Device", participant_id = participant_id) %>%
@@ -603,9 +600,8 @@ screen_duration <- function(db,
   out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
     dplyr::filter(screen_event != "SCREEN_ON") %>%
     dplyr::mutate(datetime = paste(date, time)) %>%
-    dplyr::select(-c(measurement_id, date, time)) %>%
     dbplyr::window_order(participant_id, datetime) %>%
-    dplyr::distinct(participant_id, datetime, screen_event) %>%
+    dplyr::distinct(participant_id, date, time, datetime, screen_event) %>%
     dplyr::mutate(next_event = dplyr::lead(screen_event, n = 1)) %>%
     dplyr::mutate(next_time = dplyr::lead(datetime, n = 1)) %>%
     dplyr::filter(screen_event == "SCREEN_UNLOCKED" & next_event == "SCREEN_OFF") %>%
@@ -641,7 +637,7 @@ screen_duration <- function(db,
 #' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results. Defaults to
 #' total.
 #'
-#' @return In case of grouping is by the total amount, returns a single numeric value. For date and
+#' @return In case grouping is by the total amount, returns a single numeric value. For date and
 #' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen on's 'n'.
 #' @export
 n_screen_on <- function(db,
@@ -687,7 +683,7 @@ n_screen_on <- function(db,
 #' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results. Defaults to
 #' total.
 #'
-#' @return In case of grouping is by the total amount, returns a single numeric value. For date and
+#' @return In case grouping is by the total amount, returns a single numeric value. For date and
 #' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen unlocks
 #' 'n'.
 #' @export
@@ -813,20 +809,29 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
 #' While any sensor can be used for identifying gaps, it is best to choose a sensor with a very
 #' high, near-continuous sample rate such as the accelerometer or gyroscope. This function then
 #' creates time between two subsequent measurements and returns the period in which this time was
-#' larger than \code{max_gap}.
+#' larger than \code{min_gap}.
 #'
 #' Note that the \code{from} and \code{to} columns in the output are character vectors in UTC time.
 #'
 #' @inheritParams get_data
-#' @param max_gap The maximum time (in seconds) between to subsequent measurements.
+#' @param min_gap The minimum time (in seconds) passed between two subsequent measurements for it
+#' to be considered a gap..
 #'
-#' @return A lazy tibble containing the time period of the gaps.
+#' @return A tibble containing the time period of the gaps. The strucute of this tibble is as
+#' follows:
+#'
+#' \tabular{ll}{
+#'   participant_id \tab the \code{participant_id} of where the gap occurred \cr
+#'   from           \tab the time of the last measurement before the gap \cr
+#'   to             \tab the time of the first measurement after the gap \cr
+#'   gap            \tab the time passed between from and to, in seconds
+#' }
 #' @export
 #'
 #' @examples
 #' \dontrun{
 #' # Find the gaps for a participant and convert to datetime
-#' gaps <- identify_gaps(db, '12345', max_gap = 60) %>%
+#' gaps <- identify_gaps(db, '12345', min_gap = 60) %>%
 #'   mutate(across(c(to, from), ymd_hms)) %>%
 #'   mutate(across(c(to, from), with_tz, 'Europe/Brussels'))
 #'
@@ -846,7 +851,7 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
 #'   rowwise() %>%
 #'   mutate(gap = any(gaps$from >= prev_time & gaps$to <= datetime))
 #' }
-identify_gaps <- function(db, participant_id = NULL, max_gap = 60, sensor = "Accelerometer") {
+identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Accelerometer") {
   get_data(db, sensor, participant_id) %>%
     dplyr::mutate(datetime = DATETIME(paste(date, time))) %>%
     dplyr::select(participant_id, datetime) %>%
@@ -855,7 +860,7 @@ identify_gaps <- function(db, participant_id = NULL, max_gap = 60, sensor = "Acc
     dplyr::mutate(from = dplyr::lag(datetime)) %>%
     dplyr::ungroup() %>%
     dplyr::mutate(gap = STRFTIME("%s", datetime) - STRFTIME("%s", from)) %>%
-    dplyr::filter(gap >= max_gap) %>%
+    dplyr::filter(gap >= min_gap) %>%
     dplyr::select(participant_id, from, to = datetime, gap) %>%
     dplyr::collect()
 }

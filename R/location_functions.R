@@ -1,9 +1,14 @@
 #' Decrypt GPS data from a curve25519 public key
 #'
+#' By default, the latitude and longitude of the GPS data collected by m-Path Sense will be encrypted
+#' using an asymmetric curve25519 key to provide extra protection for these highly sensitive data.
+#' This function takes the entire location data set and decrypts its longitude and latitude columns
+#' using the provided \code{key}.
+#'
 #' @param data A (lazy) tibble containing the GPS data
 #' @param key A curve25519 public key
 #'
-#' @return The non-lazy decrypted GPS data
+#' @return A tibble containing the non-lazy, decrypted GPS data
 #' @export
 decrypt_gps <- function(data, key) {
   if (!requireNamespace("sodium", quietly = TRUE)) {
@@ -52,7 +57,7 @@ rad2deg <- function(rad) {
 #' @param lat2 The latitude of point 2 in degrees.
 #' @param r The average earth radius.
 #'
-#' @return The distance between point 1 and 2 in kilometers.
+#' @return A numeric value of the distance between point 1 and 2 in kilometers.
 #' @export
 #'
 #' @examples

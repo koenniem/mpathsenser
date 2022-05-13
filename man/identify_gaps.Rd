@@ -7,7 +7,7 @@
 identify_gaps(
   db,
   participant_id = NULL,
-  max_gap = 60,
+  min_gap = 60,
   sensor = "Accelerometer"
 )
 }
@@ -18,13 +18,22 @@ identify_gaps(
 \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 Leave empty to get data for all participants.}
 
-\item{max_gap}{The maximum time (in seconds) between to subsequent measurements.}
+\item{min_gap}{The minimum time (in seconds) passed between two subsequent measurements for it
+to be considered a gap..}
 
 \item{sensor}{The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
 sensors.}
 }
 \value{
-A lazy tibble containing the time period of the gaps.
+A tibble containing the time period of the gaps. The strucute of this tibble is as
+follows:
+
+\tabular{ll}{
+participant_id \tab the \code{participant_id} of where the gap occurred \cr
+from           \tab the time of the last measurement before the gap \cr
+to             \tab the time of the first measurement after the gap \cr
+gap            \tab the time passed between from and to, in seconds
+}
 }
 \description{
 Oftentimes in mobile sensing, gaps appear in the data as a result of the participant
@@ -40,14 +49,14 @@ interval altogether or by subtracting the gap from the interval itself (see exam
 While any sensor can be used for identifying gaps, it is best to choose a sensor with a very
 high, near-continuous sample rate such as the accelerometer or gyroscope. This function then
 creates time between two subsequent measurements and returns the period in which this time was
-larger than \code{max_gap}.
+larger than \code{min_gap}.
 
 Note that the \code{from} and \code{to} columns in the output are character vectors in UTC time.
 }
 \examples{
 \dontrun{
 # Find the gaps for a participant and convert to datetime
-gaps <- identify_gaps(db, '12345', max_gap = 60) \%>\%
+gaps <- identify_gaps(db, '12345', min_gap = 60) \%>\%
   mutate(across(c(to, from), ymd_hms)) \%>\%
   mutate(across(c(to, from), with_tz, 'Europe/Brussels'))
 

@@ -31,7 +31,7 @@ last entry for a participant.}
 total.}
 }
 \value{
-In case of grouping is by the total amount, returns a single numeric value. For date and
+In case grouping is by the total amount, returns a single numeric value. For date and
 hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen unlocks
 'n'.
 }

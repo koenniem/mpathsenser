@@ -27,6 +27,9 @@ sensors.}
 
 \item{db_name}{The name of the database.}
 }
+\value{
+No return value, called for side effects.
+}
 \description{
 Copy (a subset of) a database to another database
 }

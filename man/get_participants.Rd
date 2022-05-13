@@ -12,7 +12,7 @@ get_participants(db, lazy = FALSE)
 \item{lazy}{Whether to evaluate lazily using \link[dbplyr]{dbplyr}.}
 }
 \value{
-A data frame containing all participants.
+A data frame containing all \code{participant_id} and \code{study_id}.
 }
 \description{
 Get all participants

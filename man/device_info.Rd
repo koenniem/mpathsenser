@@ -14,7 +14,7 @@ device_info(db, participant_id = NULL)
 Leave empty to get data for all participants.}
 }
 \value{
-A data frame containing device info for each participant
+A tibble containing device info for each participant
 }
 \description{
 Get the device info for one or more participants

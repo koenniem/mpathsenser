@@ -43,7 +43,8 @@ the latest date to show.Leave empty for all data. Must be used with \code{start_
 \item{plot}{Whether to return a ggplot or its underlying data.}
 }
 \value{
-A ggplot of the coverage results.
+A ggplot of the coverage results if \code{plot} is \code{TRUE} or a tibble containg the
+hour, type of measure (i.e. sensor), and (relative) coverage.
 }
 \description{
 Only applicable to non-reactive sensors with 'continuous' sampling

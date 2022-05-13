@@ -2,18 +2,16 @@
 % Please edit documentation in R/database.R
 \name{open_db}
 \alias{open_db}
-\title{Open a mpathsenser database}
+\title{Open an mpathsenser database}
 \usage{
 open_db(path = getwd(), db_name = "sense.db")
 }
 \arguments{
 \item{path}{The path to the database. Use NULL to use the full path name in db_name.}
-
-\item{db_name}{The name of the database.}
 }
 \value{
-A database connection.
+A connection to an mpathsenser database.
 }
 \description{
-Open a mpathsenser database
+Open an mpathsenser database
 }

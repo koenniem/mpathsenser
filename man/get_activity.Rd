@@ -38,7 +38,7 @@ last entry for a participant.}
 \item{by}{Either 'Total', 'Hour', or 'Day' indicating how to summarise the results.}
 }
 \value{
-A data frame containing a column 'activity' and a column 'duration' for the hourly
+A tibble containing a column 'activity' and a column 'duration' for the hourly
 activity duration.
 }
 \description{

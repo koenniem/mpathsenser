@@ -4,7 +4,7 @@ save2db <- function(db, name, data) {
   tryCatch({
     DBI::dbAppendTable(db, name, data)
   }, error = function(e) {
-    print("Falling back to UPSERT method")
+    message("Could not add data to the data base. Falling back to UPSERT method")
 
     dbx::dbxUpsert(
       db,

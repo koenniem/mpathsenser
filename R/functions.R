@@ -37,7 +37,8 @@
 #' in parallel. If this argument is a number, this indicates the number of workers that will be
 #' used.
 #'
-#' @return Invisible. Imported database can be reopened using \link[mpathsenser]{open_db}.
+#' @return A message indicating how many files were imported.
+#' Imported database can be reopened using \link[mpathsenser]{open_db}.
 #' @export
 import <- function(path = getwd(),
                    db = NULL,
@@ -164,7 +165,7 @@ import <- function(path = getwd(),
         add_processed_files(db, res$file)
       })
     }, error = function(e) {
-      print(paste0("transaction failed for file ", files[i]))
+      warning(paste0("transaction failed for file ", files[i]))
     })
 
 
@@ -225,7 +226,7 @@ import_impl <- function(path, files, db_name, sensors) {
     }
 
     if (!jsonlite::validate(file)) {
-      print(paste0("Invalid JSON in file ", files[i]))
+      warning(paste0("Invalid JSON in file ", files[i]))
       next
     }
 
@@ -234,7 +235,7 @@ import_impl <- function(path, files, db_name, sensors) {
     }, error = function(e) e)
 
     if (inherits(possible_error, "error")) {
-      print(paste("Could not read", files[i]))
+      warning(paste("Could not read", files[i]))
       next
     }
 
@@ -349,7 +350,7 @@ import_impl <- function(path, files, db_name, sensors) {
       out$data[[i]] <- data
 
     }, error = function(e) {
-      print(paste0("processing failed for file ", files[i]))
+      warning(paste0("processing failed for file ", files[i]))
     })
 
     # Close db connection of worker
@@ -362,7 +363,9 @@ import_impl <- function(path, files, db_name, sensors) {
 #' Measurement frequencies per sensor
 #'
 #' A numeric vector containing (an example) of example measurement frequencies per sensor.
-#' Such input is needed for \link[mpathsenser]{coverage}. This vector contains the following
+#' Such input is needed for \link[mpathsenser]{coverage}.
+#'
+#' @return This vector contains the following
 #' information:
 #'
 #' Sensor | Frequency (per hour) | Full text
@@ -416,7 +419,8 @@ freq <- c(
 #' @param plot Whether to return a ggplot or its underlying data.
 #'
 #'
-#' @return A ggplot of the coverage results.
+#' @return A ggplot of the coverage results if \code{plot} is \code{TRUE} or a tibble containg the
+#' hour, type of measure (i.e. sensor), and (relative) coverage.
 #' @export
 #'
 #'
@@ -597,16 +601,16 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
     # Calculate the number of average measurements per hour i.e. the sum of all measurements in
     # that hour divided by n
     tmp <- tmp %>%
-      dplyr::mutate(Hour = strftime("%H", time)) %>%
+      dplyr::mutate(hour = strftime("%H", time)) %>%
       # dplyr::mutate(Date = date(time)) %>%
-      dplyr::count(date, Hour) %>%
-      dplyr::group_by(Hour) %>%
+      dplyr::count(date, hour) %>%
+      dplyr::group_by(hour) %>%
       dplyr::summarise(Coverage = sum(n, na.rm = TRUE) / n())
 
     # Transfer the result to R's memory and ensure it's numeric
     tmp <- tmp %>%
       dplyr::collect() %>%
-      dplyr::mutate(Hour = as.numeric(Hour), Coverage = as.numeric(Coverage))
+      dplyr::mutate(hour = as.numeric(hour), coverage = as.numeric(coverage))
 
     # Disconnect from the temporary database connection
     DBI::dbDisconnect(tmp_db)
@@ -615,14 +619,14 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
     # per hour by the expected number of measurements
     if (relative) {
       tmp <- tmp %>%
-        dplyr::mutate(Coverage = round(Coverage / frequency[.x], 2))
+        dplyr::mutate(coverage = round(coverage / frequency[.x], 2))
     }
 
     tmp %>%
       # Pour into ggplot format
       dplyr::mutate(measure = .x) %>%
       # Fill in missing hours with 0
-      tidyr::complete(Hour = 0:23, measure = .x, fill = list(Coverage = 0))
+      tidyr::complete(hour = 0:23, measure = .x, fill = list(coverage = 0))
   }, .options = furrr::furrr_options(seed = TRUE))
 
   # Give the output list the sensor names

@@ -16,7 +16,7 @@ fix_jsons(path = getwd(), files = NULL, recursive = TRUE, parallel = FALSE)
 \item{parallel}{A logical value whether you want to check in parallel. Useful for a lot of files.}
 }
 \value{
-A message indicating whether any files need to be fixed.
+A message indicating how many files were fixed.
 }
 \description{
 When copying data directly coming from m-Path Sense, JSON files are sometimes corrupted due to

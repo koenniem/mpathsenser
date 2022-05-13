@@ -23,6 +23,9 @@ files will then be unzipped in their respective subdirectory.}
 lot of files. If you have already used \code{future::plan}, you can leave this parameter to
 \code{FALSE}.}
 }
+\value{
+A message indicating how many files were unzipped.
+}
 \description{
 Similar to \link[utils]{unzip}, but makes it easier to unzip all files in a given path
 with one function call.

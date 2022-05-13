@@ -40,7 +40,7 @@ ccopy <- function(from, to = getwd(), recursive = TRUE) {
 #' @param recursive Should the listing recurse into directories?
 #' @param parallel A logical value whether you want to check in parallel. Useful for a lot of files.
 #'
-#' @return A message indicating whether any files need to be fixed.
+#' @return A message indicating how many files were fixed.
 #' @export
 #' @examples
 #' \dontrun{
@@ -286,6 +286,7 @@ test_jsons <- function(path = getwd(),
 #' lot of files. If you have already used \code{future::plan}, you can leave this parameter to
 #' \code{FALSE}.
 #'
+#' @return A message indicating how many files were unzipped.
 #' @export
 unzip_data <- function(path = getwd(), overwrite = FALSE, recursive = TRUE, parallel = FALSE) {
   if (is.null(path) || !is.character(path))
@@ -352,7 +353,7 @@ unzip_impl <- function(path, overwrite) {
                                overwrite = overwrite,
                                junkpaths = TRUE,
                                exdir = path))
-      }, error = function(e) print(paste0("Failed to unzip", x)))
+      }, error = function(e) warning(paste0("Failed to unzip", x)))
     })
   }
   return(length(zipfiles))

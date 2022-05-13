@@ -40,7 +40,8 @@ in parallel. If this argument is a number, this indicates the number of workers 
 used.}
 }
 \value{
-Invisible. Imported database can be reopened using \link[mpathsenser]{open_db}.
+A message indicating how many files were imported.
+Imported database can be reopened using \link[mpathsenser]{open_db}.
 }
 \description{
 Import JSON files from m-Path Sense into a structured database. This function is the bread and

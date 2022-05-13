@@ -3,6 +3,7 @@
 #' A list containing all available sensors in this package you can work with. This variable was
 #' created so it is easier to use in your own functions, e.g. to loop over sensors.
 #'
+#' @return A character vector containing all sensor names supported by \code{mpathsenser}.
 #' @examples
 #' sensors
 #' @export sensors
@@ -56,12 +57,12 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   return(db)
 }
 
-#' Open a mpathsenser database
+#' Open an mpathsenser database
 #'
 #' @param path The path to the database. Use NULL to use the full path name in db_name.
-#' @param db_name The name of the database.
+#' @inheritParams get_data
 #'
-#' @return A database connection.
+#' @return A connection to an mpathsenser database.
 #' @export
 open_db <- function(path = getwd(), db_name = "sense.db") {
   if (!is.character(db_name)) stop("Argument db_name must be a filename")
@@ -86,10 +87,10 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 #'
 #' This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
 #'
-#' This function returns invisibly regardless of whether the database is active, valid, or even
-#' exists.
+#' @inheritParams get_data
 #'
-#' @param db A database connection
+#' @return \code{cose_db} returns invisibly regardless of whether the database is active, valid,
+#' or even exists.
 #' @export
 close_db <- function(db) {
   exists <- try(db, silent = TRUE)
@@ -102,8 +103,9 @@ close_db <- function(db) {
 
 #' Create indexes for a mpathsenser database
 #'
-#' @param db A database connection
+#' @inheritParams get_data
 #'
+#' @return No return value, called for side effects.
 #' @export
 index_db <- function(db) {
   if (is.null(db) || !DBI::dbIsValid(db)) stop("Database connection is not valid")
@@ -136,6 +138,7 @@ vacuum_db <- function(db) {
 #' @param path The path to the database. Use NULL to use the full path name in db_name.
 #' @param db_name The name of the database.
 #'
+#' @return No return value, called for side effects.
 #' @export
 copy_db <- function(from_db, to_db = NULL, sensor = "All", path = getwd(), db_name = "sense.db") {
   if (is.null(from_db) || !DBI::dbIsValid(from_db)) stop("Database connection is not valid")
@@ -185,6 +188,8 @@ copy_db <- function(from_db, to_db = NULL, sensor = "All", path = getwd(), db_na
   if (no_db_specified) {
     close_db(to_db)
   }
+
+  return(invisible(TRUE))
 }
 
 add_study <- function(db, data) {
@@ -223,7 +228,8 @@ clear_sensors_db <- function(db) {
 #'
 #' @param db A database connection, as created by \link[mpathsenser]{create_db}.
 #'
-#' @return A data frame contain processed file for each participant and study.
+#' @return A data frame containing the \code{file_name}, \code{participant_id}, and \code{study_id}
+#' of the processed files.
 #' @export
 get_processed_files <- function(db) {
   if (!DBI::dbIsValid(db)) stop("Database connection is not valid")
@@ -235,7 +241,7 @@ get_processed_files <- function(db) {
 #' @param db db A database connection, as created by \link[mpathsenser]{create_db}.
 #' @param lazy Whether to evaluate lazily using \link[dbplyr]{dbplyr}.
 #'
-#' @return A data frame containing all participants.
+#' @return A data frame containing all \code{participant_id} and \code{study_id}.
 #' @export
 get_participants <- function(db, lazy = FALSE) {
   if (!DBI::dbIsValid(db)) stop("Database connection is not valid")

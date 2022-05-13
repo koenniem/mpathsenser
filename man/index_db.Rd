@@ -7,7 +7,10 @@
 index_db(db)
 }
 \arguments{
-\item{db}{A database connection}
+\item{db}{A database connection to an m-Path Sense database.}
+}
+\value{
+No return value, called for side effects.
 }
 \description{
 Create indexes for a mpathsenser database

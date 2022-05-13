@@ -10,13 +10,9 @@ An object of class \code{numeric} of length 11.
 \usage{
 freq
 }
-\description{
-A numeric vector containing (an example) of example measurement frequencies per sensor.
-Such input is needed for \link[mpathsenser]{coverage}. This vector contains the following
-information:
-}
-\details{
-\tabular{lll}{
+\value{
+This vector contains the following
+information:\tabular{lll}{
    Sensor \tab Frequency (per hour) \tab Full text \cr
    Accelerometer \tab 720 \tab Once per 5 seconds. Can have multiple instances. \cr
    AirQuality \tab 1 \tab Once per hour. \cr
@@ -30,5 +26,9 @@ information:
    Weather \tab 1 \tab Once per hour. \cr
    Wifi \tab 60 \tab Once per minute. \cr
 }
+}
+\description{
+A numeric vector containing (an example) of example measurement frequencies per sensor.
+Such input is needed for \link[mpathsenser]{coverage}.
 }
 \keyword{datasets}
