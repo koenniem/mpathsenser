@@ -353,7 +353,7 @@ unzip_impl <- function(path, overwrite) {
                                overwrite = overwrite,
                                junkpaths = TRUE,
                                exdir = path))
-      }, error = function(e) warning(paste0("Failed to unzip", x)))
+      }, error = function(e) warning(paste0("Failed to unzip", x), call. = FALSE))
     })
   }
   return(length(zipfiles))

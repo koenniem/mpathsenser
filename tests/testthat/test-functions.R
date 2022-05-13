@@ -10,11 +10,13 @@ test_that("import", {
     recursive = FALSE
   ), "All files were successfully written to the database.")
 
-  expect_warning(import(
+  warnings_log <- capture_warnings(import(
     path = path,
     dbname = "test2.db",
     recursive = TRUE # Includes broken files
-  ), "Some files could not be written to the database.")
+  ))
+  expect_match(warnings_log, "Invalid JSON in file broken\\/broken\\d\\.json", all = FALSE)
+  expect_match(warnings_log, "Some files could not be written to the database.", all = FALSE)
 
   file.remove(system.file("testdata", "test2.db", package = "mpathsenser"))
 })

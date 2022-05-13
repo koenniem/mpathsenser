@@ -165,7 +165,8 @@ import <- function(path = getwd(),
         add_processed_files(db, res$file)
       })
     }, error = function(e) {
-      warning(paste0("transaction failed for file ", files[i]))
+      # warning(paste0("transaction failed for file ", files[i]),
+      #         call. = FALSE)
     })
 
 
@@ -189,7 +190,7 @@ import <- function(path = getwd(),
   if (complete) {
     message("All files were successfully written to the database.")
   } else {
-    warning("Some files could not be written to the database.")
+    warning("Some files could not be written to the database.", call. = FALSE)
   }
 
   DBI::dbDisconnect(db)
@@ -226,7 +227,7 @@ import_impl <- function(path, files, db_name, sensors) {
     }
 
     if (!jsonlite::validate(file)) {
-      warning(paste0("Invalid JSON in file ", files[i]))
+      warning(paste0("Invalid JSON in file ", files[i]), call. = FALSE)
       next
     }
 
@@ -235,7 +236,7 @@ import_impl <- function(path, files, db_name, sensors) {
     }, error = function(e) e)
 
     if (inherits(possible_error, "error")) {
-      warning(paste("Could not read", files[i]))
+      warning(paste("Could not read", files[i]), call. = FALSE)
       next
     }
 
@@ -350,7 +351,7 @@ import_impl <- function(path, files, db_name, sensors) {
       out$data[[i]] <- data
 
     }, error = function(e) {
-      warning(paste0("processing failed for file ", files[i]))
+      warning(paste0("processing failed for file ", files[i]), call. = FALSE)
     })
 
     # Close db connection of worker
@@ -518,11 +519,11 @@ coverage <- function(db,
   # Check start_date, end_date
   if ((!is.null(start_date) && !is.null(end_date)) && !is.null(offset)) {
     warning("Argument start_date/end_date and offset cannot be present at the same time. ",
-            "Ignoring the offset argument.")
+            "Ignoring the offset argument.", call. = FALSE)
     offset <- NULL
   } else if (!(is.null(start_date) | convert2date(start_date))
              || !(is.null(end_date) | convert2date(end_date))) {
-    stop("start_date and end_date must be NULL, a character string, or date.")
+    stop("start_date and end_date must be NULL, a character string, or date.", call. = FALSE)
   }
 
   # Retain only frequencies that appear in the sensor list
@@ -551,9 +552,9 @@ coverage <- function(db,
     }
 
     out <- ggplot2::ggplot(data = data,
-                           mapping = ggplot2::aes(x = Hour, y = measure, fill = Coverage)) +
+                           mapping = ggplot2::aes(x = Hour, y = measure, fill = coverage)) +
       ggplot2::geom_tile() +
-      ggplot2::geom_text(mapping = ggplot2::aes(label = Coverage),
+      ggplot2::geom_text(mapping = ggplot2::aes(label = coverage),
                          colour = "white") +
       ggplot2::scale_x_continuous(breaks = 0:23) +
       ggplot2::scale_fill_gradientn(colours = c("#d70525", "#645a6c", "#3F7F93"),
@@ -605,7 +606,7 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
       # dplyr::mutate(Date = date(time)) %>%
       dplyr::count(date, hour) %>%
       dplyr::group_by(hour) %>%
-      dplyr::summarise(Coverage = sum(n, na.rm = TRUE) / n())
+      dplyr::summarise(coverage = sum(n, na.rm = TRUE) / n())
 
     # Transfer the result to R's memory and ensure it's numeric
     tmp <- tmp %>%
