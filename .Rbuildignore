@@ -16,3 +16,4 @@
 ^binary_latest\.zip$
 ^revdep$
 ^CRAN-SUBMISSION$
+^inst/CITATION$

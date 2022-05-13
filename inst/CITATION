@@ -1,0 +1,16 @@
+citHeader("To cite mpathsenser in publications use:")
+
+citEntry(entry = "Article",
+  title = paste("m-Path Sense: A Novel Experience Sampling Tool",
+                       "with Integrated Passive Data Collection"),
+  author = personList(as.person("Koen Niemeijer"),
+                 as.person("Merijn Mestdagh"),
+                 as.person("Jakob E. Bardram"),
+                 as.person("Peter Kuppens")),
+  date = "in preparation",
+
+  textVersion  =
+  paste("Niemeijer, K., Mestdagh, M., Bardram, J. E., & Kuppens, P.",
+             "(in preparation). m-Path Sense: A Novel Experience Sampling",
+             "Tool with Integrated Passive Data Collection.")
+)

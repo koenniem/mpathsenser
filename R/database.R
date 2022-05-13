@@ -60,7 +60,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 #' Open an mpathsenser database
 #'
 #' @param path The path to the database. Use NULL to use the full path name in db_name.
-#' @inheritParams get_data
+#' @param db_name The name of the database.
 #'
 #' @return A connection to an mpathsenser database.
 #' @export

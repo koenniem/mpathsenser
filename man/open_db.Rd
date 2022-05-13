@@ -8,6 +8,8 @@ open_db(path = getwd(), db_name = "sense.db")
 }
 \arguments{
 \item{path}{The path to the database. Use NULL to use the full path name in db_name.}
+
+\item{db_name}{The name of the database.}
 }
 \value{
 A connection to an mpathsenser database.
