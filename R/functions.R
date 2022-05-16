@@ -552,7 +552,7 @@ coverage <- function(db,
     }
 
     out <- ggplot2::ggplot(data = data,
-                           mapping = ggplot2::aes(x = Hour, y = measure, fill = coverage)) +
+                           mapping = ggplot2::aes(x = hour, y = measure, fill = coverage)) +
       ggplot2::geom_tile() +
       ggplot2::geom_text(mapping = ggplot2::aes(label = coverage),
                          colour = "white") +
