@@ -10,9 +10,12 @@ close_db(db)
 \item{db}{A database connection to an m-Path Sense database.}
 }
 \value{
-\code{cose_db} returns invisibly regardless of whether the database is active, valid,
+\code{close_db} returns invisibly regardless of whether the database is active, valid,
 or even exists.
 }
 \description{
 This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
+}
+\seealso{
+\code{\link[mpathsenser]{open_db}} for opening an mpathsenser database.
 }

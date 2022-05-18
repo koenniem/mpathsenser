@@ -54,9 +54,9 @@ unit_test <- function(sensor, ...) {
   # Make sure columns are in the same order
   true <- true[, colnames(res)]
 
-  testthat::expect_identical(res, res_which)
-  testthat::expect_identical(res, true)
-  testthat::expect_identical(res_which, true)
+  testthat::expect_equal(res, res_which)
+  testthat::expect_equal(res, true)
+  testthat::expect_equal(res_which, true)
 }
 
 test_that("save2db", {
@@ -87,8 +87,8 @@ test_that("save2db", {
     z = 9.123456789
   )), NA)
   db_size3 <- file.size(system.file("testdata", "foo.db", package = "mpathsenser"))
-  expect_identical(db_size2, db_size3)
-  expect_identical(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1000L)
+  expect_equal(db_size2, db_size3)
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1000L)
 
   # Cleanup
   DBI::dbDisconnect(db)
@@ -100,7 +100,7 @@ test_that("safe_data_frame", {
   dat <- data.frame(a = 1, b = NA)
   res <- safe_data_frame(a = dat$a, b = dat$b, c = dat$c)
   true <- data.frame(a = 1, b = NA, c = NA)
-  expect_identical(res, true)
+  expect_equal(res, true)
 })
 
 # safe_tibble ===========
@@ -110,8 +110,8 @@ test_that("safe_tibble", {
   res <- safe_tibble(a = dat$a, b = dat$b, c = dat$c, d = dat$d)
   res2 <- safe_tibble(a = dat$a, b = dat$b, c = dat$c, d = dat$d)
   true <- tibble::tibble(a = 1, b = NA, c = NA, d = NA)
-  expect_identical(res, true)
-  expect_identical(res2, true)
+  expect_equal(res, true)
+  expect_equal(res2, true)
 })
 
 # Accelerometer ===========
@@ -149,9 +149,9 @@ test_that("accelerometer", {
     z = c(9.123456789, NA)
   )
 
-  expect_identical(res, res_which)
-  expect_identical(res, true)
-  expect_identical(res_which, true)
+  expect_equal(res, res_which)
+  expect_equal(res, true)
+  expect_equal(res_which, true)
 })
 
 # Gyroscope ===========
@@ -189,9 +189,9 @@ test_that("gyroscope", {
     z = c(9.123456789, NA)
   )
 
-  expect_identical(res, res_which)
-  expect_identical(res, true)
-  expect_identical(res_which, true)
+  expect_equal(res, res_which)
+  expect_equal(res, true)
+  expect_equal(res_which, true)
 })
 
 # Periodic accelerometer ===========
@@ -268,7 +268,7 @@ test_that("periodic_accelerometer", {
     y = c(rep(-0.1234, 4), NA, NA),
     z = c(rep(0.123456, 4), NA, NA)
   )
-  expect_identical(res, true)
+  expect_equal(res, true)
 })
 
 # Periodic gyroscope ===========
@@ -345,7 +345,7 @@ test_that("periodic_gyroscope", {
     y = c(rep(-0.1234, 4), NA, NA),
     z = c(rep(0.123456, 4), NA, NA)
   )
-  expect_identical(res, true)
+  expect_equal(res, true)
 })
 
 # Activity ===========
@@ -402,9 +402,9 @@ test_that("installed_apps", {
     app = c("a", "b", "c", NA)
   )
 
-  expect_identical(res, res_which)
-  expect_identical(res, true)
-  expect_identical(res_which, true)
+  expect_equal(res, res_which)
+  expect_equal(res, true)
+  expect_equal(res_which, true)
 })
 
 # App usage ===========
@@ -461,9 +461,9 @@ test_that("app_usage", {
     app = c(rep(c("a", "b", "c"), 2), "")
   )
 
-  expect_identical(res, res_which)
-  expect_identical(res, true)
-  expect_identical(res_which, true)
+  expect_equal(res, res_which)
+  expect_equal(res, true)
+  expect_equal(res_which, true)
 })
 
 # Battery ===========
@@ -547,9 +547,9 @@ test_that("bluetooth", {
     tx_power_level = c(50, 50, NA, NA)
   )
 
-  expect_identical(res, res_which)
-  expect_identical(res, true)
-  expect_identical(res_which, true)
+  expect_equal(res, res_which)
+  expect_equal(res, true)
+  expect_equal(res_which, true)
 })
 
 # Calendar ===========
@@ -627,9 +627,9 @@ test_that("calendar", {
     attendees = c("a, b, NA", NA, NA, NA)
   )
 
-  expect_identical(res, res_which)
-  expect_identical(res, true)
-  expect_identical(res_which, true)
+  expect_equal(res, res_which)
+  expect_equal(res, true)
+  expect_equal(res_which, true)
 })
 
 # Connectivity ===========
@@ -842,9 +842,9 @@ test_that("text_message", {
     state = c("sent", "received", NA)
   )
 
-  expect_identical(res, res_which)
-  expect_identical(res, true)
-  expect_identical(res_which, true)
+  expect_equal(res, res_which)
+  expect_equal(res, true)
+  expect_equal(res_which, true)
 })
 
 # Weather ===========

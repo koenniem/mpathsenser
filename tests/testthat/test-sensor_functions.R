@@ -5,7 +5,7 @@ test_that("get_data", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
   res <- get_data(db, "Activity", "12345", "2021-11-14", "2021-11-14") %>%
     dplyr::collect()
-  expect_identical(
+  expect_equal(
     res,
     tibble::tibble(
       measurement_id = c("fbf85cd7-6d37-53a8-5c44-ad8fe13ef7ac",
@@ -22,7 +22,7 @@ test_that("get_data", {
   # Only a start date
   res <- get_data(db, "Device", "12345", "2021-11-14") %>%
     dplyr::collect()
-  expect_identical(
+  expect_equal(
     res,
     tibble::tibble(
       measurement_id = c("ac1230a8-ed5f-4ded-7fca-7693a5ab4124",
@@ -43,7 +43,7 @@ test_that("get_data", {
   # Only an end date
   res <- get_data(db, "Device", "12345", end_date = "2021-11-13") %>%
     dplyr::collect()
-  expect_identical(
+  expect_equal(
     res,
     tibble::tibble(
       measurement_id = "bce3c272-3e06-4c84-f533-5bbbeaaac049",
@@ -67,16 +67,16 @@ test_that("get_data", {
 ## first_date ===============
 test_that("first_date", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
-  expect_identical(first_date(db, "Device"), "2021-11-13")
-  expect_identical(first_date(db, "Device", "12345"), "2021-11-13")
+  expect_equal(first_date(db, "Device"), "2021-11-13")
+  expect_equal(first_date(db, "Device", "12345"), "2021-11-13")
   DBI::dbDisconnect(db)
 })
 
 ## last_date ===============
 test_that("last_date", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
-  expect_identical(last_date(db, "Device"), "2021-11-14")
-  expect_identical(last_date(db, "Device", "12345"), "2021-11-14")
+  expect_equal(last_date(db, "Device"), "2021-11-14")
+  expect_equal(last_date(db, "Device", "12345"), "2021-11-14")
   DBI::dbDisconnect(db)
 })
 
@@ -196,7 +196,7 @@ test_that("link2", {
       )
     )
   )
-  expect_identical(res, true)
+  expect_equal(res, true)
 
   # Check reverse
   res <- link2(db, "Activity", "Connectivity", offset = 1800, reverse = TRUE)
@@ -222,7 +222,7 @@ test_that("link2", {
       )
     )
   )
-  expect_identical(res, true)
+  expect_equal(res, true)
 
   # Check with external data
   res <- link2(db, "Activity", external = dat1, offset = 1800)
@@ -244,7 +244,7 @@ test_that("link2", {
                      type = character(0))
     )
   )
-  expect_identical(res, true)
+  expect_equal(res, true)
 
   expect_error(link2(db, "Activity", 1:10, -1800), "sensor_two must be a character vector")
   expect_error(link2(db, "Activity", offset = -1800, external = "Bluetooth"),
@@ -306,6 +306,6 @@ test_that("get_installed_apps", {
                                  "Photos",
                                  "WhatsApp",
                                  "m-Path Sense"))
-  expect_identical(res, true)
+  expect_equal(res, true)
   DBI::dbDisconnect(db)
 })

@@ -49,7 +49,7 @@ test_that("copy_db", {
 
   new_db <- create_db(path, "copy.db")
   copy_db(db, new_db, sensor = "All")
-  expect_identical(get_nrows(db), get_nrows(new_db))
+  expect_equal(get_nrows(db), get_nrows(new_db))
   close_db(new_db)
   file.remove(file.path(path, "copy.db"))
 
@@ -57,7 +57,7 @@ test_that("copy_db", {
   new_db <- open_db(path, "copy.db")
   true <- c(6L, rep(0L, 24))
   names(true) <- sensors
-  expect_identical(get_nrows(new_db), true)
+  expect_equal(get_nrows(new_db), true)
 
   expect_error(copy_db(db, sensor = "Accelerometer", path = path, db_name = "copy.db"),
                paste0("A file in ", path, " with the name copy.db already exists. Please choose ",
@@ -145,8 +145,8 @@ test_that("clear_sensors_db", {
   res <- clear_sensors_db(db)
   expect_type(res, "list")
   expect_length(res, length(sensors))
-  expect_identical(Reduce(`+`, res), sum(original))
-  expect_identical(sum(get_nrows(db)), 0L)
+  expect_equal(Reduce(`+`, res), sum(original))
+  expect_equal(sum(get_nrows(db)), 0L)
   close_db(db)
   file.remove(system.file("testdata", "foo.db", package = "mpathsenser"))
 })
@@ -159,7 +159,7 @@ test_that("get_processed_files", {
     participant_id = c("empty.json", "12345"),
     study_id = c("-1", "test-study")
   )
-  expect_identical(res, true)
+  expect_equal(res, true)
   DBI::dbDisconnect(db)
 })
 
@@ -171,7 +171,7 @@ test_that("get_participants", {
     participant_id = c("empty.json", "12345"),
     study_id = c("-1", "test-study")
   )
-  expect_identical(res, true)
+  expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_SQLiteConnection")
   DBI::dbDisconnect(db)
 })
@@ -184,7 +184,7 @@ test_that("get_study", {
     study_id = c("-1", "test-study"),
     data_format = c(NA, "carp")
   )
-  expect_identical(res, true)
+  expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_SQLiteConnection")
   DBI::dbDisconnect(db)
 })

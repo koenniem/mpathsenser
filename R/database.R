@@ -57,10 +57,15 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   return(db)
 }
 
-#' Open an mpathsenser database
+#' Open an mpathsenser database.
 #'
 #' @param path The path to the database. Use NULL to use the full path name in db_name.
 #' @param db_name The name of the database.
+#'
+#' @seealso \code{\link[mpathsenser]{close_db}} for closing a database;
+#' \code{\link[mpathsenser]{copy_db}} for copying (part of) a database;
+#' \code{\link[mpathsenser]{index_db}} for indexing a database;
+#' \code{\link[mpathsenser]{get_data}} for extracting data from a database.
 #'
 #' @return A connection to an mpathsenser database.
 #' @export
@@ -89,7 +94,9 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 #'
 #' @inheritParams get_data
 #'
-#' @return \code{cose_db} returns invisibly regardless of whether the database is active, valid,
+#' @seealso \code{\link[mpathsenser]{open_db}} for opening an mpathsenser database.
+#'
+#' @return \code{close_db} returns invisibly regardless of whether the database is active, valid,
 #' or even exists.
 #' @export
 close_db <- function(db) {

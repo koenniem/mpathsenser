@@ -2,7 +2,7 @@
 % Please edit documentation in R/database.R
 \name{open_db}
 \alias{open_db}
-\title{Open an mpathsenser database}
+\title{Open an mpathsenser database.}
 \usage{
 open_db(path = getwd(), db_name = "sense.db")
 }
@@ -15,5 +15,11 @@ open_db(path = getwd(), db_name = "sense.db")
 A connection to an mpathsenser database.
 }
 \description{
-Open an mpathsenser database
+Open an mpathsenser database.
+}
+\seealso{
+\code{\link[mpathsenser]{close_db}} for closing a database;
+\code{\link[mpathsenser]{copy_db}} for copying (part of) a database;
+\code{\link[mpathsenser]{index_db}} for indexing a database;
+\code{\link[mpathsenser]{get_data}} for extracting data from a database.
 }

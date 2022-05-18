@@ -37,7 +37,7 @@ db_test <- function(sensor, true_data) {
   dplyr::collect()
  true <- true_data
 
- testthat::expect_identical(data, true)
+ testthat::expect_equal(data, true)
 
  close_db(db)
 }
@@ -315,7 +315,7 @@ test_that("Noise", {
   participant_id = "12345",
   date = "2021-11-14",
   time = c("14:00:00", "14:01:00"),
-  mean_decibel = c(42.963552916272420, NA),
+  mean_decibel = c(42.96355291627242, NA),
   std_decibel = c(4.971839655603458, NA),
   min_decibel = c(34.289534207582256, NA),
   max_decibel = c(71.893975307503923, NA)

@@ -1,6 +1,6 @@
 Package: mpathsenser
 Title: Process and Analyse Data from m-Path Sense
-Version: 1.0.0
+Version: 1.0.1
 Authors@R: 
     person(given = "Koen",
            family = "Niemeijer",
