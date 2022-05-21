@@ -64,9 +64,23 @@ fix_jsons <- function(path = getwd(), files = NULL, recursive = TRUE, parallel =
   # Find all JSON files that are _not_ zipped Thus, make sure you didn't unzip them yet,
   # otherwise this may take a long time
   if (is.null(files)) {
-    jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE, recursive = recursive)
+    jsonfiles <- dir(path = path,
+                     pattern = "*.json$",
+                     all.files = TRUE,
+                     recursive = recursive,
+                     full.names = TRUE)
   } else {
-    jsonfiles <- files
+    if (!missing(path)) {
+      tryCatch({
+        normalizePath(file.path(path, files), mustWork = TRUE)
+      }, error = function(e) stop(e))
+      jsonfiles <- normalizePath(file.path(files))
+    } else {
+      tryCatch({
+        normalizePath(files, mustWork = TRUE)
+      }, error = function(e) stop(e))
+      jsonfiles <- normalizePath(files)
+    }
   }
 
   if (parallel) {
@@ -75,11 +89,11 @@ fix_jsons <- function(path = getwd(), files = NULL, recursive = TRUE, parallel =
 
   if (length(jsonfiles > 0)) {
     # Test if files are still corrupted
-    jsonfiles <- suppressWarnings(test_jsons(path, jsonfiles))
+    jsonfiles <- suppressWarnings(test_jsons(files = jsonfiles))
     n_fixed <- 0L
 
     if (jsonfiles[1] != "") {
-      n_fixed <- fix_jsons_impl(path, jsonfiles)
+      n_fixed <- fix_jsons_impl(jsonfiles)
     }
   } else {
     return(message("No JSON files found."))
@@ -92,7 +106,7 @@ fix_jsons <- function(path = getwd(), files = NULL, recursive = TRUE, parallel =
   return(message("Fixed ", sum(n_fixed), " files"))
 }
 
-fix_jsons_impl <- function(path, jsonfiles) {
+fix_jsons_impl <- function(jsonfiles) {
   if (requireNamespace("progressr", quietly = TRUE)) {
     p <- progressr::progressor(steps = length(jsonfiles))
   }
@@ -103,15 +117,14 @@ fix_jsons_impl <- function(path, jsonfiles) {
       p()
     }
 
-    path <- suppressWarnings(normalizePath(paste0(path, "/", .x), winslash = "/"))
-    lines <- suppressWarnings(vroom::vroom_lines(path, altrep = FALSE, skip_empty_rows = TRUE))
+    lines <- suppressWarnings(vroom::vroom_lines(.x, altrep = FALSE, skip_empty_rows = TRUE))
     res <- 0L
 
     # Are there any illegal characters in the file? If so, these prevent readLines from reading
     # further and also need to be removed before parsing
     illegal_ascii <- any(grepl("[^ -~]", lines))
     if (illegal_ascii) {
-      lines <- fix_illegal_ascii(path, lines)
+      lines <- fix_illegal_ascii(.x, lines)
       res <- 1L
     }
 
@@ -123,12 +136,12 @@ fix_jsons_impl <- function(path, jsonfiles) {
       eof <- lines
     }
 
-    res <- res + fix_eof(path, eof, lines)
+    res <- res + fix_eof(.x, eof, lines)
     if (res != 0) return(1L) else return(0L)
   })
 }
 
-fix_illegal_ascii <- function(path, lines) {
+fix_illegal_ascii <- function(file, lines) {
   # Read in the file using vroom, since this doesn't stop early when encountering illegal ASCII's
   # lines <- suppressWarnings(vroom::vroom_lines(path, altrep = FALSE, skip_empty_rows = TRUE))
 
@@ -140,7 +153,7 @@ fix_illegal_ascii <- function(path, lines) {
   lines <- lines[-corrupt]
 
   # Write it to file
-  vroom::vroom_write_lines(lines, path, num_threads = 1)
+  vroom::vroom_write_lines(lines, file, num_threads = 1)
   lines
 }
 
@@ -218,15 +231,29 @@ test_jsons <- function(path = getwd(),
                        recursive = TRUE,
                        parallel = FALSE) {
 
-  if (is.null(path) || !is.character(path))
+  if (!is.null(path) && !is.character(path))
     stop("path must be a character string of the path name")
   if (!is.null(files) && !is.character(files))
     stop("files must be NULL or a character vector of file names")
 
   if (is.null(files)) {
-    jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE, recursive = recursive)
+    jsonfiles <- dir(path = path,
+                     pattern = "*.json$",
+                     all.files = TRUE,
+                     recursive = recursive,
+                     full.names = TRUE)
   } else {
-    jsonfiles <- files
+    if (!missing(path)) {
+      tryCatch({
+        normalizePath(file.path(path, files), mustWork = TRUE)
+      }, error = function(e) stop(e))
+      jsonfiles <- normalizePath(file.path(files))
+    } else {
+      tryCatch({
+        normalizePath(files, mustWork = TRUE)
+      }, error = function(e) stop(e))
+      jsonfiles <- normalizePath(files)
+    }
   }
 
   if (!is.null(db)) {
@@ -247,9 +274,7 @@ test_jsons <- function(path = getwd(),
     if (requireNamespace("progressr", quietly = TRUE)) {
       p()
     }
-    str <- readLines(suppressWarnings(normalizePath(paste0(path, "/", .x))),
-                     warn = FALSE,
-                     skipNul = TRUE)
+    str <- readLines(.x, warn = FALSE, skipNul = TRUE)
     if (length(str) == 0) {
       # empty file
       return(TRUE)

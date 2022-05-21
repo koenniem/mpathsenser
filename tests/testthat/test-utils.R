@@ -6,34 +6,61 @@ test_that("test_jsons", {
 
 test_that("fix_jsons", {
   path <- system.file("testdata", "broken/", package = "mpathsenser")
-  expect_message(fix_jsons(path, recursive = FALSE), "Fixed 9 files")
+  files <- list.files(path, pattern = ".json")
   invisible(do.call(
     file.copy,
     list(
-      from = file.path(paste0(path, "/backup/"), list.files(paste0(path, "/backup/"))),
-      to = path,
+      from = file.path(path, files),
+      to = tempdir(),
       overwrite = TRUE
     )
   ))
+
+  expect_message(fix_jsons(files = file.path(tempdir(), files),
+                           recursive = FALSE), "Fixed 9 files")
+
+  file.remove(file.path(tempdir(), files))
 })
 
 test_that("ccopy", {
-  path <- system.file("testdata", package = "mpathsenser")
-  broken_path <- system.file("testdata", "broken", package = "mpathsenser")
-  utils::zip(paste0(path, "/test.zip"), system.file("testdata", "test.json",
-                                                    package = "mpathsenser"))
-  expect_message(ccopy(path, path), "No files left to copy")
-  expect_message(ccopy(path, broken_path), "Copying 1 files\\.")
-  file.remove(paste0(path, "/broken/test.zip"))
-  file.remove(system.file("testdata", "test.zip", package = "mpathsenser"))
+  # Create directory for zip in tempdir
+  zip_dir <- paste0(tempdir(), "/mpathsenser_zip")
+  dir.create(paste0(tempdir(), "/mpathsenser_zip"))
+
+  # Define the path for the zip
+  zipfile <- tempfile("mpathsenser_zip\\test", fileext = ".zip")
+
+  # Zip in the new temp directory
+  utils::zip(zipfile, system.file("testdata", "test.json", package = "mpathsenser"))
+
+  expect_message(ccopy(zip_dir, zip_dir), "No files left to copy")
+  expect_message(ccopy(zip_dir, tempdir()), "Copying 1 files\\.")
+
+  # Get the correct file name in the temp directory and remove
+  zipfile <- list.files(path = zip_dir)[1]
+  unlink(zip_dir, recursive = TRUE)
+  file.remove(file.path(tempdir(), zipfile))
 })
 
 test_that("unzip_data", {
-  path <- system.file("testdata", package = "mpathsenser")
-  utils::zip(paste0(path, "/test.zip"), system.file("testdata", "test.json",
-                                                    package = "mpathsenser"))
-  expect_message(unzip_data(path, recursive = FALSE, overwrite = TRUE), "Unzipped 1 files.")
-  expect_message(unzip_data(path, recursive = TRUE, overwrite = FALSE), "No files found to unzip.")
+  # Create directory for zip in tempdir
+  zip_dir <- paste0(tempdir(), "/mpathsenser_zip")
+  dir.create(paste0(tempdir(), "/mpathsenser_zip"))
+
+  # Define the path for the zip
+  zipfile <- tempfile("mpathsenser_zip\\test", fileext = ".zip")
+
+  # Zip in the new temp directory
+  utils::zip(zipfile, system.file("testdata", "test.json", package = "mpathsenser"))
+
+  # path <- system.file("testdata", package = "mpathsenser")
+  # utils::zip(paste0(path, "/test.zip"), system.file("testdata", "test.json",
+  #                                                   package = "mpathsenser"))
+  expect_message(unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE), "Unzipped 1 files.")
+  expect_message(unzip_data(zip_dir, recursive = TRUE, overwrite = FALSE), "No files found to unzip.")
+  expect_message(unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE), "Unzipped 1 files.")
   expect_error(unzip_data(1), "path must be a character string")
-  file.remove(system.file("testdata", "test.zip", package = "mpathsenser"))
+
+  # Get the correct file name in the temp directory and remove
+  unlink(zip_dir, recursive = TRUE)
 })

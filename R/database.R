@@ -23,10 +23,12 @@ sensors <- c("Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "
 #' @export
 create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   if (!is.character(db_name)) stop("Argument db_name must be a filename")
-  if (!is.character(path)) stop("Argument path must be a character string")
+  if (!(is.null(path) | is.character(path))) stop("Argument path must be a character string")
 
   # Merge path and file name
-  db_name <- suppressWarnings(normalizePath(paste0(path, "/", db_name)))
+  if (!is.null(path)) {
+    db_name <- suppressWarnings(normalizePath(paste0(path, "/", db_name)))
+  }
 
   # If db already exists, remove it or throw an error
   if (file.exists(db_name)) {

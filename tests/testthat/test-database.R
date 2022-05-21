@@ -5,39 +5,38 @@ test_that("sensors-vec", {
 })
 
 test_that("create_db", {
-  path <- system.file("testdata", package = "mpathsenser")
+  filename <- tempfile("create", fileext = ".db")
 
-  db <- create_db(path = path, "create.db")
+  db <- create_db(path = NULL, filename)
   DBI::dbDisconnect(db)
-  expect_true(file.exists(system.file("testdata", "create.db", package = "mpathsenser")))
+  expect_true(file.exists(filename))
 
   # Test overwrite argument
   expect_error({
-    db <- create_db(path = path, "create.db", overwrite = TRUE)
+    db <- create_db(path = NULL, filename, overwrite = TRUE)
     DBI::dbDisconnect(db)
   }, NA)
   expect_error({
-    db <- create_db(path = path, "create.db", overwrite = FALSE)
+    db <- create_db(path = NULL, filename, overwrite = FALSE)
     DBI::dbDisconnect(db)
   }, "Database .+?(?=\\.db)\\.db already exists\\. Use overwrite = TRUE to overwrite\\.",
   perl = TRUE)
 
-  file.remove(system.file("testdata", "create.db", package = "mpathsenser"))
+  file.remove(filename)
 })
 
 test_that("open_db", {
-  expect_error(open_db(".", "foo.db"), "There is no such file")
-
-  path <- system.file("testdata", package = "mpathsenser")
-  fake_db <- paste0(path, "/foo.db")
+  fake_db <- tempfile("foo", fileext = ".db")
+  expect_error(open_db(NULL, fake_db), "There is no such file")
 
   # Create a new (non-mpathsenser db)
   db <- DBI::dbConnect(RSQLite::SQLite(), fake_db)
   DBI::dbExecute(db, "CREATE TABLE foo(bar INTEGER, PRIMARY KEY(bar));")
   DBI::dbDisconnect(db)
   expect_error(open_db(NULL, fake_db), "Sorry, this does not appear to be a mpathsenser database.")
-  file.remove(system.file("testdata", "foo.db", package = "mpathsenser"))
+  file.remove(fake_db)
 
+  path <- system.file("testdata", package = "mpathsenser")
   db <- open_db(path, "test.db")
   expect_true(DBI::dbIsValid(db))
   DBI::dbDisconnect(db)
@@ -47,26 +46,28 @@ test_that("copy_db", {
   path <- system.file("testdata", package = "mpathsenser")
   db <- open_db(path, "test.db")
 
-  new_db <- create_db(path, "copy.db")
+  filename <- tempfile("copy", fileext = ".db")
+  new_db <- create_db(NULL, filename)
   copy_db(db, new_db, sensor = "All")
   expect_equal(get_nrows(db), get_nrows(new_db))
   close_db(new_db)
-  file.remove(file.path(path, "copy.db"))
+  file.remove(filename)
 
-  copy_db(db, sensor = "Accelerometer", path = path, db_name = "copy.db")
-  new_db <- open_db(path, "copy.db")
+  # Create new db and copy to it
+  copy_db(db, sensor = "Accelerometer", path = tempdir(), db_name = "copy.db")
+  new_db <- open_db(tempdir(), "copy.db")
   true <- c(6L, rep(0L, 24))
   names(true) <- sensors
   expect_equal(get_nrows(new_db), true)
 
-  expect_error(copy_db(db, sensor = "Accelerometer", path = path, db_name = "copy.db"),
-               paste0("A file in ", path, " with the name copy.db already exists. Please choose ",
-                      "a different name or path or remove the file."))
+  expect_error(copy_db(db, sensor = "Accelerometer", path = tempdir(), db_name = "copy.db"),
+               paste0("A file in .+ with the name copy\\.db already exists\\. Please choose ",
+                      "a different name or path or remove the file\\."))
   close_db(new_db)
-  file.remove(file.path(path, "copy.db"))
+  file.remove(file.path(tempdir(), "copy.db"))
 
   DBI::dbDisconnect(db)
-  expect_error(copy_db(db, sensor = "Accelerometer", path = path, db_name = "copy.db"),
+  expect_error(copy_db(db, sensor = "Accelerometer", path = tempdir(), db_name = "copy.db"),
                "Database connection is not valid")
 })
 
@@ -82,17 +83,23 @@ test_that("close_db", {
 })
 
 test_that("index_db", {
-  db <- create_db(system.file("testdata", package = "mpathsenser"), "foo.db")
+  # Create db
+  filename <- tempfile("foo", fileext = ".db")
+  db <- create_db(NULL, filename)
+
   expect_error(index_db(db), NA)
   expect_error(index_db(db), "index idx_accelerometer already exists")
 
   # Cleanup
   DBI::dbDisconnect(db)
-  file.remove(system.file("testdata", "foo.db", package = "mpathsenser"))
+  file.remove(filename)
 })
 
 test_that("add_study", {
-  db <- create_db(system.file("testdata", package = "mpathsenser"), "foo.db")
+  # Create db
+  filename <- tempfile("foo", fileext = ".db")
+  db <- create_db(NULL, filename)
+
   data <- data.frame(study_id = "12345", data_format = "mpathsenser")
   expect_equal(add_study(db, data), 1)
 
@@ -103,11 +110,14 @@ test_that("add_study", {
 
   # Cleanup
   DBI::dbDisconnect(db)
-  file.remove(system.file("testdata", "foo.db", package = "mpathsenser"))
+  file.remove(filename)
 })
 
 test_that("add_participant", {
-  db <- create_db(system.file("testdata", package = "mpathsenser"), "foo.db")
+  # Create db
+  filename <- tempfile("foo", fileext = ".db")
+  db <- create_db(NULL, filename)
+
   data <- data.frame(participant_id = "12345", study_id = "12345")
   DBI::dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
   expect_equal(add_participant(db, data), 1)
@@ -118,11 +128,14 @@ test_that("add_participant", {
 
   # Cleanup
   DBI::dbDisconnect(db)
-  file.remove(system.file("testdata", "foo.db", package = "mpathsenser"))
+  file.remove(filename)
 })
 
 test_that("add_processed_file", {
-  db <- create_db(system.file("testdata", package = "mpathsenser"), "foo.db")
+  # Create db
+  filename <- tempfile("foo", fileext = ".db")
+  db <- create_db(NULL, filename)
+
   data <- data.frame(file_name = "12345.json", participant_id = "12345", study_id = "12345")
   DBI::dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
   DBI::dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
@@ -134,13 +147,18 @@ test_that("add_processed_file", {
 
   # Cleanup
   DBI::dbDisconnect(db)
-  file.remove(system.file("testdata", "foo.db", package = "mpathsenser"))
+  file.remove(filename)
 })
 
 test_that("clear_sensors_db", {
   path <- system.file("testdata", package = "mpathsenser")
-  db <- import(path, dbname = "foo.db", recursive = FALSE)
-  db <- open_db(path, "foo.db")
+
+  # Create db
+  filename <- tempfile("foo", fileext = ".db")
+  db <- create_db(NULL, filename)
+
+  db <- import(path, db = db, recursive = FALSE)
+  db <- open_db(NULL, filename)
   original <- get_nrows(db)
   res <- clear_sensors_db(db)
   expect_type(res, "list")
@@ -148,7 +166,7 @@ test_that("clear_sensors_db", {
   expect_equal(Reduce(`+`, res), sum(original))
   expect_equal(sum(get_nrows(db)), 0L)
   close_db(db)
-  file.remove(system.file("testdata", "foo.db", package = "mpathsenser"))
+  file.remove(filename)
 })
 
 test_that("get_processed_files", {

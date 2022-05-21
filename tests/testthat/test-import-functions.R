@@ -60,10 +60,13 @@ unit_test <- function(sensor, ...) {
 }
 
 test_that("save2db", {
-  db <- create_db(system.file("testdata", package = "mpathsenser"), "foo.db")
+  # Create db
+  filename <- tempfile("foo", fileext = ".db")
+  db <- create_db(NULL, filename)
+
   DBI::dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
   DBI::dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
-  db_size <- file.size(system.file("testdata", "foo.db", package = "mpathsenser"))
+  db_size <- file.size(filename)
   expect_error(save2db(db, "Accelerometer", data.frame(
     measurement_id = paste0("12345_", 1:1000),
     participant_id = "12345",
@@ -73,7 +76,7 @@ test_that("save2db", {
     y = 0.123456789,
     z = 9.123456789
   )), NA)
-  db_size2 <- file.size(system.file("testdata", "foo.db", package = "mpathsenser"))
+  db_size2 <- file.size(filename)
   expect_gt(db_size2, db_size)
 
   # Entry with the same ID should simply be skipped and give on error
@@ -86,13 +89,13 @@ test_that("save2db", {
     y = 0.123456789,
     z = 9.123456789
   )), NA)
-  db_size3 <- file.size(system.file("testdata", "foo.db", package = "mpathsenser"))
+  db_size3 <- file.size(filename)
   expect_equal(db_size2, db_size3)
   expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1000L)
 
   # Cleanup
   DBI::dbDisconnect(db)
-  file.remove(system.file("testdata", "foo.db", package = "mpathsenser"))
+  file.remove(filename)
 })
 
 # safe_data_frame  ===========
