@@ -12,7 +12,8 @@ test_that("fix_jsons", {
     list(
       from = file.path(path, files),
       to = tempdir(),
-      overwrite = TRUE
+      overwrite = TRUE,
+      copy.mode = FALSE
     )
   ))
 

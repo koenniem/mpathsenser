@@ -21,12 +21,14 @@ rand <- function(n, chars = TRUE, numbers = TRUE, uppercase = FALSE) {
 }
 
 gen_id <- function(uppercase = FALSE) {
- if (uppercase) {
-  paste0(rand(8, uppercase = T), "-", rand(4, uppercase = T), "-",
-         rand(4, uppercase = T), "-", rand(4, uppercase = T), "-", rand(12, uppercase = T))
- } else {
-  paste0(rand(8), "-", rand(4), "-",  rand(4), "-", rand(4), "-", rand(12))
- }
+  if (uppercase) {
+    paste0(rand(8, uppercase = TRUE), "-", rand(4, uppercase = TRUE), "-",
+           rand(4, uppercase = TRUE), "-", rand(4, uppercase = TRUE), "-",
+           rand(12, uppercase = TRUE))
+
+  } else {
+    paste0(rand(8), "-", rand(4), "-",  rand(4), "-", rand(4), "-", rand(12))
+  }
 }
 
 ### db_test ============

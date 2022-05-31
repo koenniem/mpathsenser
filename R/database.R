@@ -27,7 +27,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 
   # Merge path and file name
   if (!is.null(path)) {
-    db_name <- suppressWarnings(normalizePath(paste0(path, "/", db_name)))
+    db_name <- suppressWarnings(normalizePath(file.path(path, db_name)))
   }
 
   # If db already exists, remove it or throw an error
@@ -77,7 +77,7 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 
   # Merge path and file name
   if (!is.null(path)) {
-    db_name <- suppressWarnings(normalizePath(paste0(path, "/", db_name)))
+    db_name <- suppressWarnings(normalizePath(file.path(path, db_name)))
   }
 
   if (!file.exists(db_name))

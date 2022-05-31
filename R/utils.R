@@ -24,7 +24,9 @@ ccopy <- function(from, to = getwd(), recursive = TRUE) {
   }
   message(paste0("Copying ", length(copy), " files."))
   to_copy <- suppressWarnings(normalizePath(paste0(from, "/", copy)))
-  invisible(do.call(file.copy, list(from = to_copy, to = to, overwrite = FALSE)))
+  invisible(do.call(file.copy,
+                    list(from = to_copy, to = to, overwrite = FALSE, copy.mode = FALSE)))
+
 }
 
 #' Fix the end of JSON files

@@ -614,14 +614,14 @@ screen_duration <- function(db,
     out <- out %>%
       dplyr::mutate(hour = strftime("%H", time)) %>%
       dplyr::group_by(hour) %>%
-      dplyr::summarise(duration = mean(duration, na.rm = T) / 60) %>%
+      dplyr::summarise(duration = mean(duration, na.rm = TRUE) / 60) %>%
       dplyr::collect() %>%
       dplyr::mutate(hour = as.numeric(hour)) %>%
       tidyr::complete(hour = 0:23, fill = list(duration = 0))
   } else if (by[1] == "Day") {
     out <- out %>%
       dplyr::group_by(date) %>%
-      dplyr::summarise(duration = sum(duration, na.rm = T) / 60 / 60) %>%
+      dplyr::summarise(duration = sum(duration, na.rm = TRUE) / 60 / 60) %>%
       dplyr::collect()
   } else {
     # Default case

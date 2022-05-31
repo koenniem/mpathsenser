@@ -43,10 +43,14 @@ test_that("open_db", {
 })
 
 test_that("copy_db", {
-  path <- system.file("testdata", package = "mpathsenser")
-  db <- open_db(path, "test.db")
-
+  test_db_name <- tempfile("test", fileext = ".db")
   filename <- tempfile("copy", fileext = ".db")
+  file.copy(from = system.file("testdata", "test.db", package = "mpathsenser"),
+            to = test_db_name,
+            overwrite = TRUE,
+            copy.mode = FALSE)
+  db <- open_db(NULL, test_db_name)
+
   new_db <- create_db(NULL, filename)
   copy_db(db, new_db, sensor = "All")
   expect_equal(get_nrows(db), get_nrows(new_db))
@@ -69,6 +73,7 @@ test_that("copy_db", {
   DBI::dbDisconnect(db)
   expect_error(copy_db(db, sensor = "Accelerometer", path = tempdir(), db_name = "copy.db"),
                "Database connection is not valid")
+  file.remove(test_db_name)
 })
 
 test_that("close_db", {
@@ -165,7 +170,9 @@ test_that("clear_sensors_db", {
   expect_length(res, length(sensors))
   expect_equal(Reduce(`+`, res), sum(original))
   expect_equal(sum(get_nrows(db)), 0L)
-  close_db(db)
+
+  # Cleanup
+  DBI::dbDisconnect(db)
   file.remove(filename)
 })
 

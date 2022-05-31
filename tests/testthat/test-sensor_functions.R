@@ -257,13 +257,17 @@ test_that("link2", {
   expect_error(link2(db, "Activity", "Bluetooth", -1800), "Database connection is not valid")
 
   # Check if ignore_large works
-  db <- create_db(path, "big.db")
+  filename <- tempfile("big", fileext = ".db")
+  db <- create_db(NULL, filename)
+
+  # Populate database
   add_study(db, data.frame(study_id = "test-study", data_format = "CARP"))
   add_participant(db, data.frame(study_id = "test-study", participant_id = "12345"))
 
   sens_value <- seq.int(0, 10, length.out = 50001)
   time_value <- seq.POSIXt(as.POSIXct("2021-11-14 14:00:00.000", format = "%F %H:%M:%OS"),
-                           by = "sec", length.out = 50001)
+                           by = "sec",
+                           length.out = 50001)
   acc <- data.frame(
     measurement_id = paste0("id_", 1:50001),
     participant_id = "12345",
@@ -276,13 +280,16 @@ test_that("link2", {
 
   DBI::dbWriteTable(db, "Accelerometer", acc, overwrite = TRUE)
   DBI::dbWriteTable(db, "Gyroscope", acc, overwrite = TRUE)
+
   expect_error(
     link2(db, "Accelerometer", "Gyroscope", offset = 30),
     "the total number of rows is higher than 100000. Use ignore_large = TRUE to continue")
   expect_error(link2(db, "Accelerometer", "Gyroscope", offset = 30, ignore_large = TRUE),
                "x and y are identical")
+
+  # Cleanup
   DBI::dbDisconnect(db)
-  file.remove(file.path(path, "big.db"))
+  file.remove(filename)
 })
 
 

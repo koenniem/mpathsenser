@@ -1,7 +1,7 @@
 # How to get started
 
 ## Installing the package
-To install this package, make sure you have [Rtools](https://cran.r-project.org/bin/windows/Rtools/) (Windows, Linux) or XCode installed. For XCode, register as an [Apple Developer](https://developer.apple.com/register/agree/) (don't worry, it's free) and then run `xcode-select --install` in a terminal. Then, run the following code in R:
+To install this package, make sure you have [Rtools](https://cran.r-project.org/bin/windows/Rtools/) (Windows, Linux) or XCode installed. For XCode, register as an [Apple Developer](https://developer.apple.com/) (don't worry, it's free) and then run `xcode-select --install` in a terminal. Then, run the following code in R:
 
 ```r
 devtools::install_git("https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser")

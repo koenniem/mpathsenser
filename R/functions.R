@@ -88,12 +88,13 @@ import <- function(path = getwd(),
     }
 
     # Try to open the database
-    tryCatch({
+    try <- tryCatch({
       db <- open_db(path, dbname)
-    }, error = function(e) {
-      assign("db", create_db(path, db_name = dbname, overwrite = overwrite_db),
-             envir = parent.env(environment()))
-    })
+    }, error = function(e) e)
+
+    if (inherits(try, "error")) {
+      db <- create_db(path, db_name = dbname, overwrite = overwrite_db)
+    }
   }
 
   # If there are no duplicate files Proceed with the unsafe (but fast) check to prevent duplicate
@@ -215,7 +216,7 @@ import_impl <- function(path, files, db_name, sensors) {
   for (i in seq_along(files)) {
 
     # Try to read in the file. If the file is corrupted for some reason, skip this one
-    file <- normalizePath(paste0(path, "/", files[i]))
+    file <- normalizePath(file.path(path, files[i]))
     file <- readLines(file, warn = FALSE, skipNul = TRUE)
     file <- paste0(file, collapse = "")
     if (file == "") {
