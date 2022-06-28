@@ -34,6 +34,12 @@ test_that("ccopy", {
   # Zip in the new temp directory
   utils::zip(zipfile, system.file("testdata", "test.json", package = "mpathsenser"))
 
+  # Test input
+  expect_error(ccopy(from = 1, to = zip_dir), "from must be a character")
+  expect_error(ccopy(from = zip_dir, to = 1), "to must be a character")
+  expect_error(ccopy(from = zip_dir, to = zip_dir, recursive = "Yes"),
+               "recursive must be a logical")
+
   expect_message(ccopy(zip_dir, zip_dir), "No files left to copy")
   expect_message(ccopy(zip_dir, tempdir()), "Copying 1 files\\.")
 

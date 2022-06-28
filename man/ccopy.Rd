@@ -4,7 +4,7 @@
 \alias{ccopy}
 \title{Copy mpathsenser zip files to a new location}
 \usage{
-ccopy(from, to = getwd(), recursive = TRUE)
+ccopy(from, to, recursive = TRUE)
 }
 \arguments{
 \item{from}{A path to copy files from.}

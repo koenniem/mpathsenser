@@ -6,6 +6,7 @@
 \usage{
 unzip_data(
   path = getwd(),
+  to = NULL,
   overwrite = FALSE,
   recursive = TRUE,
   parallel = FALSE

@@ -15,15 +15,27 @@
 #' \dontrun{
 #' ccopy('K:/data/myproject/', '~/myproject')
 #' }
-ccopy <- function(from, to = getwd(), recursive = TRUE) {
+ccopy <- function(from,
+                  to,
+                  recursive = TRUE) {
+
+  if (is.null(from) || !is.character(from))
+    stop("from must be a character", call. = FALSE)
+  if (is.null(to) || !is.character(to))
+    stop("to must be a character", call. = FALSE)
+  if (is.null(from) || !is.logical(recursive))
+    stop("recursive must be a logical", call. = FALSE)
+
   from_list <- dir(path = from, pattern = "*.zip$", recursive = recursive)
   to_list <- dir(path = to, pattern = "*.zip$", recursive = recursive)
-  copy <- from_list[!(from_list %in% to_list)]
+  copy <- setdiff(from_list, to_list)
+
   if (length(copy) == 0) {
     return(message("No files left to copy"))
   }
+
   message(paste0("Copying ", length(copy), " files."))
-  to_copy <- suppressWarnings(normalizePath(paste0(from, "/", copy)))
+  to_copy <- file.path(from, copy)
   invisible(do.call(file.copy,
                     list(from = to_copy, to = to, overwrite = FALSE, copy.mode = FALSE)))
 
@@ -50,7 +62,10 @@ ccopy <- function(from, to = getwd(), recursive = TRUE) {
 #' files <- test_jsons()
 #' fix_jsons(files = files)
 #' }
-fix_jsons <- function(path = getwd(), files = NULL, recursive = TRUE, parallel = FALSE) {
+fix_jsons <- function(path = getwd(),
+                      files = NULL,
+                      recursive = TRUE,
+                      parallel = FALSE) {
 
   if (!requireNamespace("vroom", quietly = TRUE)) {
     stop(paste0("package vroom is needed for this function to work. ",
@@ -58,7 +73,7 @@ fix_jsons <- function(path = getwd(), files = NULL, recursive = TRUE, parallel =
          call. = FALSE)
   }
 
-  if (is.null(path) || !is.character(path))
+  if (!is.null(path) && !is.character(path))
     stop("path must be a character string of the path name")
   if (!is.null(files) && !is.character(files))
     stop("files must be NULL or a character vector of file names")
@@ -294,7 +309,7 @@ test_jsons <- function(path = getwd(),
     return(invisible(""))
   } else {
     warning("There were issues in some files")
-    return(jsonfiles)
+    return(normalizePath(jsonfiles))
   }
 }
 
@@ -315,13 +330,19 @@ test_jsons <- function(path = getwd(),
 #'
 #' @return A message indicating how many files were unzipped.
 #' @export
-unzip_data <- function(path = getwd(), overwrite = FALSE, recursive = TRUE, parallel = FALSE) {
+unzip_data <- function(path = getwd(),
+                       to = NULL,
+                       overwrite = FALSE,
+                       recursive = TRUE,
+                       parallel = FALSE) {
   if (is.null(path) || !is.character(path))
     stop("path must be a character string")
   if (is.null(overwrite) || !is.logical(overwrite))
     stop("overwrite must be TRUE or FALSE")
   if (is.null(recursive) || !is.logical(recursive))
     stop("recursive must be TRUE or FALSE")
+  if (is.null(to))
+    to <- path
 
   if (parallel) {
     future::plan(future::multisession)
@@ -331,7 +352,6 @@ unzip_data <- function(path = getwd(), overwrite = FALSE, recursive = TRUE, para
   if (recursive) {
     # Find all dirs
     dirs <- list.dirs(path = path, recursive = TRUE)
-    dirs <- dirs[2:length(dirs)]
 
     if (requireNamespace("progressr", quietly = TRUE)) {
       p <- progressr::progressor(steps = length(dirs))
@@ -341,11 +361,11 @@ unzip_data <- function(path = getwd(), overwrite = FALSE, recursive = TRUE, para
       if (requireNamespace("progressr", quietly = TRUE)) {
         p()
       }
-      unzip_impl(.x, overwrite)
+      unzip_impl(.x, to, overwrite)
     })
     unzipped_files <- sum(unzipped_files)
   } else {
-    unzipped_files <- unzip_impl(path, overwrite)
+    unzipped_files <- unzip_impl(path, to, overwrite)
   }
 
   if (parallel) {
@@ -359,7 +379,7 @@ unzip_data <- function(path = getwd(), overwrite = FALSE, recursive = TRUE, para
   }
 }
 
-unzip_impl <- function(path, overwrite) {
+unzip_impl <- function(path, to, overwrite) {
   # Get all json and zipfiles in the path
   jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE)
   tag_json <- sapply(strsplit(jsonfiles, "carp-data-"), function(x) x[2])
@@ -379,7 +399,7 @@ unzip_impl <- function(path, overwrite) {
         invisible(utils::unzip(zipfile = file.path(path, x),
                                overwrite = overwrite,
                                junkpaths = TRUE,
-                               exdir = path))
+                               exdir = to))
       }, error = function(e) warning(paste0("Failed to unzip", x), call. = FALSE))
     })
   }

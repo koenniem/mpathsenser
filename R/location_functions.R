@@ -24,19 +24,27 @@ decrypt_gps <- function(data, key) {
     key <- sodium::hex2bin(key)
   }
 
+  # Make some functions vectorised for neater syntax later on
   vec_hex2bin <- Vectorize(sodium::hex2bin, SIMPLIFY = FALSE)
   vec_simple_decrypt <- Vectorize(sodium::simple_decrypt, vectorize.args = "bin", SIMPLIFY = FALSE)
   vec_rawToChar <- Vectorize(rawToChar, SIMPLIFY = FALSE)
 
-  data %>%
+  # Internal decryption process
+  internal_decrypt <- function(hex_vec) {
+    hex_vec <- hex_vec %>%
+      vec_hex2bin() %>%
+      vec_simple_decrypt(key) %>%
+      vec_rawToChar() %>%
+      unlist()
+
+    hex_vec
+  }
+
+  data <- data %>%
     dplyr::collect() %>%
-    dplyr::mutate(dplyr::across(c(latitude, longitude), ~{
-      .x %>%
-        vec_hex2bin() %>%
-        vec_simple_decrypt(key) %>%
-        vec_rawToChar() %>%
-        unlist()
-    }))
+    dplyr::mutate(dplyr::across(c(latitude, longitude), internal_decrypt))
+
+  data
 }
 
 deg2rad <- function(deg) {

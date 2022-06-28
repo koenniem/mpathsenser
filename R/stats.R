@@ -1,11 +1,13 @@
 icc <- function (data, ..., group) {
   if (missing(...) | rlang::dots_n(...) == 0) stop("No variables selected to be evaluated")
   if (missing(group)) stop("group may not be missing")
+
   data <- dplyr::select(data, {{ group }}, ...)
   group <- colnames(dplyr::select(data, {{ group }}))
   cols <- colnames(dplyr::select(data, ...))
   res <- data.frame(Variable = cols, ICC = NA)
   # quiet_lmer <- quiet(purrr::possibly(lme4::lmer, NA))
+
   for (i in 1:length(cols)) {
     lmer.res <- lme4::lmer(formula = stats::as.formula(paste0("`",
                                                               cols[i], "` ~ 1 + (1 | ", group, " )")),
@@ -14,6 +16,7 @@ icc <- function (data, ..., group) {
     intraccc <- as.data.frame(lme4::VarCorr(lmer.res))$sdcor^2
     res$ICC[i] <- intraccc[1] / sum(intraccc)
   }
+
   res
 }
 

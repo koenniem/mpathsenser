@@ -168,7 +168,7 @@ copy_db <- function(from_db, to_db = NULL, sensor = "All", path = getwd(), db_na
 
     if (!file.exists(file.path(path, db_name))) {
       to_db <- create_db(path, db_name)
-      message(paste0("New database created in ", path))
+      message(paste0("New database created in ", file.path(path, db_name)))
     } else {
       stop(paste0("A file in ", path, " with the name ", db_name, " already exists. Please choose ",
                   "a different name or path or remove the file."))
