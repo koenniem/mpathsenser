@@ -64,6 +64,10 @@ building:
     - chmod -R 555 $R_LIBS
     - sudo -Eu rstudio R -e 'library(testthat); library(mpathsenser); test_check("mpathsenser", reporter = c("fail", "summary"), path = "tests")'
 
+  tags:
+    - okp
+
+
 
 # To have the coverage percentage appear as a gitlab badge follow these
 # instructions:
@@ -86,6 +90,8 @@ coverage:
         paths:
             - public
         expire_in: 30 days
+    tags:
+        - okp
 
 # To produce a code coverage report as a GitLab page see
 # https://about.gitlab.com/2016/11/03/publish-code-coverage-report-with-gitlab-pages/
@@ -105,6 +111,8 @@ integration:
         paths:
             - docs
         expire_in: 30 days
+    tags:
+        - okp
 
 integration-test:
     stage: pkgdown-move
@@ -129,6 +137,8 @@ integration-test:
         paths:
             - public
         expire_in: 30 days
+    tags:
+        - okp
 
 integration-production:
     stage: pkgdown-move
@@ -148,6 +158,8 @@ integration-production:
         paths:
             - public
         expire_in: 30 days
+    tags:
+        - okp
 
 integration-master:
     stage: pkgdown-move
@@ -167,6 +179,8 @@ integration-master:
         paths:
             - public
         expire_in: 30 days
+    tags:
+        - okp
 
 pages:
     stage: deploy
@@ -179,4 +193,6 @@ pages:
         - master
         - production
         - test-ci
+    tags:
+        - okp
 
