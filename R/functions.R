@@ -134,7 +134,6 @@ import <- function(path = getwd(),
                              .options = furrr::furrr_options(seed = TRUE))
 
     res <- purrr::transpose(res)
-    res$data <- purrr::flatten(res$data)
     res$studies <- dplyr::bind_rows(res$studies)
     res$participants <- dplyr::bind_rows(res$participants)
     res$file <- dplyr::bind_rows(res$file)
@@ -145,9 +144,10 @@ import <- function(path = getwd(),
     # altogether.
 
     # Turn data list inside out, drop NULLs and bind sensors from different files together
+    res$data <- purrr::flatten(res$data)
     data <- purrr::compact(res$data)
     res$data <- NULL  # memory efficiency
-    data <- purrr::transpose(data, .names = sort(sensors))
+    data <- purrr::transpose(data, .names = sort(mpathsenser::sensors))
     data <- lapply(data, dplyr::bind_rows)
     data <- purrr::compact(data)
     data <- lapply(data, dplyr::distinct)  # Filter out duplicate rows (for some reason)
@@ -198,168 +198,170 @@ import <- function(path = getwd(),
 }
 
 
-import_impl <- function(path, files, db_name, sensors) {
+import_impl <- function(path, filename, db_name, sensors) {
   out <- list(
     studies = data.frame(study_id = character(), data_format = character()),
     participants = data.frame(
-      study_id = character(length(files)),
-      participant_id = character(length(files))
+      study_id = character(length(filename)),
+      participant_id = character(length(filename))
     ),
     file = data.frame(
-      file_name = character(length(files)),
-      study_id = character(length(files)),
-      participant_id = character(length(files))
+      file_name = character(length(filename)),
+      study_id = character(length(filename)),
+      participant_id = character(length(filename))
     ),
-    data = vector("list", length(files))
+    data = vector("list", length(filename))
   )
 
-  for (i in seq_along(files)) {
+  # for (i in seq_along(files)) {
 
-    # Try to read in the file. If the file is corrupted for some reason, skip this one
-    file <- normalizePath(file.path(path, files[i]))
-    file <- readLines(file, warn = FALSE, skipNul = TRUE)
-    file <- paste0(file, collapse = "")
-    if (file == "") {
-      p_id <- sub(".*?([0-9]{5}).*", "\\1", files[i])
-      out$studies[i, ] <- c(study_id = "-1", data_format = NA)
-      out$participants[i, ] <- c(study_id = "-1", participant_id = p_id)
-      out$file[i, ] <- c(file_name = files[i], study_id = "-1", participant_id = p_id)
-      next
-    }
-
-    if (!jsonlite::validate(file)) {
-      warning(paste0("Invalid JSON in file ", files[i]), call. = FALSE)
-      next
-    }
-
-    possible_error <- tryCatch({
-      data <- rjson::fromJSON(file, simplify = FALSE)
-    }, error = function(e) e)
-
-    if (inherits(possible_error, "error")) {
-      warning(paste("Could not read", files[i]), call. = FALSE)
-      next
-    }
-
-    # Check if it is not an empty file Skip this file if empty, but add it to the list of
-    # processed file to register this incident and to avoid having to do it again
-    if (length(data) == 0 | identical(data, list()) | identical(data, list(list()))) {
-      p_id <- sub(".*?([0-9]{5}).*", "\\1", files[i])
-      out$studies <- rbind(out$studies, data.frame(study_id = "-1", data_format = NA))
-      out$participants[i, ] <- c(study_id = "-1", participant_id = p_id)
-      out$file[i, ] <- c(file_name = files[i], study_id = "-1", participant_id = p_id)
-      next
-    }
-
-    # Clean-up and extract the header and body
-    data <- tibble::tibble(header =
-                             lapply(data, function(x) x[1]), body = lapply(data, function(x) x[2]))
-
-    # Extract columns Define a safe_extract function that leaves no room for NULLs,
-    # since unnest cannot handle a column full of NULLs
-    safe_extract <- function(vec, var) {
-      out <- lapply(vec, function(obs) {
-        tmp <- obs[[1]][[var]]
-        if (is.null(tmp))
-          return(NULL) else return(tmp)
-      })
-      if (all(vapply(out, is.null, logical(1), USE.NAMES = FALSE)))
-        out <- rep("N/A", length(out))
-      return(out)
-    }
-    data$study_id <- safe_extract(data$header, "study_id")
-    # data$device_role_name <- safe_extract(data$header, 'device_role_name')
-    # data$trigger_id <- safe_extract(data$header, 'trigger_id')
-    data$device_role_name <- NULL
-    data$trigger_id <- NULL
-    data$participant_id <- safe_extract(data$header, "user_id")
-    data$start_time <- safe_extract(data$header, "start_time")
-    data$data_format <- lapply(data$header, function(x) x[[1]]["data_format"])
-    data$sensor <- safe_extract(data$data_format, "name")
-    data$data_format <- safe_extract(data$data_format, "namespace")
-    data$header <- NULL
-    data <- tidyr::unnest(data, c(study_id:sensor))
-
-    # Due to the hacky solution above, filter out rows where the participant_id is missing,
-    # usually in the last entry of a file
-    data <- data[!is.na(data$participant_id) & data$participant_id != "N/A", ]
-
-    # Open db
-    tmp_db <- open_db(NULL, db_name)
-
-    # Safe duplicate check before insertion Check if file is already registered as processed
-    # Now using the participant_id and study_id
-    this_file <- data.frame(
-      file_name = files[i],
-      study_id = unique(data$study_id),
-      participant_id = unique(data$participant_id)
-    )
-
-    matches <- DBI::dbGetQuery(
-      tmp_db,
-      paste0(
-        "SELECT COUNT(*) AS `n` FROM `ProcessedFiles` ",
-        "WHERE (`file_name` = '",
-        this_file$file_name,
-        "' ",
-        "AND `participant_id` = '",
-        this_file$participant_id,
-        "' ",
-        "AND `study_id` = '",
-        this_file$study_id,
-        "')"
-        ))[1, 1]
-    if (matches > 0) {
-      DBI::dbDisconnect(tmp_db)
-      next  # File was already processed
-    }
-
-    # Populate study specifics to db
-    study_id <- dplyr::distinct(data, study_id, data_format)
-
-    # Add participants
-    participant_id <- dplyr::distinct(data, participant_id, study_id)
-
-    # Make sure top-level of data$body is called body and not carp_body as in the new version
-    data <- dplyr::mutate(data, body = purrr::modify(body, purrr::set_names, nm = "body"))
-
-    # Divide et impera
-    data <- split(data, as.factor(data$sensor), drop = TRUE)
-
-    # Drop useless data
-    data[["unknown"]] <- NULL
-
-    # Set names to capitals in accordance with the table names
-    names <- strsplit(names(data), "_")
-    names <- lapply(names, function(x)
-      paste0(toupper(substring(x, 1, 1)), substring(x, 2), collapse = ""))
-    names[names == "Apps"] <- "InstalledApps"  # Except InstalledApps...
-
-    # Select sensors, if not NULL
-    if (!is.null(sensors)) {
-      data <- data[names %in% sensors]
-      names <- names[names %in% sensors]
-    }
-
-    # Call function for each sensor
-    tryCatch({
-      data <- purrr::imap(data, ~which_sensor(.x, .y))
-      names(data) <- names
-
-      out$studies <- rbind(out$studies, study_id)
-      out$participants[i, ] <- participant_id
-      out$file[i, ] <- this_file  # Save to output
-      out$data[[i]] <- data
-
-    }, error = function(e) {
-      warning(paste0("processing failed for file ", files[i]), call. = FALSE)
-    })
-
-    # Close db connection of worker
-    DBI::dbDisconnect(tmp_db)
+  # Try to read in the file. If the file is corrupted for some reason, skip this one
+  file <- normalizePath(file.path(path, filename[1]))
+  file <- readLines(file, warn = FALSE, skipNul = TRUE)
+  file <- paste0(file, collapse = "")
+  if (file == "") {
+    p_id <- sub(".*?([0-9]{5}).*", "\\1", filename[1])
+    out$studies[1, ] <- c(study_id = "-1", data_format = NA)
+    out$participants[1, ] <- c(study_id = "-1", participant_id = p_id)
+    out$file[1, ] <- c(file_name = filename[1], study_id = "-1", participant_id = p_id)
+    # next
+    return(out)
   }
 
-  out
+  if (!jsonlite::validate(file)) {
+    warning(paste0("Invalid JSON in file ", filename[1]), call. = FALSE)
+    return(out)
+  }
+
+  possible_error <- tryCatch({
+    data <- rjson::fromJSON(file, simplify = FALSE)
+  }, error = function(e) e)
+
+  if (inherits(possible_error, "error")) {
+    warning(paste("Could not read", filename[1]), call. = FALSE)
+    return(out)
+  }
+
+  # Check if it is not an empty file Skip this file if empty, but add it to the list of
+  # processed file to register this incident and to avoid having to do it again
+  if (length(data) == 0 | identical(data, list()) | identical(data, list(list()))) {
+    p_id <- sub(".*?([0-9]{5}).*", "\\1", filename[1])
+    out$studies <- rbind(out$studies, data.frame(study_id = "-1", data_format = NA))
+    out$participants[1, ] <- c(study_id = "-1", participant_id = p_id)
+    out$file[1, ] <- c(file_name = filename[1], study_id = "-1", participant_id = p_id)
+    return(out)
+  }
+
+  # Clean-up and extract the header and body
+  data <- tibble::tibble(header = lapply(data, function(x) x[1]),
+                         body = lapply(data, function(x) x[2]))
+
+  # Extract columns Define a safe_extract function that leaves no room for NULLs,
+  # since unnest cannot handle a column full of NULLs
+  safe_extract <- function(vec, var) {
+    out <- lapply(vec, function(obs) {
+      tmp <- obs[[1]][[var]]
+      if (is.null(tmp))
+        return(NULL) else return(tmp)
+    })
+    if (all(vapply(out, is.null, logical(1), USE.NAMES = FALSE)))
+      out <- rep("N/A", length(out))
+    return(out)
+  }
+  data$study_id <- safe_extract(data$header, "study_id")
+  # data$device_role_name <- safe_extract(data$header, 'device_role_name')
+  # data$trigger_id <- safe_extract(data$header, 'trigger_id')
+  data$device_role_name <- NULL
+  data$trigger_id <- NULL
+  data$participant_id <- safe_extract(data$header, "user_id")
+  data$start_time <- safe_extract(data$header, "start_time")
+  data$data_format <- lapply(data$header, function(x) x[[1]]["data_format"])
+  data$sensor <- safe_extract(data$data_format, "name")
+  data$data_format <- safe_extract(data$data_format, "namespace")
+  data$header <- NULL
+  data <- tidyr::unnest(data, c(study_id:sensor))
+
+  # Due to the hacky solution above, filter out rows where the participant_id is missing,
+  # usually in the last entry of a file
+  data <- data[!is.na(data$participant_id) & data$participant_id != "N/A", ]
+
+  # Open db
+  tmp_db <- open_db(NULL, db_name)
+
+  # Safe duplicate check before insertion Check if file is already registered as processed
+  # Now using the participant_id and study_id
+  this_file <- data.frame(
+    file_name = filename[1],
+    study_id = unique(data$study_id),
+    participant_id = unique(data$participant_id)
+  )
+
+  matches <- DBI::dbGetQuery(
+    tmp_db,
+    paste0(
+      "SELECT COUNT(*) AS `n` FROM `ProcessedFiles` ",
+      "WHERE (`file_name` = '",
+      this_file$file_name,
+      "' ",
+      "AND `participant_id` = '",
+      this_file$participant_id,
+      "' ",
+      "AND `study_id` = '",
+      this_file$study_id,
+      "')"
+    ))[1, 1]
+  if (matches > 0) {
+    DBI::dbDisconnect(tmp_db)
+    # next  # File was already processed
+    return(out)
+  }
+
+  # Populate study specifics to db
+  study_id <- dplyr::distinct(data, study_id, data_format)
+
+  # Add participants
+  participant_id <- dplyr::distinct(data, participant_id, study_id)
+
+  # Make sure top-level of data$body is called body and not carp_body as in the new version
+  data <- dplyr::mutate(data, body = purrr::modify(body, purrr::set_names, nm = "body"))
+
+  # Divide et impera
+  data <- split(data, as.factor(data$sensor), drop = TRUE)
+
+  # Drop useless data
+  data[["unknown"]] <- NULL
+
+  # Set names to capitals in accordance with the table names
+  names <- strsplit(names(data), "_")
+  names <- lapply(names, function(x)
+    paste0(toupper(substring(x, 1, 1)), substring(x, 2), collapse = ""))
+  names[names == "Apps"] <- "InstalledApps"  # Except InstalledApps...
+
+  # Select sensors, if not NULL
+  if (!is.null(sensors)) {
+    data <- data[names %in% sensors]
+    names <- names[names %in% sensors]
+  }
+
+  # Call function for each sensor
+  tryCatch({
+    data <- purrr::imap(data, ~which_sensor(.x, .y))
+    names(data) <- names
+
+    out$studies <- rbind(out$studies, study_id)
+    out$participants[1, ] <- participant_id
+    out$file[1, ] <- this_file  # Save to output
+    out$data[[1]] <- data
+
+  }, error = function(e) {
+    warning(paste0("processing failed for file ", filename[1]), call. = FALSE)
+  })
+
+  # Close db connection of worker
+  DBI::dbDisconnect(tmp_db)
+  # }
+
+  return(out)
 }
 
 #' Measurement frequencies per sensor
