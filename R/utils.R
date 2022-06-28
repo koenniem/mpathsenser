@@ -321,6 +321,7 @@ test_jsons <- function(path = getwd(),
 #' @inheritSection import Progress
 #'
 #' @param path The path to the directory containing the zip files.
+#' @param to The output path.
 #' @param overwrite Logical value whether you want to overwrite already existing zip files.
 #' @param recursive Logical value indicating whether to unzip files in subdirectories as well. These
 #' files will then be unzipped in their respective subdirectory.

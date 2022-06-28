@@ -974,12 +974,14 @@ bin_duration <- function(data, start_time, end_time, by = c("hour", "day")) {
 
   # Generate output structure with unique hours per day, keeping the grouping structure
   res <- data %>%
-    tidyr::pivot_longer(cols = c(start_time, end_time), names_to = NULL, values_to = "date") %>%
-    dplyr::mutate(date = lubridate::floor_date(date, by)) %>%
+    tidyr::pivot_longer(cols = c(.data$start_time, .data$end_time),
+                        names_to = NULL,
+                        values_to = "date") %>%
+    dplyr::mutate(date = lubridate::floor_date(.data$date, by)) %>%
     dplyr::distinct() %>%
-    tidyr::drop_na(date) %>%
-    tidyr::complete(date = seq.POSIXt(min(date, na.rm = TRUE),
-                                      max(date, na.rm = TRUE), by = by))
+    tidyr::drop_na(.data$date) %>%
+    tidyr::complete(date = seq.POSIXt(min(.data$date, na.rm = TRUE),
+                                      max(.data$date, na.rm = TRUE), by = by))
 
   # The magic:
   # 1. Join the data to the hours or days and unnest
@@ -988,27 +990,28 @@ bin_duration <- function(data, start_time, end_time, by = c("hour", "day")) {
   # 3. Group by the by variable, and calculate the duration
   res <- res %>%
     dplyr::nest_join(data, by = group_vars) %>%
-    tidyr::unnest(data) %>%
-    dplyr::mutate(floor_start = lubridate::floor_date(start_time, by)) %>%
-    dplyr::mutate(floor_end = lubridate::floor_date(end_time, by)) %>%
-    dplyr::mutate(ceiling_start = lubridate::ceiling_date(start_time, by,
+    tidyr::unnest(.data$data) %>%
+    dplyr::mutate(floor_start = lubridate::floor_date(.data$start_time, by)) %>%
+    dplyr::mutate(floor_end = lubridate::floor_date(.data$end_time, by)) %>%
+    dplyr::mutate(ceiling_start = lubridate::ceiling_date(.data$start_time, by,
                                                           change_on_boundary = TRUE)) %>%
     dplyr::mutate(date_int = as.integer(date)) %>%
-    dplyr::mutate(dplyr::across(c(start_time, end_time,floor_start, floor_end, ceiling_start),
+    dplyr::mutate(dplyr::across(c(.data$start_time, .data$end_time, .data$floor_start,
+                                  .data$floor_end, .data$ceiling_start),
                   as.integer)) %>%
     dplyr::group_by(dplyr::across(dplyr::all_of(c(group_vars, "date")))) %>%
-    dplyr::summarise(duration = bin_duration_impl(dplyr::cur_data(), date_int),
+    dplyr::summarise(duration = bin_duration_impl(dplyr::cur_data(), .data$date_int),
                      .groups = "drop_last")
 
   # Make the by column look pretty
   if (by == "hour") {
     res <- res %>%
-      dplyr::mutate(hour = lubridate::hour(date)) %>%
-      dplyr::mutate(date = lubridate::date(date)) %>%
-      dplyr::select(group_cols(), date, hour, duration)
+      dplyr::mutate(hour = lubridate::hour(.data$date)) %>%
+      dplyr::mutate(date = lubridate::date(.data$date)) %>%
+      dplyr::select(dplyr::group_cols(), .data$date, .data$hour, .data$duration)
   } else if (by == "day") {
     res <- res %>%
-      dplyr::mutate(date = lubridate::date(date))
+      dplyr::mutate(date = lubridate::date(.data$date))
   }
 
   res

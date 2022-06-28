@@ -9,6 +9,7 @@ utils::globalVariables(
     "STRFTIME",
     "app",
     "apps",
+    ".data",
     "data",
     "data_format",
     "datetime",

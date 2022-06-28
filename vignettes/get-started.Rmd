@@ -3,17 +3,22 @@ title: "Get Started"
 author: "Koen Niemeijer^[KU Leuven, koen.niemeijer@kuleuven.be]"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: rmarkdown::html_vignette
+description: >
+  How to get started with mpathsenser? This vignette takes a 
+  look at some example data and provides a practical starting
+  point on working with the package.
 vignette: >
   %\VignetteIndexEntry{Get Started}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, echo = FALSE, include = FALSE, message = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+options(tibble.print_min = 4, tibble.print_max = 4)
 ```
 
 First, make sure we load some useful libraries (and of course `mpathsenser` itself).
@@ -34,7 +39,7 @@ The data for this vignette is contained in the `extdata` folder. However, on som
 tempdir <- tempdir()
 
 # Get a handle to the data files
-path <- system.file("extdata", "example_data", package = "mpathsenser")
+path <- system.file("extdata", "example", package = "mpathsenser")
 
 # Get a list of all the files that are to be copied
 copy_list <- list.files(path, "carp-data", full.names = TRUE)

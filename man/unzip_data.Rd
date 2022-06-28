@@ -15,6 +15,8 @@ unzip_data(
 \arguments{
 \item{path}{The path to the directory containing the zip files.}
 
+\item{to}{The output path.}
+
 \item{overwrite}{Logical value whether you want to overwrite already existing zip files.}
 
 \item{recursive}{Logical value indicating whether to unzip files in subdirectories as well. These

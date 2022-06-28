@@ -27,19 +27,20 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.0
 Imports:
-    DBI, 
-    dbplyr, 
-    dplyr, 
-    furrr, 
-    future, 
-    jsonlite, 
-    lubridate, 
-    magrittr, 
-    purrr, 
-    rjson, 
-    RSQLite, 
-    stats, 
-    tibble, 
+    DBI,
+    dbplyr,
+    dplyr,
+    furrr,
+    future,
+    jsonlite,
+    lubridate,
+    magrittr,
+    purrr,
+    rjson,
+    rlang,
+    RSQLite,
+    stats,
+    tibble,
     tidyr
 Suggests: 
     curl,
@@ -50,7 +51,6 @@ Suggests:
     lme4,
     lmerTest,
     progressr,
-    rlang,
     rmarkdown,
     rvest,
     sodium,
@@ -58,4 +58,5 @@ Suggests:
     vroom
 Config/testthat/edition: 3
 Config/Needs/website: tidyverse/tidytemplate
-VignetteBuilder: knitr
+VignetteBuilder: 
+    knitr
