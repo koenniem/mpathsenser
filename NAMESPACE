@@ -2,6 +2,7 @@
 
 export("%>%")
 export(app_category)
+export(bin_duration)
 export(ccopy)
 export(close_db)
 export(copy_db)

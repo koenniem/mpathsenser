@@ -184,13 +184,13 @@ link <- function(x, y, by = NULL, offset) {
   # Then, simply remove all rows in the nested tables that are not within the interval
   # specified by start_time and end_time
   if (offset < 0) {
-    res$data <- purrr::pmap(list(res$data, res$start_time, res$end_time),
+    res$data <- furrr::future_pmap(list(res$data, res$start_time, res$end_time),
                             function(data, start_time, end_time) {
                               data[data$time >= start_time & data$time <= end_time, ]
                             })
   } else {
     # Reverse logic if interval occurs after beep
-    res$data <- purrr::pmap(list(res$data, res$start_time, res$end_time),
+    res$data <- furrr::future_pmap(list(res$data, res$start_time, res$end_time),
                             function(data, start_time, end_time) {
                               data[data$time >= end_time & data$time <= start_time, ]
                             })
@@ -266,6 +266,11 @@ link2 <- function(db,
       dplyr::collect() %>%
       dplyr::mutate(time = as.POSIXct(time, format = "%F %H:%M:%OS"))
   } else {
+    if (any(format(external$time, "%Z") != "UTC")) {
+      warning(paste0("external data is not using UTC as a time zone, unlike the data in the ",
+                     "database. Consider converting the time column to UTC."), call. = FALSE)
+    }
+
     dat_two <- external
   }
 
@@ -293,7 +298,6 @@ link2 <- function(db,
   link(dat_one, dat_two, "participant_id", offset)
 
 }
-
 
 #' Get installed apps
 #'
@@ -863,4 +867,149 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
     dplyr::filter(gap >= min_gap) %>%
     dplyr::select(participant_id, from, to = datetime, gap) %>%
     dplyr::collect()
+}
+
+bin_duration_impl <- function(data, date) {
+
+  date <- as.integer(date)
+
+  start_time <- data$start_time
+  end_time <- data$end_time
+
+  floor_start <- data$floor_start
+  floor_end <- data$floor_end
+  ceiling_start <- data$ceiling_start
+
+  x <- dplyr::case_when(
+
+    # throw out cases where end_time is NA => not useful
+    is.na(start_time) | is.na(end_time) ~ 0L,
+
+    # don't count when date is not in the interval
+    !(floor_start <= date & date <= end_time) ~ 0L,
+
+    # date is now within interval
+
+    # start hour and end hour are the same
+    floor_start == floor_end ~ end_time - start_time,
+
+    # What if the date is within the start hour?
+    date == floor_start ~ ceiling_start - start_time,
+
+    # What if the data is within the end hour?
+    date == floor_end ~ end_time - floor_end,
+
+    # Date is not within start hour or end hour, so it must be a full hour
+    TRUE ~ 3600L
+  )
+
+  sum(x, na.rm = TRUE)
+}
+
+#' Bin duration in variable time series
+#'
+#' In time series with variable measurements, an often recurring task is calculating the total time
+#' spent (i.e. the duration) in fixed bins, for example per hour or day. However, this may be
+#' difficult when two subsequent measurements are in different bins or span over multiple bins.
+#'
+#' Note that non-grouped columns are discarded in the output.
+#'
+#' @param data A data frame or tibble containing the time series.
+#' @param start_time The column name of the start time of the interval, a POSIXt.
+#' @param end_time The column name of the end time of the interval, a POSIXt.
+#' @param by A binning specification, either \code{"hour"} or \code{"day"}.
+#'
+#' @return A tibble containing the group columns (if any), date, hour (if \code{by = "hour"}),
+#' and the duration in seconds.
+#' @export
+#'
+#' @examples
+#' data <- tibble::tibble(
+#'   participant_id = 1,
+#'   datetime = c("2022-06-21 15:00:00", "2022-06-21 15:55:00",
+#'                "2022-06-21 17:05:00", "2022-06-21 17:10:00"),
+#'   confidence = 100,
+#'   type = "WALKING"
+#' )
+#'
+#' # get the duration per hour, even if the interval is longer than one hour
+#' data %>%
+#'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
+#'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+#'   bin_duration(start_time = datetime,
+#'                end_time = lead,
+#'                by = "hour")
+#'
+#' data <- tibble::tibble(
+#'   participant_id = 1,
+#'   datetime = c("2022-06-21 15:00:00", "2022-06-21 15:55:00",
+#'                "2022-06-21 17:05:00", "2022-06-21 17:10:00"),
+#'   confidence = 100,
+#'   type = c("STILL", "WALKING", "STILL", "WALKING")
+#' )
+#' # binned_intervals also takes into account the prior grouping structure
+#' data %>%
+#'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
+#'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+#'   dplyr::group_by(participant_id, type) %>%
+#'   bin_duration(start_time = datetime,
+#'                end_time = lead,
+#'                by = "hour")
+bin_duration <- function(data, start_time, end_time, by = c("hour", "day")) {
+
+  # Select relevant columns
+  data <- data %>%
+    dplyr::select(dplyr::group_cols(),
+                  start_time = {{ start_time }},
+                  end_time = {{ end_time }})
+
+  group_vars <- dplyr::group_vars(data)
+  by <- match.arg(by)
+
+  # check that start_time and end_time are a datetime, or try to convert
+  if (!lubridate::is.POSIXt(data$start_time) & !lubridate::is.POSIXt(data$end_time)) {
+    data$start_time <- as.POSIXct(data$start_time)
+    data$end_time <- as.POSIXct(data$end_time)
+  }
+
+  # Generate output structure with unique hours per day, keeping the grouping structure
+  res <- data %>%
+    tidyr::pivot_longer(cols = c(start_time, end_time), names_to = NULL, values_to = "date") %>%
+    dplyr::mutate(date = lubridate::floor_date(date, by)) %>%
+    dplyr::distinct() %>%
+    tidyr::drop_na(date) %>%
+    tidyr::complete(date = seq.POSIXt(min(date, na.rm = TRUE),
+                                      max(date, na.rm = TRUE), by = by))
+
+  # The magic:
+  # 1. Join the data to the hours or days and unnest
+  # 2. Calculate some variables used later in the implementation functions (where the actual
+  # calculation happens)
+  # 3. Group by the by variable, and calculate the duration
+  res <- res %>%
+    dplyr::nest_join(data, by = group_vars) %>%
+    tidyr::unnest(data) %>%
+    dplyr::mutate(floor_start = lubridate::floor_date(start_time, by)) %>%
+    dplyr::mutate(floor_end = lubridate::floor_date(end_time, by)) %>%
+    dplyr::mutate(ceiling_start = lubridate::ceiling_date(start_time, by,
+                                                          change_on_boundary = TRUE)) %>%
+    dplyr::mutate(date_int = as.integer(date)) %>%
+    dplyr::mutate(dplyr::across(c(start_time, end_time,floor_start, floor_end, ceiling_start),
+                  as.integer)) %>%
+    dplyr::group_by(dplyr::across(dplyr::all_of(c(group_vars, "date")))) %>%
+    dplyr::summarise(duration = bin_duration_impl(dplyr::cur_data(), date_int),
+                     .groups = "drop_last")
+
+  # Make the by column look pretty
+  if (by == "hour") {
+    res <- res %>%
+      dplyr::mutate(hour = lubridate::hour(date)) %>%
+      dplyr::mutate(date = lubridate::date(date)) %>%
+      dplyr::select(group_cols(), date, hour, duration)
+  } else if (by == "day") {
+    res <- res %>%
+      dplyr::mutate(date = lubridate::date(date))
+  }
+
+  res
 }
