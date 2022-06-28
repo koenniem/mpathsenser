@@ -55,6 +55,7 @@ building:
 
   script:
     - apt-get update -qq && apt-get install -y libharfbuzz-dev libfribidi-dev
+    - apt-get install -y qpdf
     - echo "Library path for packages :" $R_LIBS
     - mkdir -p $R_LIBS
     - Rscript -e 'install.packages("remotes")'
