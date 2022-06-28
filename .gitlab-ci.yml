@@ -106,7 +106,8 @@ integration:
         - production
         - test-ci
     script:
-        - Rscript -e 'remotes::install_cran(c("pkgdown", "tidytemplate"), upgrade = "never")'
+        - Rscript -e 'remotes::install_cran(c("pkgdown"), upgrade = "never")'
+        - Rscript -e 'remotes::install_github("https://github.com/tidyverse/tidytemplate")'
         - Rscript -e 'pkgdown::build_site()'
     artifacts:
         paths:
