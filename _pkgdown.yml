@@ -1,0 +1,73 @@
+url: https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/
+
+template:
+  package: tidytemplate
+  bootstrap: 5
+  bootswatch: cerulean
+
+# home:
+
+reference:
+  - title: Import data
+    contents:
+      - ccopy
+      - fix_jsons
+      - import
+      - test_jsons
+      - unzip_data
+
+  - title: Database handling
+    contents:
+      - close_db
+      - copy_db
+      - create_db
+      - index_db
+      - open_db
+
+  - title: Data retrieval
+    contents:
+      - get_data
+      - get_nrows
+      - get_participants
+      - get_processed_files
+      - get_studies
+
+  - title: Analysis
+    contents:
+      - bin_duration
+      - coverage
+      - first_date
+      - geocode_rev
+      - haversine
+      - identify_gaps
+      - last_date
+      - link
+      - link2
+      - moving_average
+
+  - title: Sensor-specific functions
+    contents:
+      - app_category
+      - decrypt_gps
+      - device_info
+      - get_activity
+      - get_app_usage
+      - get_installed_apps
+      - n_screen_on
+      - n_screen_unlocks
+      - screen_duration
+      - step_count
+
+  - title: Miscelaneous
+    contents:
+      - freq
+      - sensors
+
+# articles:
+# - title: Get started
+#   navbar: ~
+#   contents:
+#   - get-started
+
+development:
+  mode: auto

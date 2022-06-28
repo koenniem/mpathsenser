@@ -1,14 +1,12 @@
 ---
-title: "Get Started"
-author: "Koen Niemeijer^[KU Leuven, koen.niemeijer@kuleuven.be]"
-date: "`r format(Sys.time(), '%d %B, %Y')`"
+title: "Get started"
 output: rmarkdown::html_vignette
 description: >
   How to get started with mpathsenser? This vignette takes a 
   look at some example data and provides a practical starting
   point on working with the package.
 vignette: >
-  %\VignetteIndexEntry{Get Started}
+  %\VignetteIndexEntry{Get started}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
