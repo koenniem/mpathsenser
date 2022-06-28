@@ -60,7 +60,7 @@ building:
     - Rscript -e 'install.packages("remotes")'
     - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "never", force = TRUE, INSTALL_opts = "--install-tests")'
     - Rscript -e 'devtools::document()'
-    - R -e 'devtools::check(manual = FALSE, cran = TRUE, remote = TRUE, incoming = TRUE, force_suggests = TRUE, error_on = "warning")'
+    - R -e 'devtools::check(manual = FALSE, cran = TRUE, remote = TRUE, incoming = TRUE, force_suggests = FALSE, error_on = "warning")'
     - chmod -R 555 $R_LIBS
     - sudo -Eu rstudio R -e 'library(testthat); library(mpathsenser); test_check("mpathsenser", reporter = c("fail", "summary"), path = "tests")'
 

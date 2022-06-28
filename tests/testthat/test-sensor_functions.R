@@ -1,4 +1,5 @@
 # Tests for sensor_functions.R
+Sys.setenv("TZ" = "UTC")
 
 ## get_data ===============
 test_that("get_data", {
