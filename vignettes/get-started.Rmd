@@ -1,0 +1,85 @@
+---
+title: "Get Started"
+author: "Koen Niemeijer^[KU Leuven, koen.niemeijer@kuleuven.be]"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Get Started}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+First, make sure we load some useful libraries (and of course `mpathsenser` itself).
+
+```{r setup}
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(mpathsenser)
+```
+
+# Importing files
+
+The data for this vignette is contained in the `extdata` folder. However, on some system this folder may be set to read-only and it is generally good practice not to modify package folders (to prevent changing or breaking the package). To this end, we first copy the data to a temporary directory (as defined by the environment variable \code{TMPDIR}, \code{TMP}, or \code{TEMP}), a directory that is freshly created each time at R's start up and cleaned up when the session ends. 
+
+```{r copy data, results="hide"}
+# Get the temp folder
+tempdir <- tempdir()
+
+# Get a handle to the data files
+path <- system.file("extdata", "example_data", package = "mpathsenser")
+
+# Get a list of all the files that are to be copied
+copy_list <- list.files(path, "carp-data", full.names = TRUE)
+
+# Copy all data
+file.copy(from = copy_list, 
+          to = tempdir,
+          overwrite = TRUE,
+          copy.mode = FALSE)
+```
+
+The `extdata` folder contains several `.zip` files as well as some `JSON` files. It is likely that the data for your study will look the same only much more. Note that all of these data files came directly from m-Path Sense (i.e. there was no pre-processing yet). 
+
+The data from m-Path Sense originates in the following way: The application continuously collects all kinds of data in the background (e.g. accelerometer data). Once collected, the data goes through several stages where, for example, the data is pre-processed (as already happens with data from the `light` sensor) or anonymised upon request. Finally, data is written to a `JSON` file which is really just a text file but with a specific format. When some new data comes in (whether it be from the same sensor or not), the next line is written in the `JSON` file and so on, until the file has reached a certain size (5MB by default). The `JSON` file is then zipped to reduce its size and subsequently transferred to a server.  Once transferred, the data is deleted from the participant's  phone to both save on space as well as prevent data leakage.
+
+Thus, a first step to take is to unzip these files to extract its `JSON` contents. If you feel more comfortable unzipping using your favourite zip program you can do so, just make sure all files end up in the same directory (including the non-zipped JSON files).
+
+```{r unzip}
+unzip_data(path = tempdir)
+```
+
+In m-Path Sense, data is written to JSON files as it comes in. In the JSON file format, every file starts with `[` and ends with `]`. If the app is killed, JSON files are not properly closed and hence cannot be read by JSON parsers. So, we must first test if all files are in a valid JSON format and fix those that are not.
+
+While you can also call `fix_jsons` directly, it is generally safer (and faster) to first run `test_jsons` to get an idea of how many files need fixing.
+
+```{r fix and test JSONS}
+# Note that test_jsons returns the full path names
+to_fix <- test_jsons(tempdir)
+print(to_fix)
+
+fix_jsons(path = NULL, to_fix)
+```
+
+```{r import data}
+import(tempdir, dbname = "getstarted.db", batch_size = 12)
+```
+
+```{r}
+db <- open_db(tempdir, "getstarted.db")
+coverage(db, "2784", relative = FALSE)
+```
+
+Finally, recall that once you're done working with a database to also close it. 
+
+```{r}
+close_db(db)
+```
+

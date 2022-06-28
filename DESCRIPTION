@@ -2,11 +2,18 @@ Package: mpathsenser
 Title: Process and Analyse Data from m-Path Sense
 Version: 1.0.3.9000
 Authors@R: 
-    person(given = "Koen",
+  c(person(given = "Koen",
            family = "Niemeijer",
            role = c("aut", "cre"),
            email = "koen.niemeijer@kuleuven.be",
-           comment = c(ORCID = "0000-0002-0816-534X"))
+           comment = c(ORCID = "0000-0002-0816-534X")),
+     person(given = "Kristof",
+           family = "Meers",
+           role = c("ctb"),
+           email = "kristof.meers@kuleuven.be",
+           comment = c(ORCID = "0000-0002-9610-7712")),
+     person(given = "KU Leuven",
+             role = c("cph", "fnd")))
 Description: Overcomes one of the major challenges in mobile (passive) sensing, namely 
     being able to pre-process the raw data that comes from a mobile sensing app, 
     specifically "m-Path Sense" <https://m-path.io>. The main task of 'mpathsenser' is 
@@ -39,13 +46,16 @@ Suggests:
     dbx,
     ggplot2,
     httr,
+    knitr,
     lme4,
     lmerTest,
-    progressr, 
+    progressr,
     rlang,
+    rmarkdown,
     rvest,
     sodium,
     testthat (>= 3.0.0),
     vroom
 Config/testthat/edition: 3
 Config/Needs/website: tidyverse/tidytemplate
+VignetteBuilder: knitr
