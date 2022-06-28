@@ -1,10 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-<!-- pkgdown <img src='man/figures/logo.png' align="right" /> -->
 
-<a href='https://https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/index.html'><img src='man/figures/logo.png' align="right" height="139" /></a>
-
-# How to get started
+# How to get started <a href='https://https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/index.html'><img src='man/figures/logo.png' align="right" height="139" /></a>
 
 ## Installing the package
 
