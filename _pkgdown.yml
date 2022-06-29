@@ -5,6 +5,23 @@ template:
   bootstrap: 5
   bootswatch: cerulean
 
+navbar:
+  structure:
+    left:  [intro, reference, articles, tutorials, news]
+    right: [search, gitlab]
+  components:
+    gitlab:
+      icon: fa-gitlab
+      href: https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser
+      aria-label: Gitlab
+
+repo:
+  url:
+    home: https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/
+    source: https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/blob/master/
+    issue: https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/issues
+    branch: master
+
 # home:
 
 reference:
@@ -70,4 +87,5 @@ reference:
 #   - get-started
 
 development:
-  mode: release
+  destination: ""
+  mode: auto
