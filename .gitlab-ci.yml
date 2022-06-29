@@ -107,7 +107,7 @@ integration:
         - test-ci
     script:
         - Rscript -e 'remotes::install_cran(c("pkgdown"), upgrade = "never")'
-        - Rscript -e 'remotes::install_github("https://github.com/tidyverse/tidytemplate")'
+        - Rscript -e 'remotes::install_github("tidyverse/tidytemplate")'
         - Rscript -e 'pkgdown::build_site()'
     artifacts:
         paths:
@@ -124,6 +124,7 @@ integration-test:
         - test-ci
     script:
         - mkdir -p public/test
+        - apt-get install -y curl
         - 'curl --location --output artifacts.zip --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.kuleuven.be/api/v4/projects/$CI_PROJECT_ID/jobs/artifacts/master/download?job=pages" &&
           unzip artifacts.zip &&
           rm artifacts.zip &&
@@ -150,6 +151,7 @@ integration-production:
         - production
     script:
         - mkdir -p public/production
+        - apt-get install -y curl
         - 'curl --location --output artifacts.zip --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.kuleuven.be/api/v4/projects/$CI_PROJECT_ID/jobs/artifacts/master/download?job=pages" &&
           unzip artifacts.zip &&
           rm artifacts.zip &&
@@ -171,6 +173,7 @@ integration-master:
         - master
     script:
         - mkdir -p public
+        - apt-get install -y curl
         - 'curl --location --output artifacts.zip --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.kuleuven.be/api/v4/projects/$CI_PROJECT_ID/jobs/artifacts/production/download?job=pages" &&
           unzip artifacts.zip &&
           rm artifacts.zip &&
