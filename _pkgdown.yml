@@ -70,4 +70,4 @@ reference:
 #   - get-started
 
 development:
-  mode: auto
+  mode: release
