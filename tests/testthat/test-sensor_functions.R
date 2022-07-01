@@ -95,7 +95,7 @@ test_that("link", {
     x = rep(1:30, 2)
   )
 
-  res <- link(dat1, dat2, "participant_id", -1800)
+  res <- link(dat1, dat2, "participant_id", offset_before = 1800)
   true <- tibble::tibble(
     time = rep(c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
                  as.POSIXct("2021-11-14 15:00:00")), 2),
@@ -115,7 +115,7 @@ test_that("link", {
   )
   expect_equal(res, true)
 
-  res <- link(dat1, dat2, "participant_id", 1800)
+  res <- link(dat1, dat2, "participant_id", offset_after = 1800)
   true <- tibble::tibble(
     time = rep(c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
                  as.POSIXct("2021-11-14 15:00:00")), 2),
@@ -135,29 +135,28 @@ test_that("link", {
   )
   expect_equal(res, true)
 
-  expect_error(link(1, dat2, "participant_id", -1800), "x must be a data frame")
-  expect_error(link(dat1, 1, "participant_id", -1800), "y must be a data frame")
-  expect_error(link(dat1, dat2, 12345, -1800),
+  expect_error(link(1, dat2, "participant_id", offset_before = 1800), "x must be a data frame")
+  expect_error(link(dat1, 1, "participant_id", offset_before = 1800), "y must be a data frame")
+  expect_error(link(dat1, dat2, 12345, offset_before = 1800),
                "by must be a character vector of variables to join by")
 
-  expect_error(link(dplyr::mutate(dat1, time = as.character(time)), dat2, offset = -1800),
+  expect_error(link(dplyr::mutate(dat1, time = as.character(time)), dat2, offset_before = 1800),
                "column 'time' in x must be a POSIXct")
-  expect_error(link(dat1, dplyr::mutate(dat2, time = as.character(time)), offset = -1800),
+  expect_error(link(dat1, dplyr::mutate(dat2, time = as.character(time)), offset_before = 1800),
                "column 'time' in y must be a POSIXct")
-  expect_error(link(dat1, dat2, offset = TRUE),
-               "offset must be a character vector, numeric vector, or a period")
-  expect_error(link(dat1, dat2, offset = "1800"),
-               paste("Invalid offset specified\\. Try something like '30 minutes' or",
-                     "lubridate::minutes\\(30\\)\\. Note that negative values do not work when",
-                     "specifying character vectors, instead use minutes\\(-30\\) or -1800\\."))
-  expect_error(link(dplyr::select(dat1, -time), dat2, offset = -1800),
+  expect_error(link(dat1, dat2, offset_before = TRUE),
+               "offset_before must be a character vector, numeric vector, or a period")
+  expect_error(link(dat1, dat2, offset_before = "1800"),
+               paste("Invalid offset specified\\. Try something like '30 minutes', ",
+                     "lubridate::minutes\\(30\\)\\, or 1800."))
+  expect_error(link(dplyr::select(dat1, -time), dat2, offset_before = 1800),
                "column 'time' must be present in both x and y")
-  expect_error(link(dat1, dplyr::select(dat2, -time), offset = -1800),
+  expect_error(link(dat1, dplyr::select(dat2, -time), offset_before = 1800),
                "column 'time' must be present in both x and y")
 })
 
-## link2 ===============
-test_that("link2", {
+## link_db ===============
+test_that("link_db", {
   path <- system.file("testdata", package = "mpathsenser")
   db <- open_db(path, "test.db")
   dat1 <- data.frame(
@@ -168,7 +167,7 @@ test_that("link2", {
   )
 
   # Check basic functionality
-  res <- link2(db, "Activity", "Connectivity", offset = 1800)
+  res <- link_db(db, "Activity", "Connectivity", offset_after = 1800)
   true <- tibble::tibble(
     measurement_id = c("fbf85cd7-6d37-53a8-5c44-ad8fe13ef7ac",
                        "ef96364c-d1f4-5f73-ce40-277f078e3d0f",
@@ -200,7 +199,7 @@ test_that("link2", {
   expect_equal(res, true)
 
   # Check reverse
-  res <- link2(db, "Activity", "Connectivity", offset = 1800, reverse = TRUE)
+  res <- link_db(db, "Activity", "Connectivity", offset_after = 1800, reverse = TRUE)
   true <- tibble::tibble(
     measurement_id = c("27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
                        "2d430c2a-5b16-1dce-0e2f-c049c44e3729"),
@@ -226,7 +225,7 @@ test_that("link2", {
   expect_equal(res, true)
 
   # Check with external data
-  res <- link2(db, "Activity", external = dat1, offset = 1800)
+  res <- link_db(db, "Activity", external = dat1, offset_after = 1800)
   true <- tibble::tibble(
     dat1,
     data = list(
@@ -247,15 +246,17 @@ test_that("link2", {
   )
   expect_equal(res, true)
 
-  expect_error(link2(db, "Activity", 1:10, -1800), "sensor_two must be a character vector")
-  expect_error(link2(db, "Activity", offset = -1800, external = "Bluetooth"),
+  expect_error(link_db(db, "Activity", 1:10, offset_before = 1800),
+               "sensor_two must be a character vector")
+  expect_error(link_db(db, "Activity", offset_before = 1800, external = "Bluetooth"),
                "external must be a data frame")
-  expect_error(link2(db, "Activity", "Bluetooth", -1800, external = dat1),
+  expect_error(link_db(db, "Activity", "Bluetooth", offset_before = 1800, external = dat1),
                "only a second sensor or an external data frame can be supplied, but not both")
-  expect_error(link2(db, "Activity", offset = -1800),
+  expect_error(link_db(db, "Activity", offset_before = 1800),
                "either a second sensor or an external data frame must be supplied")
   DBI::dbDisconnect(db)
-  expect_error(link2(db, "Activity", "Bluetooth", -1800), "Database connection is not valid")
+  expect_error(link_db(db, "Activity", "Bluetooth", offset_before = 1800),
+               "Database connection is not valid")
 
   # Check if ignore_large works
   filename <- tempfile("big", fileext = ".db")
@@ -283,9 +284,9 @@ test_that("link2", {
   DBI::dbWriteTable(db, "Gyroscope", acc, overwrite = TRUE)
 
   expect_error(
-    link2(db, "Accelerometer", "Gyroscope", offset = 30),
+    link_db(db, "Accelerometer", "Gyroscope", offset_after = 30),
     "the total number of rows is higher than 100000. Use ignore_large = TRUE to continue")
-  expect_error(link2(db, "Accelerometer", "Gyroscope", offset = 30, ignore_large = TRUE),
+  expect_error(link_db(db, "Accelerometer", "Gyroscope", offset_after = 30, ignore_large = TRUE),
                "x and y are identical")
 
   # Cleanup

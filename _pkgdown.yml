@@ -59,7 +59,7 @@ reference:
       - identify_gaps
       - last_date
       - link
-      - link2
+      - link_db
       - moving_average
 
   - title: Sensor-specific functions
