@@ -17,7 +17,7 @@ Useful links:
 \itemize{
   \item \url{https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/}
   \item \url{https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/}
-  \item Report bugs at \url{https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/issues}
+  \item Report bugs at \url{https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/issues}
 }
 
 }

@@ -121,7 +121,7 @@ get_data(
 )
 ```
 
-# Reference
+## Reference
 
 For an overview of all functions in this package, see the [mpathsenser
 Reference
@@ -129,7 +129,7 @@ Site](https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsense
 The database schema used in this package can be found
 [here](https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/blob/master/inst/extdata/mpathsenser_db.png).
 
-# Getting help
+## Getting help
 
 If you encounter a clear bug or need help getting a function to run,
 please file an issue with a minimal reproducible example on

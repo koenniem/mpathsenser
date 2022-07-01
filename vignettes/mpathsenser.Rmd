@@ -16,7 +16,6 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
-options(tibble.print_min = 4, tibble.print_max = 4)
 ```
 
 First, make sure we load some useful libraries (and of course `mpathsenser` itself).
@@ -30,7 +29,7 @@ library(mpathsenser)
 
 # Importing files
 
-The data for this vignette is contained in the `extdata` folder. However, on some system this folder may be set to read-only and it is generally good practice not to modify package folders (to prevent changing or breaking the package). To this end, we first copy the data to a temporary directory (as defined by the environment variable \code{TMPDIR}, \code{TMP}, or \code{TEMP}), a directory that is freshly created each time at R's start up and cleaned up when the session ends. 
+The data for this vignette is contained in the `extdata` folder. However, on some system this folder may be set to read-only and it is generally good practice not to modify package folders (to prevent changing or breaking the package). To this end, we first copy the data to a temporary directory (as defined by the environment variable \code{TMPDIR}, \code{TMP}, or \code{TEMP}), a directory that is freshly created each time at R's start up and cleaned up when the session ends.
 
 ```{r copy data, results="hide"}
 # Get the temp folder
@@ -49,9 +48,9 @@ file.copy(from = copy_list,
           copy.mode = FALSE)
 ```
 
-The `extdata` folder contains several `.zip` files as well as some `JSON` files. It is likely that the data for your study will look the same only much more. Note that all of these data files came directly from m-Path Sense (i.e. there was no pre-processing yet). 
+The `extdata` folder contains several `.zip` files as well as some `JSON` files. It is likely that the data for your study will look the same only much more. Note that all of these data files came directly from m-Path Sense (i.e. there was no pre-processing yet).
 
-The data from m-Path Sense originates in the following way: The application continuously collects all kinds of data in the background (e.g. accelerometer data). Once collected, the data goes through several stages where, for example, the data is pre-processed (as already happens with data from the `light` sensor) or anonymised upon request. Finally, data is written to a `JSON` file which is really just a text file but with a specific format. When some new data comes in (whether it be from the same sensor or not), the next line is written in the `JSON` file and so on, until the file has reached a certain size (5MB by default). The `JSON` file is then zipped to reduce its size and subsequently transferred to a server.  Once transferred, the data is deleted from the participant's  phone to both save on space as well as prevent data leakage.
+The data from m-Path Sense originates in the following way: The application continuously collects all kinds of data in the background (e.g. accelerometer data). Once collected, the data goes through several stages where, for example, the data is pre-processed (as already happens with data from the `light` sensor) or anonymised upon request. Finally, data is written to a `JSON` file which is really just a text file but with a specific format. When some new data comes in (whether it be from the same sensor or not), the next line is written in the `JSON` file and so on, until the file has reached a certain size (5MB by default). The `JSON` file is then zipped to reduce its size and subsequently transferred to a server. Once transferred, the data is deleted from the participant's phone to both save on space as well as prevent data leakage.
 
 Thus, a first step to take is to unzip these files to extract its `JSON` contents. If you feel more comfortable unzipping using your favourite zip program you can do so, just make sure all files end up in the same directory (including the non-zipped JSON files).
 
@@ -75,14 +74,19 @@ fix_jsons(path = NULL, to_fix)
 import(tempdir, dbname = "getstarted.db", batch_size = 12)
 ```
 
-```{r}
+```{r, fig.width=13, fig.height=8, fig.align='center', dpi=55}
 db <- open_db(tempdir, "getstarted.db")
-coverage(db, "2784", relative = FALSE)
+sensors <- c("Accelerometer", "Activity", "AppUsage", "Bluetooth", "Calendar",
+             "Connectivity", "Device", "Gyroscope", "InstalledApps", "Light",
+             "Location", "Memory", "Pedometer", "Screen", "Weather", "Wifi")
+coverage(db = db, 
+         participant_id = "2784", 
+         sensor = sensors,
+         relative = FALSE)
 ```
 
-Finally, recall that once you're done working with a database to also close it. 
+Finally, recall that once you're done working with a database to also close it.
 
 ```{r}
 close_db(db)
 ```
-
