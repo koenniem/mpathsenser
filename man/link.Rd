@@ -11,7 +11,8 @@ link(
   offset_before = 0,
   offset_after = 0,
   add_before = FALSE,
-  add_after = FALSE
+  add_after = FALSE,
+  split = by
 )
 }
 \arguments{
@@ -44,6 +45,11 @@ interval?}
 
 \item{add_after}{Logical value. Do you want to add the first measurement after the end of each
 interval?}
+
+\item{split}{An option grouping variable to split the computation by. When working with a large
+data set, the computation can grow so large it no longer fits in your computer's working memory
+(after which it will probably fall back on the swap file, which is very slow). Splitting the
+computation trades some computation efficiency for a large decrease in RAM usage.}
 }
 \value{
 A tibble with the data of \code{x} with a new column \code{data} with the matched data of
@@ -88,3 +94,12 @@ other measurements of \code{y} later (within the same interval). Additionally, a
 \code{y} measurement and \code{NULL} for every other observation. This may be useful to check if
 the added measurement isn't too distant (in time) from the others.
 }
+\section{Warning}{
+ Note that setting \code{add_before} and \code{add_after} each add one row to
+each nested \code{tibble} of the \code{data} column. Thus, if you are only interested in the
+total count (e.g. the number of total screen changes), remember to set these arguments to FALSE
+or make sure to filter out rows that do \emph{note} have an \code{orig_time}. Simply subtracting 1
+or 2 does not work as not all measurements in \code{x} may have a measurement in \code{y}
+before or after (and thus no row is added).
+}
+

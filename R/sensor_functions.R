@@ -111,133 +111,7 @@ last_date <- function(db, sensor, participant_id = NULL) {
 }
 
 
-#' Match y to the time scale of x
-#'
-#' One of the key tasks in analysing mobile sensing data is being able to link it to other data. For
-#' example, when analysing physical activity data, it could be of interest to know how much time a
-#' participant spent exercising before an ESM beep evaluating their stress level. \code{link} allows
-#' you to map two data frames to each other that are on different time scales, based on a
-#' pre-specified offset before and/or after. This function assumes that both \code{x} and \code{y}
-#' have a column called \code{time} containing \link[base]{DateTimeClasses}.
-#'
-#' \code{y} is matched to the time scale of \code{x} by means of time windows. These time windows
-#' are defined as the period between \code{x - offset_before} and \code{x + offset_after}. Note that
-#' either \code{offset_before} or \code{offset_after} can be 0, but not both. The "interval" of the
-#' measurements is therefore the associated time window for each measurement of \code{x} and the
-#' data of \code{y} that also falls within this period. For example, an \code{offset_before}  of
-#' \link[lubridate]{minutes}(30) means to match all data of \code{y} that occurred *before* each
-#' measurement in \code{x}. An \code{offset_after} of 900 (i.e. 15 minutes) means to match all data
-#' of \code{y} that occurred *after* each measurement in \code{x}. When both \code{offset_before}
-#' and \code{offset_after}  are specified, it means all data of \code{y} is matched in an interval
-#' of 30 minutes before and 15 minutes after each measurement of \code{x}, thus combining the two
-#' arguments.
-#'
-#' The arguments \code{add_before} and \code{add_after} let you decide whether you want to add the
-#' last measurement before the interval and/or the first measurement after the interval
-#' respectively. This could be useful when you want to know which type of event occurred right
-#' before or after the interval of the measurement. For example, at \code{offset_before = 1800}, the
-#' first measurement in \code{y} within the interval between \code{x - offset_before} and \code{x}
-#' may indicate that a participant was running 20 minutes before a measurement in \code{x}, However,
-#' with just that information there is no way of knowing what the participant was doing the first 10
-#' minutes of the interval. The same principle applies to after the interval. When \code{add_before}
-#' is set to \code{TRUE}, the last measurement of \code{y} occurring before the interval of \code{x}
-#' is added to the output data as the first row, having the **\code{time} of \code{x -
-#' offset_before}**. When \code{add_after} is set to \code{TRUE}, the first measurement of \code{y}
-#' occurring after the interval of \code{x} is added to the output data as the last row, having the
-#' **\code{time} of \code{x + offset_after}**.This way, it is easier to calculate the difference to
-#' other measurements of \code{y} later (within the same interval). Additionally, an extra column
-#' (\code{orig_time}) is added in the nested \code{data} column, which is the original time of the
-#' \code{y} measurement and \code{NULL} for every other observation. This may be useful to check if
-#' the added measurement isn't too distant (in time) from the others.
-#'
-#'
-#' @param x,y A pair of data frames or data frame extensions (e.g. a tibble). Both \code{x} and
-#'   \code{y} must have a column called \code{time}.
-#' @param by If NULL, the default, \code{*_join()} will perform a natural join, using all variables
-#'   in common across \code{x} and \code{y}. A message lists the variables so that you can check
-#'   they're correct; suppress the message by supplying by explicitly.
-#'
-#'   To join by different variables on \code{x} and \code{y}, use a named vector. For example,
-#'   \code{by = c('a' = 'b')} will match \code{x$a} to \code{y$b}
-#'
-#'   To join by multiple variables, use a vector with length > 1. For example, by = c('a', 'b') will
-#'   match \code{x$a} to \code{y$a} and \code{x$b} to \code{y$b}. Use a named vector to match
-#'   different variables in x and y. For example, \code{by = c('a' = 'b', 'c' = 'd')} will match
-#'   \code{x$a} to \code{y$b} and \code{x$c} to \code{y$d}.
-#'
-#'   To perform a cross-join, generating all combinations of \code{x} and \code{y}, use \code{by =
-#'   character()}.
-#' @param offset_before The time before each measurement in \code{x} that denotes the period in
-#'   which \code{y} is matched. Must be convertible to a period by \link[lubridate]{as.period}.
-#' @param offset_after The time after each measurement in \code{x} that denotes the period in which
-#'   \code{y} is matched. Must be convertible to a period by \link[lubridate]{as.period}.
-#' @param add_before Logical value. Do you want to add the last measurement before the start of each
-#'   interval?
-#' @param add_after Logical value. Do you want to add the first measurement after the end of each
-#'   interval?
-#'
-#' @return A tibble with the data of \code{x} with a new column \code{data} with the matched data of
-#'   \code{y} according to \code{offset_before} and \code{offset_after}.
-#'
-#' @export
-link <- function(x,
-                 y,
-                 by = NULL,
-                 offset_before = 0,
-                 offset_after = 0,
-                 add_before = FALSE,
-                 add_after = FALSE) {
-
-  if (!is.data.frame(x))
-    stop("x must be a data frame", call. = FALSE)
-  if (!is.data.frame(y))
-    stop("y must be a data frame", call. = FALSE)
-  if (!is.null(by) && !is.character(by))
-    stop("by must be a character vector of variables to join by", call. = FALSE)
-
-  # offset checks
-  if ((is.null(offset_before) | all(offset_before == 0)) &
-      (is.null(offset_after) | all(offset_after == 0)))
-    stop("either offset_before or offset_after must not be 0 or NULL, or both", call. = FALSE)
-  if (!is.null(offset_before) && !(is.character(offset_before)
-                                   | lubridate::is.period(offset_before)
-                                   | is.numeric(offset_before)))
-    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
-  if (!is.null(offset_after) && !(is.character(offset_after)
-                                 | lubridate::is.period(offset_after)
-                                 | is.numeric(offset_after)))
-    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
-  if (is.character(offset_before) | is.numeric(offset_before))
-    offset_before <- lubridate::as.period(offset_before)
-  if (is.character(offset_after) | is.numeric(offset_after))
-    offset_after <- lubridate::as.period(offset_after)
-  if (is.na(offset_before) | is.na(offset_after))
-    stop(paste("Invalid offset specified. Try something like '30 minutes', ",
-               "lubridate::minutes(30), or 1800."), call. = FALSE)
-  if(!is.null(offset_before) && offset_before < 0) {
-    offset_before <- abs(offset_before)
-    warning(paste("offset_before must be a positive period (i.e. greater than 0).",
-                  "Taking the absolute value"), call. = FALSE)
-  }
-  if(!is.null(offset_after) && offset_after < 0) {
-    offset_after <- abs(offset_after)
-    warning(paste("offset_after must be a positive period (i.e. greater than 0).",
-                  "Taking the absolute value"), call. = FALSE)
-  }
-
-
-  # Check for time column
-  if (!("time" %in% colnames(x) & "time" %in% colnames(y)))
-    stop("column 'time' must be present in both x and y", call. = FALSE)
-  if (!lubridate::is.POSIXct(x$time))
-    stop("column 'time' in x must be a POSIXct", call. = FALSE)
-  if (!lubridate::is.POSIXct(y$time))
-    stop("column 'time' in y must be a POSIXct", call. = FALSE)
-
-  # Do not perform matching when x and y are identical
-  if (identical(x, y) || isTRUE(dplyr::all_equal(x, y)))
-    stop("x and y are identical", call. = FALSE)
-
+link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_after) {
   # Match sensing data with ESM using a nested join Set a start_time (beep time - offset)
   # and an end_time (beep time)
   data <- x %>%
@@ -245,9 +119,12 @@ link <- function(x,
     dplyr::mutate(start_time = as.integer(.data$time - offset_before)) %>%
     dplyr::mutate(end_time = as.integer(.data$time + offset_after)) %>%
     dplyr::select(by, .data$start_time, .data$end_time) %>%
-    dplyr::mutate(row_id = dplyr::row_number()) %>% # For rematching later
+    dplyr::mutate(row_id = dplyr::row_number()) # For rematching later
+
+  data <- data %>%
     dplyr::left_join(y, by = by) %>%
-    dplyr::mutate(time_int = as.integer(.data$time))
+    dplyr::mutate(time_int = as.integer(.data$time)) %>%
+    dplyr::arrange(by, time)
 
   # The main data, i.e. data within the interval
   data_main <- data %>%
@@ -311,6 +188,161 @@ link <- function(x,
     dplyr::select(-.data$row_id)
 
   res
+}
+
+#' Match y to the time scale of x
+#'
+#' One of the key tasks in analysing mobile sensing data is being able to link it to other data. For
+#' example, when analysing physical activity data, it could be of interest to know how much time a
+#' participant spent exercising before an ESM beep evaluating their stress level. \code{link} allows
+#' you to map two data frames to each other that are on different time scales, based on a
+#' pre-specified offset before and/or after. This function assumes that both \code{x} and \code{y}
+#' have a column called \code{time} containing \link[base]{DateTimeClasses}.
+#'
+#' \code{y} is matched to the time scale of \code{x} by means of time windows. These time windows
+#' are defined as the period between \code{x - offset_before} and \code{x + offset_after}. Note that
+#' either \code{offset_before} or \code{offset_after} can be 0, but not both. The "interval" of the
+#' measurements is therefore the associated time window for each measurement of \code{x} and the
+#' data of \code{y} that also falls within this period. For example, an \code{offset_before}  of
+#' \link[lubridate]{minutes}(30) means to match all data of \code{y} that occurred *before* each
+#' measurement in \code{x}. An \code{offset_after} of 900 (i.e. 15 minutes) means to match all data
+#' of \code{y} that occurred *after* each measurement in \code{x}. When both \code{offset_before}
+#' and \code{offset_after}  are specified, it means all data of \code{y} is matched in an interval
+#' of 30 minutes before and 15 minutes after each measurement of \code{x}, thus combining the two
+#' arguments.
+#'
+#' The arguments \code{add_before} and \code{add_after} let you decide whether you want to add the
+#' last measurement before the interval and/or the first measurement after the interval
+#' respectively. This could be useful when you want to know which type of event occurred right
+#' before or after the interval of the measurement. For example, at \code{offset_before = 1800}, the
+#' first measurement in \code{y} within the interval between \code{x - offset_before} and \code{x}
+#' may indicate that a participant was running 20 minutes before a measurement in \code{x}, However,
+#' with just that information there is no way of knowing what the participant was doing the first 10
+#' minutes of the interval. The same principle applies to after the interval. When \code{add_before}
+#' is set to \code{TRUE}, the last measurement of \code{y} occurring before the interval of \code{x}
+#' is added to the output data as the first row, having the **\code{time} of \code{x -
+#' offset_before}**. When \code{add_after} is set to \code{TRUE}, the first measurement of \code{y}
+#' occurring after the interval of \code{x} is added to the output data as the last row, having the
+#' **\code{time} of \code{x + offset_after}**.This way, it is easier to calculate the difference to
+#' other measurements of \code{y} later (within the same interval). Additionally, an extra column
+#' (\code{orig_time}) is added in the nested \code{data} column, which is the original time of the
+#' \code{y} measurement and \code{NULL} for every other observation. This may be useful to check if
+#' the added measurement isn't too distant (in time) from the others.
+#'
+#' @section Warning: Note that setting \code{add_before} and \code{add_after} each add one row to
+#'   each nested \code{tibble} of the \code{data} column. Thus, if you are only interested in the
+#'   total count (e.g. the number of total screen changes), remember to set these arguments to FALSE
+#'   or make sure to filter out rows that do _note_ have an \code{orig_time}. Simply subtracting 1
+#'   or 2 does not work as not all measurements in \code{x} may have a measurement in \code{y}
+#'   before or after (and thus no row is added).
+#'
+#'
+#' @param x,y A pair of data frames or data frame extensions (e.g. a tibble). Both \code{x} and
+#'   \code{y} must have a column called \code{time}.
+#' @param by If NULL, the default, \code{*_join()} will perform a natural join, using all variables
+#'   in common across \code{x} and \code{y}. A message lists the variables so that you can check
+#'   they're correct; suppress the message by supplying by explicitly.
+#'
+#'   To join by different variables on \code{x} and \code{y}, use a named vector. For example,
+#'   \code{by = c('a' = 'b')} will match \code{x$a} to \code{y$b}
+#'
+#'   To join by multiple variables, use a vector with length > 1. For example, by = c('a', 'b') will
+#'   match \code{x$a} to \code{y$a} and \code{x$b} to \code{y$b}. Use a named vector to match
+#'   different variables in x and y. For example, \code{by = c('a' = 'b', 'c' = 'd')} will match
+#'   \code{x$a} to \code{y$b} and \code{x$c} to \code{y$d}.
+#'
+#'   To perform a cross-join, generating all combinations of \code{x} and \code{y}, use \code{by =
+#'   character()}.
+#' @param offset_before The time before each measurement in \code{x} that denotes the period in
+#'   which \code{y} is matched. Must be convertible to a period by \link[lubridate]{as.period}.
+#' @param offset_after The time after each measurement in \code{x} that denotes the period in which
+#'   \code{y} is matched. Must be convertible to a period by \link[lubridate]{as.period}.
+#' @param add_before Logical value. Do you want to add the last measurement before the start of each
+#'   interval?
+#' @param add_after Logical value. Do you want to add the first measurement after the end of each
+#'   interval?
+#' @param split An option grouping variable to split the computation by. When working with a large
+#'   data set, the computation can grow so large it no longer fits in your computer's working memory
+#'   (after which it will probably fall back on the swap file, which is very slow). Splitting the
+#'   computation trades some computation efficiency for a large decrease in RAM usage.
+#'
+#' @return A tibble with the data of \code{x} with a new column \code{data} with the matched data of
+#'   \code{y} according to \code{offset_before} and \code{offset_after}.
+#'
+#' @export
+link <- function(x,
+                 y,
+                 by = NULL,
+                 offset_before = 0,
+                 offset_after = 0,
+                 add_before = FALSE,
+                 add_after = FALSE,
+                 split = by) {
+
+  if (!is.data.frame(x))
+    stop("x must be a data frame", call. = FALSE)
+  if (!is.data.frame(y))
+    stop("y must be a data frame", call. = FALSE)
+  if (!is.null(by) && !is.character(by))
+    stop("by must be a character vector of variables to join by", call. = FALSE)
+
+  # offset checks
+  if ((is.null(offset_before) | all(offset_before == 0)) &
+      (is.null(offset_after) | all(offset_after == 0)))
+    stop("either offset_before or offset_after must not be 0 or NULL, or both", call. = FALSE)
+  if (!is.null(offset_before) && !(is.character(offset_before)
+                                   | lubridate::is.period(offset_before)
+                                   | is.numeric(offset_before)))
+    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
+  if (!is.null(offset_after) && !(is.character(offset_after)
+                                 | lubridate::is.period(offset_after)
+                                 | is.numeric(offset_after)))
+    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
+  if (is.character(offset_before) | is.numeric(offset_before))
+    offset_before <- lubridate::as.period(offset_before)
+  if (is.character(offset_after) | is.numeric(offset_after))
+    offset_after <- lubridate::as.period(offset_after)
+  if (is.na(offset_before) | is.na(offset_after))
+    stop(paste("Invalid offset specified. Try something like '30 minutes', ",
+               "lubridate::minutes(30), or 1800."), call. = FALSE)
+  if(!is.null(offset_before) && offset_before < 0) {
+    offset_before <- abs(offset_before)
+    warning(paste("offset_before must be a positive period (i.e. greater than 0).",
+                  "Taking the absolute value"), call. = FALSE)
+  }
+  if(!is.null(offset_after) && offset_after < 0) {
+    offset_after <- abs(offset_after)
+    warning(paste("offset_after must be a positive period (i.e. greater than 0).",
+                  "Taking the absolute value"), call. = FALSE)
+  }
+
+
+  # Check for time column
+  if (!("time" %in% colnames(x) & "time" %in% colnames(y)))
+    stop("column 'time' must be present in both x and y", call. = FALSE)
+  if (!lubridate::is.POSIXct(x$time))
+    stop("column 'time' in x must be a POSIXct", call. = FALSE)
+  if (!lubridate::is.POSIXct(y$time))
+    stop("column 'time' in y must be a POSIXct", call. = FALSE)
+
+  # Do not perform matching when x and y are identical
+  if (identical(x, y) || isTRUE(dplyr::all_equal(x, y)))
+    stop("x and y are identical", call. = FALSE)
+
+  if (!is.null(split)) {
+    if (is.numeric(split)) {
+      x <- split(x, rep(1:split, each = ceiling(nrow(x) / split), length.out = nrow(x)))
+    } else {
+      x <- dplyr::group_split(x, dplyr::across(by))
+    }
+  } else {
+    x <- list(x)
+  }
+
+  x %>%
+    furrr::future_map(~ link_impl(.x, y, by, offset_before, offset_after, add_before, add_after),
+                      .options = furrr::furrr_options(seed = TRUE)) %>%
+    dplyr::bind_rows()
 }
 
 #' Link two sensors OR one sensor and an external data frame using an \code{mpathsenser} database
@@ -1035,7 +1067,7 @@ bin_duration_impl <- function(data, date) {
 #' @param data A data frame or tibble containing the time series.
 #' @param start_time The column name of the start time of the interval, a POSIXt.
 #' @param end_time The column name of the end time of the interval, a POSIXt.
-#' @param by A binning specification, either \code{"hour"} or \code{"day"}.
+#' @param by A binning specification, either \code{hour} or \code{day}.
 #'
 #' @return A tibble containing the group columns (if any), date, hour (if \code{by = "hour"}),
 #' and the duration in seconds.

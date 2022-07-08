@@ -13,7 +13,7 @@ bin_duration(data, start_time, end_time, by = c("hour", "day"))
 
 \item{end_time}{The column name of the end time of the interval, a POSIXt.}
 
-\item{by}{A binning specification, either \code{"hour"} or \code{"day"}.}
+\item{by}{A binning specification, either \code{hour} or \code{day}.}
 }
 \value{
 A tibble containing the group columns (if any), date, hour (if \code{by = "hour"}),
