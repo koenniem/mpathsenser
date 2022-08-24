@@ -552,7 +552,7 @@ app_category_impl <- function(name, num) {
   query <- paste0("https://play.google.com/store/search?q=", name, "&c=apps")
 
   ua <- httr::user_agent(paste0("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like ",
-  "Gecko) Chrome/41.0.2228.0 Safari/537.36"))
+                                "Gecko) Chrome/41.0.2228.0 Safari/537.36"))
 
   session <- httr::GET(query)
 
@@ -563,7 +563,7 @@ app_category_impl <- function(name, num) {
   }
 
   # Get the link
-  links <- rvest::html_elements(session, css = ".JC71ub")
+  links <- rvest::html_elements(session, css = ".Gy4nib")
   links <- rvest::html_attr(links, "href")
 
   if (length(links) == 0) {
@@ -572,7 +572,7 @@ app_category_impl <- function(name, num) {
 
   # Check if the name occurs in any of the package names
   # If so, select the num (usually first) link from this list
-  name_detected <- vapply(links, function(x) grepl(x, name), FUN.VALUE = logical(1))
+  name_detected <- vapply(links, function(x) grepl(paste0("\\.", name, "$"), x), FUN.VALUE = logical(1))
   if (any(name_detected)) {
     links <- links[name_detected]
     link <- links[num]
@@ -597,8 +597,12 @@ app_category_impl <- function(name, num) {
   }
 
   # Extract the genre and return results
-  genre <- rvest::html_nodes(session, xpath = "//*[@itemprop=\"genre\"]")
-  list(package = gsub("^.+?(?<=\\?id=)", "", link, perl = TRUE), genre = rvest::html_text(genre))
+  genre <- session %>%
+    rvest::html_element(x = ., xpath=".//script[contains(., 'applicationCategory')]") %>%
+    rvest::html_text(x = .) %>%
+    jsonlite::fromJSON() %>%
+    purrr::pluck("applicationCategory")
+  list(package = gsub("^.+?(?<=\\?id=)", "", link, perl = TRUE), genre = genre)
 }
 
 
