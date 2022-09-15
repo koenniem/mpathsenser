@@ -603,7 +603,7 @@ app_category_impl <- function(name, num, exact) {
   # Check if the name occurs in any of the package names
   # If so, select the num (usually first) link from this list
   if (exact) {
-    name_detected <- vapply(links, function(x) grepl(paste0("\\.", name, "$"), x), FUN.VALUE = logical(1))
+    name_detected <- vapply(links, function(x) grepl(paste0("\\.", name, "$/i"), x), FUN.VALUE = logical(1))
     if (any(name_detected)) {
       links <- links[name_detected]
       link <- links[num]
