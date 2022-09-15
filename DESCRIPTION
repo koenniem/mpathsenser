@@ -25,7 +25,7 @@ URL: https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/, htt
 BugReports: https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.0
+RoxygenNote: 7.2.1
 Imports:
     DBI,
     dbplyr,

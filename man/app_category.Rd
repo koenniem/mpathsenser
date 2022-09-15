@@ -4,7 +4,7 @@
 \alias{app_category}
 \title{Find the category of an app on the Google Play Store}
 \usage{
-app_category(name, num = 1, rate_limit = 5)
+app_category(name, num = 1, rate_limit = 5, exact = TRUE)
 }
 \arguments{
 \item{name}{The name of the app to search for.}
@@ -13,6 +13,13 @@ app_category(name, num = 1, rate_limit = 5)
 
 \item{rate_limit}{The time interval to keep between queries, in seconds. If the rate limit is too
 low, the Google Play Store may reject further requests or even ban your entirely.}
+
+\item{exact}{In m-Path Sense, the app names of the AppUsage sensor are the last part of the app's
+package names. When \code{exact}  is \code{TRUE}, the function guarantees that \code{name} is
+exactly equal to the last part of the selected package from the search results. Note that when
+\code{exact} is \code{TRUE}, it interacts with \code{num} in the sense that it no longer selects
+the top search result but instead the top search result that matches the last part of the package
+name.}
 }
 \value{
 A list containing the following fields:

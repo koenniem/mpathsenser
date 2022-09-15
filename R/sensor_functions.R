@@ -35,6 +35,12 @@
 get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_date = NULL) {
   if (!DBI::dbIsValid(db))
     stop("Database connection is not valid")
+  if (!is.character(sensor) | length(sensor) == 0 | length(sensor) > 1) {
+    stop("sensor should be a character vector of size 1")
+  }
+  if (!(sensor %in% sensors) & !(sensor %in% tolower(sensors))) {
+    stop("this sensor does not exist")
+  }
 
   out <- dplyr::tbl(db, sensor)
 
@@ -568,15 +574,12 @@ app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE) {
 
 app_category_impl <- function(name, num, exact) {
   # Replace illegal characters
-  # name <- replace_special(name)
   name <- iconv(name, from = "UTF-8", to = "ASCII//TRANSLIT")
   name <- gsub("[^[:alnum:] .@]", " ", name, perl = TRUE)
   name <- gsub(" ", "%20", name)
 
   query <- paste0("https://play.google.com/store/search?q=", name, "&c=apps")
-#
-#   ua <- httr::user_agent(paste0("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like ",
-#                                 "Gecko) Chrome/41.0.2228.0 Safari/537.36"))
+
   ua <- httr::user_agent("Mozilla/5.0 (Windows NT 10.0; WOW64; rv:70.0) Gecko/20100101 Firefox/70.0")
 
   session <- httr::GET(query, ua)
@@ -630,8 +633,8 @@ app_category_impl <- function(name, num, exact) {
 
   # Extract the genre and return results
   genre <- session %>%
-    rvest::html_element(x = ., xpath=".//script[contains(., 'applicationCategory')]") %>%
-    rvest::html_text(x = .) %>%
+    rvest::html_element(xpath=".//script[contains(., 'applicationCategory')]") %>%
+    rvest::html_text() %>%
     jsonlite::fromJSON() %>%
     purrr::pluck("applicationCategory")
   list(package = gsub("^.+?(?<=\\?id=)", "", link, perl = TRUE), genre = genre)
@@ -698,6 +701,8 @@ get_app_usage <- function(db,
 #' Get a summary of physical activity (recognition)
 #'
 #' @inheritParams get_data
+#' @param data A data frame containing the activity data. See \link[mpathsenser]{get_data} for
+#' retrieving activity data from an mpathsenser database.
 #' @param confidence The minimum confidence (0-100) that should be assigned to an observation by
 #' Activity Recognition.
 #' @param direction The directionality of the duration calculation, i.e. \eqn{t_{t-1} - t} or
