@@ -112,8 +112,8 @@ last_date <- function(db, sensor, participant_id = NULL) {
 
 
 link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_after) {
-  # Match sensing data with ESM using a nested join Set a start_time (beep time - offset)
-  # and an end_time (beep time)
+  # Match sensing data with ESM using a nested join
+  # Set a start_time (beep time - offset) and an end_time (beep time)
   data <- x %>%
     tibble::as_tibble() %>%
     dplyr::mutate(start_time = as.integer(.data$time - offset_before)) %>%
@@ -139,6 +139,7 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
     data_before <- data %>%
       dplyr::group_by(.data$row_id) %>%
       dplyr::filter(.data$time_int < .data$start_time) %>%
+      dplyr::arrange(.data$time_int) %>%
       dplyr::slice_tail(n = 1) %>%
       dplyr::ungroup() %>%
       dplyr::mutate(original_time = .data$time) %>%
@@ -160,10 +161,11 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
     data_after <- data %>%
       dplyr::group_by(.data$row_id) %>%
       dplyr::filter(.data$time_int > .data$end_time) %>%
+      dplyr::arrange(.data$time_int) %>%
       dplyr::slice_head(n = 1) %>%
       dplyr::ungroup() %>%
       dplyr::mutate(original_time = .data$time) %>%
-      dplyr::mutate(time = lubridate::as_datetime(.data$start_time, tz = tz)) %>%
+      dplyr::mutate(time = lubridate::as_datetime(.data$end_time, tz = tz)) %>%
       dplyr::select(-.data$time_int) %>%
       tidyr::nest(data_after = -c(by, .data$start_time, .data$end_time, .data$row_id)) %>%
       dplyr::select(.data$row_id, .data$data_after)
@@ -178,7 +180,23 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
   # Create an empty tibble (prototype) by retrieving rows with time before UNIX start (not possible)
   # This is needed to fill in the data entries where there would otherwise be nothing left
   # because nothing matched within the start_time and end_time
-  proto <- y[y$time < 0, setdiff(colnames(y), by)]
+  proto <- tibble::as_tibble(y[y$time < 0, setdiff(colnames(y), by)])
+  if (add_before | add_after) {
+    proto$original_time <- as.POSIXct(vector(mode = "double"))
+
+    # In case data_main is empty, applying the solution below leads to NA in the next step causing
+    # proto not to be applied (since it's not null)
+    if (nrow(data_main) > 0) {
+      # Add column original_time in cases where it's missing
+      data_main <- data_main %>%
+        dplyr::mutate(data =
+                        purrr::map(.data$data,
+                                   ~ dplyr::if_else(any("original_time" == colnames(.x)),
+                                                    list(.x),
+                                                    list(dplyr::mutate(.x, original_time = as.POSIXct(NA)))))) %>%
+        tidyr::unnest(data)
+    }
+  }
 
   res <- x %>%
     tibble::as_tibble() %>%
@@ -480,6 +498,12 @@ get_installed_apps <- function(db, participant_id = NULL) {
 #' @param num Which result should be selected in the list of search results. Defaults to one.
 #' @param rate_limit The time interval to keep between queries, in seconds. If the rate limit is too
 #' low, the Google Play Store may reject further requests or even ban your entirely.
+#' @param exact In m-Path Sense, the app names of the AppUsage sensor are the last part of the app's
+#' package names. When \code{exact}  is \code{TRUE}, the function guarantees that \code{name} is
+#' exactly equal to the last part of the selected package from the search results. Note that when
+#' \code{exact} is \code{TRUE}, it interacts with \code{num} in the sense that it no longer selects
+#' the top search result but instead the top search result that matches the last part of the package
+#' name.
 #'
 #' @section Warning:
 #' Do not abuse this function or you will be banned by the Google Play Store. The minimum delay
@@ -503,7 +527,7 @@ get_installed_apps <- function(db, participant_id = NULL) {
 #'
 #' # Get OnePlus weather
 #' app_category('net.oneplus.weather')
-app_category <- function(name, num = 1, rate_limit = 5) {
+app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE) {
   # Check if required packages are available
   if (!requireNamespace("curl", quietly = TRUE)) {
     stop(paste0("package curl is needed for this function to work. ",
@@ -528,7 +552,7 @@ app_category <- function(name, num = 1, rate_limit = 5) {
   }
 
   for (i in seq_along(name)) {
-    res[i, 2:3] <- app_category_impl(name[i], num)
+    res[i, 2:3] <- app_category_impl(name[i], num, exact)
 
     if (requireNamespace("progressr", quietly = TRUE)) {
       p()
@@ -542,7 +566,7 @@ app_category <- function(name, num = 1, rate_limit = 5) {
   res
 }
 
-app_category_impl <- function(name, num) {
+app_category_impl <- function(name, num, exact) {
   # Replace illegal characters
   # name <- replace_special(name)
   name <- iconv(name, from = "UTF-8", to = "ASCII//TRANSLIT")
@@ -550,11 +574,12 @@ app_category_impl <- function(name, num) {
   name <- gsub(" ", "%20", name)
 
   query <- paste0("https://play.google.com/store/search?q=", name, "&c=apps")
+#
+#   ua <- httr::user_agent(paste0("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like ",
+#                                 "Gecko) Chrome/41.0.2228.0 Safari/537.36"))
+  ua <- httr::user_agent("Mozilla/5.0 (Windows NT 10.0; WOW64; rv:70.0) Gecko/20100101 Firefox/70.0")
 
-  ua <- httr::user_agent(paste0("Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like ",
-                                "Gecko) Chrome/41.0.2228.0 Safari/537.36"))
-
-  session <- httr::GET(query)
+  session <- httr::GET(query, ua)
 
   if (!httr::http_error(session)) {
     session <- httr::content(session)
@@ -563,8 +588,10 @@ app_category_impl <- function(name, num) {
   }
 
   # Get the link
-  links <- rvest::html_elements(session, css = ".Gy4nib")
-  links <- rvest::html_attr(links, "href")
+  links <- session %>%
+    rvest::html_elements("a") %>%
+    rvest::html_attr("href") %>%
+    purrr::keep(~ grepl("^\\/store\\/apps\\/details\\?id=.*$", .x))
 
   if (length(links) == 0) {
     return(list(package = NA, genre = NA))
@@ -572,13 +599,18 @@ app_category_impl <- function(name, num) {
 
   # Check if the name occurs in any of the package names
   # If so, select the num (usually first) link from this list
-  name_detected <- vapply(links, function(x) grepl(paste0("\\.", name, "$"), x), FUN.VALUE = logical(1))
-  if (any(name_detected)) {
-    links <- links[name_detected]
-    link <- links[num]
+  if (exact) {
+    name_detected <- vapply(links, function(x) grepl(paste0("\\.", name, "$"), x), FUN.VALUE = logical(1))
+    if (any(name_detected)) {
+      links <- links[name_detected]
+      link <- links[num]
+    } else {
+      link <- links[num]
+    }
   } else {
     link <- links[num]
   }
+
 
   if (is.na(link)) {
     return(list(package = NA, genre = NA))
@@ -675,17 +707,30 @@ get_app_usage <- function(db,
 #' @return A tibble containing a column 'activity' and a column 'duration' for the hourly
 #' activity duration.
 #' @export
-get_activity <- function(db,
-                         participant_id = NULL,
-                         confidence = 70,
-                         direction = "forward",
-                         start_date = NULL,
-                         end_date = NULL,
-                         by = c("Total", "Day", "Hour")) {
-  data <- get_data(db, "Activity", participant_id, start_date, end_date) %>%
-    dplyr::filter(confidence >= 70) %>%
-    compress_activity() %>%
-    dplyr::mutate(datetime = paste(date, time))
+activity_duration <- function(data = NULL,
+                              db = NULL,
+                              participant_id = NULL,
+                              confidence = 70,
+                              direction = "forward",
+                              start_date = NULL,
+                              end_date = NULL,
+                              by = c("Total", "Day", "Hour")) {
+  if (is.null(data) & is.null(db)) {
+    stop("Either data or db must be specified")
+  }
+
+  if (!is.null(data) & !is.null(db)) {
+    stop("Either data or db must be specified, but not both")
+  }
+
+  if (!is.null(data)) {
+
+  } else {
+    data <- get_data(db, "Activity", participant_id, start_date, end_date) %>%
+      dplyr::filter(confidence >= confidence) %>%
+      compress_activity() %>%
+      dplyr::mutate(datetime = paste(date, time))
+  }
 
   if (tolower(direction) == "forward" | tolower(direction) == "forwards") {
     data <- data %>%
@@ -734,7 +779,7 @@ device_info <- function(db, participant_id = NULL) {
 compress_activity <- function(data, direction = "forward") {
   data %>%
     dbplyr::window_order(date, time) %>%
-    dplyr::filter(!(dplyr::lead(type) == type && dplyr::lag(type) == type))
+    dplyr::filter(!(dplyr::lead(type) == type & dplyr::lag(type) == type))
 }
 
 #' Screen duration by hour or day

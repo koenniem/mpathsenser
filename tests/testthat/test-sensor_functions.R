@@ -115,6 +115,15 @@ test_that("link", {
   )
   expect_equal(res, true)
 
+  # Scrambled test
+  scramble <- function(data) {
+    idx <- sample(1:nrow(data), nrow(data))
+    data[idx,]
+  }
+  res <- link(scramble(dat1), scramble(dat2), "participant_id", offset_before = 1800) %>%
+    dplyr::arrange(participant_id, time)
+  expect_equal(res, true)
+
   res <- link(dat1, dat2, "participant_id", offset_after = 1800)
   true <- tibble::tibble(
     time = rep(c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
@@ -135,6 +144,46 @@ test_that("link", {
   )
   expect_equal(res, true)
 
+  res <- link(scramble(dat1), scramble(dat2), "participant_id", offset_after = 1800) %>%
+    dplyr::arrange(participant_id, time)
+  expect_equal(res, true)
+
+  # Test add_before and add_after
+  res <- link(dat1, dat2, "participant_id", offset_before = 1800,
+              add_before = TRUE, add_after = TRUE)
+  true <- tibble::tibble(
+    time = rep(c(as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
+                 as.POSIXct("2021-11-14 15:00:00")), 2),
+    participant_id = c(rep("12345", 3), rep("23456", 3)),
+    item_one = rep(c(40, 50, 60), 2),
+    data = rep(list(
+      tibble::tibble(time = c(seq.POSIXt(from = as.POSIXct("2021-11-14 12:50:00"),
+                                         length.out = 3, by = "5 min"),
+                              as.POSIXct("2021-11-14 13:00:00")),
+                     x = c(1:3, 4),
+                     original_time = c(rep(lubridate::`NA_POSIXct_`, 3),
+                                       as.POSIXct("2021-11-14 13:05:00"))),
+      tibble::tibble(time = c(as.POSIXct("2021-11-14 13:30:00"),
+                              seq.POSIXt(from = as.POSIXct("2021-11-14 13:30:00"),
+                                       length.out = 7, by = "5 min"),
+                              as.POSIXct("2021-11-14 14:00:00")),
+                     x = c(8, 9:15, 16),
+                     original_time = c(as.POSIXct("2021-11-14 13:25:00"),
+                                       rep(lubridate::`NA_POSIXct_`, 7),
+                                       as.POSIXct("2021-11-14 14:05:00"))),
+      tibble::tibble(time = c(as.POSIXct("2021-11-14 14:30:00"),
+                              seq.POSIXt(from = as.POSIXct("2021-11-14 14:30:00"),
+                                       length.out = 7, by = "5 min"),
+                              as.POSIXct("2021-11-14 15:00:00")),
+                     x = c(20, 21:27, 28),
+                     original_time = c(as.POSIXct("2021-11-14 14:25:00"),
+                                       rep(lubridate::`NA_POSIXct_`, 7),
+                                       as.POSIXct("2021-11-14 15:05:00")))
+    ), 2)
+  )
+  expect_equal(res, true, ignore_attr = TRUE)
+
+  # Test arguments
   expect_error(link(1, dat2, "participant_id", offset_before = 1800), "x must be a data frame")
   expect_error(link(dat1, 1, "participant_id", offset_before = 1800), "y must be a data frame")
   expect_error(link(dat1, dat2, 12345, offset_before = 1800),
@@ -153,6 +202,36 @@ test_that("link", {
                "column 'time' must be present in both x and y")
   expect_error(link(dat1, dplyr::select(dat2, -time), offset_before = 1800),
                "column 'time' must be present in both x and y")
+
+  # Bug #6: Test whether original_time is present in all nested data columns
+  # Create some data to use
+  dat1 <- data.frame(
+    time = c(rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 3), 2),
+             as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 13:00:00")),
+    participant_id = c(rep("12345", 3), rep("23456", 3), "45678", "56789"),
+    item_one = c(rep(c(40, 50, 60), 2), 40, 40)
+  )
+
+  dat2 <- data.frame(
+    time = c(rep(seq.POSIXt(as.POSIXct("2021-11-14 12:50:00"), by = "5 min", length.out = 30), 2),
+             seq.POSIXt(as.POSIXct("2021-11-14 12:30:00"), by = "5 min", length.out = 6)),
+    participant_id = c(rep("12345", 30), rep("23456", 30), rep("45678", 6)),
+    x = c(rep(1:30, 2), 1:6)
+  )
+
+  # Link together, make sure to include rows before and after
+  res <- link(x = dat1,
+              y = dat2,
+              by = "participant_id",
+              offset_before = 1800,
+              add_before = TRUE,
+              add_after = TRUE)
+
+  # Use the results, e.g. to filter out the extra added rows by offset_before and offset_after
+  # (as you have to do for the number of screen unlocks).
+  expect_true(all(purrr::map_lgl(res$data, ~ "original_time" %in% colnames(.x))))
+
+
 })
 
 ## link_db ===============
