@@ -64,10 +64,10 @@ reference:
 
   - title: Sensor-specific functions
     contents:
+      - activity_duration
       - app_category
       - decrypt_gps
       - device_info
-      - get_activity
       - get_app_usage
       - get_installed_apps
       - n_screen_on
