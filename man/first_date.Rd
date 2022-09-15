@@ -20,6 +20,8 @@ Leave empty to get data for all participants.}
 A string in the format 'YYYY-mm-dd' of the first entry date.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 A helper function for extracting the first date of entry of (of one or all participant) of one
 sensor. Note that this function is specific to the first date of a sensor. After all, it
 wouldn't make sense to extract the first date for a participant of the accelerometer, while the

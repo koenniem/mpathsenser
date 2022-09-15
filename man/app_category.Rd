@@ -30,6 +30,8 @@ genre   \tab the corresponding genre of this package
 }
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 This function scrapes the Google Play Store by using \code{name} as the search term. From there
 it selects the first result in the list and its corresponding category and package name.
 }

@@ -14,6 +14,8 @@ sensors
 A character vector containing all sensor names supported by \code{mpathsenser}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 A list containing all available sensors in this package you can work with. This variable was
 created so it is easier to use in your own functions, e.g. to loop over sensors.
 }

@@ -20,6 +20,8 @@ Leave empty to get data for all participants.}
 A string in the format 'YYYY-mm-dd' of the last entry date.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 A helper function for extracting the last date of entry of (of one or all participant) of one
 sensor. Note that this function is specific to the last date of a sensor. After all, it
 wouldn't make sense to extract the last date for a participant of the device info, while the

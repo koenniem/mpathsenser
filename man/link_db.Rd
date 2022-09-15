@@ -68,6 +68,7 @@ matched data of either \code{sensor_two} or \code{external} according to \code{o
 other way around when \code{reverse = TRUE}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 This function is specific to mpathsenser databases. It is a wrapper around
 \link[mpathsenser]{link} but extracts data in the database for you.
 }

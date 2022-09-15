@@ -28,8 +28,8 @@ Leave empty to get data for all participants.}
 \item{confidence}{The minimum confidence (0-100) that should be assigned to an observation by
 Activity Recognition.}
 
-\item{direction}{The directionality of the duration calculation, i.e. \eqn{t_{t-1} - t} or
-\eqn{t - t_{t+1}}.}
+\item{direction}{The directionality of the duration calculation, i.e. \eqn{t - t_{t-1}} or
+\eqn{t_{t+1} - t}.}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
 convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
@@ -46,5 +46,5 @@ A tibble containing a column 'activity' and a column 'duration' for the hourly
 activity duration.
 }
 \description{
-Get a summary of physical activity (recognition)
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }

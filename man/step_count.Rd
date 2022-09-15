@@ -25,5 +25,7 @@ last entry for a participant.}
 A tibble with the 'date', 'hour', and the number of 'steps'.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
 Extracts the number of steps per hour as sensed by the underlying operating system.
 }

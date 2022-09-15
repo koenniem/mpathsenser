@@ -31,7 +31,7 @@ A message indicating whether there were any issues and a character vector of the
 names that need to be fixed. If there were no issues, no result is returned.
 }
 \description{
-Test JSON files for being in the correct format.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
 \section{Progress}{
 

@@ -15,5 +15,5 @@ get_participants(db, lazy = FALSE)
 A data frame containing all \code{participant_id} and \code{study_id}.
 }
 \description{
-Get all participants
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }

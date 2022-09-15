@@ -15,5 +15,5 @@ get_studies(db, lazy = FALSE)
 A data frame containing all studies.
 }
 \description{
-Get all studies
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }

@@ -19,6 +19,8 @@ fix_jsons(path = getwd(), files = NULL, recursive = TRUE, parallel = FALSE)
 A message indicating how many files were fixed.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 When copying data directly coming from m-Path Sense, JSON files are sometimes corrupted due to
 the app not properly closing them. This function attempts to fix the most common
 problems associated with improper file closure by m-Path Sense.

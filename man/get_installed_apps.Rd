@@ -17,6 +17,8 @@ Leave empty to get data for all participants.}
 A tibble containing app names.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 Extract installed apps for one or all participants. Contrarily to other get_* functions in
 this package, start and end dates are not used since installed apps are assumed to be fixed
 throughout the study.

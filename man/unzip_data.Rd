@@ -30,6 +30,8 @@ lot of files. If you have already used \code{future::plan}, you can leave this p
 A message indicating how many files were unzipped.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 Similar to \link[utils]{unzip}, but makes it easier to unzip all files in a given path
 with one function call.
 }

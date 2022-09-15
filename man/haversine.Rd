@@ -21,6 +21,8 @@ haversine(lat1, lon1, lat2, lon2, r = 6371)
 A numeric value of the distance between point 1 and 2 in kilometers.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 Calculate the great-circle distance between two points using the Haversine function.
 }
 \examples{

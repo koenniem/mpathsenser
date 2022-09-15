@@ -31,5 +31,5 @@ sensors.}
 No return value, called for side effects.
 }
 \description{
-Copy (a subset of) a database to another database
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }

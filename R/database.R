@@ -1,5 +1,8 @@
 #' Available Sensors
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' A list containing all available sensors in this package you can work with. This variable was
 #' created so it is easier to use in your own functions, e.g. to loop over sensors.
 #'
@@ -13,6 +16,9 @@ sensors <- c("Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "
              "Pedometer", "PhoneLog", "Screen", "TextMessage", "Weather", "Wifi")
 
 #' Create a new mpathsenser database
+#'
+#' @description
+#' `r lifecycle::badge("stable")`
 #'
 #' @param path The path to the database.
 #' @param db_name The name of the database.
@@ -61,6 +67,9 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 
 #' Open an mpathsenser database.
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' @param path The path to the database. Use NULL to use the full path name in db_name.
 #' @param db_name The name of the database.
 #'
@@ -92,6 +101,9 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 
 #' Close a database connection
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
 #'
 #' @inheritParams get_data
@@ -111,6 +123,9 @@ close_db <- function(db) {
 }
 
 #' Create indexes for a mpathsenser database
+#'
+#' @description
+#' `r lifecycle::badge("stable")`
 #'
 #' @inheritParams get_data
 #'
@@ -136,6 +151,9 @@ vacuum_db <- function(db) {
 }
 
 #' Copy (a subset of) a database to another database
+#'
+#' @description
+#' `r lifecycle::badge("stable")`
 #'
 #' @param from_db A mpathsenser database connection from where the data will be transferred.
 #' @param to_db A mpathsenser database connection where the data will be transferred to. If no
@@ -235,6 +253,9 @@ clear_sensors_db <- function(db) {
 
 #' Get all processed files from a database
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' @param db A database connection, as created by \link[mpathsenser]{create_db}.
 #'
 #' @return A data frame containing the \code{file_name}, \code{participant_id}, and \code{study_id}
@@ -246,6 +267,9 @@ get_processed_files <- function(db) {
 }
 
 #' Get all participants
+#'
+#' @description
+#' `r lifecycle::badge("stable")`
 #'
 #' @param db db A database connection, as created by \link[mpathsenser]{create_db}.
 #' @param lazy Whether to evaluate lazily using \link[dbplyr]{dbplyr}.
@@ -263,6 +287,9 @@ get_participants <- function(db, lazy = FALSE) {
 
 #' Get all studies
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' @param db db A database connection, as created by \link[mpathsenser]{create_db}.
 #' @param lazy Whether to evaluate lazily using \link[dbplyr]{dbplyr}.
 #'
@@ -277,7 +304,10 @@ get_studies <- function(db, lazy = FALSE) {
   }
 }
 
-#' Get the number of rows sensors in a mpathsenser database
+#' Get the number of rows per sensor in a mpathsenser database
+#'
+#' @description
+#' `r lifecycle::badge("stable")`
 #'
 #' @param db db A database connection, as created by \link[mpathsenser]{create_db}.
 #' @param sensor A character vector of one or multiple vectors. Use "All" for all sensors. See

@@ -15,7 +15,7 @@ open_db(path = getwd(), db_name = "sense.db")
 A connection to an mpathsenser database.
 }
 \description{
-Open an mpathsenser database.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
 \seealso{
 \code{\link[mpathsenser]{close_db}} for closing a database;

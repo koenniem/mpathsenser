@@ -14,6 +14,8 @@ close_db(db)
 or even exists.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
 }
 \seealso{

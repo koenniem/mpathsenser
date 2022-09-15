@@ -18,5 +18,5 @@ be overwritten or not. Otherwise, this option is ignored.}
 A database connection using prepared database schemas.
 }
 \description{
-Create a new mpathsenser database
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }

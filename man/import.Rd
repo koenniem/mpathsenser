@@ -44,6 +44,8 @@ A message indicating how many files were imported.
 Imported database can be reopened using \link[mpathsenser]{open_db}.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 Import JSON files from m-Path Sense into a structured database. This function is the bread and
 butter of this package, as it creates (or rather fills) the
 database that (almost) all the other functions use.

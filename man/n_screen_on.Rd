@@ -35,5 +35,5 @@ In case grouping is by the total amount, returns a single numeric value. For dat
 hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen on's 'n'.
 }
 \description{
-Get number of times screen turned on
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }

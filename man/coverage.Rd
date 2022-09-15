@@ -47,6 +47,8 @@ A ggplot of the coverage results if \code{plot} is \code{TRUE} or a tibble conta
 hour, type of measure (i.e. sensor), and (relative) coverage.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 Only applicable to non-reactive sensors with 'continuous' sampling
 }
 \examples{

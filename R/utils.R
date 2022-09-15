@@ -1,8 +1,10 @@
 #' Copy mpathsenser zip files to a new location
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' Copy zip files from a source destination to an origin destination where they do not yet exist.
 #' That is, it only updates the origin folder from the source folder.
-#'
 #'
 #' @param from A path to copy files from.
 #' @param to A path to copy files to.
@@ -42,6 +44,9 @@ ccopy <- function(from,
 }
 
 #' Fix the end of JSON files
+#'
+#' @description
+#' `r lifecycle::badge("stable")`
 #'
 #' When copying data directly coming from m-Path Sense, JSON files are sometimes corrupted due to
 #' the app not properly closing them. This function attempts to fix the most common
@@ -228,6 +233,9 @@ fix_eof <- function(file, eof, lines) {
 
 #' Test JSON files for being in the correct format.
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' @inheritSection import Progress
 #'
 #' @param path The path name of the JSON files.
@@ -314,6 +322,9 @@ test_jsons <- function(path = getwd(),
 }
 
 #' Unzip m-Path Sense output
+#'
+#' @description
+#' `r lifecycle::badge("stable")`
 #'
 #' Similar to \link[utils]{unzip}, but makes it easier to unzip all files in a given path
 #' with one function call.

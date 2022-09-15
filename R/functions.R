@@ -1,9 +1,13 @@
 #' Import mpathsenser files into a database (mpathsenser data scheme)
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' Import JSON files from m-Path Sense into a structured database. This function is the bread and
 #' butter of this package, as it creates (or rather fills) the
 #' database that (almost) all the other functions use.
 #'
+#' @details
 #' \code{import} is highly customisable in the sense that you can specify which sensors to import
 #' (even though there may be more in the files) and it also allows batching for a speedier writing
 #' process. If \code{parallel} is \code{TRUE}, it is recommended to \code{batch_size} be a scalar
@@ -402,6 +406,9 @@ freq <- c(
 )
 
 #' Create a coverage chart of the sampling rate
+#'
+#' @description
+#' `r lifecycle::badge("stable")`
 #'
 #' Only applicable to non-reactive sensors with 'continuous' sampling
 #'

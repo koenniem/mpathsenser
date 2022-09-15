@@ -19,8 +19,10 @@ link(
 \item{x, y}{A pair of data frames or data frame extensions (e.g. a tibble). Both \code{x} and
 \code{y} must have a column called \code{time}.}
 
-\item{by}{If NULL, the default, \code{*_join()} will perform a natural join, using all variables
-in common across \code{x} and \code{y}. A message lists the variables so that you can check
+\item{by}{A character vector indicating the variable(s) to match by, typically the participant
+IDs. If NULL, the default, \code{*_join()} will perform a natural join, using all variables in
+common across \code{x} and \code{y}. Therefore, all data will be mapped to each other based on
+the time stamps of \code{x} and \code{y}. A message lists the variables so that you can check
 they're correct; suppress the message by supplying by explicitly.
 
 To join by different variables on \code{x} and \code{y}, use a named vector. For example,
@@ -29,10 +31,7 @@ To join by different variables on \code{x} and \code{y}, use a named vector. For
 To join by multiple variables, use a vector with length > 1. For example, by = c('a', 'b') will
 match \code{x$a} to \code{y$a} and \code{x$b} to \code{y$b}. Use a named vector to match
 different variables in x and y. For example, \code{by = c('a' = 'b', 'c' = 'd')} will match
-\code{x$a} to \code{y$b} and \code{x$c} to \code{y$d}.
-
-To perform a cross-join, generating all combinations of \code{x} and \code{y}, use \code{by =
-  character()}.}
+\code{x$a} to \code{y$b} and \code{x$c} to \code{y$d}.}
 
 \item{offset_before}{The time before each measurement in \code{x} that denotes the period in
 which \code{y} is matched. Must be convertible to a period by \link[lubridate]{as.period}.}
@@ -46,60 +45,63 @@ interval?}
 \item{add_after}{Logical value. Do you want to add the first measurement after the end of each
 interval?}
 
-\item{split}{An option grouping variable to split the computation by. When working with a large
-data set, the computation can grow so large it no longer fits in your computer's working memory
-(after which it will probably fall back on the swap file, which is very slow). Splitting the
-computation trades some computation efficiency for a large decrease in RAM usage.}
+\item{split}{An optional grouping variable to split the computation by. When working with large
+data sets, the computation can grow so large it no longer fits in your computer's working
+memory (after which it will probably fall back on the swap file, which is very slow). Splitting
+the computation trades some computational efficiency for a large decrease in RAM usage. This
+argument defaults to \code{by} to automatically suppress some of its RAM usage.}
 }
 \value{
 A tibble with the data of \code{x} with a new column \code{data} with the matched data of
 \code{y} according to \code{offset_before} and \code{offset_after}.
 }
 \description{
-One of the key tasks in analysing mobile sensing data is being able to link it to other data. For
-example, when analysing physical activity data, it could be of interest to know how much time a
-participant spent exercising before an ESM beep evaluating their stress level. \code{link} allows
-you to map two data frames to each other that are on different time scales, based on a
-pre-specified offset before and/or after. This function assumes that both \code{x} and \code{y}
-have a column called \code{time} containing \link[base]{DateTimeClasses}.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
+One of the key tasks in analysing mobile sensing data is being able to link it to other data.
+For example, when analysing physical activity data, it could be of interest to know how much
+time a participant spent exercising before or after an ESM beep to evaluate their stress level.
+\code{link} allows you to map two data frames to each other that are on different time scales,
+based on a pre-specified offset before and/or after. This function assumes that both \code{x}
+and \code{y} have a column called \code{time} containing \link[base]{DateTimeClasses}.
 }
 \details{
-\code{y} is matched to the time scale of \code{x} by means of time windows. These time windows
-are defined as the period between \code{x - offset_before} and \code{x + offset_after}. Note that
-either \code{offset_before} or \code{offset_after} can be 0, but not both. The "interval" of the
-measurements is therefore the associated time window for each measurement of \code{x} and the
-data of \code{y} that also falls within this period. For example, an \code{offset_before}  of
-\link[lubridate]{minutes}(30) means to match all data of \code{y} that occurred \emph{before} each
-measurement in \code{x}. An \code{offset_after} of 900 (i.e. 15 minutes) means to match all data
-of \code{y} that occurred \emph{after} each measurement in \code{x}. When both \code{offset_before}
-and \code{offset_after}  are specified, it means all data of \code{y} is matched in an interval
-of 30 minutes before and 15 minutes after each measurement of \code{x}, thus combining the two
-arguments.
+\code{y} is matched to the time scale of \code{x} by means of time windows. These time
+windows are defined as the period between \code{x - offset_before} and \code{x + offset_after}.
+Note that either \code{offset_before} or \code{offset_after} can be 0, but not both. The
+"interval" of the measurements is therefore the associated time window for each measurement of
+\code{x} and the data of \code{y} that also falls within this period. For example, an
+\code{offset_before}  of \link[lubridate]{minutes}(30) means to match all data of \code{y} that
+occurred \emph{before} each measurement in \code{x}. An \code{offset_after} of 900 (i.e. 15 minutes)
+means to match all data of \code{y} that occurred \emph{after} each measurement in \code{x}. When
+both \code{offset_before} and \code{offset_after}  are specified, it means all data of \code{y}
+is matched in an interval of 30 minutes before and 15 minutes after each measurement of
+\code{x}, thus combining the two arguments.
 
 The arguments \code{add_before} and \code{add_after} let you decide whether you want to add the
 last measurement before the interval and/or the first measurement after the interval
 respectively. This could be useful when you want to know which type of event occurred right
-before or after the interval of the measurement. For example, at \code{offset_before = 1800}, the
-first measurement in \code{y} within the interval between \code{x - offset_before} and \code{x}
-may indicate that a participant was running 20 minutes before a measurement in \code{x}, However,
-with just that information there is no way of knowing what the participant was doing the first 10
-minutes of the interval. The same principle applies to after the interval. When \code{add_before}
-is set to \code{TRUE}, the last measurement of \code{y} occurring before the interval of \code{x}
-is added to the output data as the first row, having the \strong{\code{time} of \code{x -
-offset_before}}. When \code{add_after} is set to \code{TRUE}, the first measurement of \code{y}
-occurring after the interval of \code{x} is added to the output data as the last row, having the
-\strong{\code{time} of \code{x + offset_after}}.This way, it is easier to calculate the difference to
-other measurements of \code{y} later (within the same interval). Additionally, an extra column
-(\code{orig_time}) is added in the nested \code{data} column, which is the original time of the
-\code{y} measurement and \code{NULL} for every other observation. This may be useful to check if
-the added measurement isn't too distant (in time) from the others.
+before or after the interval of the measurement. For example, at \code{offset_before = 1800},
+the may indicate that a participant was running 20 minutes before a measurement in \code{x},
+However, with just that information there is no way of knowing what the participant was doing
+the first 10 minutes of the interval. The same principle applies to after the interval. When
+\code{add_before} is set to \code{TRUE}, the last measurement of \code{y} occurring before the
+interval of \code{x} is added to the output data as the first row, having the \strong{\code{time} of
+\code{x - offset_before}}. When \code{add_after} is set to \code{TRUE}, the first measurement
+of \code{y} occurring after the interval of \code{x} is added to the output data as the last
+row, having the \strong{\code{time} of \code{x + offset_after}}.This way, it is easier to calculate
+the difference to other measurements of \code{y} later (within the same interval).
+Additionally, an extra column (\code{original_time}) is added in the nested \code{data} column,
+which is the original time of the \code{y} measurement and \code{NULL} for every other
+observation. This may be useful to check if the added measurement isn't too distant (in time)
+from the others.
 }
 \section{Warning}{
  Note that setting \code{add_before} and \code{add_after} each add one row to
 each nested \code{tibble} of the \code{data} column. Thus, if you are only interested in the
 total count (e.g. the number of total screen changes), remember to set these arguments to FALSE
-or make sure to filter out rows that do \emph{note} have an \code{orig_time}. Simply subtracting 1
-or 2 does not work as not all measurements in \code{x} may have a measurement in \code{y}
+or make sure to filter out rows that do \emph{note} have an \code{original_time}. Simply subtracting
+1 or 2 does not work as not all measurements in \code{x} may have a measurement in \code{y}
 before or after (and thus no row is added).
 }
 

@@ -1,5 +1,8 @@
 #' Decrypt GPS data from a curve25519 public key
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' By default, the latitude and longitude of the GPS data collected by m-Path Sense will be encrypted
 #' using an asymmetric curve25519 key to provide extra protection for these highly sensitive data.
 #' This function takes the entire location data set and decrypts its longitude and latitude columns
@@ -57,6 +60,9 @@ rad2deg <- function(rad) {
 
 #' Calculate the Great-Circle Distance between two points in kilometers
 #'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
 #' Calculate the great-circle distance between two points using the Haversine function.
 #'
 #' @param lon1 The longitude of point 1 in degrees.
@@ -96,6 +102,9 @@ location_variance <- function(lat, lon, time) {
 }
 
 #' Reverse geocoding with latitude and longitude
+#'
+#' @description
+#' `r lifecycle::badge("experimental")`
 #'
 #' This functions allows you to extract information about a place based on the latitude and
 #' longitude from the OpenStreetMaps nominatim API.

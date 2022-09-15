@@ -2,7 +2,7 @@
 % Please edit documentation in R/database.R
 \name{get_nrows}
 \alias{get_nrows}
-\title{Get the number of rows sensors in a mpathsenser database}
+\title{Get the number of rows per sensor in a mpathsenser database}
 \usage{
 get_nrows(
   db,
@@ -34,5 +34,5 @@ last entry for a participant.}
 A named vector containing the number of rows for each sensor.
 }
 \description{
-Get the number of rows sensors in a mpathsenser database
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }

@@ -13,5 +13,5 @@ index_db(db)
 No return value, called for side effects.
 }
 \description{
-Create indexes for a mpathsenser database
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }

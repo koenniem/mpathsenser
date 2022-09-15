@@ -17,5 +17,5 @@ Leave empty to get data for all participants.}
 A tibble containing device info for each participant
 }
 \description{
-Get the device info for one or more participants
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }

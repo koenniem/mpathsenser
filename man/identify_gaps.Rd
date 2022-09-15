@@ -36,6 +36,8 @@ gap            \tab the time passed between from and to, in seconds
 }
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
 Oftentimes in mobile sensing, gaps appear in the data as a result of the participant
 accidentally closing the app or the operating system killing the app to save power. This can
 lead to issues later on during data analysis when it becomes unclear whether there are no

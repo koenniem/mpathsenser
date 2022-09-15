@@ -48,6 +48,7 @@ Suggests:
     ggplot2,
     httr,
     knitr,
+    lifecycle,
     lme4,
     lmerTest,
     progressr,

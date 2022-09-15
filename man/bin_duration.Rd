@@ -20,11 +20,12 @@ A tibble containing the group columns (if any), date, hour (if \code{by = "hour"
 and the duration in seconds.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
 In time series with variable measurements, an often recurring task is calculating the total time
 spent (i.e. the duration) in fixed bins, for example per hour or day. However, this may be
 difficult when two subsequent measurements are in different bins or span over multiple bins.
-}
-\details{
+
 Note that non-grouped columns are discarded in the output.
 }
 \examples{

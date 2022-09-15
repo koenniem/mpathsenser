@@ -25,6 +25,8 @@ A list of information about the location. See
 for more details.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
 This functions allows you to extract information about a place based on the latitude and
 longitude from the OpenStreetMaps nominatim API.
 }
