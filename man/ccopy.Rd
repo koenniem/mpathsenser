@@ -20,7 +20,7 @@ A message indicating how many files were copied.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
 Copy zip files from a source destination to an origin destination where they do not yet exist.
-That is, it only updates the origin folder from the source folder.
+That is, it only updates the target folder from the source folder.
 }
 \examples{
 \dontrun{

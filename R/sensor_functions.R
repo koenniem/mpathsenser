@@ -195,7 +195,7 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
   # Create an empty tibble (prototype) by retrieving rows with time before UNIX start (not possible)
   # This is needed to fill in the data entries where there would otherwise be nothing left
   # because nothing matched within the start_time and end_time
-  proto <- tibble::as_tibble(y[y$time < 0, setdiff(colnames(y), by)])
+  proto <- tibble::as_tibble(y[0, setdiff(colnames(y), by)])
   if (add_before | add_after) {
     proto$original_time <- as.POSIXct(vector(mode = "double"))
 
@@ -483,6 +483,186 @@ link_db <- function(db,
        add_before = add_before,
        add_after = add_after)
 
+}
+
+#' Link gaps to (ESM) data
+#'
+#' @description `r lifecycle::badge("experimental")`
+#'
+#'   Gaps in mobile sensing data typically occur when the app is stopped by the operating system or
+#'   the user. While small gaps may not pose problems with analyses, greater gaps may cause bias or
+#'   skew your data. As a result, gap data should be considered in order to inspect and limit their
+#'   influence. This function, like \link[mpathsenser]{link}, allows you to connect gaps to other
+#'   data (usually ESM/EMA data) within a user-specified time range.
+#'
+#' @param data A data frame or an extension to a data frame (e.g. a tibble). While gap data can be
+#'   linked to any other type of data, ESM data is the most commonly used.
+#' @param gaps A data frame (extension) containing the gap data. See
+#'   \link[mpathsenser]{identify_gaps} for retrieving gap data from an mpathsenser database. It
+#'   should at least contain the columns \code{from} and \code{to} (both in a date-time format), as
+#'   well as any specified columns in \code{by}.
+#' @inheritParams link
+#' @param raw_data Whether to include the raw data (i.e. the matched gap data) to the output as
+#'   gap_data.
+#'
+#' @return The original \code{data} with an extra column \code{duration} indicating the gap during
+#'   within the interval in seconds (if \code{duration}  is \code{TRUE}), or an extra column called
+#'   \code{gap_data} containing the gaps within the interval. The function ensures all durations and
+#'   gap time stamps are within the range of the interval.
+#' @export
+link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0, raw_data = FALSE) {
+
+  # Argument checking
+  if (!is.data.frame(data))
+    stop("data must be a data frame", call. = FALSE)
+  if (!is.data.frame(gaps))
+    stop("gaps must be a data frame", call. = FALSE)
+  if (!is.null(by) && !is.character(by))
+    stop("by must be a character vector of variables to join by", call. = FALSE)
+
+  # offset checks
+  if ((is.null(offset_before) | all(offset_before == 0)) &
+      (is.null(offset_after) | all(offset_after == 0)))
+    stop("either offset_before or offset_after must not be 0 or NULL, or both", call. = FALSE)
+  if (!is.null(offset_before) && !(is.character(offset_before)
+                                   | lubridate::is.period(offset_before)
+                                   | is.numeric(offset_before)))
+    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
+  if (!is.null(offset_after) && !(is.character(offset_after)
+                                  | lubridate::is.period(offset_after)
+                                  | is.numeric(offset_after)))
+    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
+
+  # Convert offset_before to integer time
+  if (is.character(offset_before) | is.numeric(offset_before)) {
+    offset_before <- lubridate::as.period(offset_before)
+    offset_before <- as.integer(as.double(offset_before))
+  }
+
+  # Convert offset_after to integer time
+  if (is.character(offset_after) | is.numeric(offset_after)) {
+    offset_after <- lubridate::as.period(offset_after)
+    offset_after <- as.integer(as.double(offset_after))
+  }
+
+  if (is.na(offset_before) | is.na(offset_after))
+    stop(paste("Invalid offset specified. Try something like '30 minutes', ",
+               "lubridate::minutes(30), or 1800."), call. = FALSE)
+  if(!is.null(offset_before) && offset_before < 0) {
+    offset_before <- abs(offset_before)
+    warning(paste("offset_before must be a positive period (i.e. greater than 0).",
+                  "Taking the absolute value"), call. = FALSE)
+  }
+  if(!is.null(offset_after) && offset_after < 0) {
+    offset_after <- abs(offset_after)
+    warning(paste("offset_after must be a positive period (i.e. greater than 0).",
+                  "Taking the absolute value"), call. = FALSE)
+  }
+
+  # Check for time column in data
+  if (!("time" %in% colnames(data)))
+    stop("column 'time' must be present in data", call. = FALSE)
+  # Check for time column
+  if (!("from" %in% colnames(gaps) & "to" %in% colnames(gaps)))
+    stop("column 'from' and 'to' must be present in gaps.", call. = FALSE)
+  if (!lubridate::is.POSIXct(data$time))
+    stop("column 'time' in x must be a POSIXct", call. = FALSE)
+
+  # Calculate the start and end time of the interval (in seconds) of each row in data
+  # Only retain gaps that are (partially) within or span over the interval
+  data_gaps <- data %>%
+    dplyr::select(by, .data$time) %>%
+    dplyr::mutate(time_int = as.integer(.data$time)) %>%
+    dplyr::mutate(start_interval = .data$time_int - offset_before) %>%
+    dplyr::mutate(end_interval = .data$time_int + offset_after) %>%
+    dplyr::left_join(gaps, by = by) %>%
+    dplyr::mutate(dplyr::across(c(.data$from, .data$to), as.integer)) %>%
+    dplyr::filter(.data$from < .data$end_interval & .data$to > .data$start_interval)
+
+  # Set gaps time stamps out of the interval to the interval's bounds
+  data_gaps <- data_gaps %>%
+    dplyr::mutate(from = ifelse(.data$from < .data$start_interval,
+                                .data$start_interval,
+                                .data$from)) %>%
+    dplyr::mutate(to = ifelse(.data$to > .data$end_interval, .data$end_interval, .data$to)) %>%
+    dplyr::mutate(gap = .data$to - .data$from)
+
+  if (raw_data) {
+    # Transform from and to back to POSIXct and nest the data
+    data_gaps <- data_gaps %>%
+      dplyr::select(by, .data$time, .data$from, .data$to, .data$gap) %>%
+      dplyr::mutate(from = as.POSIXct(.data$from,
+                                      origin = "1970-01-01",
+                                      tz = attr(gaps$from, "tzone"))) %>%
+      dplyr::mutate(to = as.POSIXct(.data$to,
+                                    origin = "1970-01-01",
+                                    tz = attr(gaps$to, "tzone"))) %>%
+      dplyr::group_by(dplyr::across(c(by, .data$time))) %>%
+      tidyr::nest(gap_data = c(.data$from, .data$to, .data$gap)) %>%
+      dplyr::ungroup()
+
+    # Add gaps at beep level
+    data_gaps$gap <- vapply(data_gaps$gap_data, function(x) sum(x$gap, na.rm = TRUE),
+                            FUN.VALUE = double(1))
+
+    # Create empty data frame in case no results are found
+    proto <- tibble::tibble(from = as.POSIXct(vector(mode = "double"),
+                                              origin = "1970-01-01",
+                                              tz = attr(gaps$from, "tzone")),
+                            to = as.POSIXct(vector(mode = "double"),
+                                            origin = "1970-01-01", tz =
+                                              attr(gaps$from, "tzone")),
+                            gap = integer(0))
+
+  } else {
+    data_gaps <- data_gaps %>%
+      dplyr::group_by(dplyr::across(c(by, .data$time))) %>%
+      dplyr::summarise(gap = sum(.data$gap), .groups = "drop")
+  }
+
+  # Merge with ESM data
+  data <- data %>%
+    tibble::as_tibble() %>%
+    dplyr::left_join(data_gaps, by = c(by, "time")) %>%
+    dplyr::mutate(gap = ifelse(is.na(.data$gap), 0, .data$gap))
+
+  if (raw_data) {
+    data <- data %>%
+      dplyr::mutate(gap_data = ifelse(lapply(.data$gap_data, is.null), list(proto), .data$gap_data))
+  }
+
+  data
+
+
+  # } else {
+  #   # Calculate the gap duration within the interval and sum the duration
+  #   # See gaps.png for a graphical overview
+  #   # 1.  the gap falls completely inside the beep interval
+  #   # 2.  the start of the gap falls inside the beep interval, but the end does not
+  #   # 3.  the start of the gap falls outside of the beep interval, but the end of the gap falls inside
+  #   # 4. the gap spans over the entire interval
+  #   data_gaps <- data_gaps %>%
+  #     dplyr::mutate(
+  #       gap = dplyr::case_when(
+  #         .data$from >= .data$start_interval &
+  #           .data$to <= .data$end_interval ~ .data$to - .data$from,
+  #         .data$from >= .data$start_interval &
+  #           .data$to >= .data$end_interval ~ .data$end_interval - .data$from,
+  #         .data$from <= .data$start_interval &
+  #           .data$to <= .data$end_interval ~ .data$to - .data$start_interval,
+  #         .data$from <= .data$start_interval &
+  #           .data$to >= .data$end_interval ~ .data$end_interval - .data$start_interval
+  #       )
+  #     ) %>%
+      # dplyr::group_by(dplyr::across(c(by, .data$time))) %>%
+      # dplyr::summarise(gap = sum(.data$gap), .groups = "drop")
+  #
+    # # Merge with ESM data
+    # data <- data %>%
+    #   tibble::as_tibble() %>%
+    #   dplyr::left_join(data_gaps, by = c(by, "time")) %>%
+    #   dplyr::mutate(gap = ifelse(is.na(.data$gap), 0, .data$gap))
+  # }
 }
 
 #' Get installed apps

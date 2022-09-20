@@ -3,7 +3,7 @@ url: https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser
 template:
   package: tidytemplate
   bootstrap: 5
-  bootswatch: cerulean
+  bootswatch: materia
 
 navbar:
   structure:
@@ -60,6 +60,7 @@ reference:
       - last_date
       - link
       - link_db
+      - link_gaps
       - moving_average
 
   - title: Sensor-specific functions

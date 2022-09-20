@@ -4,7 +4,7 @@
 #' `r lifecycle::badge("stable")`
 #'
 #' Copy zip files from a source destination to an origin destination where they do not yet exist.
-#' That is, it only updates the origin folder from the source folder.
+#' That is, it only updates the target folder from the source folder.
 #'
 #' @param from A path to copy files from.
 #' @param to A path to copy files to.

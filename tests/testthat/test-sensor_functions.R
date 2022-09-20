@@ -373,6 +373,261 @@ test_that("link_db", {
   file.remove(filename)
 })
 
+## link_gaps =================
+test_that("link_gaps", {
+  dat1 <- data.frame(
+    participant_id = c(rep("12345", 6), rep("23456", 6)),
+    time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
+    item_one = rep(seq.int(10, by = 10, length.out = 6), 2)
+  )
+
+  # Test with two participants to ensure link takes different groups into account
+  # Test both before and after each beep
+  # 1. the gap falls completely inside the beep interval
+  # 2. the start of the gap falls inside the beep interval, but the end does not
+  # 3. the start of the gap falls outside of the beep interval, but the end of the gap falls inside
+  # 4. the gap spans over the entire interval
+  # 5. the gap occurs entirely before the interval
+  # 6. the gap occurs entirely after the interval
+  dat2 <- data.frame(
+    participant_id = c(rep("12345", 46), rep("23456", 46)),
+    from = rep(c(
+      seq.POSIXt(as.POSIXct("2021-11-14 12:40:00"), by = "1 min", length.out = 20), #1 before
+      seq.POSIXt(as.POSIXct("2021-11-14 13:10:00"), by = "1 min", length.out = 20), #1 after
+      as.POSIXct("2021-11-14 13:55:00"), #2 before, 3 after
+      as.POSIXct("2021-11-14 14:25:00"), #3 before, 2 after
+      as.POSIXct("2021-11-14 15:25:00"), #2 after
+      as.POSIXct("2021-11-14 15:30:00"), #4 before, after
+      as.POSIXct("2021-11-14 12:15:00"), #5 before, after
+      as.POSIXct("2021-11-14 18:35:00") #6 before, after
+    ), 2),
+    to = rep(c(
+      seq.POSIXt(as.POSIXct("2021-11-14 12:41:00"), by = "1 min", length.out = 20), #1 before
+      seq.POSIXt(as.POSIXct("2021-11-14 13:11:00"), by = "1 min", length.out = 20), #1 after
+      as.POSIXct("2021-11-14 14:05:00"), #2 before, 3 after
+      as.POSIXct("2021-11-14 14:40:00"), #3 before
+      as.POSIXct("2021-11-14 15:30:00"), #2 after
+      as.POSIXct("2021-11-14 16:30:00"), #4 before, after
+      as.POSIXct("2021-11-14 12:25:00"), #5 before, after
+      as.POSIXct("2021-11-14 18:40:00") #6 before, after
+    ), 2)
+  )
+
+  # Test difference types of input for offset_before
+  # Integer vs double
+  expect_equal(
+    link_gaps(dat1, dat2, by = "participant_id", offset_before = 1800L),
+    link_gaps(dat1, dat2, by = "participant_id", offset_before = 1800))
+
+  expect_equal(
+    link_gaps(dat1, dat2, by = "participant_id", offset_before = 1800L),
+    link_gaps(dat1, dat2, by = "participant_id", offset_before = lubridate::minutes(30)))
+
+  expect_equal(
+    link_gaps(dat1, dat2, by = "participant_id", offset_before = 1800L),
+    link_gaps(dat1, dat2, by = "participant_id", offset_before = "30 minutes"))
+
+  expect_equal(
+    link_gaps(dat1, dat2, by = "participant_id", offset_before = 1800L),
+    link_gaps(dat1, dat2, by = "participant_id", offset_before = "1800 seconds"))
+
+  # Offset after
+  expect_equal(
+    link_gaps(dat1, dat2, by = "participant_id", offset_after = 1800L),
+    link_gaps(dat1, dat2, by = "participant_id", offset_after = 1800))
+
+  expect_equal(
+    link_gaps(dat1, dat2, by = "participant_id", offset_after = 1800L),
+    link_gaps(dat1, dat2, by = "participant_id", offset_after = lubridate::minutes(30)))
+
+  expect_equal(
+    link_gaps(dat1, dat2, by = "participant_id", offset_after = 1800L),
+    link_gaps(dat1, dat2, by = "participant_id", offset_after = "30 minutes"))
+
+  expect_equal(
+    link_gaps(dat1, dat2, by = "participant_id", offset_after = 1800L),
+    link_gaps(dat1, dat2, by = "participant_id", offset_after = "1800 seconds"))
+
+  # Offset_before, raw_data = TRUE
+  res_raw <- link_gaps(data = dat1,
+                       gaps = dat2,
+                       by = "participant_id",
+                       offset_before = 1800L,
+                       offset_after = 0L,
+                       raw_data = TRUE)
+  true <- tibble::tibble(
+    participant_id = c(rep("12345", 6), rep("23456", 6)),
+    time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
+    item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
+    gap_data = rep(list(
+      tibble::tibble(from = seq.POSIXt(as.POSIXct("2021-11-14 12:40:00"), by = "1 min", length.out = 20),
+                     to = seq.POSIXt(as.POSIXct("2021-11-14 12:41:00"), by = "1 min", length.out = 20),
+                     gap = rep(60, 20)), #1
+      tibble::tibble(from = as.POSIXct("2021-11-14 13:55:00"),
+                     to = as.POSIXct("2021-11-14 14:00:00"),
+                     gap = 300), #3
+      tibble::tibble(from = as.POSIXct("2021-11-14 14:30:00"),
+                     to = as.POSIXct("2021-11-14 14:40:00"),
+                     gap = 600), #3
+      tibble::tibble(from = as.POSIXct("2021-11-14 15:30:00"),
+                     to = as.POSIXct("2021-11-14 16:00:00"),
+                     gap = 1800), #4
+      tibble::tibble(from = lubridate::POSIXct(0, tz = ""),
+                     to = lubridate::POSIXct(0, tz = ""),
+                     gap = integer(0)), #5
+      tibble::tibble(from = lubridate::POSIXct(0, tz = ""),
+                     to = lubridate::POSIXct(0, tz = ""),
+                     gap = integer(0)) #6
+    ), 2),
+    gap = rep(c(1200, 300, 600, 1800, 0, 0), 2)
+  )
+  expect_equal(res_raw, true)
+
+  # Scrambled test
+  scramble <- function(data) {
+    idx <- sample(1:nrow(data), nrow(data))
+    data[idx,]
+  }
+  res <- link_gaps(data = scramble(dat1),
+                   gaps = scramble(dat2),
+                   by = "participant_id",
+                   offset_before = 1800,
+                   raw_data = TRUE) %>%
+    dplyr::arrange(participant_id, time)
+  expect_equal(res_raw, true)
+
+  # offset_before, raw_data = FALSE
+  res <- link_gaps(data = dat1,
+                   gaps = dat2,
+                   by = "participant_id",
+                   offset_before = 1800L,
+                   offset_after = 0L)
+  true <- tibble::tibble(
+    participant_id = c(rep("12345", 6), rep("23456", 6)),
+    time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
+    item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
+    gap = rep(c(1200, 300, 600, 1800, 0, 0), 2)
+  )
+  expect_equal(res, true)
+
+  # Test whether results from raw_data = FALSE and TRUE are the same
+  expect_equal(res_raw %>%
+                 dplyr::mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+                 dplyr::select(-gap_data),
+               res)
+
+  # Offset_after, raw_data = TRUE
+  res_raw <- link_gaps(data = dat1,
+                       gaps = dat2,
+                       by = "participant_id",
+                       offset_before = 0L,
+                       offset_after = 1800L,
+                       raw_data = TRUE)
+  true <- tibble::tibble(
+    participant_id = c(rep("12345", 6), rep("23456", 6)),
+    time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
+    item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
+    gap_data = rep(list(
+      tibble::tibble(from = seq.POSIXt(as.POSIXct("2021-11-14 13:10:00"), by = "1 min", length.out = 20),
+                     to = seq.POSIXt(as.POSIXct("2021-11-14 13:11:00"), by = "1 min", length.out = 20),
+                     gap = rep(60, 20)), #1
+      tibble::tibble(from = c(as.POSIXct("2021-11-14 14:00:00"), as.POSIXct("2021-11-14 14:25:00")),
+                     to = c(as.POSIXct("2021-11-14 14:05:00"), as.POSIXct("2021-11-14 14:30:00")),
+                     gap = 300), #2
+      tibble::tibble(from = as.POSIXct("2021-11-14 15:25:00"),
+                     to = as.POSIXct("2021-11-14 15:30:00"),
+                     gap = 300), #2
+      tibble::tibble(from = as.POSIXct("2021-11-14 16:00:00"),
+                     to = as.POSIXct("2021-11-14 16:30:00"),
+                     gap = 1800), #4
+      tibble::tibble(from = lubridate::POSIXct(0, tz = ""),
+                     to = lubridate::POSIXct(0, tz = ""),
+                     gap = integer(0)), #5
+      tibble::tibble(from = lubridate::POSIXct(0, tz = ""),
+                     to = lubridate::POSIXct(0, tz = ""),
+                     gap = integer(0)) #6
+    ), 2),
+    gap = rep(c(1200, 600, 300, 1800, 0, 0), 2)
+  )
+  expect_equal(res_raw, true)
+
+  # offset_after, raw_data = FALSE
+  res <- link_gaps(data = dat1,
+                   gaps = dat2,
+                   by = "participant_id",
+                   offset_before = 0L,
+                   offset_after = 1800L)
+  true <- tibble::tibble(
+    participant_id = c(rep("12345", 6), rep("23456", 6)),
+    time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
+    item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
+    gap = rep(c(1200, 600, 300, 1800, 0, 0), 2)
+  )
+  expect_equal(res, true)
+
+  # Test whether results from raw_data = FALSE and TRUE are the same
+  expect_equal(res_raw %>%
+                 dplyr::mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+                 dplyr::select(-gap_data),
+               res)
+
+  # Offset both
+  res_raw <- link_gaps(data = dat1,
+                       gaps = dat2,
+                       by = "participant_id",
+                       offset_before = 1800L,
+                       offset_after = 1800L,
+                       raw_data = TRUE)
+  true <- tibble::tibble(
+    participant_id = c(rep("12345", 6), rep("23456", 6)),
+    time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
+    item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
+    gap_data = rep(list(
+      tibble::tibble(from = c(seq.POSIXt(as.POSIXct("2021-11-14 12:40:00"), by = "1 min", length.out = 20),
+                              seq.POSIXt(as.POSIXct("2021-11-14 13:10:00"), by = "1 min", length.out = 20)),
+                     to = c(seq.POSIXt(as.POSIXct("2021-11-14 12:41:00"), by = "1 min", length.out = 20),
+                            seq.POSIXt(as.POSIXct("2021-11-14 13:11:00"), by = "1 min", length.out = 20)),
+                     gap = rep(60, 40)), #1
+      tibble::tibble(from = c(as.POSIXct("2021-11-14 13:55:00"), as.POSIXct("2021-11-14 14:25:00")),
+                     to = c(as.POSIXct("2021-11-14 14:05:00"), as.POSIXct("2021-11-14 14:30:00")),
+                     gap = c(600, 300)), #2
+      tibble::tibble(from = c(as.POSIXct("2021-11-14 14:30:00"), as.POSIXct("2021-11-14 15:25:00")),
+                     to = c(as.POSIXct("2021-11-14 14:40:00"), as.POSIXct("2021-11-14 15:30:00")),
+                     gap = c(600, 300)), #2
+      tibble::tibble(from = as.POSIXct("2021-11-14 15:30:00"),
+                     to = as.POSIXct("2021-11-14 16:30:00"),
+                     gap = 3600), #4
+      tibble::tibble(from = lubridate::POSIXct(0, tz = ""),
+                     to = lubridate::POSIXct(0, tz = ""),
+                     gap = integer(0)), #5
+      tibble::tibble(from = lubridate::POSIXct(0, tz = ""),
+                     to = lubridate::POSIXct(0, tz = ""),
+                     gap = integer(0)) #6
+    ), 2),
+    gap = rep(c(2400, 900, 900, 3600, 0, 0), 2)
+  )
+  expect_equal(res_raw, true)
+
+  # offset_both
+  res <- link_gaps(data = dat1,
+                   gaps = dat2,
+                   by = "participant_id",
+                   offset_before = 1800L,
+                   offset_after = 1800L)
+  true <- tibble::tibble(
+    participant_id = c(rep("12345", 6), rep("23456", 6)),
+    time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
+    item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
+    gap = rep(c(2400, 900, 900, 3600, 0, 0), 2)
+  )
+  expect_equal(res, true)
+
+  # Test whether results from raw_data = FALSE and TRUE are the same
+  expect_equal(res_raw %>%
+                 dplyr::mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+                 dplyr::select(-gap_data),
+               res)
+})
 
 ## get_installed_apps ===============
 test_that("get_installed_apps", {
