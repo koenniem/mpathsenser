@@ -203,13 +203,11 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
     # proto not to be applied (since it's not null)
     if (nrow(data_main) > 0) {
       # Add column original_time in cases where it's missing
-      data_main <- data_main %>%
-        dplyr::mutate(data =
-                        purrr::map(.data$data,
-                                   ~ dplyr::if_else(any("original_time" == colnames(.x)),
-                                                    list(.x),
-                                                    list(dplyr::mutate(.x, original_time = as.POSIXct(NA)))))) %>%
-        tidyr::unnest(data)
+      for (i in seq_along(data_main$data)) {
+        if (!any("original_time" == colnames(data_main$data[[i]]))) {
+          data_main$data[[i]]$original_time <- as.POSIXct(NA)
+        }
+      }
     }
   }
 
