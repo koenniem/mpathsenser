@@ -24,6 +24,6 @@ That is, it only updates the target folder from the source folder.
 }
 \examples{
 \dontrun{
-ccopy('K:/data/myproject/', '~/myproject')
+ccopy("K:/data/myproject/", "~/myproject")
 }
 }

@@ -58,20 +58,20 @@ Note that the \code{from} and \code{to} columns in the output are character vect
 \examples{
 \dontrun{
 # Find the gaps for a participant and convert to datetime
-gaps <- identify_gaps(db, '12345', min_gap = 60) \%>\%
+gaps <- identify_gaps(db, "12345", min_gap = 60) \%>\%
   mutate(across(c(to, from), ymd_hms)) \%>\%
-  mutate(across(c(to, from), with_tz, 'Europe/Brussels'))
+  mutate(across(c(to, from), with_tz, "Europe/Brussels"))
 
 # Get some sensor data and calculate a statistic, e.g. the time spent walking
 # You can also do this with larger intervals, e.g. the time spent walking per hour
-walking_time <- get_data(db, 'Activity', '12345') \%>\%
+walking_time <- get_data(db, "Activity", "12345") \%>\%
   collect() \%>\%
   mutate(datetime = ymd_hms(paste(date, time))) \%>\%
-  mutate(datetime = with_tz(datetime, 'Europe/Brussels')) \%>\%
+  mutate(datetime = with_tz(datetime, "Europe/Brussels")) \%>\%
   arrange(datetime) \%>\%
   mutate(prev_time = lag(datetime)) \%>\%
   mutate(duration = datetime - prev_time) \%>\%
-  filter(type == 'WALKING')
+  filter(type == "WALKING")
 
 # Find out if a gap occurs in the time intervals
 walking_time \%>\%

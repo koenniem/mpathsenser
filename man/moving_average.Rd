@@ -44,6 +44,6 @@ A tibble with the same columns as the input, modified to be a moving average.
 }
 \examples{
 \dontrun{
-get_moving_average(db, 'Light', '12345', mean_lux, max_lux, n = 5)
+get_moving_average(db, "Light", "12345", mean_lux, max_lux, n = 5)
 }
 }

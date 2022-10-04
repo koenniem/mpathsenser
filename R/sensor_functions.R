@@ -115,7 +115,7 @@ first_date <- function(db, sensor, participant_id = NULL) {
 #' @examples
 #' \dontrun{
 #' db <- open_db()
-#' first_date(db, 'Accelerometer', '12345')
+#' first_date(db, "Accelerometer", "12345")
 #' }
 last_date <- function(db, sensor, participant_id = NULL) {
   query <- paste0("SELECT MAX(date) AS `max` FROM `", sensor, "`")
@@ -124,546 +124,6 @@ last_date <- function(db, sensor, participant_id = NULL) {
     query <- paste0(query, " WHERE (`participant_id` = '", participant_id, "')")
   }
   DBI::dbGetQuery(db, query)[1, 1]
-}
-
-
-link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_after) {
-  # Match sensing data with ESM using a nested join
-  # Set a start_time (beep time - offset) and an end_time (beep time)
-  data <- x %>%
-    tibble::as_tibble() %>%
-    dplyr::mutate(start_time = as.integer(.data$time - offset_before)) %>%
-    dplyr::mutate(end_time = as.integer(.data$time + offset_after)) %>%
-    dplyr::select(by, .data$start_time, .data$end_time) %>%
-    dplyr::mutate(row_id = dplyr::row_number()) # For rematching later
-
-  data <- data %>%
-    dplyr::left_join(y, by = by) %>%
-    dplyr::mutate(time_int = as.integer(.data$time)) %>%
-    dplyr::arrange(by, time)
-
-  # The main data, i.e. data within the interval
-  data_main <- data %>%
-    dplyr::filter(.data$time_int >= .data$start_time & .data$time_int <= .data$end_time) %>%
-    dplyr::select(-.data$time_int) %>%
-    tidyr::nest(data = -c(by, .data$start_time, .data$end_time, .data$row_id)) %>%
-    dplyr::select(.data$row_id, .data$data)
-
-  # Add the last measurement before start_time
-  if (add_before) {
-    tz <- lubridate::tz(x$time)
-    data_before <- data %>%
-      dplyr::group_by(.data$row_id) %>%
-      dplyr::filter(.data$time_int < .data$start_time) %>%
-      dplyr::arrange(.data$time_int) %>%
-      dplyr::slice_tail(n = 1) %>%
-      dplyr::ungroup() %>%
-      dplyr::mutate(original_time = .data$time) %>%
-      dplyr::mutate(time = lubridate::as_datetime(.data$start_time, tz = tz)) %>%
-      dplyr::select(-.data$time_int) %>%
-      tidyr::nest(data_before = -c(by, .data$start_time, .data$end_time, .data$row_id)) %>%
-      dplyr::select(.data$row_id, .data$data_before)
-
-    # Add to the main result
-    data_main <- data_main %>%
-      dplyr::left_join(data_before, by = "row_id") %>%
-      dplyr::mutate(data = purrr::map2(.data$data_before, .data$data, dplyr::bind_rows)) %>%
-      dplyr::select(-.data$data_before)
-  }
-
-  # Add the first measurements after end_time
-  if (add_after) {
-    tz <- lubridate::tz(x$time)
-    data_after <- data %>%
-      dplyr::group_by(.data$row_id) %>%
-      dplyr::filter(.data$time_int > .data$end_time) %>%
-      dplyr::arrange(.data$time_int) %>%
-      dplyr::slice_head(n = 1) %>%
-      dplyr::ungroup() %>%
-      dplyr::mutate(original_time = .data$time) %>%
-      dplyr::mutate(time = lubridate::as_datetime(.data$end_time, tz = tz)) %>%
-      dplyr::select(-.data$time_int) %>%
-      tidyr::nest(data_after = -c(by, .data$start_time, .data$end_time, .data$row_id)) %>%
-      dplyr::select(.data$row_id, .data$data_after)
-
-    # Add to the main result
-    data_main <- data_main %>%
-      dplyr::left_join(data_after, by = "row_id") %>%
-      dplyr::mutate(data = purrr::map2(.data$data, .data$data_after, dplyr::bind_rows)) %>%
-      dplyr::select(-.data$data_after)
-  }
-
-  # Create an empty tibble (prototype) by retrieving rows with time before UNIX start (not possible)
-  # This is needed to fill in the data entries where there would otherwise be nothing left
-  # because nothing matched within the start_time and end_time
-  proto <- tibble::as_tibble(y[0, setdiff(colnames(y), by)])
-  if (add_before | add_after) {
-    proto$original_time <- as.POSIXct(vector(mode = "double"))
-
-    # In case data_main is empty, applying the solution below leads to NA in the next step causing
-    # proto not to be applied (since it's not null)
-    if (nrow(data_main) > 0) {
-      # Add column original_time in cases where it's missing
-      for (i in seq_along(data_main$data)) {
-        if (!any("original_time" == colnames(data_main$data[[i]]))) {
-          data_main$data[[i]]$original_time <- as.POSIXct(NA)
-        }
-      }
-    }
-  }
-
-  res <- x %>%
-    tibble::as_tibble() %>%
-    dplyr::mutate(row_id = dplyr::row_number()) %>%
-    dplyr::left_join(data_main, by = "row_id") %>%
-    dplyr::mutate(data = ifelse(lapply(.data$data, is.null), list(proto), .data$data)) %>%
-    dplyr::select(-.data$row_id)
-
-  res
-}
-
-#' Match y to the time scale of x
-#'
-#' @description
-#' `r lifecycle::badge("stable")`
-#'
-#'   One of the key tasks in analysing mobile sensing data is being able to link it to other data.
-#'   For example, when analysing physical activity data, it could be of interest to know how much
-#'   time a participant spent exercising before or after an ESM beep to evaluate their stress level.
-#'   \code{link} allows you to map two data frames to each other that are on different time scales,
-#'   based on a pre-specified offset before and/or after. This function assumes that both \code{x}
-#'   and \code{y} have a column called \code{time} containing \link[base]{DateTimeClasses}.
-#'
-#' @details \code{y} is matched to the time scale of \code{x} by means of time windows. These time
-#'   windows are defined as the period between \code{x - offset_before} and \code{x + offset_after}.
-#'   Note that either \code{offset_before} or \code{offset_after} can be 0, but not both. The
-#'   "interval" of the measurements is therefore the associated time window for each measurement of
-#'   \code{x} and the data of \code{y} that also falls within this period. For example, an
-#'   \code{offset_before}  of \link[lubridate]{minutes}(30) means to match all data of \code{y} that
-#'   occurred *before* each measurement in \code{x}. An \code{offset_after} of 900 (i.e. 15 minutes)
-#'   means to match all data of \code{y} that occurred *after* each measurement in \code{x}. When
-#'   both \code{offset_before} and \code{offset_after}  are specified, it means all data of \code{y}
-#'   is matched in an interval of 30 minutes before and 15 minutes after each measurement of
-#'   \code{x}, thus combining the two arguments.
-#'
-#'   The arguments \code{add_before} and \code{add_after} let you decide whether you want to add the
-#'   last measurement before the interval and/or the first measurement after the interval
-#'   respectively. This could be useful when you want to know which type of event occurred right
-#'   before or after the interval of the measurement. For example, at \code{offset_before = 1800},
-#'   the may indicate that a participant was running 20 minutes before a measurement in \code{x},
-#'   However, with just that information there is no way of knowing what the participant was doing
-#'   the first 10 minutes of the interval. The same principle applies to after the interval. When
-#'   \code{add_before} is set to \code{TRUE}, the last measurement of \code{y} occurring before the
-#'   interval of \code{x} is added to the output data as the first row, having the **\code{time} of
-#'   \code{x - offset_before}**. When \code{add_after} is set to \code{TRUE}, the first measurement
-#'   of \code{y} occurring after the interval of \code{x} is added to the output data as the last
-#'   row, having the **\code{time} of \code{x + offset_after}**.This way, it is easier to calculate
-#'   the difference to other measurements of \code{y} later (within the same interval).
-#'   Additionally, an extra column (\code{original_time}) is added in the nested \code{data} column,
-#'   which is the original time of the \code{y} measurement and \code{NULL} for every other
-#'   observation. This may be useful to check if the added measurement isn't too distant (in time)
-#'   from the others.
-#'
-#' @section Warning: Note that setting \code{add_before} and \code{add_after} each add one row to
-#'   each nested \code{tibble} of the \code{data} column. Thus, if you are only interested in the
-#'   total count (e.g. the number of total screen changes), remember to set these arguments to FALSE
-#'   or make sure to filter out rows that do _note_ have an \code{original_time}. Simply subtracting
-#'   1 or 2 does not work as not all measurements in \code{x} may have a measurement in \code{y}
-#'   before or after (and thus no row is added).
-#'
-#'
-#' @param x,y A pair of data frames or data frame extensions (e.g. a tibble). Both \code{x} and
-#'   \code{y} must have a column called \code{time}.
-#' @param by A character vector indicating the variable(s) to match by, typically the participant
-#'   IDs. If NULL, the default, \code{*_join()} will perform a natural join, using all variables in
-#'   common across \code{x} and \code{y}. Therefore, all data will be mapped to each other based on
-#'   the time stamps of \code{x} and \code{y}. A message lists the variables so that you can check
-#'   they're correct; suppress the message by supplying by explicitly.
-#'
-#'   To join by different variables on \code{x} and \code{y}, use a named vector. For example,
-#'   \code{by = c('a' = 'b')} will match \code{x$a} to \code{y$b}
-#'
-#'   To join by multiple variables, use a vector with length > 1. For example, by = c('a', 'b') will
-#'   match \code{x$a} to \code{y$a} and \code{x$b} to \code{y$b}. Use a named vector to match
-#'   different variables in x and y. For example, \code{by = c('a' = 'b', 'c' = 'd')} will match
-#'   \code{x$a} to \code{y$b} and \code{x$c} to \code{y$d}.
-#' @param offset_before The time before each measurement in \code{x} that denotes the period in
-#'   which \code{y} is matched. Must be convertible to a period by \link[lubridate]{as.period}.
-#' @param offset_after The time after each measurement in \code{x} that denotes the period in which
-#'   \code{y} is matched. Must be convertible to a period by \link[lubridate]{as.period}.
-#' @param add_before Logical value. Do you want to add the last measurement before the start of each
-#'   interval?
-#' @param add_after Logical value. Do you want to add the first measurement after the end of each
-#'   interval?
-#' @param split An optional grouping variable to split the computation by. When working with large
-#'   data sets, the computation can grow so large it no longer fits in your computer's working
-#'   memory (after which it will probably fall back on the swap file, which is very slow). Splitting
-#'   the computation trades some computational efficiency for a large decrease in RAM usage. This
-#'   argument defaults to \code{by} to automatically suppress some of its RAM usage.
-#'
-#' @return A tibble with the data of \code{x} with a new column \code{data} with the matched data of
-#'   \code{y} according to \code{offset_before} and \code{offset_after}.
-#'
-#' @export
-link <- function(x,
-                 y,
-                 by = NULL,
-                 offset_before = 0,
-                 offset_after = 0,
-                 add_before = FALSE,
-                 add_after = FALSE,
-                 split = by) {
-
-  if (!is.data.frame(x))
-    stop("x must be a data frame", call. = FALSE)
-  if (!is.data.frame(y))
-    stop("y must be a data frame", call. = FALSE)
-  if (!is.null(by) && !is.character(by))
-    stop("by must be a character vector of variables to join by", call. = FALSE)
-
-  # offset checks
-  if ((is.null(offset_before) | all(offset_before == 0)) &
-      (is.null(offset_after) | all(offset_after == 0)))
-    stop("either offset_before or offset_after must not be 0 or NULL, or both", call. = FALSE)
-  if (!is.null(offset_before) && !(is.character(offset_before)
-                                   | lubridate::is.period(offset_before)
-                                   | is.numeric(offset_before)))
-    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
-  if (!is.null(offset_after) && !(is.character(offset_after)
-                                 | lubridate::is.period(offset_after)
-                                 | is.numeric(offset_after)))
-    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
-  if (is.character(offset_before) | is.numeric(offset_before))
-    offset_before <- lubridate::as.period(offset_before)
-  if (is.character(offset_after) | is.numeric(offset_after))
-    offset_after <- lubridate::as.period(offset_after)
-  if (is.na(offset_before) | is.na(offset_after))
-    stop(paste("Invalid offset specified. Try something like '30 minutes', ",
-               "lubridate::minutes(30), or 1800."), call. = FALSE)
-  if(!is.null(offset_before) && offset_before < 0) {
-    offset_before <- abs(offset_before)
-    warning(paste("offset_before must be a positive period (i.e. greater than 0).",
-                  "Taking the absolute value"), call. = FALSE)
-  }
-  if(!is.null(offset_after) && offset_after < 0) {
-    offset_after <- abs(offset_after)
-    warning(paste("offset_after must be a positive period (i.e. greater than 0).",
-                  "Taking the absolute value"), call. = FALSE)
-  }
-
-
-  # Check for time column
-  if (!("time" %in% colnames(x) & "time" %in% colnames(y)))
-    stop("column 'time' must be present in both x and y", call. = FALSE)
-  if (!lubridate::is.POSIXct(x$time))
-    stop("column 'time' in x must be a POSIXct", call. = FALSE)
-  if (!lubridate::is.POSIXct(y$time))
-    stop("column 'time' in y must be a POSIXct", call. = FALSE)
-
-  # Do not perform matching when x and y are identical
-  if (identical(x, y) || isTRUE(dplyr::all_equal(x, y)))
-    stop("x and y are identical", call. = FALSE)
-
-  if (!is.null(split)) {
-    if (is.numeric(split)) {
-      x <- split(x, rep(1:split, each = ceiling(nrow(x) / split), length.out = nrow(x)))
-    } else {
-      x <- dplyr::group_split(x, dplyr::across(by))
-    }
-  } else {
-    x <- list(x)
-  }
-
-  x %>%
-    furrr::future_map(~ link_impl(.x, y, by, offset_before, offset_after, add_before, add_after),
-                      .options = furrr::furrr_options(seed = TRUE)) %>%
-    dplyr::bind_rows()
-}
-
-#' Link two sensors OR one sensor and an external data frame using an \code{mpathsenser} database
-#'
-#' @description
-#' `r lifecycle::badge("stable")`
-#' This function is specific to mpathsenser databases. It is a wrapper around
-#' \link[mpathsenser]{link} but extracts data in the database for you.
-#'
-#' @inheritParams get_data
-#' @inheritParams link
-#' @param sensor_one The name of a primary sensor. See \link[mpathsenser]{sensors} for a list of
-#' available sensors.
-#' @param sensor_two The name of a secondary sensor. See \link[mpathsenser]{sensors} for a list of
-#' available sensors. Cannot be used together with \code{external}.
-#' @param external Optionally, specify an external data frame. Cannot be used at the same time as
-#' a second sensor. This data frame must have a column called \code{time}.
-#' @param reverse Switch \code{sensor_one} with either \code{sensor_two} or \code{external}?
-#' Particularly useful in combination with \code{external}.
-#' @param ignore_large Safety override to prevent long wait times. Set to \code{TRUE} to do this
-#' function on lots of data.
-#'
-#' @seealso \code{\link[mpathsenser]{link}}
-#'
-#' @return A tibble with the data of \code{sensor_one} with a new column \code{data} with the
-#' matched data of either \code{sensor_two} or \code{external} according to \code{offset}. The
-#' other way around when \code{reverse = TRUE}.
-#' @export
-link_db <- function(db,
-                  sensor_one,
-                  sensor_two = NULL,
-                  external = NULL,
-                  offset_before = 0,
-                  offset_after = 0,
-                  add_before = FALSE,
-                  add_after = FALSE,
-                  participant_id = NULL,
-                  start_date = NULL,
-                  end_date = NULL,
-                  reverse = FALSE,
-                  ignore_large = FALSE) {
-
-  if (!DBI::dbIsValid(db))
-    stop("Database connection is not valid")
-  if (is.null(external) & is.null(sensor_two))
-    stop("either a second sensor or an external data frame must be supplied")
-  if (!is.null(external) & !is.null(sensor_two))
-    stop("only a second sensor or an external data frame can be supplied, but not both")
-  if (!is.null(external) && !is.data.frame(external))
-    stop("external must be a data frame")
-  if (!is.null(sensor_two) && !is.character(sensor_two))
-    stop("sensor_two must be a character vector")
-
-  # See if data is not incredibly large
-  if (!ignore_large) {
-    n <- sum(get_nrows(db, c(sensor_one, sensor_two), participant_id, start_date, end_date),
-             nrow(external))
-    if (n > 1e+05) {
-      stop("the total number of rows is higher than 100000. Use ignore_large = TRUE to continue")
-    }
-  }
-
-  if (!is.null(sensor_two)) {
-    dat_two <- get_data(db, sensor_two, participant_id, start_date, end_date) %>%
-      dplyr::mutate(time = paste(date, time)) %>%
-      dplyr::select(-date) %>%
-      dplyr::collect() %>%
-      dplyr::mutate(time = as.POSIXct(time, format = "%F %H:%M:%OS"))
-  } else {
-    if (any(format(external$time, "%Z") != "UTC")) {
-      warning(paste0("external data is not using UTC as a time zone, unlike the data in the ",
-                     "database. Consider converting the time column to UTC."), call. = FALSE)
-    }
-
-    dat_two <- external
-  }
-
-  # Get dates of dat_two to shrink dat_one as much as possible
-  dates <- unique(as.Date(dat_two$time))
-
-  dat_one <- get_data(db, sensor_one, participant_id, start_date, end_date) %>%
-    dplyr::filter(date %in% dates) %>%
-    dplyr::mutate(time = paste(date, time)) %>%
-    dplyr::select(-date) %>%
-    dplyr::collect() %>%
-    dplyr::mutate(time = as.POSIXct(time, format = "%F %H:%M:%OS"))
-
-
-  if (is.null(external) & reverse) {
-    tmp <- dat_one
-    dat_one <- dat_two
-    dat_two <- tmp
-  } else if (!is.null(external) & !reverse) {
-    tmp <- dat_one
-    dat_one <- external
-    dat_two <- tmp
-  }
-
-  link(x = dat_one,
-       y = dat_two,
-       by = "participant_id",
-       offset_before = offset_before,
-       offset_after = offset_after,
-       add_before = add_before,
-       add_after = add_after)
-
-}
-
-#' Link gaps to (ESM) data
-#'
-#' @description `r lifecycle::badge("experimental")`
-#'
-#'   Gaps in mobile sensing data typically occur when the app is stopped by the operating system or
-#'   the user. While small gaps may not pose problems with analyses, greater gaps may cause bias or
-#'   skew your data. As a result, gap data should be considered in order to inspect and limit their
-#'   influence. This function, like \link[mpathsenser]{link}, allows you to connect gaps to other
-#'   data (usually ESM/EMA data) within a user-specified time range.
-#'
-#' @param data A data frame or an extension to a data frame (e.g. a tibble). While gap data can be
-#'   linked to any other type of data, ESM data is the most commonly used.
-#' @param gaps A data frame (extension) containing the gap data. See
-#'   \link[mpathsenser]{identify_gaps} for retrieving gap data from an mpathsenser database. It
-#'   should at least contain the columns \code{from} and \code{to} (both in a date-time format), as
-#'   well as any specified columns in \code{by}.
-#' @inheritParams link
-#' @param raw_data Whether to include the raw data (i.e. the matched gap data) to the output as
-#'   gap_data.
-#'
-#' @return The original \code{data} with an extra column \code{duration} indicating the gap during
-#'   within the interval in seconds (if \code{duration}  is \code{TRUE}), or an extra column called
-#'   \code{gap_data} containing the gaps within the interval. The function ensures all durations and
-#'   gap time stamps are within the range of the interval.
-#' @export
-link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0, raw_data = FALSE) {
-
-  # Argument checking
-  if (!is.data.frame(data))
-    stop("data must be a data frame", call. = FALSE)
-  if (!is.data.frame(gaps))
-    stop("gaps must be a data frame", call. = FALSE)
-  if (!is.null(by) && !is.character(by))
-    stop("by must be a character vector of variables to join by", call. = FALSE)
-
-  # offset checks
-  if ((is.null(offset_before) | all(offset_before == 0)) &
-      (is.null(offset_after) | all(offset_after == 0)))
-    stop("either offset_before or offset_after must not be 0 or NULL, or both", call. = FALSE)
-  if (!is.null(offset_before) && !(is.character(offset_before)
-                                   | lubridate::is.period(offset_before)
-                                   | is.numeric(offset_before)))
-    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
-  if (!is.null(offset_after) && !(is.character(offset_after)
-                                  | lubridate::is.period(offset_after)
-                                  | is.numeric(offset_after)))
-    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
-
-  # Convert offset_before to integer time
-  if (is.character(offset_before) | is.numeric(offset_before)) {
-    offset_before <- lubridate::as.period(offset_before)
-    offset_before <- as.integer(as.double(offset_before))
-  }
-
-  # Convert offset_after to integer time
-  if (is.character(offset_after) | is.numeric(offset_after)) {
-    offset_after <- lubridate::as.period(offset_after)
-    offset_after <- as.integer(as.double(offset_after))
-  }
-
-  if (is.na(offset_before) | is.na(offset_after))
-    stop(paste("Invalid offset specified. Try something like '30 minutes', ",
-               "lubridate::minutes(30), or 1800."), call. = FALSE)
-  if(!is.null(offset_before) && offset_before < 0) {
-    offset_before <- abs(offset_before)
-    warning(paste("offset_before must be a positive period (i.e. greater than 0).",
-                  "Taking the absolute value"), call. = FALSE)
-  }
-  if(!is.null(offset_after) && offset_after < 0) {
-    offset_after <- abs(offset_after)
-    warning(paste("offset_after must be a positive period (i.e. greater than 0).",
-                  "Taking the absolute value"), call. = FALSE)
-  }
-
-  # Check for time column in data
-  if (!("time" %in% colnames(data)))
-    stop("column 'time' must be present in data", call. = FALSE)
-  # Check for time column
-  if (!("from" %in% colnames(gaps) & "to" %in% colnames(gaps)))
-    stop("column 'from' and 'to' must be present in gaps.", call. = FALSE)
-  if (!lubridate::is.POSIXct(data$time))
-    stop("column 'time' in x must be a POSIXct", call. = FALSE)
-
-  # Calculate the start and end time of the interval (in seconds) of each row in data
-  # Only retain gaps that are (partially) within or span over the interval
-  data_gaps <- data %>%
-    dplyr::select(by, .data$time) %>%
-    dplyr::mutate(time_int = as.integer(.data$time)) %>%
-    dplyr::mutate(start_interval = .data$time_int - offset_before) %>%
-    dplyr::mutate(end_interval = .data$time_int + offset_after) %>%
-    dplyr::left_join(gaps, by = by) %>%
-    dplyr::mutate(dplyr::across(c(.data$from, .data$to), as.integer)) %>%
-    dplyr::filter(.data$from < .data$end_interval & .data$to > .data$start_interval)
-
-  # Set gaps time stamps out of the interval to the interval's bounds
-  data_gaps <- data_gaps %>%
-    dplyr::mutate(from = ifelse(.data$from < .data$start_interval,
-                                .data$start_interval,
-                                .data$from)) %>%
-    dplyr::mutate(to = ifelse(.data$to > .data$end_interval, .data$end_interval, .data$to)) %>%
-    dplyr::mutate(gap = .data$to - .data$from)
-
-  if (raw_data) {
-    # Transform from and to back to POSIXct and nest the data
-    data_gaps <- data_gaps %>%
-      dplyr::select(by, .data$time, .data$from, .data$to, .data$gap) %>%
-      dplyr::mutate(from = as.POSIXct(.data$from,
-                                      origin = "1970-01-01",
-                                      tz = attr(gaps$from, "tzone"))) %>%
-      dplyr::mutate(to = as.POSIXct(.data$to,
-                                    origin = "1970-01-01",
-                                    tz = attr(gaps$to, "tzone"))) %>%
-      dplyr::group_by(dplyr::across(c(by, .data$time))) %>%
-      tidyr::nest(gap_data = c(.data$from, .data$to, .data$gap)) %>%
-      dplyr::ungroup()
-
-    # Add gaps at beep level
-    data_gaps$gap <- vapply(data_gaps$gap_data, function(x) sum(x$gap, na.rm = TRUE),
-                            FUN.VALUE = double(1))
-
-    # Create empty data frame in case no results are found
-    proto <- tibble::tibble(from = as.POSIXct(vector(mode = "double"),
-                                              origin = "1970-01-01",
-                                              tz = attr(gaps$from, "tzone")),
-                            to = as.POSIXct(vector(mode = "double"),
-                                            origin = "1970-01-01", tz =
-                                              attr(gaps$from, "tzone")),
-                            gap = integer(0))
-
-  } else {
-    data_gaps <- data_gaps %>%
-      dplyr::group_by(dplyr::across(c(by, .data$time))) %>%
-      dplyr::summarise(gap = sum(.data$gap), .groups = "drop")
-  }
-
-  # Merge with ESM data
-  data <- data %>%
-    tibble::as_tibble() %>%
-    dplyr::left_join(data_gaps, by = c(by, "time")) %>%
-    dplyr::mutate(gap = ifelse(is.na(.data$gap), 0, .data$gap))
-
-  if (raw_data) {
-    data <- data %>%
-      dplyr::mutate(gap_data = ifelse(lapply(.data$gap_data, is.null), list(proto), .data$gap_data))
-  }
-
-  data
-
-
-  # } else {
-  #   # Calculate the gap duration within the interval and sum the duration
-  #   # See gaps.png for a graphical overview
-  #   # 1.  the gap falls completely inside the beep interval
-  #   # 2.  the start of the gap falls inside the beep interval, but the end does not
-  #   # 3.  the start of the gap falls outside of the beep interval, but the end of the gap falls inside
-  #   # 4. the gap spans over the entire interval
-  #   data_gaps <- data_gaps %>%
-  #     dplyr::mutate(
-  #       gap = dplyr::case_when(
-  #         .data$from >= .data$start_interval &
-  #           .data$to <= .data$end_interval ~ .data$to - .data$from,
-  #         .data$from >= .data$start_interval &
-  #           .data$to >= .data$end_interval ~ .data$end_interval - .data$from,
-  #         .data$from <= .data$start_interval &
-  #           .data$to <= .data$end_interval ~ .data$to - .data$start_interval,
-  #         .data$from <= .data$start_interval &
-  #           .data$to >= .data$end_interval ~ .data$end_interval - .data$start_interval
-  #       )
-  #     ) %>%
-      # dplyr::group_by(dplyr::across(c(by, .data$time))) %>%
-      # dplyr::summarise(gap = sum(.data$gap), .groups = "drop")
-  #
-    # # Merge with ESM data
-    # data <- data %>%
-    #   tibble::as_tibble() %>%
-    #   dplyr::left_join(data_gaps, by = c(by, "time")) %>%
-    #   dplyr::mutate(gap = ifelse(is.na(.data$gap), 0, .data$gap))
-  # }
 }
 
 #' Get installed apps
@@ -1075,6 +535,8 @@ n_screen_on <- function(db,
                         start_date = NULL,
                         end_date = NULL,
                         by = c("Total", "Hour", "Day")) {
+  lifecycle::signal_stage("experimental", "moving_average()")
+
   out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
     dplyr::select(-c(measurement_id, participant_id)) %>%
     dplyr::filter(screen_event == "SCREEN_ON")
@@ -1125,6 +587,8 @@ n_screen_unlocks <- function(db,
                              start_date = NULL,
                              end_date = NULL,
                              by = c("Total", "Hour", "Day")) {
+  lifecycle::signal_stage("experimental", "moving_average()")
+
   out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
     dplyr::select(-c(measurement_id, participant_id)) %>%
     dplyr::filter(screen_event == "SCREEN_UNLOCKED")
@@ -1170,6 +634,8 @@ n_screen_unlocks <- function(db,
 #' @return A tibble with the 'date', 'hour', and the number of 'steps'.
 #' @export
 step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = NULL) {
+  lifecycle::signal_stage("experimental", "step_count()")
+
   get_data(db, "Pedometer", participant_id, start_date, end_date) %>%
     dplyr::mutate(hour = STRFTIME("%H", time)) %>%
     dplyr::group_by(participant_id, date, hour) %>%
@@ -1314,153 +780,100 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
     dplyr::collect()
 }
 
-bin_duration_impl <- function(data, date) {
 
-  date <- as.integer(date)
-
-  start_time <- data$start_time
-  end_time <- data$end_time
-
-  floor_start <- data$floor_start
-  floor_end <- data$floor_end
-  ceiling_start <- data$ceiling_start
-
-  x <- dplyr::case_when(
-
-    # throw out cases where end_time is NA => not useful
-    is.na(start_time) | is.na(end_time) ~ 0L,
-
-    # don't count when date is not in the interval
-    !(floor_start <= date & date <= end_time) ~ 0L,
-
-    # date is now within interval
-
-    # start hour and end hour are the same
-    floor_start == floor_end ~ end_time - start_time,
-
-    # What if the date is within the start hour?
-    date == floor_start ~ ceiling_start - start_time,
-
-    # What if the data is within the end hour?
-    date == floor_end ~ end_time - floor_end,
-
-    # Date is not within start hour or end hour, so it must be a full hour
-    TRUE ~ 3600L
-  )
-
-  sum(x, na.rm = TRUE)
-}
-
-#' Bin duration in variable time series
+#' Add gap periods to sensor data
 #'
 #' @description
 #' `r lifecycle::badge("experimental")`
 #'
-#' In time series with variable measurements, an often recurring task is calculating the total time
-#' spent (i.e. the duration) in fixed bins, for example per hour or day. However, this may be
-#' difficult when two subsequent measurements are in different bins or span over multiple bins.
+#' @param data A data frame containing the activity data. See \link[mpathsenser]{get_data} for
+#' retrieving activity data from an mpathsenser database.
+#' @param gaps A data frame (extension) containing the gap data. See
+#'   \link[mpathsenser]{identify_gaps} for retrieving gap data from an mpathsenser database. It
+#'   should at least contain the columns \code{from} and \code{to} (both in a date-time format), as
+#'   well as any specified columns in \code{by}.
+#' @param by A character vector indicating the variable(s) to match by, typically the participant
+#'   IDs. If NULL, the default, \code{*_join()} will perform a natural join, using all variables in
+#'   common across \code{x} and \code{y}.
+#' @param fill A named list of the columns to fill with default values for the extra measurements
+#' that are added because of the gaps.
 #'
-#' Note that non-grouped columns are discarded in the output.
-#'
-#' @param data A data frame or tibble containing the time series.
-#' @param start_time The column name of the start time of the interval, a POSIXt.
-#' @param end_time The column name of the end time of the interval, a POSIXt.
-#' @param by A binning specification, either \code{hour} or \code{day}.
-#'
-#' @return A tibble containing the group columns (if any), date, hour (if \code{by = "hour"}),
-#' and the duration in seconds.
+#' @return A tibble containing the data and the added gaps.
 #' @export
-#'
-#' @examples
-#' data <- tibble::tibble(
-#'   participant_id = 1,
-#'   datetime = c("2022-06-21 15:00:00", "2022-06-21 15:55:00",
-#'                "2022-06-21 17:05:00", "2022-06-21 17:10:00"),
-#'   confidence = 100,
-#'   type = "WALKING"
-#' )
-#'
-#' # get the duration per hour, even if the interval is longer than one hour
-#' data %>%
-#'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-#'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
-#'   bin_duration(start_time = datetime,
-#'                end_time = lead,
-#'                by = "hour")
-#'
-#' data <- tibble::tibble(
-#'   participant_id = 1,
-#'   datetime = c("2022-06-21 15:00:00", "2022-06-21 15:55:00",
-#'                "2022-06-21 17:05:00", "2022-06-21 17:10:00"),
-#'   confidence = 100,
-#'   type = c("STILL", "WALKING", "STILL", "WALKING")
-#' )
-#' # binned_intervals also takes into account the prior grouping structure
-#' data %>%
-#'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-#'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
-#'   dplyr::group_by(participant_id, type) %>%
-#'   bin_duration(start_time = datetime,
-#'                end_time = lead,
-#'                by = "hour")
-bin_duration <- function(data, start_time, end_time, by = c("hour", "day")) {
-
-  # Select relevant columns
-  data <- data %>%
-    dplyr::select(dplyr::group_cols(),
-                  start_time = {{ start_time }},
-                  end_time = {{ end_time }})
-
-  group_vars <- dplyr::group_vars(data)
-  by <- match.arg(by)
-
-  # check that start_time and end_time are a datetime, or try to convert
-  if (!lubridate::is.POSIXt(data$start_time) & !lubridate::is.POSIXt(data$end_time)) {
-    data$start_time <- as.POSIXct(data$start_time)
-    data$end_time <- as.POSIXct(data$end_time)
+add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
+  by_names <- colnames(dplyr::select(data, {{ by }}))
+  if (!all(by_names %in% c(colnames(data), colnames(gaps)))) {
+    stop(paste(by, "must be a column in both data and gaps."), call. = FALSE)
   }
 
-  # Generate output structure with unique hours per day, keeping the grouping structure
-  res <- data %>%
-    tidyr::pivot_longer(cols = c(.data$start_time, .data$end_time),
-                        names_to = NULL,
-                        values_to = "date") %>%
-    dplyr::mutate(date = lubridate::floor_date(.data$date, by)) %>%
-    dplyr::distinct() %>%
-    tidyr::drop_na(.data$date) %>%
-    tidyr::complete(date = seq.POSIXt(min(.data$date, na.rm = TRUE),
-                                      max(.data$date, na.rm = TRUE), by = by))
+  # Pour the gaps in a different format so that they can be added to the sensor data as
+  # "measurements". Also provide each gap pair (i.e. from and to) with an ID so they can be matched
+  # later on.
+  prepared_gaps <- gaps %>%
+    dplyr::select({{ by }}, .data$from, .data$to) %>%
+    dplyr::mutate(gap_id = dplyr::row_number()) %>%
+    dplyr::mutate(from = .data$from + 5) %>%
+    tidyr::pivot_longer(cols = c(.data$from, .data$to),
+                        names_to = "gap_type",
+                        values_to = "time") %>%
+    rlang::exec(.fn = "mutate", !!!fill)
 
-  # The magic:
-  # 1. Join the data to the hours or days and unnest
-  # 2. Calculate some variables used later in the implementation functions (where the actual
-  # calculation happens)
-  # 3. Group by the by variable, and calculate the duration
-  res <- res %>%
-    dplyr::nest_join(data, by = group_vars) %>%
+  data %>%
+    # Add gaps to the data
+    dplyr::bind_rows(prepared_gaps) %>%
+    # Sort just to be sure
+    dplyr::arrange(dplyr::across(c({{ by }}, .data$time))) %>%
+    # Then, nest confidence and type by time to calculate the "lag - 2" for the end of gaps "to".
+    # This is necessary because if two measurements at the same time were present just before the
+    # gap, they should also both continue after the gap.
+    #
+    # Note: The code below is equivalent to
+    # group_by(participant_id, time, gap_type, gap_id) %>%
+    # nest() %>%
+    # ungroup() %>%
+    # or
+    # group_by(participant_id, time) %>%
+    # nest(data = c(confidence, type)) %>%
+    # ungroup() %>%
+    #
+    # This means that if there is a (or multiple) measurement of the same participant at the same
+    # time and also the start or end of a gap (gap_type "from" or "to"), there will two groups: one
+    # with the measurements that are not the gap, and one with the gap measurement, while both
+    # having the same participant_id and time stamp. For example:
+    #
+    # participant_id    time      type    gap_type  gap_id
+    # 12345             10:00:00  STILL   NA        NA
+    # 12345             10:00:00  ACTIVE  NA        NA
+    # 12345             10:00:00  GAP     from      1
+    #
+    # Nesting then results in the following:
+    # participant_id    time    gap_type  gap_id  data
+    # 12345          10:00:00   NA        NA      <tibble [2 × 1]>
+    # 12345          10:00:00   from      1       <tibble [1 × 1]>
+    #
+    # Creating the from_lag column as below, it would mean that row 2 would get the data  from row
+    # 1, which is intended behaviour. If all 3 rows would be nested in the same tibble, we would get
+    # the measurement before that in from_lag, even though there were more recent measurements.
+    # Besides, any other nesting would inevitably include gap_type and gap_id in the nested tibble,
+    # breaking the code.
+    tidyr::nest(data = !c({{ by }}, .data$time, .data$gap_id, .data$gap_type)) %>%
+    # Next, calculate the lag from the "to" column on the nested data. This are simply the
+    # activities that occurred last before the start of the gap. It is put in a new column
+    # ("from_lag") to preserve it for the next lag phase.
+    dplyr::mutate(from_lag = ifelse(!is.na(.data$gap_type) & .data$gap_type == "from",
+                                    dplyr::lag(.data$data),
+                                    NA)) %>%
+    # Group the data by gap_id to ensure "to" always lags from "from" and not some other measurement
+    # in case it somehow came in between the start and end of the gap.
+    dplyr::group_by(.data$gap_id) %>%
+    # Only if the row signals the end of the measurements: modify data (i.e. the confidence and type)
+    # with the lagged from_lag (i.e. the from_lag of "from"). Else, leave data intact.
+    dplyr::mutate(data = ifelse(!is.na(.data$gap_type) & .data$gap_type == "to",
+                         dplyr::lag(.data$from_lag),
+                         .data$data)) %>%
+    # Lastly, unnest the data to get the original (and modified for "to") confidence and type, and
+    # ungroup and cleanup
     tidyr::unnest(.data$data) %>%
-    dplyr::mutate(floor_start = lubridate::floor_date(.data$start_time, by)) %>%
-    dplyr::mutate(floor_end = lubridate::floor_date(.data$end_time, by)) %>%
-    dplyr::mutate(ceiling_start = lubridate::ceiling_date(.data$start_time, by,
-                                                          change_on_boundary = TRUE)) %>%
-    dplyr::mutate(date_int = as.integer(date)) %>%
-    dplyr::mutate(dplyr::across(c(.data$start_time, .data$end_time, .data$floor_start,
-                                  .data$floor_end, .data$ceiling_start),
-                  as.integer)) %>%
-    dplyr::group_by(dplyr::across(dplyr::all_of(c(group_vars, "date")))) %>%
-    dplyr::summarise(duration = bin_duration_impl(dplyr::cur_data(), .data$date_int),
-                     .groups = "drop_last")
-
-  # Make the by column look pretty
-  if (by == "hour") {
-    res <- res %>%
-      dplyr::mutate(hour = lubridate::hour(.data$date)) %>%
-      dplyr::mutate(date = lubridate::date(.data$date)) %>%
-      dplyr::select(dplyr::group_cols(), .data$date, .data$hour, .data$duration)
-  } else if (by == "day") {
-    res <- res %>%
-      dplyr::mutate(date = lubridate::date(.data$date))
-  }
-
-  res
+    dplyr::ungroup() %>%
+    dplyr::select(-c(.data$from_lag, .data$gap_id, .data$gap_type))
 }

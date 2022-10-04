@@ -71,11 +71,11 @@ freq <- c(
 )
 coverage(
   db = db,
-  participant_id = '12345',
-  sensor = c('Accelerometer', 'Gyroscope'),
+  participant_id = "12345",
+  sensor = c("Accelerometer", "Gyroscope"),
   frequency = mpathsenser::freq,
-  start_date = '2021-01-01',
-  end_date = '2021-05-01'
+  start_date = "2021-01-01",
+  end_date = "2021-05-01"
 )
 }
 }

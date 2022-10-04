@@ -2,7 +2,9 @@
 
 export("%>%")
 export(activity_duration)
+export(add_gaps)
 export(app_category)
+export(bin_data)
 export(bin_duration)
 export(ccopy)
 export(close_db)

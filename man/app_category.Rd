@@ -43,11 +43,11 @@ batch lookups, as many subsequent requests will get you blocked as well.
 }
 
 \examples{
-app_category('whatsapp')
+app_category("whatsapp")
 
 # Example of a generic app name where we can't find a specific app
-app_category('weather') # Weather forecast channel
+app_category("weather") # Weather forecast channel
 
 # Get OnePlus weather
-app_category('net.oneplus.weather')
+app_category("net.oneplus.weather")
 }

@@ -30,6 +30,6 @@ last accelerometer measurement occurred a day later.
 \examples{
 \dontrun{
 db <- open_db()
-first_date(db, 'Accelerometer', '12345')
+first_date(db, "Accelerometer", "12345")
 }
 }
