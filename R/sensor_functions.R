@@ -30,14 +30,15 @@
 #' db <- open_db()
 #'
 #' # Retrieve some data
-#' get_data(db, 'Accelerometer', '12345')
+#' get_data(db, "Accelerometer", "12345")
 #'
 #' # Or within a specific window
-#' get_data(db, 'Accelerometer', '12345', '2021-01-01', '2021-01-05')
+#' get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
 #' }
 get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_date = NULL) {
-  if (!DBI::dbIsValid(db))
+  if (!DBI::dbIsValid(db)) {
     stop("Database connection is not valid")
+  }
   if (!is.character(sensor) | length(sensor) == 0 | length(sensor) > 1) {
     stop("sensor should be a character vector of size 1")
   }
@@ -85,7 +86,7 @@ get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_d
 #' @examples
 #' \dontrun{
 #' db <- open_db()
-#' first_date(db, 'Accelerometer', '12345')
+#' first_date(db, "Accelerometer", "12345")
 #' }
 first_date <- function(db, sensor, participant_id = NULL) {
   query <- paste0("SELECT MIN(date) AS `min` FROM `", sensor, "`")
@@ -724,29 +725,38 @@ get_installed_apps <- function(db, participant_id = NULL) {
 #' @export
 #'
 #' @examples
-#' app_category('whatsapp')
+#' app_category("whatsapp")
 #'
 #' # Example of a generic app name where we can't find a specific app
-#' app_category('weather') # Weather forecast channel
+#' app_category("weather") # Weather forecast channel
 #'
 #' # Get OnePlus weather
-#' app_category('net.oneplus.weather')
+#' app_category("net.oneplus.weather")
 app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE) {
   # Check if required packages are available
   if (!requireNamespace("curl", quietly = TRUE)) {
-    stop(paste0("package curl is needed for this function to work. ",
-                "Please install it using install.packages(\"curl\")"),
-         call. = FALSE)
+    stop(paste0(
+      "package curl is needed for this function to work. ",
+      "Please install it using install.packages(\"curl\")"
+    ),
+    call. = FALSE
+    )
   }
   if (!requireNamespace("httr", quietly = TRUE)) {
-    stop(paste0("package httr is needed for this function to work. ",
-                "Please install it using install.packages(\"httr\")"),
-         call. = FALSE)
+    stop(paste0(
+      "package httr is needed for this function to work. ",
+      "Please install it using install.packages(\"httr\")"
+    ),
+    call. = FALSE
+    )
   }
   if (!requireNamespace("rvest", quietly = TRUE)) {
-    stop(paste0("package rvest is needed for this function to work. ",
-                "Please install it using install.packages(\"rvest\")"),
-         call. = FALSE)
+    stop(paste0(
+      "package rvest is needed for this function to work. ",
+      "Please install it using install.packages(\"rvest\")"
+    ),
+    call. = FALSE
+    )
   }
 
   res <- data.frame(app = name, package = rep(NA, length(name)), genre = rep(NA, length(name)))
@@ -831,7 +841,7 @@ app_category_impl <- function(name, num, exact) {
 
   # Extract the genre and return results
   genre <- session %>%
-    rvest::html_element(xpath=".//script[contains(., 'applicationCategory')]") %>%
+    rvest::html_element(xpath = ".//script[contains(., 'applicationCategory')]") %>%
     rvest::html_text() %>%
     jsonlite::fromJSON() %>%
     purrr::pluck("applicationCategory")
@@ -1014,7 +1024,6 @@ screen_duration <- function(db,
                             start_date = NULL,
                             end_date = NULL,
                             by = c("Hour", "Day")) {
-
   out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
     dplyr::filter(screen_event != "SCREEN_ON") %>%
     dplyr::mutate(datetime = paste(date, time)) %>%
@@ -1175,7 +1184,7 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
 
 #' Moving average for values in an mpathsenser database
 #'
-#'#' @description
+#' #' @description
 #' `r lifecycle::badge("experimental")`
 #'
 #' @inheritParams get_data
@@ -1189,9 +1198,11 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
 #'
 #' @examples
 #' \dontrun{
-#' get_moving_average(db, 'Light', '12345', mean_lux, max_lux, n = 5)
+#' get_moving_average(db, "Light", "12345", mean_lux, max_lux, n = 5)
 #' }
 moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL, end_date = NULL) {
+  lifecycle::signal_stage("experimental", "moving_average()")
+
   cols <- dplyr::ensyms(...)
 
   # SELECT
@@ -1199,16 +1210,20 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
 
   # Calculate moving average
   avgs <- lapply(cols, function(x) {
-    paste0("avg(`", x, "`) OVER (", "ORDER BY CAST (strftime('%s', datetime) AS INT) ",
-           "RANGE BETWEEN ", n / 2, " PRECEDING ", "AND ", n / 2, " FOLLOWING", ") AS ", x)
+    paste0(
+      "avg(`", x, "`) OVER (", "ORDER BY CAST (strftime('%s', datetime) AS INT) ",
+      "RANGE BETWEEN ", n / 2, " PRECEDING ", "AND ", n / 2, " FOLLOWING", ") AS ", x
+    )
   })
 
   avgs <- paste0(avgs, collapse = ", ")
   query <- paste0(query, avgs)
 
   # FROM
-  query <- paste0(query, " FROM (SELECT `date` || 'T' || `time` AS `datetime`, ",
-                  paste0(cols, collapse = ", "), " FROM ", sensor)
+  query <- paste0(
+    query, " FROM (SELECT `date` || 'T' || `time` AS `datetime`, ",
+    paste0(cols, collapse = ", "), " FROM ", sensor
+  )
 
   # Where
   query <- paste0(query, " WHERE (`participant_id` = '", participant_id, "')")
@@ -1265,20 +1280,20 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
 #' @examples
 #' \dontrun{
 #' # Find the gaps for a participant and convert to datetime
-#' gaps <- identify_gaps(db, '12345', min_gap = 60) %>%
+#' gaps <- identify_gaps(db, "12345", min_gap = 60) %>%
 #'   mutate(across(c(to, from), ymd_hms)) %>%
-#'   mutate(across(c(to, from), with_tz, 'Europe/Brussels'))
+#'   mutate(across(c(to, from), with_tz, "Europe/Brussels"))
 #'
 #' # Get some sensor data and calculate a statistic, e.g. the time spent walking
 #' # You can also do this with larger intervals, e.g. the time spent walking per hour
-#' walking_time <- get_data(db, 'Activity', '12345') %>%
+#' walking_time <- get_data(db, "Activity", "12345") %>%
 #'   collect() %>%
 #'   mutate(datetime = ymd_hms(paste(date, time))) %>%
-#'   mutate(datetime = with_tz(datetime, 'Europe/Brussels')) %>%
+#'   mutate(datetime = with_tz(datetime, "Europe/Brussels")) %>%
 #'   arrange(datetime) %>%
 #'   mutate(prev_time = lag(datetime)) %>%
 #'   mutate(duration = datetime - prev_time) %>%
-#'   filter(type == 'WALKING')
+#'   filter(type == "WALKING")
 #'
 #' # Find out if a gap occurs in the time intervals
 #' walking_time %>%

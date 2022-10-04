@@ -1,4 +1,4 @@
-icc <- function (data, ..., group) {
+icc <- function(data, ..., group) {
   if (missing(...) | rlang::dots_n(...) == 0) stop("No variables selected to be evaluated")
   if (missing(group)) stop("group may not be missing")
 
@@ -9,10 +9,14 @@ icc <- function (data, ..., group) {
   # quiet_lmer <- quiet(purrr::possibly(lme4::lmer, NA))
 
   for (i in 1:length(cols)) {
-    lmer.res <- lme4::lmer(formula = stats::as.formula(paste0("`",
-                                                              cols[i], "` ~ 1 + (1 | ", group, " )")),
-                           data = data,
-                           na.action = stats::na.omit)
+    lmer.res <- lme4::lmer(
+      formula = stats::as.formula(paste0(
+        "`",
+        cols[i], "` ~ 1 + (1 | ", group, " )"
+      )),
+      data = data,
+      na.action = stats::na.omit
+    )
     intraccc <- as.data.frame(lme4::VarCorr(lmer.res))$sdcor^2
     res$ICC[i] <- intraccc[1] / sum(intraccc)
   }
@@ -55,8 +59,10 @@ multilevel_cor <- function(x,
   }
 
   x <- x %>%
-    dplyr::mutate(dplyr::across(tidyr::everything(),
-                                ~scale(.x, scale = scale, center = center)[,1])) %>%
+    dplyr::mutate(dplyr::across(
+      tidyr::everything(),
+      ~ scale(.x, scale = scale, center = center)[, 1]
+    )) %>%
     dplyr::ungroup()
 
   if (!is.null(y)) {
@@ -101,7 +107,7 @@ multilevel_cor <- function(x,
     }
     formula <- stats::as.formula(paste0(fixed, "+", random))
 
-    lmerTest::lmer(formula = formula, data = dat, na.action = stats::na.omit, REML = FALSE)
+    lmerTest::lmer(formula = formula, data = dat, na.action = stats::na.omit, REML = TRUE)
   }
 
   res$cor <- rep(NA_real_, nrow(res))
@@ -166,8 +172,9 @@ multilevel_autocor <- function(data,
     group_names <- colnames(dplyr::select(data, {{ group }}))
   }
 
+  # TODO: standardise AFTER lagging, or else the standardisation is lost
   data <- data %>%
-    dplyr::mutate(dplyr::across(.fns = ~scale(.x, center = center, scale = scale)[,1])) %>%
+    dplyr::mutate(dplyr::across(.fns = ~ scale(.x, center = center, scale = scale)[, 1])) %>%
     dplyr::ungroup()
 
   if (!is.logical(p_adjust)) stop("p_adjust must be a logical value")
@@ -186,7 +193,7 @@ multilevel_autocor <- function(data,
     random <- paste0("(-1 + ", var, "_lag | ", paste0(group, collapse = "/"), ")")
     formula <- stats::as.formula(paste0(fixed, "+", random))
 
-    lmerTest::lmer(formula = formula, data = dat, na.action = stats::na.omit, REML = FALSE)
+    lmerTest::lmer(formula = formula, data = dat, na.action = stats::na.omit, REML = TRUE)
   }
 
   res <- tibble::tibble(var = var_names)

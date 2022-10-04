@@ -56,14 +56,20 @@ import <- function(path = getwd(),
 
   # Check if required packages are installed
   if (!requireNamespace("dbx", quietly = TRUE)) {
-    stop(paste0("package dbx is needed for this function to work. ",
-                "Please install it using install.packages(\"dbx\")"),
-         call. = FALSE)
+    stop(paste0(
+      "package dbx is needed for this function to work. ",
+      "Please install it using install.packages(\"dbx\")"
+    ),
+    call. = FALSE
+    )
   }
   if (!requireNamespace("rjson", quietly = TRUE)) {
-    stop(paste0("package rjson is needed for this function to work. ",
-                "Please install it using install.packages(\"rjson\")"),
-         call. = FALSE)
+    stop(paste0(
+      "package rjson is needed for this function to work. ",
+      "Please install it using install.packages(\"rjson\")"
+    ),
+    call. = FALSE
+    )
   }
 
   # Retrieve all JSON files
@@ -92,9 +98,12 @@ import <- function(path = getwd(),
     }
 
     # Try to open the database
-    try <- tryCatch({
-      db <- open_db(path, dbname)
-    }, error = function(e) e)
+    try <- tryCatch(
+      {
+        db <- open_db(path, dbname)
+      },
+      error = function(e) e
+    )
 
     if (inherits(try, "error")) {
       db <- create_db(path, db_name = dbname, overwrite = overwrite_db)
@@ -127,15 +136,16 @@ import <- function(path = getwd(),
   files <- split(files, ceiling(seq_along(files) / batch_size))
 
   if (requireNamespace("progressr", quietly = TRUE)) {
-    p <- progressr::progressor(steps = length(files))  # Progress vbar
+    p <- progressr::progressor(steps = length(files)) # Progress vbar
   }
 
   for (i in seq_along(files)) {
 
     # Get data from the files, in parallel if needed
     res <- furrr::future_map(files[[i]],
-                             ~import_impl(path, .x, db@dbname, sensors),
-                             .options = furrr::furrr_options(seed = TRUE))
+      ~ import_impl(path, .x, db@dbname, sensors),
+      .options = furrr::furrr_options(seed = TRUE)
+    )
 
     res <- purrr::transpose(res)
     res$studies <- dplyr::bind_rows(res$studies)
@@ -150,29 +160,32 @@ import <- function(path = getwd(),
     # Turn data list inside out, drop NULLs and bind sensors from different files together
     res$data <- purrr::flatten(res$data)
     data <- purrr::compact(res$data)
-    res$data <- NULL  # memory efficiency
+    res$data <- NULL # memory efficiency
     data <- purrr::transpose(data, .names = sort(mpathsenser::sensors))
     data <- lapply(data, dplyr::bind_rows)
     data <- purrr::compact(data)
-    data <- lapply(data, dplyr::distinct)  # Filter out duplicate rows (for some reason)
+    data <- lapply(data, dplyr::distinct) # Filter out duplicate rows (for some reason)
 
     # Write all data as a single transaction
-    tryCatch({
-      DBI::dbWithTransaction(db, {
-        add_study(db, unique(res$studies))
-        add_participant(db, unique(res$participants))
+    tryCatch(
+      {
+        DBI::dbWithTransaction(db, {
+          add_study(db, unique(res$studies))
+          add_participant(db, unique(res$participants))
 
-        for (j in seq_along(data)) {
-          save2db(db, names(data)[[j]], data[[j]])
-        }
+          for (j in seq_along(data)) {
+            save2db(db, names(data)[[j]], data[[j]])
+          }
 
-        # Add files to list of processed files
-        add_processed_files(db, res$file)
-      })
-    }, error = function(e) {
-      # warning(paste0("transaction failed for file ", files[i]),
-      #         call. = FALSE)
-    })
+          # Add files to list of processed files
+          add_processed_files(db, res$file)
+        })
+      },
+      error = function(e) {
+        # warning(paste0("transaction failed for file ", files[i]),
+        #         call. = FALSE)
+      }
+    )
 
 
     # Update progress bar
@@ -237,9 +250,12 @@ import_impl <- function(path, filename, db_name, sensors) {
     return(out)
   }
 
-  possible_error <- tryCatch({
-    data <- rjson::fromJSON(file, simplify = FALSE)
-  }, error = function(e) e)
+  possible_error <- tryCatch(
+    {
+      data <- rjson::fromJSON(file, simplify = FALSE)
+    },
+    error = function(e) e
+  )
 
   if (inherits(possible_error, "error")) {
     warning(paste("Could not read", filename[1]), call. = FALSE)
@@ -257,19 +273,25 @@ import_impl <- function(path, filename, db_name, sensors) {
   }
 
   # Clean-up and extract the header and body
-  data <- tibble::tibble(header = lapply(data, function(x) x[1]),
-                         body = lapply(data, function(x) x[2]))
+  data <- tibble::tibble(
+    header = lapply(data, function(x) x[1]),
+    body = lapply(data, function(x) x[2])
+  )
 
   # Extract columns Define a safe_extract function that leaves no room for NULLs,
   # since unnest cannot handle a column full of NULLs
   safe_extract <- function(vec, var) {
     out <- lapply(vec, function(obs) {
       tmp <- obs[[1]][[var]]
-      if (is.null(tmp))
-        return(NULL) else return(tmp)
+      if (is.null(tmp)) {
+        return(NULL)
+      } else {
+        return(tmp)
+      }
     })
-    if (all(vapply(out, is.null, logical(1), USE.NAMES = FALSE)))
+    if (all(vapply(out, is.null, logical(1), USE.NAMES = FALSE))) {
       out <- rep("N/A", length(out))
+    }
     return(out)
   }
   data$study_id <- safe_extract(data$header, "study_id")
@@ -313,7 +335,8 @@ import_impl <- function(path, filename, db_name, sensors) {
       "AND `study_id` = '",
       this_file$study_id,
       "')"
-    ))[1, 1]
+    )
+  )[1, 1]
   if (matches > 0) {
     DBI::dbDisconnect(tmp_db)
     # next  # File was already processed
@@ -337,9 +360,10 @@ import_impl <- function(path, filename, db_name, sensors) {
 
   # Set names to capitals in accordance with the table names
   names <- strsplit(names(data), "_")
-  names <- lapply(names, function(x)
-    paste0(toupper(substring(x, 1, 1)), substring(x, 2), collapse = ""))
-  names[names == "Apps"] <- "InstalledApps"  # Except InstalledApps...
+  names <- lapply(names, function(x) {
+    paste0(toupper(substring(x, 1, 1)), substring(x, 2), collapse = "")
+  })
+  names[names == "Apps"] <- "InstalledApps" # Except InstalledApps...
 
   # Select sensors, if not NULL
   if (!is.null(sensors)) {
@@ -348,18 +372,20 @@ import_impl <- function(path, filename, db_name, sensors) {
   }
 
   # Call function for each sensor
-  tryCatch({
-    data <- purrr::imap(data, ~which_sensor(.x, .y))
-    names(data) <- names
+  tryCatch(
+    {
+      data <- purrr::imap(data, ~ which_sensor(.x, .y))
+      names(data) <- names
 
-    out$studies <- rbind(out$studies, study_id)
-    out$participants[1, ] <- participant_id
-    out$file[1, ] <- this_file  # Save to output
-    out$data[[1]] <- data
-
-  }, error = function(e) {
-    warning(paste0("processing failed for file ", filename[1]), call. = FALSE)
-  })
+      out$studies <- rbind(out$studies, study_id)
+      out$participants[1, ] <- participant_id
+      out$file[1, ] <- this_file # Save to output
+      out$data[[1]] <- data
+    },
+    error = function(e) {
+      warning(paste0("processing failed for file ", filename[1]), call. = FALSE)
+    }
+  )
 
   # Close db connection of worker
   DBI::dbDisconnect(tmp_db)
@@ -455,11 +481,11 @@ freq <- c(
 #' )
 #' coverage(
 #'   db = db,
-#'   participant_id = '12345',
-#'   sensor = c('Accelerometer', 'Gyroscope'),
+#'   participant_id = "12345",
+#'   sensor = c("Accelerometer", "Gyroscope"),
 #'   frequency = mpathsenser::freq,
-#'   start_date = '2021-01-01',
-#'   end_date = '2021-05-01'
+#'   start_date = "2021-01-01",
+#'   end_date = "2021-05-01"
 #' )
 #' }
 coverage <- function(db,
@@ -519,20 +545,26 @@ coverage <- function(db,
 
   # Helper function for checking if a string is convertible to date
   convert2date <- function(s) {
-    if (!inherits(s, "Date") & !is.character(s))
+    if (!inherits(s, "Date") & !is.character(s)) {
       return(FALSE)
+    }
     s <- try(as.Date(s), silent = TRUE)
-    if (inherits(s, "Date"))
-      TRUE else FALSE
+    if (inherits(s, "Date")) {
+      TRUE
+    } else {
+      FALSE
+    }
   }
 
   # Check start_date, end_date
   if ((!is.null(start_date) && !is.null(end_date)) && !is.null(offset)) {
     warning("Argument start_date/end_date and offset cannot be present at the same time. ",
-            "Ignoring the offset argument.", call. = FALSE)
+      "Ignoring the offset argument.",
+      call. = FALSE
+    )
     offset <- NULL
-  } else if (!(is.null(start_date) | convert2date(start_date))
-             || !(is.null(end_date) | convert2date(end_date))) {
+  } else if (!(is.null(start_date) | convert2date(start_date)) ||
+    !(is.null(end_date) | convert2date(end_date))) {
     stop("start_date and end_date must be NULL, a character string, or date.", call. = FALSE)
   }
 
@@ -556,21 +588,30 @@ coverage <- function(db,
   if (plot) {
     # Check if required packages are available
     if (!requireNamespace("ggplot2", quietly = TRUE)) {
-      stop(paste0("package ggplot2 is needed for this function to work. ",
-                  "Please install it using install.packages(\"ggplot2\")"),
-           call. = FALSE)
+      stop(paste0(
+        "package ggplot2 is needed for this function to work. ",
+        "Please install it using install.packages(\"ggplot2\")"
+      ),
+      call. = FALSE
+      )
     }
 
-    out <- ggplot2::ggplot(data = data,
-                           mapping = ggplot2::aes(x = hour, y = measure, fill = coverage)) +
+    out <- ggplot2::ggplot(
+      data = data,
+      mapping = ggplot2::aes(x = hour, y = measure, fill = coverage)
+    ) +
       ggplot2::geom_tile() +
-      ggplot2::geom_text(mapping = ggplot2::aes(label = coverage),
-                         colour = "white") +
+      ggplot2::geom_text(
+        mapping = ggplot2::aes(label = coverage),
+        colour = "white"
+      ) +
       ggplot2::scale_x_continuous(breaks = 0:23) +
-      ggplot2::scale_fill_gradientn(colours = c("#d70525", "#645a6c", "#3F7F93"),
-                                    breaks = c(0, 0.5, 1),
-                                    labels = c(0, 0.5, 1),
-                                    limits = c(0, 1)) +
+      ggplot2::scale_fill_gradientn(
+        colours = c("#d70525", "#645a6c", "#3F7F93"),
+        breaks = c(0, 0.5, 1),
+        labels = c(0, 0.5, 1),
+        limits = c(0, 1)
+      ) +
       ggplot2::theme_minimal() +
       ggplot2::ggtitle(paste0("Coverage for participant ", participant_id))
     return(out)
@@ -585,7 +626,7 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
   p_id <- as.character(participant_id)
 
   # Loop over each sensor and calculate the coverage rate for that sensor
-  data <- furrr::future_map(.x = sensor, .f = ~{
+  data <- furrr::future_map(.x = sensor, .f = ~ {
     tmp_db <- open_db(NULL, db@dbname)
 
     # Extract the data for this participant and sensor
@@ -602,8 +643,10 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
 
     # Remove duplicate IDs with _ for certain sensors
     # Removed Accelerometer and Gyroscope from the list, as they are already binned per second
-    if (.x %in% c("AppUsage", "Bluetooth",
-                  "Calendar", "InstalledApps", "TextMessage")) {
+    if (.x %in% c(
+      "AppUsage", "Bluetooth",
+      "Calendar", "InstalledApps", "TextMessage"
+    )) {
       tmp <- tmp %>%
         dplyr::mutate(measurement_id = substr(measurement_id, 1, 36)) %>%
         dplyr::distinct()

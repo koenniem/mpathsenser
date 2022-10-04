@@ -15,13 +15,17 @@
 #' @export
 decrypt_gps <- function(data, key) {
   if (!requireNamespace("sodium", quietly = TRUE)) {
-    stop(paste0("package sodium is needed for this function to work. ",
-                "Please install it using install.packages(\"sodium\")"),
-         call. = FALSE)
+    stop(paste0(
+      "package sodium is needed for this function to work. ",
+      "Please install it using install.packages(\"sodium\")"
+    ),
+    call. = FALSE
+    )
   }
 
-  if (!is.raw(key) & !is.character(key))
+  if (!is.raw(key) & !is.character(key)) {
     stop("key must be either a character or raw vector")
+  }
 
   if (!is.raw(key)) {
     key <- sodium::hex2bin(key)
@@ -115,7 +119,7 @@ location_variance <- function(lat, lon, time) {
 #' @param email If you are making large numbers of request please include an appropriate email
 #' address to identify your requests. See Nominatim's Usage Policy for more details.
 #' @param rate_limit The time interval to keep between queries, in seconds. If the rate limit is
-#'too low, the OpenStreetMaps may reject further requests or even ban your entirely.
+#' too low, the OpenStreetMaps may reject further requests or even ban your entirely.
 #'
 #' @section Warning:
 #' Do not abuse this function or you will be banned by OpenStreetMap. The maximum number
@@ -132,11 +136,13 @@ location_variance <- function(lat, lon, time) {
 #' geocode_rev(50.037936, 8.5599631)
 geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1) {
   base_query <- "https://nominatim.openstreetmap.org/reverse.php?"
-  args <- list(lat = lat,
-               lon = lon,
-               email = rep(email, length(lat)),
-               zoom = rep(zoom, length(lat)),
-               format = rep("jsonv2", length(lat)))
+  args <- list(
+    lat = lat,
+    lon = lon,
+    email = rep(email, length(lat)),
+    zoom = rep(zoom, length(lat)),
+    format = rep("jsonv2", length(lat))
+  )
 
   args <- purrr::transpose(args)
   args <- lapply(args, function(x) paste0(names(x), "=", x, collapse = "&"))

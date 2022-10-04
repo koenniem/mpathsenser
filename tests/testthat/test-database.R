@@ -12,15 +12,21 @@ test_that("create_db", {
   expect_true(file.exists(filename))
 
   # Test overwrite argument
-  expect_error({
-    db <- create_db(path = NULL, filename, overwrite = TRUE)
-    DBI::dbDisconnect(db)
-  }, NA)
-  expect_error({
-    db <- create_db(path = NULL, filename, overwrite = FALSE)
-    DBI::dbDisconnect(db)
-  }, "Database .+?(?=\\.db)\\.db already exists\\. Use overwrite = TRUE to overwrite\\.",
-  perl = TRUE)
+  expect_error(
+    {
+      db <- create_db(path = NULL, filename, overwrite = TRUE)
+      DBI::dbDisconnect(db)
+    },
+    NA
+  )
+  expect_error(
+    {
+      db <- create_db(path = NULL, filename, overwrite = FALSE)
+      DBI::dbDisconnect(db)
+    },
+    "Database .+?(?=\\.db)\\.db already exists\\. Use overwrite = TRUE to overwrite\\.",
+    perl = TRUE
+  )
 
   file.remove(filename)
 })
@@ -45,10 +51,12 @@ test_that("open_db", {
 test_that("copy_db", {
   test_db_name <- tempfile("test", fileext = ".db")
   filename <- tempfile("copy", fileext = ".db")
-  file.copy(from = system.file("testdata", "test.db", package = "mpathsenser"),
-            to = test_db_name,
-            overwrite = TRUE,
-            copy.mode = FALSE)
+  file.copy(
+    from = system.file("testdata", "test.db", package = "mpathsenser"),
+    to = test_db_name,
+    overwrite = TRUE,
+    copy.mode = FALSE
+  )
   db <- open_db(NULL, test_db_name)
 
   new_db <- create_db(NULL, filename)
@@ -64,15 +72,21 @@ test_that("copy_db", {
   names(true) <- sensors
   expect_equal(get_nrows(new_db), true)
 
-  expect_error(copy_db(db, sensor = "Accelerometer", path = tempdir(), db_name = "copy.db"),
-               paste0("A file in .+ with the name copy\\.db already exists\\. Please choose ",
-                      "a different name or path or remove the file\\."))
+  expect_error(
+    copy_db(db, sensor = "Accelerometer", path = tempdir(), db_name = "copy.db"),
+    paste0(
+      "A file in .+ with the name copy\\.db already exists\\. Please choose ",
+      "a different name or path or remove the file\\."
+    )
+  )
   close_db(new_db)
   file.remove(file.path(tempdir(), "copy.db"))
 
   DBI::dbDisconnect(db)
-  expect_error(copy_db(db, sensor = "Accelerometer", path = tempdir(), db_name = "copy.db"),
-               "Database connection is not valid")
+  expect_error(
+    copy_db(db, sensor = "Accelerometer", path = tempdir(), db_name = "copy.db"),
+    "Database connection is not valid"
+  )
   file.remove(test_db_name)
 })
 

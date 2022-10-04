@@ -10,10 +10,12 @@
 #' @examples
 #' sensors
 #' @export sensors
-sensors <- c("Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "Bluetooth",
-             "Calendar", "Connectivity", "Device", "Error", "Geofence", "Gyroscope",
-             "InstalledApps", "Keyboard", "Light", "Location", "Memory", "Mobility", "Noise",
-             "Pedometer", "PhoneLog", "Screen", "TextMessage", "Weather", "Wifi")
+sensors <- c(
+  "Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "Bluetooth",
+  "Calendar", "Connectivity", "Device", "Error", "Geofence", "Gyroscope",
+  "InstalledApps", "Keyboard", "Light", "Location", "Memory", "Mobility", "Noise",
+  "Pedometer", "PhoneLog", "Screen", "TextMessage", "Weather", "Wifi"
+)
 
 #' Create a new mpathsenser database
 #'
@@ -40,8 +42,9 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   if (file.exists(db_name)) {
     if (overwrite) {
       tryCatch(file.remove(db_name),
-               warning = function(e) stop(warningCondition(e)),
-               error = function(e) stop(errorCondition(e)))
+        warning = function(e) stop(warningCondition(e)),
+        error = function(e) stop(errorCondition(e))
+      )
     } else {
       stop(paste("Database", db_name, "already exists. Use overwrite = TRUE to overwrite."))
     }
@@ -51,16 +54,19 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   db <- DBI::dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
 
   # Populate the db with empty tables
-  tryCatch({
-    fn <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
-    script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"),  "\n\n")[[1]]
-    for (statement in script) {
-      DBI::dbExecute(db, statement)
+  tryCatch(
+    {
+      fn <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
+      script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
+      for (statement in script) {
+        DBI::dbExecute(db, statement)
+      }
+    },
+    error = function(e) {
+      DBI::dbDisconnect(db)
+      stop(e)
     }
-  }, error = function(e) {
-    DBI::dbDisconnect(db)
-    stop(e)
-  })
+  )
 
   return(db)
 }
@@ -89,8 +95,9 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
     db_name <- suppressWarnings(normalizePath(file.path(path, db_name)))
   }
 
-  if (!file.exists(db_name))
+  if (!file.exists(db_name)) {
     stop("There is no such file")
+  }
   db <- DBI::dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
   if (!DBI::dbExistsTable(db, "Participant")) {
     DBI::dbDisconnect(db)
@@ -134,15 +141,18 @@ close_db <- function(db) {
 index_db <- function(db) {
   if (is.null(db) || !DBI::dbIsValid(db)) stop("Database connection is not valid")
 
-  tryCatch({
-    fn <- system.file("extdata", "indexes.sql", package = "mpathsenser")
-    script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"),  "\n\n")[[1]]
-    for (statement in script) {
-      DBI::dbExecute(db, statement)
+  tryCatch(
+    {
+      fn <- system.file("extdata", "indexes.sql", package = "mpathsenser")
+      script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
+      for (statement in script) {
+        DBI::dbExecute(db, statement)
+      }
+    },
+    error = function(e) {
+      stop(e)
     }
-  }, error = function(e) {
-    stop(e)
-  })
+  )
 }
 
 vacuum_db <- function(db) {
@@ -188,8 +198,10 @@ copy_db <- function(from_db, to_db = NULL, sensor = "All", path = getwd(), db_na
       to_db <- create_db(path, db_name)
       message(paste0("New database created in ", file.path(path, db_name)))
     } else {
-      stop(paste0("A file in ", path, " with the name ", db_name, " already exists. Please choose ",
-                  "a different name or path or remove the file."))
+      stop(paste0(
+        "A file in ", path, " with the name ", db_name, " already exists. Please choose ",
+        "a different name or path or remove the file."
+      ))
     }
   }
 
@@ -199,14 +211,18 @@ copy_db <- function(from_db, to_db = NULL, sensor = "All", path = getwd(), db_na
   # Copy participants, studies, processed_files
   DBI::dbExecute(from_db, "INSERT OR IGNORE INTO new_db.Study SELECT * FROM Study")
   DBI::dbExecute(from_db, "INSERT OR IGNORE INTO new_db.Participant SELECT * FROM Participant")
-  DBI::dbExecute(from_db,
-                 "INSERT OR IGNORE INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles")
+  DBI::dbExecute(
+    from_db,
+    "INSERT OR IGNORE INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles"
+  )
 
 
   # Copy all specified sensors
   for (i in seq_along(sensor)) {
-    DBI::dbExecute(from_db, paste0("INSERT OR IGNORE INTO new_db.", sensor[i],
-                                   " SELECT * FROM ", sensor[i]))
+    DBI::dbExecute(from_db, paste0(
+      "INSERT OR IGNORE INTO new_db.", sensor[i],
+      " SELECT * FROM ", sensor[i]
+    ))
   }
 
   # Detach
@@ -220,26 +236,34 @@ copy_db <- function(from_db, to_db = NULL, sensor = "All", path = getwd(), db_na
 }
 
 add_study <- function(db, data) {
-  DBI::dbExecute(db,
-                 "INSERT OR IGNORE INTO Study(study_id, data_format)
+  DBI::dbExecute(
+    db,
+    "INSERT OR IGNORE INTO Study(study_id, data_format)
   VALUES(:study_id, :data_format);",
-                 list(study_id = data$study_id, data_format = data$data_format))
+    list(study_id = data$study_id, data_format = data$data_format)
+  )
 }
 
 add_participant <- function(db, data) {
-  DBI::dbExecute(db,
-                 "INSERT OR IGNORE INTO Participant(participant_id, study_id)
+  DBI::dbExecute(
+    db,
+    "INSERT OR IGNORE INTO Participant(participant_id, study_id)
   VALUES(:participant_id, :study_id);",
-                 list(participant_id = data$participant_id, study_id = data$study_id))
+    list(participant_id = data$participant_id, study_id = data$study_id)
+  )
 }
 
 add_processed_files <- function(db, data) {
-  DBI::dbExecute(db,
-                 "INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)
+  DBI::dbExecute(
+    db,
+    "INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)
   VALUES(:file_name, :study_id, :participant_id);",
-                 list(file_name = data$file_name,
-                      study_id = data$study_id,
-                      participant_id = data$participant_id))
+    list(
+      file_name = data$file_name,
+      study_id = data$study_id,
+      participant_id = data$participant_id
+    )
+  )
 }
 
 clear_sensors_db <- function(db) {

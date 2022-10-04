@@ -15,18 +15,20 @@
 #'
 #' @examples
 #' \dontrun{
-#' ccopy('K:/data/myproject/', '~/myproject')
+#' ccopy("K:/data/myproject/", "~/myproject")
 #' }
 ccopy <- function(from,
                   to,
                   recursive = TRUE) {
-
-  if (is.null(from) || !is.character(from))
+  if (is.null(from) || !is.character(from)) {
     stop("from must be a character", call. = FALSE)
-  if (is.null(to) || !is.character(to))
+  }
+  if (is.null(to) || !is.character(to)) {
     stop("to must be a character", call. = FALSE)
-  if (is.null(from) || !is.logical(recursive))
+  }
+  if (is.null(from) || !is.logical(recursive)) {
     stop("recursive must be a logical", call. = FALSE)
+  }
 
   from_list <- dir(path = from, pattern = "*.zip$", recursive = recursive)
   to_list <- dir(path = to, pattern = "*.zip$", recursive = recursive)
@@ -38,9 +40,10 @@ ccopy <- function(from,
 
   message(paste0("Copying ", length(copy), " files."))
   to_copy <- file.path(from, copy)
-  invisible(do.call(file.copy,
-                    list(from = to_copy, to = to, overwrite = FALSE, copy.mode = FALSE)))
-
+  invisible(do.call(
+    file.copy,
+    list(from = to_copy, to = to, overwrite = FALSE, copy.mode = FALSE)
+  ))
 }
 
 #' Fix the end of JSON files
@@ -71,36 +74,48 @@ fix_jsons <- function(path = getwd(),
                       files = NULL,
                       recursive = TRUE,
                       parallel = FALSE) {
-
   if (!requireNamespace("vroom", quietly = TRUE)) {
-    stop(paste0("package vroom is needed for this function to work. ",
-                "Please install it using install.packages(\"vroom\")"),
-         call. = FALSE)
+    stop(paste0(
+      "package vroom is needed for this function to work. ",
+      "Please install it using install.packages(\"vroom\")"
+    ),
+    call. = FALSE
+    )
   }
 
-  if (!is.null(path) && !is.character(path))
+  if (!is.null(path) && !is.character(path)) {
     stop("path must be a character string of the path name")
-  if (!is.null(files) && !is.character(files))
+  }
+  if (!is.null(files) && !is.character(files)) {
     stop("files must be NULL or a character vector of file names")
+  }
 
   # Find all JSON files that are _not_ zipped Thus, make sure you didn't unzip them yet,
   # otherwise this may take a long time
   if (is.null(files)) {
-    jsonfiles <- dir(path = path,
-                     pattern = "*.json$",
-                     all.files = TRUE,
-                     recursive = recursive,
-                     full.names = TRUE)
+    jsonfiles <- dir(
+      path = path,
+      pattern = "*.json$",
+      all.files = TRUE,
+      recursive = recursive,
+      full.names = TRUE
+    )
   } else {
     if (!missing(path)) {
-      tryCatch({
-        normalizePath(file.path(path, files), mustWork = TRUE)
-      }, error = function(e) stop(e))
+      tryCatch(
+        {
+          normalizePath(file.path(path, files), mustWork = TRUE)
+        },
+        error = function(e) stop(e)
+      )
       jsonfiles <- normalizePath(file.path(files))
     } else {
-      tryCatch({
-        normalizePath(files, mustWork = TRUE)
-      }, error = function(e) stop(e))
+      tryCatch(
+        {
+          normalizePath(files, mustWork = TRUE)
+        },
+        error = function(e) stop(e)
+      )
       jsonfiles <- normalizePath(files)
     }
   }
@@ -133,8 +148,7 @@ fix_jsons_impl <- function(jsonfiles) {
     p <- progressr::progressor(steps = length(jsonfiles))
   }
 
-  furrr::future_map_int(jsonfiles, ~{
-
+  furrr::future_map_int(jsonfiles, ~ {
     if (requireNamespace("progressr", quietly = TRUE)) {
       p()
     }
@@ -159,7 +173,11 @@ fix_jsons_impl <- function(jsonfiles) {
     }
 
     res <- res + fix_eof(.x, eof, lines)
-    if (res != 0) return(1L) else return(0L)
+    if (res != 0) {
+      return(1L)
+    } else {
+      return(0L)
+    }
   })
 }
 
@@ -217,7 +235,7 @@ fix_eof <- function(file, eof, lines) {
     # opened but nothing was written. So, just close it with ] to have an empty JSON file.
     write("]", file, append = TRUE)
   } else if (nchar(last) > 3 &&
-             substr(last, nchar(last) - 1, nchar(last)) == "}}") {
+    substr(last, nchar(last) - 1, nchar(last)) == "}}") {
     # 9: Is the last line long (>3) and are the last two characters "}}"? Then somehow all
     # we are missing is a closing bracket.
     write("]", file, append = TRUE)
@@ -255,28 +273,37 @@ test_jsons <- function(path = getwd(),
                        db = NULL,
                        recursive = TRUE,
                        parallel = FALSE) {
-
-  if (!is.null(path) && !is.character(path))
+  if (!is.null(path) && !is.character(path)) {
     stop("path must be a character string of the path name")
-  if (!is.null(files) && !is.character(files))
+  }
+  if (!is.null(files) && !is.character(files)) {
     stop("files must be NULL or a character vector of file names")
+  }
 
   if (is.null(files)) {
-    jsonfiles <- dir(path = path,
-                     pattern = "*.json$",
-                     all.files = TRUE,
-                     recursive = recursive,
-                     full.names = TRUE)
+    jsonfiles <- dir(
+      path = path,
+      pattern = "*.json$",
+      all.files = TRUE,
+      recursive = recursive,
+      full.names = TRUE
+    )
   } else {
     if (!missing(path)) {
-      tryCatch({
-        normalizePath(file.path(path, files), mustWork = TRUE)
-      }, error = function(e) stop(e))
+      tryCatch(
+        {
+          normalizePath(file.path(path, files), mustWork = TRUE)
+        },
+        error = function(e) stop(e)
+      )
       jsonfiles <- normalizePath(file.path(files))
     } else {
-      tryCatch({
-        normalizePath(files, mustWork = TRUE)
-      }, error = function(e) stop(e))
+      tryCatch(
+        {
+          normalizePath(files, mustWork = TRUE)
+        },
+        error = function(e) stop(e)
+      )
       jsonfiles <- normalizePath(files)
     }
   }
@@ -294,8 +321,7 @@ test_jsons <- function(path = getwd(),
     p <- progressr::progressor(steps = length(jsonfiles))
   }
 
-  missing <- furrr::future_map_lgl(jsonfiles, ~{
-
+  missing <- furrr::future_map_lgl(jsonfiles, ~ {
     if (requireNamespace("progressr", quietly = TRUE)) {
       p()
     }
@@ -347,14 +373,18 @@ unzip_data <- function(path = getwd(),
                        overwrite = FALSE,
                        recursive = TRUE,
                        parallel = FALSE) {
-  if (is.null(path) || !is.character(path))
+  if (is.null(path) || !is.character(path)) {
     stop("path must be a character string")
-  if (is.null(overwrite) || !is.logical(overwrite))
+  }
+  if (is.null(overwrite) || !is.logical(overwrite)) {
     stop("overwrite must be TRUE or FALSE")
-  if (is.null(recursive) || !is.logical(recursive))
+  }
+  if (is.null(recursive) || !is.logical(recursive)) {
     stop("recursive must be TRUE or FALSE")
-  if (is.null(to))
+  }
+  if (is.null(to)) {
     to <- path
+  }
 
   if (parallel) {
     future::plan(future::multisession)
@@ -369,7 +399,7 @@ unzip_data <- function(path = getwd(),
       p <- progressr::progressor(steps = length(dirs))
     }
 
-    unzipped_files <- furrr::future_map_int(dirs, ~{
+    unzipped_files <- furrr::future_map_int(dirs, ~ {
       if (requireNamespace("progressr", quietly = TRUE)) {
         p()
       }
@@ -407,14 +437,18 @@ unzip_impl <- function(path, to, overwrite) {
   if (length(zipfiles) > 0) {
     # TODO: implement error handling in case unzipping fails (e.g. unexpected end of data)
     lapply(zipfiles, function(x) {
-      tryCatch({
-        invisible(utils::unzip(zipfile = file.path(path, x),
-                               overwrite = overwrite,
-                               junkpaths = TRUE,
-                               exdir = to))
-      }, error = function(e) warning(paste0("Failed to unzip", x), call. = FALSE))
+      tryCatch(
+        {
+          invisible(utils::unzip(
+            zipfile = file.path(path, x),
+            overwrite = overwrite,
+            junkpaths = TRUE,
+            exdir = to
+          ))
+        },
+        error = function(e) warning(paste0("Failed to unzip", x), call. = FALSE)
+      )
     })
   }
   return(length(zipfiles))
 }
-

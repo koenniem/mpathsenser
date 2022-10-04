@@ -1,27 +1,29 @@
 # First, try to simply add the data to the table If the measurement already exists,
 # skip that measurement
 save2db <- function(db, name, data) {
-  tryCatch({
-    DBI::dbAppendTable(db, name, data)
-  }, error = function(e) {
-    message("Could not add data to the data base. Falling back to UPSERT method")
+  tryCatch(
+    {
+      DBI::dbAppendTable(db, name, data)
+    },
+    error = function(e) {
+      message("Could not add data to the data base. Falling back to UPSERT method")
 
-    dbx::dbxUpsert(
-      db,
-      name,
-      data,
-      where_cols = c("measurement_id"),
-      skip_existing = TRUE
-    )
-  })
+      dbx::dbxUpsert(
+        db,
+        name,
+        data,
+        where_cols = c("measurement_id"),
+        skip_existing = TRUE
+      )
+    }
+  )
 }
 
 # This function is needed because calling the function on the fly from the sensor name
 # (i.e. dynamic evaluation) poses a problem from the globals package, which would then not
 # include these import functions in the futures.
 which_sensor <- function(data, sensor) {
-  switch(
-    sensor,
+  switch(sensor,
     accelerometer = accelerometer_fun(data),
     activity = activity_fun(data),
     air_quality = air_quality_fun(data),
@@ -53,27 +55,33 @@ which_sensor <- function(data, sensor) {
 # Make a data frame, handling missing columns, filling with NA
 safe_data_frame <- function(...) {
   x <- suppressWarnings(list(...))
-  x <- lapply(x, function(x)
-    if (is.null(x))
+  x <- lapply(x, function(x) {
+    if (is.null(x)) {
       NA
-    else
-      x)
+    } else {
+      x
+    }
+  })
   x <- as.data.frame(x)
   x
 }
 
 safe_tibble <- function(...) {
   x <- suppressWarnings(list(...))
-  x <- lapply(x, function(x)
-    if (is.null(x))
+  x <- lapply(x, function(x) {
+    if (is.null(x)) {
       NA
-    else
-      x)
-  x <- lapply(x, function(x)
-    if (length(x[[1]]) == 0)
+    } else {
+      x
+    }
+  })
+  x <- lapply(x, function(x) {
+    if (length(x[[1]]) == 0) {
       NA
-    else
-      x)  # lists
+    } else {
+      x
+    }
+  }) # lists
   x <- tibble::as_tibble(x)
   x
 }
@@ -223,7 +231,6 @@ battery_fun <- function(data) {
     battery_level = data$battery_level,
     battery_status = data$battery_status
   )
-
 }
 
 bluetooth_fun <- function(data) {
@@ -256,10 +263,12 @@ bluetooth_fun <- function(data) {
 # Currently, multiple entries are already possible but it's not clear why they are
 # wrapped in another list as well.
 calendar_fun <- function(data) {
-  data$id <- sapply(data$body, function(x)
-    x$body$id)
-  data$body <- lapply(data$body, function(x)
-    x$body$calendar_events)
+  data$id <- sapply(data$body, function(x) {
+    x$body$id
+  })
+  data$body <- lapply(data$body, function(x) {
+    x$body$calendar_events
+  })
 
   if (!is.null(data$body[[1]])) {
     data$body <- lapply(data$body, function(x) {
@@ -292,8 +301,9 @@ calendar_fun <- function(data) {
           x <- NA_character_
         }
         return(x)
-      } else
+      } else {
         NA_character_
+      }
     })
   }
 
