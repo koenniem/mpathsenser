@@ -59,6 +59,7 @@ building:
     - echo "Library path for packages :" $R_LIBS
     - mkdir -p $R_LIBS
     - Rscript -e 'install.packages("remotes")'
+    - Rscript -e 'install.packages("lubridate")'
     - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "never", force = TRUE, INSTALL_opts = "--install-tests")'
     - Rscript -e 'devtools::document()'
     - R -e 'devtools::check(manual = FALSE, cran = TRUE, remote = TRUE, incoming = TRUE, force_suggests = FALSE, error_on = "warning")'

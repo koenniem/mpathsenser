@@ -445,23 +445,25 @@ test_that("link_gaps", {
     from = rep(c(
       seq.POSIXt(as.POSIXct("2021-11-14 12:40:00"), by = "1 min", length.out = 20), # 1 before
       seq.POSIXt(as.POSIXct("2021-11-14 13:10:00"), by = "1 min", length.out = 20), # 1 after
-      as.POSIXct("2021-11-14 13:55:00"), # 2 before, 3 after
-      as.POSIXct("2021-11-14 14:25:00"), # 3 before, 2 after
-      as.POSIXct("2021-11-14 15:25:00"), # 2 after
-      as.POSIXct("2021-11-14 15:30:00"), # 4 before, after
-      as.POSIXct("2021-11-14 12:15:00"), # 5 before, after
-      as.POSIXct("2021-11-14 18:35:00") # 6 before, after
-    ), 2),
+      as.POSIXct(c(
+        "2021-11-14 13:55:00", # 2 before, 3 after
+        "2021-11-14 14:25:00", # 3 before, 2 after
+        "2021-11-14 15:25:00", # 2 after
+        "2021-11-14 15:30:00", # 4 before, after
+        "2021-11-14 12:15:00", # 5 before, after
+        "2021-11-14 18:35:00" # 6 before, after
+      ))), 2),
     to = rep(c(
       seq.POSIXt(as.POSIXct("2021-11-14 12:41:00"), by = "1 min", length.out = 20), # 1 before
       seq.POSIXt(as.POSIXct("2021-11-14 13:11:00"), by = "1 min", length.out = 20), # 1 after
-      as.POSIXct("2021-11-14 14:05:00"), # 2 before, 3 after
-      as.POSIXct("2021-11-14 14:40:00"), # 3 before
-      as.POSIXct("2021-11-14 15:30:00"), # 2 after
-      as.POSIXct("2021-11-14 16:30:00"), # 4 before, after
-      as.POSIXct("2021-11-14 12:25:00"), # 5 before, after
-      as.POSIXct("2021-11-14 18:40:00") # 6 before, after
-    ), 2)
+      as.POSIXct(c(
+        "2021-11-14 14:05:00", # 2 before, 3 after
+        "2021-11-14 14:40:00", # 3 before
+        "2021-11-14 15:30:00", # 2 after
+        "2021-11-14 16:30:00", # 4 before, after
+        "2021-11-14 12:25:00", # 5 before, after
+        "2021-11-14 18:40:00" # 6 before, after
+      ))), 2)
   )
 
   # Test difference types of input for offset_before
