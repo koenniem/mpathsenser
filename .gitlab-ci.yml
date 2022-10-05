@@ -29,6 +29,7 @@ commit-man:
     - git config --global user.name "${GITLAB_USER_NAME}"
   script:
     - echo "Committing man files to git"
+    - apt-get update -qq && apt-get install -y libxt6
     - Rscript -e 'devtools::document()'
     - git add NAMESPACE man
     - |-
@@ -54,12 +55,11 @@ building:
           - VERSION: ['latest', 'devel']
 
   script:
-    - apt-get update -qq && apt-get install -y libharfbuzz-dev libfribidi-dev
+    - apt-get update -qq && apt-get install -y libharfbuzz-dev libfribidi-dev libxt6
     - apt-get install -y qpdf
     - echo "Library path for packages :" $R_LIBS
     - mkdir -p $R_LIBS
     - Rscript -e 'install.packages("remotes")'
-    - Rscript -e 'install.packages("lubridate")'
     - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "never", force = TRUE, INSTALL_opts = "--install-tests")'
     - Rscript -e 'devtools::document()'
     - R -e 'devtools::check(manual = FALSE, cran = TRUE, remote = TRUE, incoming = TRUE, force_suggests = FALSE, error_on = "warning")'
