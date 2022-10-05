@@ -51,10 +51,10 @@ reference:
 
   - title: Analysis
     contents:
-      - bin_duration
+      - add_gaps
+      - bin_data
       - coverage
       - first_date
-      - geocode_rev
       - haversine
       - identify_gaps
       - last_date
@@ -69,6 +69,7 @@ reference:
       - app_category
       - decrypt_gps
       - device_info
+      - geocode_rev
       - get_app_usage
       - get_installed_apps
       - n_screen_on

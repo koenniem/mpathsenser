@@ -781,25 +781,69 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 }
 
 
-#' Add gap periods to sensor data
+#'Add gap periods to sensor data
 #'
-#' @description
-#' `r lifecycle::badge("experimental")`
+#'@description `r lifecycle::badge("experimental")`
 #'
-#' @param data A data frame containing the activity data. See \link[mpathsenser]{get_data} for
-#' retrieving activity data from an mpathsenser database.
-#' @param gaps A data frame (extension) containing the gap data. See
-#'   \link[mpathsenser]{identify_gaps} for retrieving gap data from an mpathsenser database. It
-#'   should at least contain the columns \code{from} and \code{to} (both in a date-time format), as
-#'   well as any specified columns in \code{by}.
-#' @param by A character vector indicating the variable(s) to match by, typically the participant
-#'   IDs. If NULL, the default, \code{*_join()} will perform a natural join, using all variables in
-#'   common across \code{x} and \code{y}.
-#' @param fill A named list of the columns to fill with default values for the extra measurements
-#' that are added because of the gaps.
+#'  Since there may be many gaps in mobile sensing data, it is pivotal to pay attention in the
+#'  analysis to them. This function adds known gaps to data as "measurements", thereby allowing
+#'  easier calculations for, for example, finding the duration. For instance, consider a participant
+#'  spent 30 minutes walking. However, if it is known there is gap of 15 minutes in this interval,
+#'  we should somehow account for it. \code{add_gaps} accounts for this by adding the gap data to
+#'  sensors data by splitting intervals where gaps occur.
 #'
-#' @return A tibble containing the data and the added gaps.
-#' @export
+#'@details In the example of 30 minutes walking where a 15 minute gap occurred (say after 5
+#'  minutes), \code{add_gaps} adds two rows: one after 5 minutes of the start of the interval
+#'  indicating the start of the gap(if needed containing values from \code{fill}), and one after 20
+#'  minutes of the start of the interval signalling the walking activity. Then, when calculating
+#'  time differences between subsequent measurements, the gap period is appropriately accounted for.
+#'  Note that if multiple measurements occurred before the gap, they will both be continued after
+#'  the gap.
+#'
+#'@param data A data frame containing the activity data. See \link[mpathsenser]{get_data} for
+#'  retrieving activity data from an mpathsenser database.
+#'@param gaps A data frame (extension) containing the gap data. See
+#'  \link[mpathsenser]{identify_gaps} for retrieving gap data from an mpathsenser database. It
+#'  should at least contain the columns \code{from} and \code{to} (both in a date-time format), as
+#'  well as any specified columns in \code{by}.
+#'@param by A character vector indicating the variable(s) to match by, typically the participant
+#'  IDs. If NULL, the default, \code{*_join()} will perform a natural join, using all variables in
+#'  common across \code{x} and \code{y}.
+#'@param fill A named list of the columns to fill with default values for the extra measurements
+#'  that are added because of the gaps.
+#'
+#'@seealso \code{\link[mpathsenser]{identify_gaps}} for finding gaps in the sampling;
+#'  \code{\link[mpathsenser]{link_gaps}} for finding which gaps occur in the data;
+#'
+#'@return A tibble containing the data and the added gaps.
+#'@export
+#'
+#'@examples
+#' # Define some data
+#' dat <- data.frame(
+#'   participant_id = "12345",
+#'   time = as.POSIXct(c("2022-05-10 10:00:00", "2022-05-10 10:30:00", "2022-05-10 11:30:00")),
+#'   type = c("WALKING", "STILL", "RUNNING"),
+#'   confidence = c(80, 100, 20)
+#' )
+#'
+#' # Get the gaps from identify_gaps, but in this example define them ourselves
+#' gaps <- data.frame(
+#'   participant_id = "12345",
+#'   from = as.POSIXct(c("2022-05-10 10:05:00", "2022-05-10 10:50:00")),
+#'   to = as.POSIXct(c("2022-05-10 10:20:00", "2022-05-10 10:10:00"))
+#' )
+#'
+#' # Now add the gaps to the data
+#' add_gaps(data = dat,
+#'          gaps = gaps,
+#'          by = "participant_id")
+#'
+#' # You can use fill if  you want to get rid of those pesky NA's
+#' add_gaps(data = dat,
+#'          gaps = gaps,
+#'          by = "participant_id",
+#'          fill = list(type = "GAP", confidence = 100))
 add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
   by_names <- colnames(dplyr::select(data, {{ by }}))
   if (!all(by_names %in% c(colnames(data), colnames(gaps)))) {
@@ -816,7 +860,7 @@ add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
     tidyr::pivot_longer(cols = c(.data$from, .data$to),
                         names_to = "gap_type",
                         values_to = "time") %>%
-    rlang::exec(.fn = "mutate", !!!fill)
+    rlang::exec(.fn = dplyr::mutate, !!!fill)
 
   data %>%
     # Add gaps to the data

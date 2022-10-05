@@ -768,94 +768,94 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
   out
 }
 
-#' Bin duration in variable time series
-#'
-#' @description `r lifecycle::badge("deprecated")`
-#'
-#' This function has been deprecated in favour of the more general \link[mpathsenser]{bin_data} for
-#' finding interval data in equally-spaced bins. Therefore, \code{bin_duration} is nothing more than
-#' a wrapper around \link[mpathsenser]{bin_data}.
-#'
-#' In time series with variable measurements, an often recurring task is calculating the total time
-#' spent (i.e. the duration) in fixed bins, for example per hour or day. However, this may be
-#' difficult when two subsequent measurements are in different bins or span over multiple bins.
-#'
-#' @details Note that non-grouped columns are discarded in the output.
-#'
-#' @param data A data frame or tibble containing the time series.
-#' @param start_time The column name of the start time of the interval, a POSIXt.
-#' @param end_time The column name of the end time of the interval, a POSIXt.
-#' @param by A binning specification, either \code{hour} or \code{day}.
-#'
-#' @return A tibble containing the group columns (if any), date, hour (if \code{by = "hour"}), and
-#'   the duration in seconds.
-#' @export
-#'
-#' @examples
-#' data <- tibble::tibble(
-#'   participant_id = 1,
-#'   datetime = c(
-#'     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
-#'     "2022-06-21 17:05:00", "2022-06-21 17:10:00"
-#'   ),
-#'   confidence = 100,
-#'   type = "WALKING"
-#' )
-#'
-#' # get the duration per hour, even if the interval is longer than one hour
-#' data %>%
-#'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-#'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
-#'   bin_duration(
-#'     start_time = datetime,
-#'     end_time = lead,
-#'     by = "hour"
-#'   )
-#'
-#' data <- tibble::tibble(
-#'   participant_id = 1,
-#'   datetime = c(
-#'     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
-#'     "2022-06-21 17:05:00", "2022-06-21 17:10:00"
-#'   ),
-#'   confidence = 100,
-#'   type = c("STILL", "WALKING", "STILL", "WALKING")
-#' )
-#' # binned_intervals also takes into account the prior grouping structure
-#' data %>%
-#'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-#'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
-#'   dplyr::group_by(participant_id, type) %>%
-#'   bin_duration(
-#'     start_time = datetime,
-#'     end_time = lead,
-#'     by = "hour"
-#'   )
-bin_duration <- function(data, start_time, end_time, by = c("hour", "day")) {
-  lifecycle::deprecate_warn("1.0.4", "bin_duration()", "bin_data()")
-
-  group_vars <- dplyr::group_vars(data)
-  by <- match.arg(by)
-
-  out <- bin_data(data, {{ start_time }}, {{ end_time }}, by)
-
-  out <- out %>%
-    tidyr::unnest(.data$bin_data, keep_empty = TRUE) %>%
-    dplyr::mutate(duration = {{ end_time }} - {{ start_time }}) %>%
-    dplyr::group_by(.data$bin, .add = TRUE) %>%
-    dplyr::summarise(duration = sum(.data$duration), .groups = "drop") %>%
-    dplyr::rename(date = .data$bin)
-
-  # Make the by column look pretty
-  if (by == "hour") {
-    out <- out %>%
-      dplyr::mutate(hour = lubridate::hour(.data$date)) %>%
-      dplyr::mutate(date = lubridate::date(.data$date)) %>%
-      dplyr::select(dplyr::group_cols(), .data$date, .data$hour, .data$duration)
-  } else if (by == "day") {
-    out <- out %>%
-      dplyr::mutate(date = lubridate::date(.data$date))
-  }
-
-  out
-}
+# #' Bin duration in variable time series
+# #'
+# #' @description `r lifecycle::badge("deprecated")`
+# #'
+# #' This function has been deprecated in favour of the more general \link[mpathsenser]{bin_data} for
+# #' finding interval data in equally-spaced bins. Therefore, \code{bin_duration} is nothing more than
+# #' a wrapper around \link[mpathsenser]{bin_data}.
+# #'
+# #' In time series with variable measurements, an often recurring task is calculating the total time
+# #' spent (i.e. the duration) in fixed bins, for example per hour or day. However, this may be
+# #' difficult when two subsequent measurements are in different bins or span over multiple bins.
+# #'
+# #' @details Note that non-grouped columns are discarded in the output.
+# #'
+# #' @param data A data frame or tibble containing the time series.
+# #' @param start_time The column name of the start time of the interval, a POSIXt.
+# #' @param end_time The column name of the end time of the interval, a POSIXt.
+# #' @param by A binning specification, either \code{hour} or \code{day}.
+# #'
+# #' @return A tibble containing the group columns (if any), date, hour (if \code{by = "hour"}), and
+# #'   the duration in seconds.
+# #' @export
+# #'
+# #' @examples
+# #' data <- tibble::tibble(
+# #'   participant_id = 1,
+# #'   datetime = c(
+# #'     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
+# #'     "2022-06-21 17:05:00", "2022-06-21 17:10:00"
+# #'   ),
+# #'   confidence = 100,
+# #'   type = "WALKING"
+# #' )
+# #'
+# #' # get the duration per hour, even if the interval is longer than one hour
+# #' data %>%
+# #'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
+# #'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+# #'   bin_duration(
+# #'     start_time = datetime,
+# #'     end_time = lead,
+# #'     by = "hour"
+# #'   )
+# #'
+# #' data <- tibble::tibble(
+# #'   participant_id = 1,
+# #'   datetime = c(
+# #'     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
+# #'     "2022-06-21 17:05:00", "2022-06-21 17:10:00"
+# #'   ),
+# #'   confidence = 100,
+# #'   type = c("STILL", "WALKING", "STILL", "WALKING")
+# #' )
+# #' # binned_intervals also takes into account the prior grouping structure
+# #' data %>%
+# #'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
+# #'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+# #'   dplyr::group_by(participant_id, type) %>%
+# #'   bin_duration(
+# #'     start_time = datetime,
+# #'     end_time = lead,
+# #'     by = "hour"
+# #'   )
+# bin_duration <- function(data, start_time, end_time, by = c("hour", "day")) {
+#   lifecycle::deprecate_warn("1.0.4", "bin_duration()", "bin_data()")
+#
+#   group_vars <- dplyr::group_vars(data)
+#   by <- match.arg(by)
+#
+#   out <- bin_data(data, {{ start_time }}, {{ end_time }}, by)
+#
+#   out <- out %>%
+#     tidyr::unnest(.data$bin_data, keep_empty = TRUE) %>%
+#     dplyr::mutate(duration = {{ end_time }} - {{ start_time }}) %>%
+#     dplyr::group_by(.data$bin, .add = TRUE) %>%
+#     dplyr::summarise(duration = sum(.data$duration), .groups = "drop") %>%
+#     dplyr::rename(date = .data$bin)
+#
+#   # Make the by column look pretty
+#   if (by == "hour") {
+#     out <- out %>%
+#       dplyr::mutate(hour = lubridate::hour(.data$date)) %>%
+#       dplyr::mutate(date = lubridate::date(.data$date)) %>%
+#       dplyr::select(dplyr::group_cols(), .data$date, .data$hour, .data$duration)
+#   } else if (by == "day") {
+#     out <- out %>%
+#       dplyr::mutate(date = lubridate::date(.data$date))
+#   }
+#
+#   out
+# }
