@@ -22,7 +22,7 @@ information:\tabular{lll}{
    Light \tab 360 \tab Once per 10 seconds. \cr
    Location \tab 60 \tab Once every 60 seconds. \cr
    Memory \tab 60 \tab Once per minute \cr
-   Noise \tab 120 \tab Once every 30 seconds. Microhone cannot be used in the background in Android 11. \cr
+   Noise \tab 120 \tab Once every 30 seconds. Microphone cannot be used in the background in Android 11. \cr
    Weather \tab 1 \tab Once per hour. \cr
    Wifi \tab 60 \tab Once per minute. \cr
 }

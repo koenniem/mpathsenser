@@ -412,7 +412,7 @@ import_impl <- function(path, filename, db_name, sensors) {
 #' Light | 360 | Once per 10 seconds.
 #' Location | 60 | Once every 60 seconds.
 #' Memory | 60 | Once per minute
-#' Noise | 120 | Once every 30 seconds. Microhone cannot be used in the background in Android 11.
+#' Noise | 120 | Once every 30 seconds. Microphone cannot be used in the background in Android 11.
 #' Weather | 1 | Once per hour.
 #' Wifi | 60 |  Once per minute.
 #'
