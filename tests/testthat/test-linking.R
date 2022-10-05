@@ -544,13 +544,13 @@ test_that("link_gaps", {
         gap = 1800
       ), # 4
       tibble::tibble(
-        from = lubridate::POSIXct(0, tz = ""),
-        to = lubridate::POSIXct(0, tz = ""),
+        from = as.POSIXct(double(0), tz = ""),
+        to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
       ), # 5
       tibble::tibble(
-        from = lubridate::POSIXct(0, tz = ""),
-        to = lubridate::POSIXct(0, tz = ""),
+        from = as.POSIXct(double(0), tz = ""),
+        to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
       ) # 6
     ), 2),
@@ -666,13 +666,13 @@ test_that("link_gaps", {
         gap = 1800
       ), # 4
       tibble::tibble(
-        from = lubridate::POSIXct(0, tz = ""),
-        to = lubridate::POSIXct(0, tz = ""),
+        from = as.POSIXct(double(0), tz = ""),
+        to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
       ), # 5
       tibble::tibble(
-        from = lubridate::POSIXct(0, tz = ""),
-        to = lubridate::POSIXct(0, tz = ""),
+        from = as.POSIXct(double(0), tz = ""),
+        to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
       ) # 6
     ), 2),
@@ -745,13 +745,13 @@ test_that("link_gaps", {
         gap = 3600
       ), # 4
       tibble::tibble(
-        from = lubridate::POSIXct(0, tz = ""),
-        to = lubridate::POSIXct(0, tz = ""),
+        from = as.POSIXct(double(0), tz = ""),
+        to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
       ), # 5
       tibble::tibble(
-        from = lubridate::POSIXct(0, tz = ""),
-        to = lubridate::POSIXct(0, tz = ""),
+        from = as.POSIXct(double(0), tz = ""),
+        to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
       ) # 6
     ), 2),
