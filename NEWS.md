@@ -1,13 +1,13 @@
-# mpathsenser 1.0.4 (in development)
+# mpathsenser 1.1.0
 ## Major changes
 * Added several functions:
-  - `link_gaps`
-  - `add_gaps`
-  - `bin_data`: To subdivide data into bins, e.g. 
+  - `link_gaps`: For linking gap data to other data, i.e. how many gaps occur within an interval.
+  - `add_gaps`: To interleave gaps with other data.
+  - `bin_data`: To subdivide data into bins, e.g. all measurements within an hour or day.
 * Added lifecycle badge to signal the state of functions.
 * `link` has been revised and expanded:
   - Replaced `offset` with `offset_before` and `offset_after`, allowing both to be specified at the 
-  same time.
+  same time (#3).
   - Added new `add_before` and `add_after` argument to allow the last row before the measurement 
   and first row after the measurement respectively to be added to the data.
   - Added a new `split` argument, allowing computation to be split among many parts thereby
@@ -21,8 +21,8 @@ package name exactly based on a partial match.
 * Changed `link2` to `link_db`.
 
 ## Bug fixes
-* Fixed issue #2
-* Fixed issue #3
+* Fixed issue where `link` runs out of memory when there are too many matches (#2). `link` is now 
+much more memory efficient and slightly faster.
 * Fixed issue in `get_data` which allowed multiple sensors to be requested from one function call, 
 sometimes leading to crashes (#4).
 * Fixed issue in `link` where column `original_time` is missing if no records before or after the 
