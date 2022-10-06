@@ -1,3 +1,8 @@
+## Resubmission
+This is a resubmission. In this version I have:
+
+* Changed the URL in the description in the BugReports field to comply with CRAN policies.
+
 ## Test environments
 * local Windows 10 install, R 4.2.0
 * Fedora Linux (on R-hub) R-devel
@@ -37,5 +42,5 @@ We checked 0 reverse dependencies, comparing R CMD check results across CRAN and
 
 Best wishes,
 
-Koen Niemeijer
+Koen Niemeijer\
 Package Maintainer
