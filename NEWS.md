@@ -1,3 +1,5 @@
+# mpathsenser 1.1.1 (in development)
+
 # mpathsenser 1.1.0
 ## Major changes
 * Added several functions:
