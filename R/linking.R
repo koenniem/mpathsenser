@@ -6,7 +6,7 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
     dplyr::mutate(x_time = as.integer(.data$time)) %>%
     dplyr::mutate(start_time = .data$x_time - offset_before) %>%
     dplyr::mutate(end_time = .data$x_time + offset_after) %>%
-    dplyr::select(by, .data$start_time, .data$end_time) %>%
+    dplyr::select({{ by }}, .data$start_time, .data$end_time) %>%
     tibble::as_tibble() %>%
     dplyr::mutate(row_id = dplyr::row_number()) # For rematching later
 
@@ -193,6 +193,7 @@ link <- function(x,
                  add_before = FALSE,
                  add_after = FALSE,
                  split = by) {
+
   if (!is.data.frame(x)) {
     stop("x must be a data frame", call. = FALSE)
   }
@@ -428,12 +429,11 @@ link_db <- function(db,
 link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0, raw_data = FALSE) {
 
   # Argument checking
-  if (!is.data.frame(data)) {
-    stop("data must be a data frame", call. = FALSE)
-  }
-  if (!is.data.frame(gaps)) {
-    stop("gaps must be a data frame", call. = FALSE)
-  }
+  stopifnot(
+    "data must be a data frame" = is.data.frame(data),
+    "gaps must be a data frame" = is.data.frame(gaps)
+    )
+
   if (!is.null(by) && !is.character(by)) {
     stop("by must be a character vector of variables to join by", call. = FALSE)
   }
@@ -510,7 +510,7 @@ link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0
   # Calculate the start and end time of the interval (in seconds) of each row in data
   # Only retain gaps that are (partially) within or span over the interval
   data_gaps <- data %>%
-    dplyr::select(by, .data$time) %>%
+    dplyr::select({{ by }}, .data$time) %>%
     dplyr::mutate(time_int = as.integer(.data$time)) %>%
     dplyr::mutate(start_interval = .data$time_int - offset_before) %>%
     dplyr::mutate(end_interval = .data$time_int + offset_after)
@@ -588,10 +588,15 @@ link_intervals <- function(x, x_start, x_end,
                            by = NULL,
                            name = "data") {
   tz <- attr(dplyr::pull(y, {{ y_start }}), "tz")
+
   res <- x %>%
     dplyr::left_join(y, by = by) %>%
     dplyr::mutate(dplyr::across(c({{ y_start }}, {{ y_end }}), as.integer)) %>%
-    dplyr::filter({{ y_start }} < {{ x_end }} & {{ y_end }} > {{ x_start }})
+    dplyr::filter(
+        ((is.na({{ y_end }} & {{ y_start }} >= {{ x_start }} & {{ y_start }} < {{ x_end }})) &
+        (is.na({{ y_start }} & {{ y_end }} >= {{ x_start }} & {{ y_end }} < {{ x_end }}))) |
+        ({{ y_start }} < {{ x_end }} & {{ y_end }} > {{ x_start }})
+    )
 
   # Set gaps time stamps out of the interval to the interval's bounds
   res <- res %>%
@@ -686,6 +691,7 @@ link_intervals <- function(x, x_start, x_end,
 #' # binned_intervals also takes into account the prior grouping structure
 #' out <- data %>%
 #'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
+#'   dplyr::group_by(participant_id) %>%
 #'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
 #'   dplyr::group_by(participant_id, type) %>%
 #'   bin_data(
@@ -696,14 +702,16 @@ link_intervals <- function(x, x_start, x_end,
 #' print(out)
 #'
 #' # To get the duration for each bin (note to change the variable names in sum):
-#' purrr::map_dbl(out$bin_data, ~ sum(.x$lead - .x$datetime, na.rm = TRUE))
+#' purrr::map_dbl(res$bin_data,
+#'                ~ sum(as.double(.x$lead) - as.double(.x$datetime),
+#'                           na.rm = TRUE))
 #'
 #' # Or:
 #' out %>%
-#'   tidyr::unnest(bin_data) %>%
+#'   tidyr::unnest(bin_data, keep_empty = TRUE) %>%
 #'   dplyr::mutate(duration = .data$lead - .data$datetime) %>%
-#'   dplyr::group_by(date, .add = TRUE) %>%
-#'   dplyr::summarise(duration = sum(.data$duration), .groups = "drop")
+#'   dplyr::group_by(bin, .add = TRUE) %>%
+#'   dplyr::summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
 bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "day"), fixed = TRUE) {
   group_vars <- dplyr::group_vars(data)
 
@@ -732,25 +740,25 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
     tidyr::pivot_longer(
       cols = c({{ start_time }}, {{ end_time }}),
       names_to = NULL,
-      values_to = "date"
+      values_to = "bin_start"
     )
 
   if (fixed) {
     out <- out %>%
-      dplyr::mutate(date = lubridate::floor_date(.data$date, by))
+      dplyr::mutate(bin_start = lubridate::floor_date(.data$bin_start, by))
   }
 
   out <- out %>%
     dplyr::distinct() %>%
-    tidyr::drop_na(.data$date) %>%
-    dplyr::mutate(date = as.integer(.data$date)) %>%
-    dplyr::summarise(date = seq.int(min(.data$date, na.rm = TRUE),
-                                    max(.data$date, na.rm = TRUE) + by_duration,
-                                    by = by_duration
+    tidyr::drop_na(.data$bin_start) %>%
+    dplyr::mutate(bin_start = as.integer(.data$bin_start)) %>%
+    dplyr::summarise(bin_start = seq.int(min(.data$bin_start, na.rm = TRUE),
+                                         max(.data$bin_start, na.rm = TRUE) + by_duration,
+                                         by = by_duration
     ))
 
   out <- out %>%
-    dplyr::mutate(bin_start = .data$date, bin_end = dplyr::lead(.data$date)) %>%
+    dplyr::mutate(bin_end = dplyr::lead(.data$bin_start)) %>%
     tidyr::drop_na(.data$bin_end)
 
   out <- link_intervals(
@@ -761,9 +769,9 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
   )
 
   out <- out %>%
-    dplyr::select(-c(.data$bin_start, .data$bin_end)) %>%
-    dplyr::mutate(date = lubridate::as_datetime(.data$date, tz = tz)) %>%
-    dplyr::rename(bin = .data$date)
+    dplyr::mutate(bin_start = lubridate::as_datetime(.data$bin_start, tz = tz)) %>%
+    dplyr::rename(bin = .data$bin_start) %>%
+    dplyr::select(-c(.data$bin_end))
 
   out
 }
