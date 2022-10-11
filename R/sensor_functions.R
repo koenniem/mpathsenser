@@ -708,39 +708,46 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
 
 #' Identify gaps in mpathsenser mobile sensing data
 #'
-#' @description
-#' `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
 #'
-#' Oftentimes in mobile sensing, gaps appear in the data as a result of the participant
-#' accidentally closing the app or the operating system killing the app to save power. This can
-#' lead to issues later on during data analysis when it becomes unclear whether there are no
-#' measurements because no events occurred or because the app quit in that period. For example,
-#' if no screen on/off event occur in a 6-hour period, it can either mean the participant did not
-#' turn on their phone in that period or that the app simply quit and potential events were missed.
-#' In the latter case, the 6-hour missing period has to be compensated by either removing this
-#' interval altogether or by subtracting the gap from the interval itself (see examples).
+#' Oftentimes in mobile sensing, gaps appear in the data as a result of the participant accidentally
+#' closing the app or the operating system killing the app to save power. This can lead to issues
+#' later on during data analysis when it becomes unclear whether there are no measurements because
+#' no events occurred or because the app quit in that period. For example, if no screen on/off event
+#' occur in a 6-hour period, it can either mean the participant did not turn on their phone in that
+#' period or that the app simply quit and potential events were missed. In the latter case, the
+#' 6-hour missing period has to be compensated by either removing this interval altogether or by
+#' subtracting the gap from the interval itself (see examples).
 #'
-#' @details
-#' While any sensor can be used for identifying gaps, it is best to choose a sensor with a very
-#' high, near-continuous sample rate such as the accelerometer or gyroscope. This function then
+#' @details While any sensor can be used for identifying gaps, it is best to choose a sensor with a
+#' very high, near-continuous sample rate such as the accelerometer or gyroscope. This function then
 #' creates time between two subsequent measurements and returns the period in which this time was
 #' larger than \code{min_gap}.
 #'
 #' Note that the \code{from} and \code{to} columns in the output are character vectors in UTC time.
 #'
+#' @section Warning: Depending on the sensor that is used to identify the gaps (though this is
+#'   typically the highest frequency sensor, such as the accelerometer or g yruscope), there may be
+#'   a small delay between the start of the gap and the _actual_ start of the gap. For example, if
+#'   the accelerometer samples every 5 seconds, it may be after 4.99 seconds after the last
+#'   accelerometer measurement (so just before the next measurement), the app was killed. However,
+#'   within that time other measurements may still have taken place, thereby technically occurring
+#'   "within" the gap. One way to account for this is to (as in this example) search for gaps 5
+#'   seconds longer than you want and then afterwards increasing the start time of the gaps by 5
+#'   seconds. This is especially important if you want to use these gaps in
+#'   \code{\link[mpathsenser]{add_gaps}} since this issue may lead to erroneous results.
+#'
 #' @inheritParams get_data
-#' @param min_gap The minimum time (in seconds) passed between two subsequent measurements for it
-#' to be considered a gap..
+#' @param min_gap The minimum time (in seconds) passed between two subsequent measurements for it to
+#'   be considered a gap.
 #'
 #' @return A tibble containing the time period of the gaps. The strucute of this tibble is as
-#' follows:
+#'   follows:
 #'
-#' \tabular{ll}{
-#'   participant_id \tab the \code{participant_id} of where the gap occurred \cr
-#'   from           \tab the time of the last measurement before the gap \cr
-#'   to             \tab the time of the first measurement after the gap \cr
-#'   gap            \tab the time passed between from and to, in seconds
-#' }
+#'   \tabular{ll}{ participant_id \tab the \code{participant_id} of where the gap occurred \cr from
+#'   \tab the time of the last measurement before the gap \cr to             \tab the time of the
+#'   first measurement after the gap \cr gap            \tab the time passed between from and to, in
+#'   seconds }
 #' @export
 #'
 #' @examples
@@ -772,11 +779,11 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
     dplyr::select(participant_id, datetime) %>%
     dplyr::group_by(participant_id) %>%
     dbplyr::window_order(datetime) %>%
-    dplyr::mutate(from = dplyr::lag(datetime)) %>%
+    dplyr::mutate(to = dplyr::lead(datetime)) %>%
     dplyr::ungroup() %>%
-    dplyr::mutate(gap = STRFTIME("%s", datetime) - STRFTIME("%s", from)) %>%
+    dplyr::mutate(gap = STRFTIME('%s', to) - STRFTIME('%s', datetime)) %>%
     dplyr::filter(gap >= min_gap) %>%
-    dplyr::select(participant_id, from, to = datetime, gap) %>%
+    dplyr::select(participant_id, from = datetime, to, gap) %>%
     dplyr::collect()
 }
 
@@ -799,6 +806,8 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 #'  time differences between subsequent measurements, the gap period is appropriately accounted for.
 #'  Note that if multiple measurements occurred before the gap, they will both be continued after
 #'  the gap.
+#'
+#'@inheritSection identify_gaps Warning
 #'
 #'@param data A data frame containing the activity data. See \link[mpathsenser]{get_data} for
 #'  retrieving activity data from an mpathsenser database.
@@ -856,7 +865,6 @@ add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
   prepared_gaps <- gaps %>%
     dplyr::select({{ by }}, .data$from, .data$to) %>%
     dplyr::mutate(gap_id = dplyr::row_number()) %>%
-    dplyr::mutate(from = .data$from + 5) %>%
     tidyr::pivot_longer(cols = c(.data$from, .data$to),
                         names_to = "gap_type",
                         values_to = "time") %>%

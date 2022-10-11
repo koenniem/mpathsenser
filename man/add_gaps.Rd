@@ -44,6 +44,19 @@ time differences between subsequent measurements, the gap period is appropriatel
 Note that if multiple measurements occurred before the gap, they will both be continued after
 the gap.
 }
+\section{Warning}{
+ Depending on the sensor that is used to identify the gaps (though this is
+typically the highest frequency sensor, such as the accelerometer or g yruscope), there may be
+a small delay between the start of the gap and the \emph{actual} start of the gap. For example, if
+the accelerometer samples every 5 seconds, it may be after 4.99 seconds after the last
+accelerometer measurement (so just before the next measurement), the app was killed. However,
+within that time other measurements may still have taken place, thereby technically occurring
+"within" the gap. One way to account for this is to (as in this example) search for gaps 5
+seconds longer than you want and then afterwards increasing the start time of the gaps by 5
+seconds. This is especially important if you want to use these gaps in
+\code{\link[mpathsenser]{add_gaps}} since this issue may lead to erroneous results.
+}
+
 \examples{
 # Define some data
 dat <- data.frame(

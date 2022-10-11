@@ -6,4 +6,7 @@
 #' convenience functions to aid in data processing.
 #' @keywords internal
 #' @importFrom magrittr '%>%'
+## usethis namespace: start
+#' @importFrom lifecycle deprecated
+## usethis namespace: end
 "_PACKAGE"
