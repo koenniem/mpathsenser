@@ -55,6 +55,8 @@ ccopy <- function(from,
 #' the app not properly closing them. This function attempts to fix the most common
 #' problems associated with improper file closure by m-Path Sense.
 #'
+#' @inheritSection import Parallel
+#'
 #' @inheritSection import Progress
 #'
 #' @param path The path name of the JSON files.
@@ -62,18 +64,23 @@ ccopy <- function(from,
 #' @param recursive Should the listing recurse into directories?
 #' @param parallel A logical value whether you want to check in parallel. Useful for a lot of files.
 #'
+#'   `r lifecycle::badge("deprecated")` As functions should not modify the user's workspace,
+#'   directly toggling parallel support has been deprecated. Please use
+#'   \code{\link[future]{plan}("multisession")} before calling this function to use multiple
+#'   workers.
+#'
 #' @return A message indicating how many files were fixed.
 #' @export
 #' @examples
 #' \dontrun{
-#' future::plan(future::multisession)
+#' future::plan("multisession")
 #' files <- test_jsons()
 #' fix_jsons(files = files)
 #' }
 fix_jsons <- function(path = getwd(),
                       files = NULL,
                       recursive = TRUE,
-                      parallel = FALSE) {
+                      parallel = deprecated()) {
   if (!requireNamespace("vroom", quietly = TRUE)) {
     stop(paste0(
       "package vroom is needed for this function to work. ",
@@ -120,8 +127,13 @@ fix_jsons <- function(path = getwd(),
     }
   }
 
-  if (parallel) {
-    future::plan(future::multisession)
+  # Old parallel argument
+  if (lifecycle::is_present(parallel)) {
+    lifecycle::deprecate_warn(when = "1.1.1",
+                              what = "fix_jsons(parallel)",
+                              details = c(
+                                i = "Use future::plan(\"multisession\") instead"
+                              ))
   }
 
   if (length(jsonfiles > 0)) {
@@ -134,10 +146,6 @@ fix_jsons <- function(path = getwd(),
     }
   } else {
     return(message("No JSON files found."))
-  }
-
-  if (parallel) {
-    future::plan(future::sequential)
   }
 
   return(message("Fixed ", sum(n_fixed), " files"))
@@ -254,6 +262,8 @@ fix_eof <- function(file, eof, lines) {
 #' @description
 #' `r lifecycle::badge("stable")`
 #'
+#' @inheritSection import Parallel
+#'
 #' @inheritSection import Progress
 #'
 #' @param path The path name of the JSON files.
@@ -265,6 +275,11 @@ fix_eof <- function(file, eof, lines) {
 #' lot of files. If you have already used \code{\link[future]{plan}}, you can leave this parameter
 #' to \code{FALSE}.
 #'
+#'   `r lifecycle::badge("deprecated")` As functions should not modify the user's workspace,
+#'   directly toggling parallel support has been deprecated. Please use
+#'   \code{\link[future]{plan}("multisession")} before calling this function to use multiple
+#'   workers.
+#'
 #' @return A message indicating whether there were any issues and a character vector of the file
 #' names that need to be fixed. If there were no issues, no result is returned.
 #' @export
@@ -272,7 +287,7 @@ test_jsons <- function(path = getwd(),
                        files = NULL,
                        db = NULL,
                        recursive = TRUE,
-                       parallel = FALSE) {
+                       parallel = deprecated()) {
   if (!is.null(path) && !is.character(path)) {
     stop("path must be a character string of the path name")
   }
@@ -313,8 +328,13 @@ test_jsons <- function(path = getwd(),
     jsonfiles <- jsonfiles[!(jsonfiles %in% processed_files$file_name)]
   }
 
-  if (parallel) {
-    future::plan(future::multisession)
+  # Old parallel argument
+  if (lifecycle::is_present(parallel)) {
+    lifecycle::deprecate_warn(when = "1.1.1",
+                              what = "test_jsons(parallel)",
+                              details = c(
+                                i = "Use future::plan(\"multisession\") instead"
+                              ))
   }
 
   if (requireNamespace("progressr", quietly = TRUE)) {
@@ -332,10 +352,6 @@ test_jsons <- function(path = getwd(),
     }
     jsonlite::validate(str)
   }, .options = furrr::furrr_options(seed = TRUE))
-
-  if (parallel) {
-    future::plan(future::sequential)
-  }
 
   jsonfiles <- jsonfiles[!missing]
   if (length(jsonfiles) == 0) {
@@ -355,6 +371,8 @@ test_jsons <- function(path = getwd(),
 #' Similar to \link[utils]{unzip}, but makes it easier to unzip all files in a given path
 #' with one function call.
 #'
+#' @inheritSection import Parallel
+#'
 #' @inheritSection import Progress
 #'
 #' @param path The path to the directory containing the zip files.
@@ -365,6 +383,11 @@ test_jsons <- function(path = getwd(),
 #' @param parallel A logical value whether you want to check in parallel. Useful when there are a
 #' lot of files. If you have already used \code{future::plan}, you can leave this parameter to
 #' \code{FALSE}.
+#'
+#'   `r lifecycle::badge("deprecated")` As functions should not modify the user's workspace,
+#'   directly toggling parallel support has been deprecated. Please use
+#'   \code{\link[future]{plan}("multisession")} before calling this function to use multiple
+#'   workers.
 #'
 #' @return A message indicating how many files were unzipped.
 #' @export
@@ -386,8 +409,13 @@ unzip_data <- function(path = getwd(),
     to <- path
   }
 
-  if (parallel) {
-    future::plan(future::multisession)
+  # Old parallel argument
+  if (lifecycle::is_present(parallel)) {
+    lifecycle::deprecate_warn(when = "1.1.1",
+                              what = "unzip_data(parallel)",
+                              details = c(
+                                i = "Use future::plan(\"multisession\") instead"
+                              ))
   }
 
   unzipped_files <- 0
@@ -408,10 +436,6 @@ unzip_data <- function(path = getwd(),
     unzipped_files <- sum(unzipped_files)
   } else {
     unzipped_files <- unzip_impl(path, to, overwrite)
-  }
-
-  if (parallel) {
-    future::plan(future::sequential)
   }
 
   if (unzipped_files > 0) {

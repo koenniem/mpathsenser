@@ -4,7 +4,12 @@
 \alias{fix_jsons}
 \title{Fix the end of JSON files}
 \usage{
-fix_jsons(path = getwd(), files = NULL, recursive = TRUE, parallel = FALSE)
+fix_jsons(
+  path = getwd(),
+  files = NULL,
+  recursive = TRUE,
+  parallel = deprecated()
+)
 }
 \arguments{
 \item{path}{The path name of the JSON files.}
@@ -13,7 +18,12 @@ fix_jsons(path = getwd(), files = NULL, recursive = TRUE, parallel = FALSE)
 
 \item{recursive}{Should the listing recurse into directories?}
 
-\item{parallel}{A logical value whether you want to check in parallel. Useful for a lot of files.}
+\item{parallel}{A logical value whether you want to check in parallel. Useful for a lot of files.
+
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} As functions should not modify the user's workspace,
+directly toggling parallel support has been deprecated. Please use
+\code{\link[future]{plan}("multisession")} before calling this function to use multiple
+workers.}
 }
 \value{
 A message indicating how many files were fixed.
@@ -25,17 +35,22 @@ When copying data directly coming from m-Path Sense, JSON files are sometimes co
 the app not properly closing them. This function attempts to fix the most common
 problems associated with improper file closure by m-Path Sense.
 }
-\section{Progress}{
+\section{Parallel}{
+ This function supports parallel processing in the sense that it is able to
+distribute it's computation load among multiple workers. To make use of this functionality, run
+\code{\link[future]{plan}("multisession")} before calling this function.
+}
 
-You can be updated of the progress by this function by using the
+\section{Progress}{
+ You can be updated of the progress of this function by using the
 \code{\link[progressr]{progress}} package. See \code{progressr}'s
-\href{https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html}{vignette}
-on how to subscribe to these updates.
+\href{https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html}{vignette} on
+how to subscribe to these updates.
 }
 
 \examples{
 \dontrun{
-future::plan(future::multisession)
+future::plan("multisession")
 files <- test_jsons()
 fix_jsons(files = files)
 }

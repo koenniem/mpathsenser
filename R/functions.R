@@ -1,48 +1,53 @@
 #' Import mpathsenser files into a database (mpathsenser data scheme)
 #'
-#' @description
-#' `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
 #'
-#' Import JSON files from m-Path Sense into a structured database. This function is the bread and
-#' butter of this package, as it creates (or rather fills) the
-#' database that (almost) all the other functions use.
+#'   Import JSON files from m-Path Sense into a structured database. This function is the bread and
+#'   butter of this package, as it creates (or rather fills) the database that most of the other
+#'   functions in this packageuse.
 #'
-#' @details
-#' \code{import} is highly customisable in the sense that you can specify which sensors to import
-#' (even though there may be more in the files) and it also allows batching for a speedier writing
-#' process. If \code{parallel} is \code{TRUE}, it is recommended to \code{batch_size} be a scalar
-#' multiple of the number of CPUs the parallel cluster can use. If a single JSON file in the batch
-#' causes and error, the batch is terminated (but not the function) and it is up to the user to fix
-#' the file. This means that if \code{batch_size} is large, many files will not be processed. Set
-#' \code{batch_size} to 1 for sequential file processing (i.e. one-by-one).
+#' @details \code{import} is highly customisable in the sense that you can specify which sensors to
+#'   import (even though there may be more in the files) and it also allows batching for a speedier
+#'   writing process. If processing in parallel is active, it is recommended that \code{batch_size}
+#'   be a scalar multiple of the number of CPUs the parallel cluster can use. If a single JSON file
+#'   in the batch causes and error, the batch is terminated (but not the function) and it is up to
+#'   the user to fix the file. This means that if \code{batch_size} is large, many files will not be
+#'   processed. Set \code{batch_size} to 1 for sequential file processing (i.e. one-by-one).
 #'
-#' Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
-#' `parallel` option is disabled. To get an indication of the progress so far, set one of the
-#' \link[progressr]{handlers} using the \code{progressr} package, e.g.
-#' \code{progressr::handlers('progress')}.
+#'   Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
+#'   `parallel` option is disabled. To get an indication of the progress so far, set one of the
+#'   \link[progressr]{handlers} using the \code{progressr} package, e.g.
+#'   \code{progressr::handlers('progress')}.
 #'
-#' @section Progress:
-#' You can be updated of the progress by this function by using the
-#' \code{\link[progressr]{progress}} package. See \code{progressr}'s
-#' \href{https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html}{vignette}
-#' on how to subscribe to these updates.
+#' @section Parallel: This function supports parallel processing in the sense that it is able to
+#'   distribute it's computation load among multiple workers. To make use of this functionality, run
+#'   \code{\link[future]{plan}("multisession")} before calling this function.
+#'
+#' @section Progress: You can be updated of the progress of this function by using the
+#'   \code{\link[progressr]{progress}} package. See \code{progressr}'s
+#'   \href{https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html}{vignette} on
+#'   how to subscribe to these updates.
 #'
 #' @param path The path to the file directory
 #' @param db Valid database connection.
 #' @param dbname If no database is provided, a new database dbname is created.
 #' @param overwrite_db If a database with the same \code{dbname}  already exists, should it be
-#' overwritten?
-#' @param sensors Select one or multiple sensors as in \code{\link[mpathsenser]{sensors}}.
-#' Leave NULL to extract all sensor data.
+#'   overwritten?
+#' @param sensors Select one or multiple sensors as in \code{\link[mpathsenser]{sensors}}. Leave
+#'   NULL to extract all sensor data.
 #' @param batch_size The number of files that are to be processed in a single batch.
 #' @param backend Name of the database backend that is used. Currently, only RSQLite is supported.
 #' @param recursive Should the listing recurse into directories?
-#' @param parallel A value that indicates whether to do reading in and processing
-#' in parallel. If this argument is a number, this indicates the number of workers that will be
-#' used.
+#' @param parallel A value that indicates whether to do reading in and processing in parallel. If
+#'   this argument is a number, this indicates the number of workers that will be used.
 #'
-#' @return A message indicating how many files were imported.
-#' Imported database can be reopened using \link[mpathsenser]{open_db}.
+#'   `r lifecycle::badge("deprecated")` As functions should not modify the user's workspace,
+#'   directly toggling parallel support has been deprecated. Please use
+#'   \code{\link[future]{plan}("multisession")} before calling this function to use multiple
+#'   workers.
+#'
+#' @return A message indicating how many files were imported. Imported database can be reopened
+#'   using \link[mpathsenser]{open_db}.
 #' @export
 import <- function(path = getwd(),
                    db = NULL,
@@ -52,7 +57,7 @@ import <- function(path = getwd(),
                    batch_size = 24,
                    backend = "RSQLite",
                    recursive = TRUE,
-                   parallel = FALSE) {
+                   parallel = deprecated()) {
 
   # Check if required packages are installed
   if (!requireNamespace("dbx", quietly = TRUE)) {
@@ -78,13 +83,6 @@ import <- function(path = getwd(),
   if (length(files) == 0) {
     stop("No JSON files found")
   }
-
-  # Check back-end and parallel constraint
-  # if (backend == 'RSQLite' & parallel) {
-  #   warning('Parallel cannot be used when RSQLite is provided as a backend due to concurrency
-  # constraint. Setting parallel to false.')
-  #   parallel <- FALSE
-  # }
 
   # Check if database is valid
   if (!is.null(db)) {
@@ -123,13 +121,13 @@ import <- function(path = getwd(),
     }
   }
 
-  # Set up parallel back-end
-  if (!is.null(parallel)) {
-    if (is.numeric(parallel)) {
-      future::plan(future::multisession, workers = parallel)
-    } else if (parallel) {
-      future::plan(future::multisession)
-    }
+  # Old parallel argument
+  if (lifecycle::is_present(parallel)) {
+    lifecycle::deprecate_warn(when = "1.1.1",
+                              what = "import(parallel)",
+                              details = c(
+                                i = "Use future::plan(\"multisession\") instead"
+                              ))
   }
 
   # Call on implementation
@@ -191,15 +189,6 @@ import <- function(path = getwd(),
     # Update progress bar
     if (requireNamespace("progressr", quietly = TRUE)) {
       p(sprintf("Added %g out of %g", i * batch_size, length(files) * batch_size))
-    }
-  }
-
-  # Return to sequential processing
-  if (!is.null(parallel)) {
-    if (is.numeric(parallel)) {
-      future::plan(future::sequential)
-    } else if (parallel) {
-      future::plan(future::sequential)
     }
   }
 

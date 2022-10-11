@@ -13,7 +13,7 @@ import(
   batch_size = 24,
   backend = "RSQLite",
   recursive = TRUE,
-  parallel = FALSE
+  parallel = deprecated()
 )
 }
 \arguments{
@@ -26,8 +26,8 @@ import(
 \item{overwrite_db}{If a database with the same \code{dbname}  already exists, should it be
 overwritten?}
 
-\item{sensors}{Select one or multiple sensors as in \code{\link[mpathsenser]{sensors}}.
-Leave NULL to extract all sensor data.}
+\item{sensors}{Select one or multiple sensors as in \code{\link[mpathsenser]{sensors}}. Leave
+NULL to extract all sensor data.}
 
 \item{batch_size}{The number of files that are to be processed in a single batch.}
 
@@ -35,40 +35,49 @@ Leave NULL to extract all sensor data.}
 
 \item{recursive}{Should the listing recurse into directories?}
 
-\item{parallel}{A value that indicates whether to do reading in and processing
-in parallel. If this argument is a number, this indicates the number of workers that will be
-used.}
+\item{parallel}{A value that indicates whether to do reading in and processing in parallel. If
+this argument is a number, this indicates the number of workers that will be used.
+
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} As functions should not modify the user's workspace,
+directly toggling parallel support has been deprecated. Please use
+\code{\link[future]{plan}("multisession")} before calling this function to use multiple
+workers.}
 }
 \value{
-A message indicating how many files were imported.
-Imported database can be reopened using \link[mpathsenser]{open_db}.
+A message indicating how many files were imported. Imported database can be reopened
+using \link[mpathsenser]{open_db}.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
 Import JSON files from m-Path Sense into a structured database. This function is the bread and
-butter of this package, as it creates (or rather fills) the
-database that (almost) all the other functions use.
+butter of this package, as it creates (or rather fills) the database that most of the other
+functions in this packageuse.
 }
 \details{
-\code{import} is highly customisable in the sense that you can specify which sensors to import
-(even though there may be more in the files) and it also allows batching for a speedier writing
-process. If \code{parallel} is \code{TRUE}, it is recommended to \code{batch_size} be a scalar
-multiple of the number of CPUs the parallel cluster can use. If a single JSON file in the batch
-causes and error, the batch is terminated (but not the function) and it is up to the user to fix
-the file. This means that if \code{batch_size} is large, many files will not be processed. Set
-\code{batch_size} to 1 for sequential file processing (i.e. one-by-one).
+\code{import} is highly customisable in the sense that you can specify which sensors to
+import (even though there may be more in the files) and it also allows batching for a speedier
+writing process. If processing in parallel is active, it is recommended that \code{batch_size}
+be a scalar multiple of the number of CPUs the parallel cluster can use. If a single JSON file
+in the batch causes and error, the batch is terminated (but not the function) and it is up to
+the user to fix the file. This means that if \code{batch_size} is large, many files will not be
+processed. Set \code{batch_size} to 1 for sequential file processing (i.e. one-by-one).
 
 Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
 \code{parallel} option is disabled. To get an indication of the progress so far, set one of the
 \link[progressr]{handlers} using the \code{progressr} package, e.g.
 \code{progressr::handlers('progress')}.
 }
-\section{Progress}{
+\section{Parallel}{
+ This function supports parallel processing in the sense that it is able to
+distribute it's computation load among multiple workers. To make use of this functionality, run
+\code{\link[future]{plan}("multisession")} before calling this function.
+}
 
-You can be updated of the progress by this function by using the
+\section{Progress}{
+ You can be updated of the progress of this function by using the
 \code{\link[progressr]{progress}} package. See \code{progressr}'s
-\href{https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html}{vignette}
-on how to subscribe to these updates.
+\href{https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html}{vignette} on
+how to subscribe to these updates.
 }
 
