@@ -395,7 +395,7 @@ unzip_data <- function(path = getwd(),
                        to = NULL,
                        overwrite = FALSE,
                        recursive = TRUE,
-                       parallel = FALSE) {
+                       parallel = deprecated()) {
   if (is.null(path) || !is.character(path)) {
     stop("path must be a character string")
   }

@@ -110,3 +110,44 @@ test_that("get_installed_apps", {
   expect_equal(res, true)
   DBI::dbDisconnect(db)
 })
+
+# add_data
+test_that("add_data", {
+# Define some data
+dat <- data.frame(
+  participant_id = "12345",
+  time = as.POSIXct(c("2022-05-10 10:00:00", "2022-05-10 10:30:00", "2022-05-10 11:30:00")),
+  type = c("WALKING", "STILL", "RUNNING"),
+  confidence = c(80, 100, 20)
+)
+
+gaps <- data.frame(
+  participant_id = "12345",
+  from = as.POSIXct(c("2022-05-10 10:05:00", "2022-05-10 10:50:00")),
+  to = as.POSIXct(c("2022-05-10 10:20:00", "2022-05-10 11:10:00"))
+)
+
+# Define the true data
+true <- tibble::tibble(
+  participant_id = "12345",
+  time = as.POSIXct(c("2022-05-10 10:00:00", "2022-05-10 10:05:00", "2022-05-10 10:20:00",
+                      "2022-05-10 10:30:00", "2022-05-10 10:50:00", "2022-05-10 11:10:00",
+                      "2022-05-10 11:30:00")),
+  type = c("WALKING", NA, "WALKING", "STILL", NA, "STILL", "RUNNING"),
+  confidence = c(80, NA, 80, 100, NA, 100, 20)
+)
+
+# Check basic functionality
+res <- add_gaps(data = dat,
+                gaps = gaps,
+                by = "participant_id")
+expect_identical(res, true)
+
+# You can use fill if  you want to get rid of those pesky NA's
+res <- add_gaps(data = dat,
+                gaps = gaps,
+                by = "participant_id",
+                fill = list(type = "GAP", confidence = 100))
+true <- tidyr::replace_na(true, list(type = "GAP", confidence = 100))
+expect_identical(res, true)
+})

@@ -9,7 +9,7 @@ unzip_data(
   to = NULL,
   overwrite = FALSE,
   recursive = TRUE,
-  parallel = FALSE
+  parallel = deprecated()
 )
 }
 \arguments{

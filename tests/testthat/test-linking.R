@@ -783,3 +783,192 @@ test_that("link_gaps", {
     res
   )
 })
+
+## bin_data =================
+test_that("bin_data", {
+  data <- tibble::tibble(
+    participant_id = 1,
+    datetime = c(
+      "2022-06-21 15:00:00", "2022-06-21 15:55:00",
+      "2022-06-21 17:05:00", "2022-06-21 17:10:00"
+    ),
+    confidence = 100,
+    type = "WALKING"
+  )
+
+  # get bins per hour, even if the interval is longer than one hour
+  res <- data %>%
+    dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
+    dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+    bin_data(
+      start_time = datetime,
+      end_time = lead,
+      by = "hour"
+    )
+
+  true <- tibble::tibble(
+    bin = as.POSIXct(c("2022-06-21 15:00:00", "2022-06-21 16:00:00", "2022-06-21 17:00:00")),
+    bin_data = list(
+      tibble::tibble(
+        participant_id = 1,
+        datetime = as.POSIXct(c("2022-06-21 15:00:00", "2022-06-21 15:55:00")),
+        confidence = 100,
+        type = "WALKING",
+        lead = as.POSIXct(c("2022-06-21 15:55:00", "2022-06-21 16:00:00"))
+      ),
+      tibble::tibble(
+        participant_id = 1,
+        datetime = as.POSIXct(c("2022-06-21 16:00:00")),
+        confidence = 100,
+        type = "WALKING",
+        lead = as.POSIXct("2022-06-21 17:00:00")
+      ),
+      tibble::tibble(
+        participant_id = 1,
+        datetime = as.POSIXct(c("2022-06-21 17:00:00", "2022-06-21 17:05:00", "2022-06-21 17:10:00")),
+        confidence = 100,
+        type = "WALKING",
+        lead = as.POSIXct(c("2022-06-21 17:05:00", "2022-06-21 17:10:00", NA))
+      )
+    )
+  )
+  expect_equal(res, true)
+
+  # Alternatively, you can give an integer value to by to create custom-sized
+  # bins, but only if fixed = FALSE. Not that these bins are not rounded to,
+  # as in this example 30 minutes, but rather depends on the earliest time
+  # in the group.
+  res <- data %>%
+    dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
+      dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+      bin_data(
+        start_time = datetime,
+        end_time = lead,
+        by = 1800L,
+        fixed = FALSE
+      )
+  true <- tibble::tibble(
+    bin = as.POSIXct(c("2022-06-21 15:00:00", "2022-06-21 15:30:00", "2022-06-21 16:00:00",
+                       "2022-06-21 16:30:00", "2022-06-21 17:00:00")),
+    bin_data = list(
+      tibble::tibble(
+        participant_id = 1,
+        datetime = as.POSIXct(c("2022-06-21 15:00:00")),
+        confidence = 100,
+        type = "WALKING",
+        lead = as.POSIXct(c("2022-06-21 15:30:00"))
+      ),
+      tibble::tibble(
+        participant_id = 1,
+        datetime = as.POSIXct(c("2022-06-21 15:30:00", "2022-06-21 15:55:00")),
+        confidence = 100,
+        type = "WALKING",
+        lead = as.POSIXct(c("2022-06-21 15:55:00", "2022-06-21 16:00:00"))
+      ),
+      tibble::tibble(
+        participant_id = 1,
+        datetime = as.POSIXct(c("2022-06-21 16:00:00")),
+        confidence = 100,
+        type = "WALKING",
+        lead = as.POSIXct(c("2022-06-21 16:30:00"))
+      ),
+      tibble::tibble(
+        participant_id = 1,
+        datetime = as.POSIXct(c("2022-06-21 16:30:00")),
+        confidence = 100,
+        type = "WALKING",
+        lead = as.POSIXct(c("2022-06-21 17:00:00"))
+      ),
+      tibble::tibble(
+        participant_id = 1,
+        datetime = as.POSIXct(c("2022-06-21 17:00:00", "2022-06-21 17:05:00", "2022-06-21 17:10:00")),
+        confidence = 100,
+        type = "WALKING",
+        lead = as.POSIXct(c("2022-06-21 17:05:00", "2022-06-21 17:10:00", NA))
+      )
+    )
+  )
+  expect_equal(res, true)
+
+  # More complicated data for showcasing grouping:
+  data <- tibble::tibble(
+    participant_id = c(rep(1, 4), rep(2, 4)),
+    datetime = rep(c(
+      "2022-06-21 15:00:00", "2022-06-21 15:55:00",
+      "2022-06-21 17:05:00", "2022-06-21 17:10:00"
+    ), 2),
+    confidence = 100,
+    type = rep(c("STILL", "WALKING", "STILL", "WALKING"), 2)
+  )
+
+  # binned_intervals also takes into account the prior grouping structure
+  res <- data %>%
+    dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
+    dplyr::group_by(participant_id) %>%
+    dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+    dplyr::group_by(participant_id, type) %>%
+    bin_data(
+      start_time = datetime,
+      end_time = lead,
+      by = "hour"
+    )
+  true <- tibble::tibble(
+    participant_id = c(rep(1, 6), rep(2, 6)),
+    type = rep(c("STILL", "STILL", "STILL", "WALKING", "WALKING", "WALKING"), 2),
+    bin = rep(as.POSIXct(c("2022-06-21 15:00:00", "2022-06-21 16:00:00",
+                           "2022-06-21 17:00:00")), 4),
+    bin_data = rep(list(
+      # STILL
+      tibble::tibble(
+        datetime = as.POSIXct(c("2022-06-21 15:00:00")),
+        confidence = 100,
+        lead = as.POSIXct(c("2022-06-21 15:55:00"))
+      ),
+      tibble::tibble(
+        datetime = as.POSIXct(double(0)),
+        confidence = double(0),
+        lead = as.POSIXct(double(0))
+      ),
+      tibble::tibble(
+        datetime = as.POSIXct(c("2022-06-21 17:05:00")),
+        confidence = 100,
+        lead = as.POSIXct(c("2022-06-21 17:10:00"))
+      ),
+      # WALKING
+      tibble::tibble(
+        datetime = as.POSIXct(c("2022-06-21 15:55:00")),
+        confidence = 100,
+        lead = as.POSIXct(c("2022-06-21 16:00:00"))
+      ),
+      tibble::tibble(
+        datetime = as.POSIXct(c("2022-06-21 16:00:00")),
+        confidence = 100,
+        lead = as.POSIXct(c("2022-06-21 17:00:00"))
+      ),
+      tibble::tibble(
+        datetime = as.POSIXct(c("2022-06-21 17:00:00", "2022-06-21 17:10:00")),
+        confidence = 100,
+        lead = as.POSIXct(c("2022-06-21 17:05:00", NA))
+      )
+    ), 2)
+  ) %>%
+    dplyr::group_by(participant_id, type)
+  expect_equal(res, true)
+
+  # To get the duration for each bin (note to change the variable names in sum):
+  duration <- purrr::map_dbl(.x = res$bin_data,
+                             .f = ~ sum(as.double(.x$lead) - as.double(.x$datetime),
+                                        na.rm = TRUE) / 60)
+
+  # Or:
+  duration2 <- res %>%
+    tidyr::unnest(bin_data, keep_empty = TRUE) %>%
+    dplyr::mutate(duration = .data$lead - .data$datetime) %>%
+    dplyr::group_by(bin, .add = TRUE) %>%
+    dplyr::summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
+
+  true <-c(55, 0, 5, 5, 60, 5, 55, 0, 5, 5, 60, 5)
+  expect_equal(duration, as.double(duration2$duration))
+  expect_equal(duration, true)
+  expect_equal(as.double(duration2$duration), true)
+})

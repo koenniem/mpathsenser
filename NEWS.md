@@ -1,4 +1,18 @@
 # mpathsenser 1.1.1 (in development)
+* Added `lifecycle` as a dependency for deprecating arguments.
+* Deprecated the `parallel` argument in several functions. If you wish to process in parallel, you
+must now specify this beforehand using a [future](https://rdrr.io/cran/future/), e.g.
+`future::plan("multisession")`.
+* As a consequence, the package `future` is no longer a dependency (but `furrr` is).
+* Fixed a note when first running `link()` or `link_gaps()` in a session, stating that using 
+external vectors `dplyr::select()` is ambiguous.
+* `bin_data()` now also includes measurements in bins that do not have a stop time. This is in 
+particular a problem with the last measurement of a series.
+* Fixed a non-working example in `bin_data()`.
+* Switched `identify_gaps()` from using the lag of each measurements towards using the lead. This
+makes no difference in the output but is a little easier to read.
+* Added a warning section in `identify_gaps()` and friends to inform the user of a possible 
+inconsequence when identifying gaps. 
 
 # mpathsenser 1.1.0
 ## Major changes
