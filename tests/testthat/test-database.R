@@ -176,8 +176,7 @@ test_that("clear_sensors_db", {
   filename <- tempfile("foo", fileext = ".db")
   db <- create_db(NULL, filename)
 
-  db <- import(path, db = db, recursive = FALSE)
-  db <- open_db(NULL, filename)
+  import(path, db = db, recursive = FALSE)
   original <- get_nrows(db)
   res <- clear_sensors_db(db)
   expect_type(res, "list")

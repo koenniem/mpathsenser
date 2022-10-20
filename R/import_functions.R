@@ -115,22 +115,32 @@ accelerometer_fun <- function(data) {
 }
 
 periodic_accelerometer_fun <- function(data) {
-  data$id <- sapply(data$body, function(x) x$body$id)
-  data$body <- lapply(data$body, function(x) x$body$data)
-
-  data <- tidyr::unnest(data, body, keep_empty = TRUE)
-
-  data$timestamp <- lapply(data$body, function(x) x$timestamp)
-  data$x <- lapply(data$body, function(x) x$x)
-  data$y <- lapply(data$body, function(x) x$y)
-  data$z <- lapply(data$body, function(x) x$z)
-  data$body <- NULL
-  data <- tidyr::unnest(data, timestamp:z)
+  data <- apply(data, 1, function(q) {
+    data.frame(study_id = q$study_id,
+           participant_id = q$participant_id,
+           start_time = q$start_time,
+           data_format = q$data_format,
+           sensor = q$sensor,
+           id = q$body$body$id,
+           timestamp = vapply(q$body$body$data,
+                              function(y) y$timestamp, character(1), USE.NAMES = FALSE),
+           x = vapply(q$body$body$data,
+                      function(r) { x <- r$x; if (!is.null(x)) x else NA }, double(1),
+                      USE.NAMES = FALSE),
+           y = vapply(q$body$body$data,
+                      function(r) { y <- r$y; if (!is.null(y)) y else NA }, double(1),
+                      USE.NAMES = FALSE),
+           z = vapply(q$body$body$data,
+                      function(r) { z <- r$z; if (!is.null(z)) z else NA }, double(1),
+                      USE.NAMES = FALSE)
+    )
+  }, simplify = FALSE)
+  data <- dplyr::bind_rows(data)
 
   # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
   data$id <- paste0(data$id, "_", ids)
-  data
+  tibble::as_tibble(data)
 }
 
 activity_fun <- function(data) {

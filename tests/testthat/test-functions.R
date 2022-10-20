@@ -11,6 +11,7 @@ test_that("import", {
     db = db,
     recursive = FALSE
   ), "All files were successfully written to the database.")
+  DBI::dbDisconnect(db)
   file.remove(filename)
 
 
@@ -24,7 +25,7 @@ test_that("import", {
   ))
   expect_match(warnings_log, "Invalid JSON in file broken\\/broken\\d\\.json", all = FALSE)
   expect_match(warnings_log, "Some files could not be written to the database.", all = FALSE)
-
+  DBI::dbDisconnect(db2)
   file.remove(filename)
 })
 
