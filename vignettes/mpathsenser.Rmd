@@ -71,11 +71,16 @@ fix_jsons(path = NULL, to_fix)
 ```
 
 ```{r import data}
-import(tempdir, dbname = "getstarted.db", batch_size = 12)
+# Create a new database
+db <- create_db(tempdir, "getstarted.db")
+
+# Import the data
+import(path = tempdir, 
+       db = db, 
+       batch_size = 12)
 ```
 
 ```{r, fig.width=13, fig.height=8, fig.align='center', dpi=55}
-db <- open_db(tempdir, "getstarted.db")
 sensors <- c("Accelerometer", "Activity", "AppUsage", "Bluetooth", "Calendar",
              "Connectivity", "Device", "Gyroscope", "InstalledApps", "Light",
              "Location", "Memory", "Pedometer", "Screen", "Weather", "Wifi")

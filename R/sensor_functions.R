@@ -775,14 +775,14 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
 #' }
 identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Accelerometer") {
   # Get the data for each sensor
-  data <- map(sensor, ~{
+  data <- purrr::map(sensor, ~{
     get_data(db, .x, participant_id) %>%
       dplyr::mutate(datetime = DATETIME(paste(date, time))) %>%
       dplyr::select(participant_id, datetime)
   })
 
   # Merge all together
-  data <- purrr::reduce(data, union_all)
+  data <- purrr::reduce(data, dplyr::union_all)
 
   # Then, calculate the gap duration
   data %>%
