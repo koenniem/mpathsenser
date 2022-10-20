@@ -535,7 +535,7 @@ n_screen_on <- function(db,
                         start_date = NULL,
                         end_date = NULL,
                         by = c("Total", "Hour", "Day")) {
-  lifecycle::signal_stage("experimental", "moving_average()")
+  lifecycle::signal_stage("experimental", "n_screen_on()")
 
   out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
     dplyr::select(-c(measurement_id, participant_id)) %>%
@@ -587,7 +587,7 @@ n_screen_unlocks <- function(db,
                              start_date = NULL,
                              end_date = NULL,
                              by = c("Total", "Hour", "Day")) {
-  lifecycle::signal_stage("experimental", "moving_average()")
+  lifecycle::signal_stage("experimental", "n_screen_unlocks()")
 
   out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
     dplyr::select(-c(measurement_id, participant_id)) %>%
@@ -774,16 +774,25 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
 #'   mutate(gap = any(gaps$from >= prev_time & gaps$to <= datetime))
 #' }
 identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Accelerometer") {
-  get_data(db, sensor, participant_id) %>%
-    dplyr::mutate(datetime = DATETIME(paste(date, time))) %>%
-    dplyr::select(participant_id, datetime) %>%
-    dplyr::group_by(participant_id) %>%
-    dbplyr::window_order(datetime) %>%
-    dplyr::mutate(to = dplyr::lead(datetime)) %>%
+  # Get the data for each sensor
+  data <- map(sensor, ~{
+    get_data(db, .x, participant_id) %>%
+      dplyr::mutate(datetime = DATETIME(paste(date, time))) %>%
+      dplyr::select(participant_id, datetime)
+  })
+
+  # Merge all together
+  data <- purrr::reduce(data, union_all)
+
+  # Then, calculate the gap duration
+  data %>%
+    dplyr::group_by(.data$participant_id) %>%
+    dbplyr::window_order(.data$datetime) %>%
+    dplyr::mutate(to = dplyr::lead(.data$datetime)) %>%
     dplyr::ungroup() %>%
-    dplyr::mutate(gap = STRFTIME('%s', to) - STRFTIME('%s', datetime)) %>%
+    dplyr::mutate(gap = STRFTIME('%s', .data$to) - STRFTIME('%s', .data$datetime)) %>%
     dplyr::filter(gap >= min_gap) %>%
-    dplyr::select(participant_id, from = datetime, to, gap) %>%
+    dplyr::select(.data$participant_id, from = .data$datetime, .data$to, .data$gap) %>%
     dplyr::collect()
 }
 

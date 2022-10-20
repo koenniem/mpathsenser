@@ -669,13 +669,13 @@ link_intervals <- function(x, x_start, x_end,
 #' # in the group.
 #' data %>%
 #'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-#'     dplyr::mutate(lead = dplyr::lead(datetime)) %>%
-#'     bin_data(
-#'       start_time = datetime,
-#'       end_time = lead,
-#'       by = 1800L,
-#'       fixed = FALSE
-#'     )
+#'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+#'   bin_data(
+#'     start_time = datetime,
+#'     end_time = lead,
+#'     by = 1800L,
+#'     fixed = FALSE
+#'   )
 #'
 #' # More complicated data for showcasing grouping:
 #' data <- tibble::tibble(
