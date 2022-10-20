@@ -12,7 +12,13 @@ particular a problem with the last measurement of a series.
 * Switched `identify_gaps()` from using the lag of each measurements towards using the lead. This
 makes no difference in the output but is a little easier to read.
 * Added a warning section in `identify_gaps()` and friends to inform the user of a possible 
-inconsequence when identifying gaps. 
+inconsistency when identifying gaps. 
+* `identify_gaps()` now allows multiple sensors to be used.
+* Fixed a bug in `add_gaps()` where multiple gaps in succession (i.e. without other data in between)
+were incorrectly handled.
+* Deprecated `dbname` and `overwrite_db` arguments in `import()`, thereby removing the functionality
+of `import()` to create new databases on-the-fly. This disentangles the functionalities of 
+`create_db()` and `import()`, where the latter implicitly depended on the former.
 
 # mpathsenser 1.1.0
 ## Major changes
