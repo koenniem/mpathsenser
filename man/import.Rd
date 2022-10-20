@@ -7,12 +7,12 @@
 import(
   path = getwd(),
   db = NULL,
-  dbname = "sense.db",
-  overwrite_db = TRUE,
   sensors = NULL,
   batch_size = 24,
   backend = "RSQLite",
   recursive = TRUE,
+  dbname = deprecated(),
+  overwrite_db = deprecated(),
   parallel = deprecated()
 )
 }
@@ -20,11 +20,6 @@ import(
 \item{path}{The path to the file directory}
 
 \item{db}{Valid database connection.}
-
-\item{dbname}{If no database is provided, a new database dbname is created.}
-
-\item{overwrite_db}{If a database with the same \code{dbname}  already exists, should it be
-overwritten?}
 
 \item{sensors}{Select one or multiple sensors as in \code{\link[mpathsenser]{sensors}}. Leave
 NULL to extract all sensor data.}
@@ -35,10 +30,18 @@ NULL to extract all sensor data.}
 
 \item{recursive}{Should the listing recurse into directories?}
 
+\item{dbname}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: Creating new databases on the fly using
+\code{import} has been deprecated as it is better to separate the two functions. You must now
+create a new database using \code{\link[mpathsenser]{create_db}} or reuse an existing one.}
+
+\item{overwrite_db}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: This argument was used when database
+creation in \code{import} was still supported. As this functionality is deprecated,
+\code{overwrite_db}  is now ignored and will be removed in future versions.}
+
 \item{parallel}{A value that indicates whether to do reading in and processing in parallel. If
 this argument is a number, this indicates the number of workers that will be used.
 
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} As functions should not modify the user's workspace,
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: As functions should not modify the user's workspace,
 directly toggling parallel support has been deprecated. Please use
 \code{\link[future]{plan}("multisession")} before calling this function to use multiple
 workers.}
@@ -52,21 +55,21 @@ using \link[mpathsenser]{open_db}.
 
 Import JSON files from m-Path Sense into a structured database. This function is the bread and
 butter of this package, as it creates (or rather fills) the database that most of the other
-functions in this packageuse.
+functions in this package use.
 }
 \details{
 \code{import} is highly customisable in the sense that you can specify which sensors to
 import (even though there may be more in the files) and it also allows batching for a speedier
 writing process. If processing in parallel is active, it is recommended that \code{batch_size}
-be a scalar multiple of the number of CPUs the parallel cluster can use. If a single JSON file
-in the batch causes and error, the batch is terminated (but not the function) and it is up to
-the user to fix the file. This means that if \code{batch_size} is large, many files will not be
-processed. Set \code{batch_size} to 1 for sequential file processing (i.e. one-by-one).
+be a scalar multiple of the number of CPU cores the parallel cluster can use. If a single JSON
+file in the batch causes and error, the batch is terminated (but not the function) and it is up
+to the user to fix the file. This means that if \code{batch_size} is large, many files will not
+be processed. Set \code{batch_size} to 1 for sequential (one-by-one) file processing.
 
 Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
 \code{parallel} option is disabled. To get an indication of the progress so far, set one of the
 \link[progressr]{handlers} using the \code{progressr} package, e.g.
-\code{progressr::handlers('progress')}.
+\code{progressr::handlers(global = TRUE)} and \code{progressr::handlers('progress')}.
 }
 \section{Parallel}{
  This function supports parallel processing in the sense that it is able to

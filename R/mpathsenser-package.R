@@ -6,6 +6,7 @@
 #' convenience functions to aid in data processing.
 #' @keywords internal
 #' @importFrom magrittr '%>%'
+#' @importFrom rlang .data
 ## usethis namespace: start
 #' @importFrom lifecycle deprecated
 ## usethis namespace: end
