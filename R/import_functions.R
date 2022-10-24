@@ -88,7 +88,7 @@ safe_tibble <- function(...) {
 
 default_fun <- function(data) {
   data$body <- lapply(data$body, function(x) x$body)
-  data <- dplyr::bind_cols(data, dplyr::bind_rows(data$body))
+  data <- dplyr::bind_cols(data, bind_rows(data$body))
   data$body <- NULL
 
   data
@@ -115,17 +115,17 @@ accelerometer_fun <- function(data) {
 }
 
 periodic_accelerometer_fun <- function(data) {
-  data$id <- sapply(data$body, function(x) x$body$id)
+  data$id <- vapply(data$body, function(x) x$body$id, character(1))
   data$body <- lapply(data$body, function(x) x$body$data)
 
-  data <- tidyr::unnest(data, body, keep_empty = TRUE)
+  data <- unnest(data, body, keep_empty = TRUE)
 
   data$timestamp <- lapply(data$body, function(x) x$timestamp)
   data$x <- lapply(data$body, function(x) x$x)
   data$y <- lapply(data$body, function(x) x$y)
   data$z <- lapply(data$body, function(x) x$z)
   data$body <- NULL
-  data <- tidyr::unnest(data, timestamp:z)
+  data <- unnest(data, .data$timestamp:.data$z)
 
   # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
@@ -165,8 +165,8 @@ air_quality_fun <- function(data) {
 
 app_usage_fun <- function(data) {
   data$body <- lapply(data$body, function(x) x$body)
-  data$body <- suppressWarnings(lapply(data$body, dplyr::bind_rows))
-  data <- tidyr::unnest(data, body, keep_empty = TRUE)
+  data$body <- suppressWarnings(lapply(data$body, bind_rows))
+  data <- unnest(data, body, keep_empty = TRUE)
 
   if ("usage" %in% colnames(data)) {
     data$app <- names(data$usage)
@@ -202,9 +202,9 @@ apps_fun <- function(data) {
       apps = list(x$installed_apps)
     )
   })
-  data <- tidyr::unnest(data, body, keep_empty = TRUE)
-  data <- tidyr::unnest(data, apps, keep_empty = TRUE)
-  data <- tidyr::unnest(data, apps, keep_empty = TRUE)
+  data <- unnest(data, .data$body, keep_empty = TRUE)
+  data <- unnest(data, .data$apps, keep_empty = TRUE)
+  data <- unnest(data, .data$apps, keep_empty = TRUE)
 
   # TODO: Consider unique ID constraint Temporary fix
   ids <-
@@ -237,8 +237,8 @@ bluetooth_fun <- function(data) {
   data$id <- sapply(data$body, function(x) x$body$id)
   data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
   data$body <- lapply(data$body, function(x) x$body$scan_result)
-  data$body <- lapply(data$body, dplyr::bind_rows)
-  data <- tidyr::unnest(data, body, keep_empty = TRUE)
+  data$body <- lapply(data$body, bind_rows)
+  data <- unnest(data, body, keep_empty = TRUE)
 
   # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
@@ -289,8 +289,8 @@ calendar_fun <- function(data) {
   }
 
 
-  data$body <- lapply(data$body, dplyr::bind_rows)
-  data <- tidyr::unnest(data, body, keep_empty = TRUE)
+  data$body <- lapply(data$body, bind_rows)
+  data <- unnest(data, body, keep_empty = TRUE)
 
   # Collapse attendees list
   if (any("attendees" == colnames(data))) {
@@ -480,12 +480,12 @@ phone_log_fun <- function(data) {
   data$id <- sapply(data$body, function(x) x$body$id)
   data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
   data$body <- lapply(data$body, function(x) x$body$phone_log)
-  data$body <- lapply(data$body, dplyr::bind_rows)
+  data$body <- lapply(data$body, bind_rows)
   data$body <- lapply(data$body, function(x) {
     # Replace double timestamp name
     colnames(x)[colnames(x) == "timestamp"] <- "datetime"
   })
-  data <- tidyr::unnest(data, body, keep_empty = TRUE)
+  data <- unnest(data, body, keep_empty = TRUE)
 
   safe_data_frame(
     measurement_id = data$id,
@@ -530,8 +530,8 @@ text_message_fun <- function(data) {
   data$id <- sapply(data$body, function(x) x$body$id)
   data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
   data$body <- lapply(data$body, function(x) x$body$text_message)
-  data$body <- lapply(data$body, dplyr::bind_rows)
-  data <- tidyr::unnest(data, body, keep_empty = TRUE)
+  data$body <- lapply(data$body, bind_rows)
+  data <- unnest(data, body, keep_empty = TRUE)
 
   # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)

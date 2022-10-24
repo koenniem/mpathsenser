@@ -5,7 +5,7 @@ Sys.setenv("TZ" = "UTC")
 test_that("get_data", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
   res <- get_data(db, "Activity", "12345", "2021-11-14", "2021-11-14") %>%
-    dplyr::collect()
+    collect()
   expect_equal(
     res,
     tibble::tibble(
@@ -24,7 +24,7 @@ test_that("get_data", {
 
   # Only a start date
   res <- get_data(db, "Device", "12345", "2021-11-14") %>%
-    dplyr::collect()
+    collect()
   expect_equal(
     res,
     tibble::tibble(
@@ -47,7 +47,7 @@ test_that("get_data", {
 
   # Only an end date
   res <- get_data(db, "Device", "12345", end_date = "2021-11-13") %>%
-    dplyr::collect()
+    collect()
   expect_equal(
     res,
     tibble::tibble(
@@ -65,7 +65,7 @@ test_that("get_data", {
     )
   )
 
-  DBI::dbDisconnect(db)
+  dbDisconnect(db)
   expect_error(get_data(db, "Activity"), "Database connection is not valid")
 })
 
@@ -74,7 +74,7 @@ test_that("first_date", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
   expect_equal(first_date(db, "Device"), "2021-11-13")
   expect_equal(first_date(db, "Device", "12345"), "2021-11-13")
-  DBI::dbDisconnect(db)
+  dbDisconnect(db)
 })
 
 ## last_date ===============
@@ -82,7 +82,7 @@ test_that("last_date", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
   expect_equal(last_date(db, "Device"), "2021-11-14")
   expect_equal(last_date(db, "Device", "12345"), "2021-11-14")
-  DBI::dbDisconnect(db)
+  dbDisconnect(db)
 })
 
 ## get_installed_apps ===============
@@ -108,7 +108,7 @@ test_that("get_installed_apps", {
     "m-Path Sense"
   ))
   expect_equal(res, true)
-  DBI::dbDisconnect(db)
+  dbDisconnect(db)
 })
 
 # add_data

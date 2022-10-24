@@ -51,7 +51,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   }
 
   # Create a new db instance
-  db <- DBI::dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
+  db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
 
   # Populate the db with empty tables
   tryCatch(
@@ -59,11 +59,11 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
       fn <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
       script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
       for (statement in script) {
-        DBI::dbExecute(db, statement)
+        dbExecute(db, statement)
       }
     },
     error = function(e) {
-      DBI::dbDisconnect(db)
+      dbDisconnect(db)
       stop(e)
     }
   )
@@ -98,9 +98,9 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
   if (!file.exists(db_name)) {
     stop("There is no such file")
   }
-  db <- DBI::dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
+  db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
   if (!DBI::dbExistsTable(db, "Participant")) {
-    DBI::dbDisconnect(db)
+    dbDisconnect(db)
     stop("Sorry, this does not appear to be a mpathsenser database.")
   }
   return(db)
@@ -123,8 +123,8 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 close_db <- function(db) {
   exists <- try(db, silent = TRUE)
   if (inherits(exists, "SQLiteConnection") && !is.null(db)) {
-    if (DBI::dbIsValid(db)) {
-      DBI::dbDisconnect(db)
+    if (dbIsValid(db)) {
+      dbDisconnect(db)
     }
   }
 }
@@ -139,14 +139,14 @@ close_db <- function(db) {
 #' @return No return value, called for side effects.
 #' @export
 index_db <- function(db) {
-  if (is.null(db) || !DBI::dbIsValid(db)) stop("Database connection is not valid")
+  if (is.null(db) || !dbIsValid(db)) stop("Database connection is not valid")
 
   tryCatch(
     {
       fn <- system.file("extdata", "indexes.sql", package = "mpathsenser")
       script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
       for (statement in script) {
-        DBI::dbExecute(db, statement)
+        dbExecute(db, statement)
       }
     },
     error = function(e) {
@@ -156,8 +156,8 @@ index_db <- function(db) {
 }
 
 vacuum_db <- function(db) {
-  if (is.null(db) || !DBI::dbIsValid(db)) stop("Database connection is not valid")
-  DBI::dbExecute(db, "VACUUM")
+  if (is.null(db) || !dbIsValid(db)) stop("Database connection is not valid")
+  dbExecute(db, "VACUUM")
 }
 
 #' Copy (a subset of) a database to another database
@@ -206,37 +206,33 @@ copy_db <- function(from_db, to_db = NULL, sensor = "All", path = getwd(), db_na
   }
 
   # Attach new database to old database
-  DBI::dbExecute(from_db, paste0("ATTACH DATABASE '", to_db@dbname, "' AS new_db"))
+  dbExecute(source_db, paste0("ATTACH DATABASE '", target_db@dbname, "' AS new_db"))
 
   # Copy participants, studies, processed_files
-  DBI::dbExecute(from_db, "INSERT OR IGNORE INTO new_db.Study SELECT * FROM Study")
-  DBI::dbExecute(from_db, "INSERT OR IGNORE INTO new_db.Participant SELECT * FROM Participant")
-  DBI::dbExecute(
-    from_db,
+  dbExecute(source_db, "INSERT OR IGNORE INTO new_db.Study SELECT * FROM Study")
+  dbExecute(source_db, "INSERT OR IGNORE INTO new_db.Participant SELECT * FROM Participant")
+  dbExecute(
+    source_db,
     "INSERT OR IGNORE INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles"
   )
 
 
   # Copy all specified sensors
   for (i in seq_along(sensor)) {
-    DBI::dbExecute(from_db, paste0(
+    dbExecute(source_db, paste0(
       "INSERT OR IGNORE INTO new_db.", sensor[i],
       " SELECT * FROM ", sensor[i]
     ))
   }
 
   # Detach
-  DBI::dbExecute(from_db, "DETACH DATABASE new_db")
-
-  if (no_db_specified) {
-    close_db(to_db)
-  }
+  dbExecute(source_db, "DETACH DATABASE new_db")
 
   return(invisible(TRUE))
 }
 
 add_study <- function(db, data) {
-  DBI::dbExecute(
+  dbExecute(
     db,
     "INSERT OR IGNORE INTO Study(study_id, data_format)
   VALUES(:study_id, :data_format);",
@@ -245,7 +241,7 @@ add_study <- function(db, data) {
 }
 
 add_participant <- function(db, data) {
-  DBI::dbExecute(
+  dbExecute(
     db,
     "INSERT OR IGNORE INTO Participant(participant_id, study_id)
   VALUES(:participant_id, :study_id);",
@@ -254,7 +250,7 @@ add_participant <- function(db, data) {
 }
 
 add_processed_files <- function(db, data) {
-  DBI::dbExecute(
+  dbExecute(
     db,
     "INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)
   VALUES(:file_name, :study_id, :participant_id);",
@@ -267,7 +263,7 @@ add_processed_files <- function(db, data) {
 }
 
 clear_sensors_db <- function(db) {
-  res <- lapply(sensors, function(x) DBI::dbExecute(db, paste0("DELETE FROM ", x, " WHERE 1;")))
+  res <- lapply(sensors, function(x) dbExecute(db, paste0("DELETE FROM ", x, " WHERE 1;")))
   names(res) <- sensors
   res
 }
@@ -286,7 +282,7 @@ clear_sensors_db <- function(db) {
 #' of the processed files.
 #' @export
 get_processed_files <- function(db) {
-  if (!DBI::dbIsValid(db)) stop("Database connection is not valid")
+  if (!dbIsValid(db)) abort("Database connection is not valid")
   DBI::dbReadTable(db, "ProcessedFiles")
 }
 
@@ -301,7 +297,7 @@ get_processed_files <- function(db) {
 #' @return A data frame containing all \code{participant_id} and \code{study_id}.
 #' @export
 get_participants <- function(db, lazy = FALSE) {
-  if (!DBI::dbIsValid(db)) stop("Database connection is not valid")
+  if (!dbIsValid(db)) stop("Database connection is not valid")
   if (lazy) {
     dplyr::tbl(db, "Participant")
   } else {
@@ -320,7 +316,7 @@ get_participants <- function(db, lazy = FALSE) {
 #' @return A data frame containing all studies.
 #' @export
 get_studies <- function(db, lazy = FALSE) {
-  if (!DBI::dbIsValid(db)) stop("Database connection is not valid")
+  if (!dbIsValid(db)) stop("Database connection is not valid")
   if (lazy) {
     dplyr::tbl(db, "Study")
   } else {
@@ -350,15 +346,15 @@ get_studies <- function(db, lazy = FALSE) {
 #' @export
 get_nrows <- function(db, sensor = "All", participant_id = NULL, start_date = NULL,
                       end_date = NULL) {
-  if (!DBI::dbIsValid(db)) stop("Database connection is not valid")
+  if (!dbIsValid(db)) stop("Database connection is not valid")
 
   if (sensor[[1]] == "All") {
     sensor <- sensors
   }
 
-  sapply(sensor, function(x) {
+  vapply(sensor, function(x) {
     get_data(db, x, participant_id, start_date, end_date) %>%
       dplyr::count() %>%
-      dplyr::pull(n)
-  })
+      pull(n)
+  }, integer(1))
 }

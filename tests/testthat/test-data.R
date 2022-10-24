@@ -37,7 +37,7 @@ db_test <- function(sensor, true_data) {
   db <- open_db(NULL, system.file("testdata", "test.db", package = "mpathsenser"))
 
   data <- get_data(db, sensor, "12345", "2021-11-13", "2021-11-14") %>%
-    dplyr::collect()
+    collect()
   true <- true_data
 
   testthat::expect_equal(data, true)

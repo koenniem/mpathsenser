@@ -2,9 +2,9 @@ icc <- function(data, ..., group) {
   if (missing(...) | rlang::dots_n(...) == 0) stop("No variables selected to be evaluated")
   if (missing(group)) stop("group may not be missing")
 
-  data <- dplyr::select(data, {{ group }}, ...)
-  group <- colnames(dplyr::select(data, {{ group }}))
-  cols <- colnames(dplyr::select(data, ...))
+  data <- select(data, {{ group }}, ...)
+  group <- colnames(select(data, {{ group }}))
+  cols <- colnames(select(data, ...))
   res <- data.frame(Variable = cols, ICC = NA)
   # quiet_lmer <- quiet(purrr::possibly(lme4::lmer, NA))
 
@@ -38,38 +38,38 @@ multilevel_cor <- function(x,
 
     # Extract and normalise data
     x <- x %>%
-      dplyr::select({{ group }}, ...)
+      select({{ group }}, ...)
 
-    names_x <- colnames(dplyr::select(x, ...))
+    names_x <- colnames(select(x, ...))
   }
 
   # group_by has problems with a mix of characters and bares
   if (all(sapply(rlang::enexprs(group), rlang::is_character))) {
     if (scale) {
       x <- x %>%
-        dplyr::group_by(dplyr::across(dplyr::all_of(group)))
+        group_by(across(dplyr::all_of(group)))
     }
     group_names <- unlist(group)
   } else {
     if (scale) {
       x <- x %>%
-        dplyr::group_by(dplyr::across({{ group }}))
+        group_by(across({{ group }}))
     }
-    group_names <- colnames(dplyr::select(x, {{ group }}))
+    group_names <- colnames(select(x, {{ group }}))
   }
 
   x <- x %>%
-    dplyr::mutate(dplyr::across(
+    mutate(across(
       tidyr::everything(),
       ~ scale(.x, scale = scale, center = center)[, 1]
     )) %>%
-    dplyr::ungroup()
+    ungroup()
 
   if (!is.null(y)) {
     y <- y %>%
-      dplyr::select(dplyr::all_of(colnames(x)))
+      select(dplyr::all_of(colnames(x)))
 
-    if (!dplyr::all_equal(dplyr::select(x, {{ group }}), dplyr::select(y, {{ group }}))) {
+    if (!dplyr::all_equal(select(x, {{ group }}), select(y, {{ group }}))) {
       stop("group is not equal in x and y")
     }
 
@@ -84,16 +84,16 @@ multilevel_cor <- function(x,
 
   # Create a tibble for every combination
   res <- tidyr::crossing(var1 = names_x, var2 = names_y)
-  # res <- dplyr::filter(res, var1 != var2)
+  # res <- filter(res, var1 != var2)
 
   # Calculate a multilevel model for each combination
   model_cor <- function(var1, var2, group) {
     # browser()
     dat1 <- x %>%
-      dplyr::select(dplyr::all_of(c(group, var1)))
+      select(dplyr::all_of(c(group, var1)))
     # %>% rename("var1" = all_of(var1))
     dat2 <- y %>%
-      dplyr::select(dplyr::all_of(c(var2)))
+      select(dplyr::all_of(c(var2)))
     # %>% rename("var2" = all_of(var2))
     dat <- dplyr::bind_cols(dat1, dat2)
     # browser()
@@ -152,41 +152,41 @@ multilevel_autocor <- function(data,
 
     # Extract and normalise data
     data <- data %>%
-      dplyr::select({{ group }}, {{ lag_var }}, ...)
+      select({{ group }}, {{ lag_var }}, ...)
 
-    var_names <- colnames(dplyr::select(data, ...))
+    var_names <- colnames(select(data, ...))
   } else {
-    var_names <- dplyr::select(data, -c({{ group }}, {{ lag_var }}))
+    var_names <- select(data, -c({{ group }}, {{ lag_var }}))
   }
 
   # group_by has problems with a mix of characters and bares
   if (all(sapply(rlang::enexprs(group), rlang::is_character))) {
     if (scale) {
-      data <- dplyr::group_by(data, dplyr::across(dplyr::all_of(group)))
+      data <- group_by(data, across(dplyr::all_of(group)))
     }
     group_names <- unlist(group)
   } else {
     if (scale) {
-      data <- dplyr::group_by(data, dplyr::across(c({{ group }}, {{ lag_var }})))
+      data <- group_by(data, across(c({{ group }}, {{ lag_var }})))
     }
-    group_names <- colnames(dplyr::select(data, {{ group }}))
+    group_names <- colnames(select(data, {{ group }}))
   }
 
   # TODO: standardise AFTER lagging, or else the standardisation is lost
   data <- data %>%
-    dplyr::mutate(dplyr::across(.fns = ~ scale(.x, center = center, scale = scale)[, 1])) %>%
-    dplyr::ungroup()
+    mutate(across(.fns = ~ scale(.x, center = center, scale = scale)[, 1])) %>%
+    ungroup()
 
   if (!is.logical(p_adjust)) stop("p_adjust must be a logical value")
 
   # Calculate a multilevel model for each combination
   model_autocor <- function(data, var, lag_var, group) {
     dat <- data %>%
-      dplyr::select(dplyr::all_of(c(group, var, lag_var))) %>%
-      tidyr::drop_na() %>%
-      dplyr::group_by(dplyr::across(dplyr::all_of(c(group, lag_var)))) %>%
-      dplyr::mutate(!!paste0(var, "_lag") := dplyr::lag(!!rlang::sym(var))) %>%
-      dplyr::ungroup()
+      select(dplyr::all_of(c(group, var, lag_var))) %>%
+      drop_na() %>%
+      group_by(across(dplyr::all_of(c(group, lag_var)))) %>%
+      mutate(!!paste0(var, "_lag") := lag(!!rlang::sym(var))) %>%
+      ungroup()
 
     # Set up random intercept model
     fixed <- paste0(var, " ~ -1 + ", var, "_lag")

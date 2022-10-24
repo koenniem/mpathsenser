@@ -3,82 +3,82 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
   # Match sensing data with ESM using a nested join
   # Set a start_time (beep time - offset) and an end_time (beep time)
   data <- x %>%
-    dplyr::mutate(x_time = as.integer(.data$time)) %>%
-    dplyr::mutate(start_time = .data$x_time - offset_before) %>%
-    dplyr::mutate(end_time = .data$x_time + offset_after) %>%
-    dplyr::select({{ by }}, .data$start_time, .data$end_time) %>%
+    mutate(x_time = as.integer(.data$time)) %>%
+    mutate(start_time = .data$x_time - offset_before) %>%
+    mutate(end_time = .data$x_time + offset_after) %>%
+    select({{ by }}, .data$start_time, .data$end_time) %>%
     tibble::as_tibble() %>%
-    dplyr::mutate(row_id = dplyr::row_number()) # For rematching later
+    mutate(row_id = dplyr::row_number()) # For rematching later
 
   # Filter y based on by
   y <- dplyr::semi_join(y, data, by = by)
 
   data <- data %>%
     dplyr::left_join(y, by = by) %>%
-    dplyr::mutate(y_time = as.integer(.data$time))
+    mutate(y_time = as.integer(.data$time))
 
   # The main data, i.e. data within the interval
   data_main <- data %>%
-    dplyr::filter(.data$y_time >= .data$start_time & .data$y_time <= .data$end_time) %>%
-    dplyr::arrange(by, .data$y_time) %>%
-    dplyr::select(-.data$y_time) %>%
-    tidyr::nest(data = -c(by, .data$start_time, .data$end_time, .data$row_id)) %>%
-    dplyr::select(.data$row_id, .data$data)
+    filter(.data$y_time >= .data$start_time & .data$y_time <= .data$end_time) %>%
+    arrange({{ by }}, .data$y_time) %>%
+    select(-.data$y_time) %>%
+    nest(data = -c({{ by }}, .data$start_time, .data$end_time, .data$row_id)) %>%
+    select(.data$row_id, .data$data)
 
   # Merge back with original data
   # Bug: if this happens after merging data_before and data_after, they would be lost in the case
   # no data was retained in data_main as all the row_ids are deleted as well
   data_main <- x %>%
     tibble::as_tibble() %>%
-    dplyr::mutate(row_id = dplyr::row_number()) %>%
+    mutate(row_id = dplyr::row_number()) %>%
     dplyr::left_join(data_main, by = "row_id")
 
   # Add the last measurement before start_time
   if (add_before) {
     tz <- attr(x$time, "tz")
     data_before <- data %>%
-      dplyr::filter(.data$y_time < .data$start_time) %>%
-      dplyr::group_by(.data$row_id) %>%
+      filter(.data$y_time < .data$start_time) %>%
+      group_by(.data$row_id) %>%
       dplyr::slice_max(.data$y_time, with_ties = TRUE) %>%
-      dplyr::ungroup() %>%
-      dplyr::mutate(original_time = .data$time) %>%
-      dplyr::mutate(time = lubridate::as_datetime(.data$start_time, tz = tz)) %>%
-      dplyr::select(-.data$y_time) %>%
-      tidyr::nest(data_before = !c(by, .data$start_time, .data$end_time, .data$row_id)) %>%
-      dplyr::select(.data$row_id, .data$data_before)
+      ungroup() %>%
+      mutate(original_time = .data$time) %>%
+      mutate(time = lubridate::as_datetime(.data$start_time, tz = tz)) %>%
+      select(-.data$y_time) %>%
+      nest(data_before = !c({{ by }}, .data$start_time, .data$end_time, .data$row_id)) %>%
+      select(.data$row_id, .data$data_before)
 
     # Add to the main result
     data_main <- data_main %>%
       dplyr::left_join(data_before, by = "row_id") %>%
-      dplyr::mutate(data = purrr::map2(.data$data_before, .data$data, dplyr::bind_rows)) %>%
-      dplyr::select(-.data$data_before)
+      mutate(data = purrr::map2(.data$data_before, .data$data, bind_rows)) %>%
+      select(-.data$data_before)
   }
 
   # Add the first measurements after end_time
   if (add_after) {
     tz <- attr(x$time, "tz")
     data_after <- data %>%
-      dplyr::filter(.data$y_time > .data$end_time) %>%
-      dplyr::group_by(.data$row_id) %>%
+      filter(.data$y_time > .data$end_time) %>%
+      group_by(.data$row_id) %>%
       dplyr::slice_min(.data$y_time, with_ties = TRUE) %>%
-      dplyr::ungroup() %>%
-      dplyr::mutate(original_time = .data$time) %>%
-      dplyr::mutate(time = lubridate::as_datetime(.data$end_time, tz = tz)) %>%
-      dplyr::select(-.data$y_time) %>%
-      tidyr::nest(data_after = -c(by, .data$start_time, .data$end_time, .data$row_id)) %>%
-      dplyr::select(.data$row_id, .data$data_after)
+      ungroup() %>%
+      mutate(original_time = .data$time) %>%
+      mutate(time = lubridate::as_datetime(.data$end_time, tz = tz)) %>%
+      select(-.data$y_time) %>%
+      nest(data_after = -c({{ by }}, .data$start_time, .data$end_time, .data$row_id)) %>%
+      select(.data$row_id, .data$data_after)
 
     # Add to the main result
     data_main <- data_main %>%
       dplyr::left_join(data_after, by = "row_id") %>%
-      dplyr::mutate(data = purrr::map2(.data$data, .data$data_after, dplyr::bind_rows)) %>%
-      dplyr::select(-.data$data_after)
+      mutate(data = purrr::map2(.data$data, .data$data_after, bind_rows)) %>%
+      select(-.data$data_after)
   }
 
   # Create an empty tibble (prototype) by retrieving rows with time before UNIX start (not possible)
   # This is needed to fill in the data entries where there would otherwise be nothing left
   # because nothing matched within the start_time and end_time
-  proto <- tibble::as_tibble(y[0, setdiff(colnames(y), by)])
+  proto <- tibble::as_tibble(y[0, setdiff(colnames(y), {{ by }})])
   if (add_before | add_after) {
     proto$original_time <- as.POSIXct(vector(mode = "double"))
 
@@ -95,8 +95,8 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
   }
 
   res <- data_main %>%
-    dplyr::mutate(data = ifelse(lapply(.data$data, is.null), list(proto), .data$data)) %>%
-    dplyr::select(-.data$row_id)
+    mutate(data = ifelse(lapply(.data$data, is.null), list(proto), .data$data)) %>%
+    select(-.data$row_id)
 
   res
 }
@@ -195,29 +195,29 @@ link <- function(x,
                  split = by) {
 
   if (!is.data.frame(x)) {
-    stop("x must be a data frame", call. = FALSE)
+    abort("x must be a data frame")
   }
   if (!is.data.frame(y)) {
-    stop("y must be a data frame", call. = FALSE)
+    abort("y must be a data frame")
   }
   if (!is.null(by) && !is.character(by)) {
-    stop("by must be a character vector of variables to join by", call. = FALSE)
+    abort("by must be a character vector of variables to join by")
   }
 
   # offset checks
   if ((is.null(offset_before) | all(offset_before == 0)) &
       (is.null(offset_after) | all(offset_after == 0))) {
-    stop("either offset_before or offset_after must not be 0 or NULL, or both", call. = FALSE)
+    abort(paste0("offset_before and offset_after cannot be 0 or NULL at the same time."))
   }
   if (!is.null(offset_before) && !(is.character(offset_before) |
                                    lubridate::is.period(offset_before) |
                                    is.numeric(offset_before))) {
-    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
+    abort("offset_before must be a character vector, numeric vector, or a period")
   }
   if (!is.null(offset_after) && !(is.character(offset_after) |
                                   lubridate::is.period(offset_after) |
                                   is.numeric(offset_after))) {
-    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
+    abort("offset_before must be a character vector, numeric vector, or a period")
   }
   if (is.character(offset_before) | is.numeric(offset_before)) {
     offset_before <- lubridate::as.period(offset_before)
@@ -228,48 +228,47 @@ link <- function(x,
     offset_after <- as.integer(as.double(offset_after))
   }
   if (is.na(offset_before) | is.na(offset_after)) {
-    stop(paste(
-      "Invalid offset specified. Try something like '30 minutes', ",
-      "lubridate::minutes(30), or 1800."
-    ), call. = FALSE)
+    abort(c(
+      "Invalid offset specified.",
+      i = "Try something like '30 minutes', lubridate::minutes(30), or 1800."
+    ))
   }
   if (!is.null(offset_before) && offset_before < 0) {
     offset_before <- abs(offset_before)
-    warning(paste(
-      "offset_before must be a positive period (i.e. greater than 0).",
-      "Taking the absolute value"
-    ), call. = FALSE)
+    rlang::warn(c(
+      `*` = "offset_before must be a positive period (i.e. greater than 0).",
+      i = "Taking the absolute value"
+    ))
   }
   if (!is.null(offset_after) && offset_after < 0) {
     offset_after <- abs(offset_after)
-    warning(paste(
-      "offset_after must be a positive period (i.e. greater than 0).",
-      "Taking the absolute value"
-    ), call. = FALSE)
+    rlang::warn(c(
+      `*` = "offset_after must be a positive period (i.e. greater than 0).",
+      i = "Taking the absolute value"
+    ))
   }
-
 
   # Check for time column
   if (!("time" %in% colnames(x) & "time" %in% colnames(y))) {
-    stop("column 'time' must be present in both x and y", call. = FALSE)
+    abort("column 'time' must be present in both x and y")
   }
   if (!lubridate::is.POSIXct(x$time)) {
-    stop("column 'time' in x must be a POSIXct", call. = FALSE)
+    abort("column 'time' in x must be a POSIXct")
   }
   if (!lubridate::is.POSIXct(y$time)) {
-    stop("column 'time' in y must be a POSIXct", call. = FALSE)
+    abort("column 'time' in y must be a POSIXct")
   }
 
   # Do not perform matching when x and y are identical
   if (identical(x, y) || isTRUE(dplyr::all_equal(x, y))) {
-    stop("x and y are identical", call. = FALSE)
+    abort("x and y are identical")
   }
 
   if (!is.null(split)) {
     if (is.numeric(split)) {
       x <- split(x, rep(1:split, each = ceiling(nrow(x) / split), length.out = nrow(x)))
     } else {
-      x <- dplyr::group_split(x, dplyr::across(by))
+      x <- dplyr::group_split(x, across({{ by }}))
     }
   } else {
     x <- list(x)
@@ -279,7 +278,7 @@ link <- function(x,
     furrr::future_map(~ link_impl(.x, y, by, offset_before, offset_after, add_before, add_after),
                       .options = furrr::furrr_options(seed = TRUE)
     ) %>%
-    dplyr::bind_rows()
+    bind_rows()
 }
 
 #' Link two sensors OR one sensor and an external data frame using an \code{mpathsenser} database
@@ -321,7 +320,7 @@ link_db <- function(db,
                     end_date = NULL,
                     reverse = FALSE,
                     ignore_large = FALSE) {
-  if (!DBI::dbIsValid(db)) {
+  if (!dbIsValid(db)) {
     stop("Database connection is not valid")
   }
   if (is.null(external) & is.null(sensor_two)) {
@@ -350,10 +349,10 @@ link_db <- function(db,
 
   if (!is.null(sensor_two)) {
     dat_two <- get_data(db, sensor_two, participant_id, start_date, end_date) %>%
-      dplyr::mutate(time = paste(date, time)) %>%
-      dplyr::select(-date) %>%
-      dplyr::collect() %>%
-      dplyr::mutate(time = as.POSIXct(time, format = "%F %H:%M:%OS", tz = "UTC"))
+      mutate(time = paste(.data$date, .data$time)) %>%
+      select(-.data$date) %>%
+      collect() %>%
+      mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", tz = "UTC"))
   } else {
     if (any(format(external$time, "%Z") != "UTC")) {
       warning(paste0(
@@ -369,11 +368,11 @@ link_db <- function(db,
   dates <- unique(as.Date(dat_two$time))
 
   dat_one <- get_data(db, sensor_one, participant_id, start_date, end_date) %>%
-    dplyr::filter(date %in% dates) %>%
-    dplyr::mutate(time = paste(date, time)) %>%
-    dplyr::select(-date) %>%
-    dplyr::collect() %>%
-    dplyr::mutate(time = as.POSIXct(time, format = "%F %H:%M:%OS", "UTC"))
+    filter(.data$date %in% dates) %>%
+    mutate(time = paste(.data$date, .data$time)) %>%
+    select(-.data$date) %>%
+    collect() %>%
+    mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", "UTC"))
 
 
   if (is.null(external) & reverse) {
@@ -510,40 +509,40 @@ link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0
   # Calculate the start and end time of the interval (in seconds) of each row in data
   # Only retain gaps that are (partially) within or span over the interval
   data_gaps <- data %>%
-    dplyr::select({{ by }}, .data$time) %>%
-    dplyr::mutate(time_int = as.integer(.data$time)) %>%
-    dplyr::mutate(start_interval = .data$time_int - offset_before) %>%
-    dplyr::mutate(end_interval = .data$time_int + offset_after)
+    select({{ by }}, .data$time) %>%
+    mutate(time_int = as.integer(.data$time)) %>%
+    mutate(start_interval = .data$time_int - offset_before) %>%
+    mutate(end_interval = .data$time_int + offset_after)
 
   data_gaps <- data_gaps %>%
     dplyr::left_join(gaps, by = by) %>%
-    dplyr::mutate(dplyr::across(c(.data$from, .data$to), as.integer)) %>%
-    dplyr::filter(.data$from < .data$end_interval & .data$to > .data$start_interval)
+    mutate(across(c(.data$from, .data$to), as.integer)) %>%
+    filter(.data$from < .data$end_interval & .data$to > .data$start_interval)
 
   # Set gaps time stamps out of the interval to the interval's bounds
   data_gaps <- data_gaps %>%
-    dplyr::mutate(from = ifelse(.data$from < .data$start_interval,
+    mutate(from = ifelse(.data$from < .data$start_interval,
                                 .data$start_interval,
                                 .data$from
     )) %>%
-    dplyr::mutate(to = ifelse(.data$to > .data$end_interval, .data$end_interval, .data$to)) %>%
-    dplyr::mutate(gap = .data$to - .data$from)
+    mutate(to = ifelse(.data$to > .data$end_interval, .data$end_interval, .data$to)) %>%
+    mutate(gap = .data$to - .data$from)
 
   if (raw_data) {
     # Transform from and to back to POSIXct and nest the data
     data_gaps <- data_gaps %>%
-      dplyr::select(by, .data$time, .data$from, .data$to, .data$gap) %>%
-      dplyr::mutate(from = as.POSIXct(.data$from,
+      select(by, .data$time, .data$from, .data$to, .data$gap) %>%
+      mutate(from = as.POSIXct(.data$from,
                                       origin = "1970-01-01",
                                       tz = attr(gaps$from, "tzone")
       )) %>%
-      dplyr::mutate(to = as.POSIXct(.data$to,
+      mutate(to = as.POSIXct(.data$to,
                                     origin = "1970-01-01",
                                     tz = attr(gaps$to, "tzone")
       )) %>%
-      dplyr::group_by(dplyr::across(c(by, .data$time))) %>%
-      tidyr::nest(gap_data = c(.data$from, .data$to, .data$gap)) %>%
-      dplyr::ungroup()
+      group_by(across(c(by, .data$time))) %>%
+      nest(gap_data = c(.data$from, .data$to, .data$gap)) %>%
+      ungroup()
 
     # Add gaps at beep level
     data_gaps$gap <- vapply(data_gaps$gap_data, function(x) sum(x$gap, na.rm = TRUE),
@@ -564,19 +563,19 @@ link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0
     )
   } else {
     data_gaps <- data_gaps %>%
-      dplyr::group_by(dplyr::across(c(by, .data$time))) %>%
-      dplyr::summarise(gap = sum(.data$gap), .groups = "drop")
+      group_by(across(c(by, .data$time))) %>%
+      summarise(gap = sum(.data$gap), .groups = "drop")
   }
 
   # Merge with ESM data
   data <- data %>%
     tibble::as_tibble() %>%
     dplyr::left_join(data_gaps, by = c(by, "time")) %>%
-    dplyr::mutate(gap = ifelse(is.na(.data$gap), 0, .data$gap))
+    mutate(gap = ifelse(is.na(.data$gap), 0, .data$gap))
 
   if (raw_data) {
     data <- data %>%
-      dplyr::mutate(gap_data = ifelse(lapply(.data$gap_data, is.null), list(proto), .data$gap_data))
+      mutate(gap_data = ifelse(lapply(.data$gap_data, is.null), list(proto), .data$gap_data))
   }
 
   data
@@ -587,12 +586,12 @@ link_intervals <- function(x, x_start, x_end,
                            y, y_start, y_end,
                            by = NULL,
                            name = "data") {
-  tz <- attr(dplyr::pull(y, {{ y_start }}), "tz")
+  tz <- attr(pull(y, {{ y_start }}), "tz")
 
   res <- x %>%
     dplyr::left_join(y, by = by) %>%
-    dplyr::mutate(dplyr::across(c({{ y_start }}, {{ y_end }}), as.integer)) %>%
-    dplyr::filter(
+    mutate(across(c({{ y_start }}, {{ y_end }}), as.integer)) %>%
+    filter(
         ((is.na({{ y_end }} & {{ y_start }} >= {{ x_start }} & {{ y_start }} < {{ x_end }})) &
         (is.na({{ y_start }} & {{ y_end }} >= {{ x_start }} & {{ y_end }} < {{ x_end }}))) |
         ({{ y_start }} < {{ x_end }} & {{ y_end }} > {{ x_start }})
@@ -600,15 +599,15 @@ link_intervals <- function(x, x_start, x_end,
 
   # Set gaps time stamps out of the interval to the interval's bounds
   res <- res %>%
-    dplyr::mutate(!!rlang::ensym(y_start) := ifelse({{ y_start }} < {{ x_start }},
+    mutate(!!rlang::ensym(y_start) := ifelse({{ y_start }} < {{ x_start }},
                                                     {{ x_start }},
                                                     {{ y_start }}
     )) %>%
-    dplyr::mutate(!!rlang::ensym(y_end) := ifelse({{ y_end }} > {{ x_end }},
+    mutate(!!rlang::ensym(y_end) := ifelse({{ y_end }} > {{ x_end }},
                                                   {{ x_end }},
                                                   {{ y_end }}
     )) %>%
-    dplyr::mutate(dplyr::across(c({{ y_start }}, {{ y_end }}), lubridate::as_datetime, tz = tz))
+    mutate(across(c({{ y_start }}, {{ y_end }}), lubridate::as_datetime, tz = tz))
 
   out <- x %>%
     dplyr::nest_join(res,
@@ -725,14 +724,14 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
     stop("by must be one of 'sec', 'min', 'hour', or 'day', or a numeric value if fixed = FALSE.")
   }
 
-  tz <- attr(dplyr::pull(data, {{ start_time }}), "tz")
+  tz <- attr(pull(data, {{ start_time }}), "tz")
 
   # check that start_time and end_time are a datetime, or try to convert
-  if (!lubridate::is.POSIXt(dplyr::pull(data, {{ start_time }})) &
-      !lubridate::is.POSIXt(dplyr::pull(data, {{ end_time }}))) {
+  if (!lubridate::is.POSIXt(pull(data, {{ start_time }})) &
+      !lubridate::is.POSIXt(pull(data, {{ end_time }}))) {
     data <- data %>%
-      dplyr::mutate(!!rlang::ensym(start_time) := as.POSIXct({{ start_time }}, origin = "1970-01-01")) %>%
-      dplyr::mutate(!!rlang::ensym(end_time) := as.POSIXct({{ end_time }}, origin = "1970-01-01"))
+      mutate(!!rlang::ensym(start_time) := as.POSIXct({{ start_time }}, origin = "1970-01-01")) %>%
+      mutate(!!rlang::ensym(end_time) := as.POSIXct({{ end_time }}, origin = "1970-01-01"))
   }
 
   # Generate output structure with unique hours per day, keeping the grouping structure
@@ -745,21 +744,21 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
 
   if (fixed) {
     out <- out %>%
-      dplyr::mutate(bin_start = lubridate::floor_date(.data$bin_start, by))
+      mutate(bin_start = lubridate::floor_date(.data$bin_start, by))
   }
 
   out <- out %>%
-    dplyr::distinct() %>%
-    tidyr::drop_na(.data$bin_start) %>%
-    dplyr::mutate(bin_start = as.integer(.data$bin_start)) %>%
-    dplyr::summarise(bin_start = seq.int(min(.data$bin_start, na.rm = TRUE),
+    distinct() %>%
+    drop_na(.data$bin_start) %>%
+    mutate(bin_start = as.integer(.data$bin_start)) %>%
+    summarise(bin_start = seq.int(min(.data$bin_start, na.rm = TRUE),
                                          max(.data$bin_start, na.rm = TRUE) + by_duration,
                                          by = by_duration
     ))
 
   out <- out %>%
-    dplyr::mutate(bin_end = dplyr::lead(.data$bin_start)) %>%
-    tidyr::drop_na(.data$bin_end)
+    mutate(bin_end = lead(.data$bin_start)) %>%
+    drop_na(.data$bin_end)
 
   out <- link_intervals(
     x = out, x_start = .data$bin_start, x_end = .data$bin_end,
@@ -769,9 +768,9 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
   )
 
   out <- out %>%
-    dplyr::mutate(bin_start = lubridate::as_datetime(.data$bin_start, tz = tz)) %>%
+    mutate(bin_start = lubridate::as_datetime(.data$bin_start, tz = tz)) %>%
     dplyr::rename(bin = .data$bin_start) %>%
-    dplyr::select(-c(.data$bin_end))
+    select(-c(.data$bin_end))
 
   out
 }
@@ -812,8 +811,8 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
 # #'
 # #' # get the duration per hour, even if the interval is longer than one hour
 # #' data %>%
-# #'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-# #'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+# #'   mutate(datetime = as.POSIXct(datetime)) %>%
+# #'   mutate(lead = lead(datetime)) %>%
 # #'   bin_duration(
 # #'     start_time = datetime,
 # #'     end_time = lead,
@@ -831,9 +830,9 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
 # #' )
 # #' # binned_intervals also takes into account the prior grouping structure
 # #' data %>%
-# #'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-# #'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
-# #'   dplyr::group_by(participant_id, type) %>%
+# #'   mutate(datetime = as.POSIXct(datetime)) %>%
+# #'   mutate(lead = lead(datetime)) %>%
+# #'   group_by(participant_id, type) %>%
 # #'   bin_duration(
 # #'     start_time = datetime,
 # #'     end_time = lead,
@@ -848,21 +847,21 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
 #   out <- bin_data(data, {{ start_time }}, {{ end_time }}, by)
 #
 #   out <- out %>%
-#     tidyr::unnest(.data$bin_data, keep_empty = TRUE) %>%
-#     dplyr::mutate(duration = {{ end_time }} - {{ start_time }}) %>%
-#     dplyr::group_by(.data$bin, .add = TRUE) %>%
-#     dplyr::summarise(duration = sum(.data$duration), .groups = "drop") %>%
+#     unnest(.data$bin_data, keep_empty = TRUE) %>%
+#     mutate(duration = {{ end_time }} - {{ start_time }}) %>%
+#     group_by(.data$bin, .add = TRUE) %>%
+#     summarise(duration = sum(.data$duration), .groups = "drop") %>%
 #     dplyr::rename(date = .data$bin)
 #
 #   # Make the by column look pretty
 #   if (by == "hour") {
 #     out <- out %>%
-#       dplyr::mutate(hour = lubridate::hour(.data$date)) %>%
-#       dplyr::mutate(date = lubridate::date(.data$date)) %>%
-#       dplyr::select(dplyr::group_cols(), .data$date, .data$hour, .data$duration)
+#       mutate(hour = lubridate::hour(.data$date)) %>%
+#       mutate(date = lubridate::date(.data$date)) %>%
+#       select(dplyr::group_cols(), .data$date, .data$hour, .data$duration)
 #   } else if (by == "day") {
 #     out <- out %>%
-#       dplyr::mutate(date = lubridate::date(.data$date))
+#       mutate(date = lubridate::date(.data$date))
 #   }
 #
 #   out

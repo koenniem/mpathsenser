@@ -39,7 +39,7 @@ unit_test <- function(sensor, ...) {
     )
     true$measurement_id <- paste0(true$measurement_id, "_", seq_len(true))
 
-    true <- tidyr::unnest_wider(true, names(which(depth > 1)))
+    true <- unnest_wider(true, names(which(depth > 1)))
     true <- as.data.frame(true)
   } else {
     true <- data.frame(
@@ -64,8 +64,8 @@ test_that("save2db", {
   filename <- tempfile("foo", fileext = ".db")
   db <- create_db(NULL, filename)
 
-  DBI::dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
-  DBI::dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
+  dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
+  dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
   db_size <- file.size(filename)
   expect_error(save2db(db, "Accelerometer", data.frame(
     measurement_id = paste0("12345_", 1:1000),
@@ -94,7 +94,7 @@ test_that("save2db", {
   expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1000L)
 
   # Cleanup
-  DBI::dbDisconnect(db)
+  dbDisconnect(db)
   file.remove(filename)
 })
 

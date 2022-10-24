@@ -138,25 +138,17 @@ import <- function(path = getwd(),
     files <- files[!(files %in% processed_files$file_name)]
 
     if (length(files) == 0) {
-      DBI::dbDisconnect(db)
+      dbDisconnect(db)
       return(message("No new files to process."))
     }
   }
 
-  # Old parallel argument
-  if (lifecycle::is_present(parallel)) {
-    lifecycle::deprecate_warn(when = "1.1.1",
-                              what = "import(parallel)",
-                              details = c(
-                                i = "Use future::plan(\"multisession\") instead"
-                              ))
-  }
-
-  # Call on implementation
+  # Split the files into batches
   files <- split(files, ceiling(seq_along(files) / batch_size))
 
+  # Display progress, if enabled
   if (requireNamespace("progressr", quietly = TRUE)) {
-    p <- progressr::progressor(steps = length(files)) # Progress vbar
+    p <- progressr::progressor(steps = length(files))
   }
 
   for (i in seq_along(files)) {
@@ -168,9 +160,9 @@ import <- function(path = getwd(),
     )
 
     res <- purrr::transpose(res)
-    res$studies <- dplyr::bind_rows(res$studies)
-    res$participants <- dplyr::bind_rows(res$participants)
-    res$file <- dplyr::bind_rows(res$file)
+    res$studies <- bind_rows(res$studies)
+    res$participants <- bind_rows(res$participants)
+    res$file <- bind_rows(res$file)
 
     # Interesting feature in purrr::transpose. If the names would not be explicitly set, it would
     # only take the names of the first entry of the list. So, if some sensors would be present in
@@ -343,7 +335,7 @@ import_impl <- function(path, filename, db_name, sensors) {
   data$sensor <- safe_extract(data$data_format, "name")
   data$data_format <- safe_extract(data$data_format, "namespace")
   data$header <- NULL
-  data <- tidyr::unnest(data, c(study_id:sensor))
+  data <- unnest(data, c(.data$study_id:.data$sensor))
 
   # Due to the hacky solution above, filter out rows where the participant_id is missing,
   # usually in the last entry of a file
@@ -352,7 +344,8 @@ import_impl <- function(path, filename, db_name, sensors) {
   # Open db
   tmp_db <- open_db(NULL, db_name)
 
-  # Safe duplicate check before insertion Check if file is already registered as processed
+  # Safe duplicate check before insertion
+  # Check if file is already registered as processed
   # Now using the participant_id and study_id
   this_file <- data.frame(
     file_name = filename[1],
@@ -376,19 +369,19 @@ import_impl <- function(path, filename, db_name, sensors) {
     )
   )[1, 1]
   if (matches > 0) {
-    DBI::dbDisconnect(tmp_db)
+    dbDisconnect(tmp_db)
     # next  # File was already processed
     return(out)
   }
 
   # Populate study specifics to db
-  study_id <- dplyr::distinct(data, study_id, data_format)
+  study_id <- distinct(data, .data$study_id, .data$data_format)
 
   # Add participants
-  participant_id <- dplyr::distinct(data, participant_id, study_id)
+  participant_id <- distinct(data, .data$participant_id, .data$study_id)
 
   # Make sure top-level of data$body is called body and not carp_body as in the new version
-  data <- dplyr::mutate(data, body = purrr::modify(body, purrr::set_names, nm = "body"))
+  data <- mutate(data, body = purrr::modify(body, purrr::set_names, nm = "body"))
 
   # Divide et impera
   data <- split(data, as.factor(data$sensor), drop = TRUE)

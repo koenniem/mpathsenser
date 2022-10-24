@@ -15,16 +15,14 @@
 #' @export
 decrypt_gps <- function(data, key) {
   if (!requireNamespace("sodium", quietly = TRUE)) {
-    stop(paste0(
+    abort(c(
       "package sodium is needed for this function to work. ",
-      "Please install it using install.packages(\"sodium\")"
-    ),
-    call. = FALSE
-    )
+      i = "Please install it using install.packages(\"sodium\")"
+    ))
   }
 
   if (!is.raw(key) & !is.character(key)) {
-    stop("key must be either a character or raw vector")
+    abort("key must be either a character or raw vector")
   }
 
   if (!is.raw(key)) {
@@ -48,8 +46,8 @@ decrypt_gps <- function(data, key) {
   }
 
   data <- data %>%
-    dplyr::collect() %>%
-    dplyr::mutate(dplyr::across(c(latitude, longitude), internal_decrypt))
+    collect() %>%
+    mutate(across(c(.data$latitude, .data$longitude), internal_decrypt))
 
   data
 }

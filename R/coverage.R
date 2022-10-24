@@ -202,7 +202,7 @@ coverage <- function(db,
 
     out <- ggplot2::ggplot(
       data = data,
-      mapping = ggplot2::aes(x = hour, y = measure, fill = coverage)
+      mapping = ggplot2::aes(x = .data$hour, y = .data$measure, fill = .data$coverage)
     ) +
       ggplot2::geom_tile() +
       ggplot2::geom_text(
@@ -236,7 +236,7 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
     # Extract the data for this participant and sensor
     tmp <- dplyr::tbl(tmp_db, .x) %>%
       filter(participant_id == p_id) %>%
-      select(measurement_id, time, date)
+      select(.data$measurement_id, .data$time, .data$date)
 
     # Filter by date if needed
     if (!is.null(start_date) && !is.null(end_date)) {
@@ -252,23 +252,23 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
       "Calendar", "InstalledApps", "TextMessage"
     )) {
       tmp <- tmp %>%
-        mutate(measurement_id = substr(measurement_id, 1, 36)) %>%
+        mutate(measurement_id = substr(.data$measurement_id, 1, 36)) %>%
         distinct()
     }
 
     # Calculate the number of average measurements per hour i.e. the sum of all measurements in
     # that hour divided by n
     tmp <- tmp %>%
-      mutate(hour = strftime("%H", time)) %>%
+      mutate(hour = strftime("%H", .data$time)) %>%
       # mutate(Date = date(time)) %>%
-      dplyr::count(date, hour) %>%
-      group_by(hour) %>%
-      summarise(coverage = sum(n, na.rm = TRUE) / n())
+      dplyr::count(.data$date, .data$hour) %>%
+      group_by(.data$hour) %>%
+      summarise(coverage = sum(.data$n, na.rm = TRUE) / n())
 
     # Transfer the result to R's memory and ensure it's numeric
     tmp <- tmp %>%
       collect() %>%
-      mutate(hour = as.numeric(hour), coverage = as.numeric(coverage))
+      mutate(hour = as.numeric(.data$hour), coverage = as.numeric(.data$coverage))
 
     # Disconnect from the temporary database connection
     dbDisconnect(tmp_db)
@@ -277,7 +277,7 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
     # per hour by the expected number of measurements
     if (relative) {
       tmp <- tmp %>%
-        mutate(coverage = round(coverage / frequency[.x], 2))
+        mutate(coverage = round(.data$coverage / frequency[.x], 2))
     }
 
     tmp %>%

@@ -12,7 +12,7 @@ test_that("link", {
     x = rep(1:30, 2)
   )
 
-  res <- link(dat1, dat2, "participant_id", offset_before = 1800)
+  res <- link(dat1, dat2, "participant_id", offset_before = 1800, split = NULL)
   true <- tibble::tibble(
     time = rep(c(
       as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
@@ -52,7 +52,7 @@ test_that("link", {
     data[idx, ]
   }
   res <- link(scramble(dat1), scramble(dat2), "participant_id", offset_before = 1800) %>%
-    dplyr::arrange(participant_id, time)
+    arrange(participant_id, time)
   expect_equal(res, true)
 
   res <- link(dat1, dat2, "participant_id", offset_after = 1800)
@@ -90,7 +90,7 @@ test_that("link", {
   expect_equal(res, true)
 
   res <- link(scramble(dat1), scramble(dat2), "participant_id", offset_after = 1800) %>%
-    dplyr::arrange(participant_id, time)
+    arrange(participant_id, time)
   expect_equal(res, true)
 
   # Test add_before and add_after
@@ -179,8 +179,7 @@ test_that("link", {
   expect_error(
     link(dat1, dat2, offset_before = "1800"),
     paste(
-      "Invalid offset specified\\. Try something like '30 minutes', ",
-      "lubridate::minutes\\(30\\)\\, or 1800."
+      "Invalid offset specified\\."
     )
   )
   expect_error(
@@ -378,7 +377,7 @@ test_that("link_db", {
     link_db(db, "Activity", offset_before = 1800),
     "either a second sensor or an external data frame must be supplied"
   )
-  DBI::dbDisconnect(db)
+  dbDisconnect(db)
   expect_error(
     link_db(db, "Activity", "Bluetooth", offset_before = 1800),
     "Database connection is not valid"
@@ -420,7 +419,7 @@ test_that("link_db", {
   )
 
   # Cleanup
-  DBI::dbDisconnect(db)
+  dbDisconnect(db)
   file.remove(filename)
 })
 
@@ -604,7 +603,7 @@ test_that("link_gaps", {
     offset_before = 1800,
     raw_data = TRUE
   ) %>%
-    dplyr::arrange(participant_id, time)
+    arrange(participant_id, time)
   expect_equal(res_raw, true)
 
   # offset_before, raw_data = FALSE
@@ -799,7 +798,7 @@ test_that("bin_data", {
   # get bins per hour, even if the interval is longer than one hour
   res <- data %>%
     dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-    dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+    dplyr::mutate(lead = lead(datetime)) %>%
     bin_data(
       start_time = datetime,
       end_time = lead,
@@ -840,7 +839,7 @@ test_that("bin_data", {
   # in the group.
   res <- data %>%
     dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-      dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+      dplyr::mutate(lead = lead(datetime)) %>%
       bin_data(
         start_time = datetime,
         end_time = lead,
@@ -904,9 +903,9 @@ test_that("bin_data", {
   # binned_intervals also takes into account the prior grouping structure
   res <- data %>%
     dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-    dplyr::group_by(participant_id) %>%
-    dplyr::mutate(lead = dplyr::lead(datetime)) %>%
-    dplyr::group_by(participant_id, type) %>%
+    group_by(participant_id) %>%
+    dplyr::mutate(lead = lead(datetime)) %>%
+    group_by(participant_id, type) %>%
     bin_data(
       start_time = datetime,
       end_time = lead,
@@ -952,7 +951,7 @@ test_that("bin_data", {
       )
     ), 2)
   ) %>%
-    dplyr::group_by(participant_id, type)
+    group_by(participant_id, type)
   expect_equal(res, true)
 
   # To get the duration for each bin (note to change the variable names in sum):
@@ -962,10 +961,10 @@ test_that("bin_data", {
 
   # Or:
   duration2 <- res %>%
-    tidyr::unnest(bin_data, keep_empty = TRUE) %>%
+    unnest(bin_data, keep_empty = TRUE) %>%
     dplyr::mutate(duration = .data$lead - .data$datetime) %>%
-    dplyr::group_by(bin, .add = TRUE) %>%
-    dplyr::summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
+    group_by(bin, .add = TRUE) %>%
+    summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
 
   true <-c(55, 0, 5, 5, 60, 5, 55, 0, 5, 5, 60, 5)
   expect_equal(duration, as.double(duration2$duration))

@@ -30,13 +30,13 @@ NULL to extract all sensor data.}
 
 \item{recursive}{Should the listing recurse into directories?}
 
-\item{dbname}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: Creating new databases on the fly using
-\code{import} has been deprecated as it is better to separate the two functions. You must now
-create a new database using \code{\link[mpathsenser]{create_db}} or reuse an existing one.}
+\item{dbname}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: Creating new databases on the fly has been
+deprecated as it is better to separate the two functions. You must now create a new database
+using \code{\link[mpathsenser]{create_db}} or reuse an existing one.}
 
 \item{overwrite_db}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: This argument was used when database
 creation in \code{import} was still supported. As this functionality is deprecated,
-\code{overwrite_db}  is now ignored and will be removed in future versions.}
+\code{overwrite_db} is now ignored and will be removed in future versions.}
 
 \item{parallel}{A value that indicates whether to do reading in and processing in parallel. If
 this argument is a number, this indicates the number of workers that will be used.
