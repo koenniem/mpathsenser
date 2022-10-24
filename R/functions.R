@@ -182,31 +182,15 @@ import <- function(path = getwd(),
     data <- purrr::compact(res$data)
     res$data <- NULL # memory efficiency
     data <- purrr::transpose(data, .names = sort(mpathsenser::sensors))
-    data <- lapply(data, dplyr::bind_rows)
+    data <- lapply(data, bind_rows)
     data <- purrr::compact(data)
-    data <- lapply(data, dplyr::distinct) # Filter out duplicate rows (for some reason)
+    data <- lapply(data, distinct) # Filter out duplicate rows (for some reason)
 
-    # Write all data as a single transaction
-    tryCatch(
-      {
-        DBI::dbWithTransaction(db, {
-          add_study(db, unique(res$studies))
-          add_participant(db, unique(res$participants))
-
-          for (j in seq_along(data)) {
-            save2db(db, names(data)[[j]], data[[j]])
-          }
-
-          # Add files to list of processed files
-          add_processed_files(db, res$file)
-        })
-      },
-      error = function(e) {
-        # warning(paste0("transaction failed for file ", files[i]),
-        #         call. = FALSE)
-      }
+    # Write all data as a single transaction, safely.
+    try(
+      expr = .import_write_to_db(db, res, data),
+      silent = TRUE
     )
-
 
     # Update progress bar
     if (requireNamespace("progressr", quietly = TRUE)) {
@@ -220,6 +204,53 @@ import <- function(path = getwd(),
     message("All files were successfully written to the database.")
   } else {
     warning("Some files could not be written to the database.", call. = FALSE)
+  }
+}
+
+# Function for writing all data in a batch to the database
+.import_write_to_db <- function(db, meta_data, sensor_data) {
+  DBI::dbWithTransaction(db, {
+    add_study(db, unique(meta_data$studies))
+    add_participant(db, unique(meta_data$participants))
+
+    for (i in seq_along(sensor_data)) {
+      save2db(db, names(sensor_data)[[i]], sensor_data[[i]])
+    }
+
+    # Add files to list of processed files
+    add_processed_files(db, meta_data$file)
+  })
+}
+
+.import_read_json <- function(path, filename) {
+  # Try to read in the file. If the file is corrupted for some reason, skip this one
+  file <- normalizePath(file.path(path, filename[1]))
+  file <- readLines(file, warn = FALSE, skipNul = TRUE)
+  file <- paste0(file, collapse = "")
+  if (file == "") {
+    p_id <- sub(".*?([0-9]{5}).*", "\\1", filename[1])
+    out$studies[1, ] <- c(study_id = "-1", data_format = NA)
+    out$participants[1, ] <- c(study_id = "-1", participant_id = p_id)
+    out$file[1, ] <- c(file_name = filename[1], study_id = "-1", participant_id = p_id)
+    # next
+    return(out)
+  }
+
+  if (!jsonlite::validate(file)) {
+    warning(paste0("Invalid JSON in file ", filename[1]), call. = FALSE)
+    return(out)
+  }
+
+  possible_error <- tryCatch(
+    {
+      data <- rjson::fromJSON(file, simplify = FALSE)
+    },
+    error = function(e) e
+  )
+
+  if (inherits(possible_error, "error")) {
+    warning(paste("Could not read", filename[1]), call. = FALSE)
+    return(out)
   }
 }
 
@@ -238,8 +269,6 @@ import_impl <- function(path, filename, db_name, sensors) {
     ),
     data = vector("list", length(filename))
   )
-
-  # for (i in seq_along(files)) {
 
   # Try to read in the file. If the file is corrupted for some reason, skip this one
   file <- normalizePath(file.path(path, filename[1]))
