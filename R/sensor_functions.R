@@ -863,7 +863,7 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
   by_names <- colnames(select(data, {{ by }}))
   if (!all(by_names %in% c(colnames(data), colnames(gaps)))) {
-    stop(paste(by, "must be a column in both data and gaps."), call. = FALSE)
+    stop(paste(by, "must be a column in both data and gaps."))
   }
 
   # Pour the gaps in a different format so that they can be added to the sensor data as

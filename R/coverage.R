@@ -103,11 +103,11 @@ coverage <- function(db,
                      plot = TRUE) {
   # Check db
   if (!inherits(db, "DBIConnection")) {
-    stop("Argument db is not a database connection.")
+    abort("Argument db is not a database connection.")
   }
 
   if (!dbIsValid(db)) {
-    stop("Database is invalid.")
+    abort("Database is invalid.")
   }
 
   # Check sensors
@@ -116,26 +116,26 @@ coverage <- function(db,
   } else {
     missing <- sensor[!(sensor %in% sensors)]
     if (length(missing) != 0) {
-      stop(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
+      abort(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
     }
   }
 
   # Check participants
   if (length(participant_id) > 1) {
-    stop("Only 1 participant per coverage chart allowed")
+    abort("Only 1 participant per coverage chart allowed")
   }
 
   if (is.character(participant_id)) {
     if (!(participant_id %in% get_participants(db)$participant_id)) {
-      stop("Participant_id not known.")
+      abort("Participant_id not known.")
     }
   } else {
-    stop("participant_id must be a character string")
+    abort("participant_id must be a character string")
   }
 
   # Check frequency
   if (!relative && !is.numeric(frequency) | is.null(names(frequency))) {
-    stop("Frequency must be a named numeric vector")
+    abort("Frequency must be a named numeric vector")
   }
 
   # Check time subset
@@ -144,7 +144,7 @@ coverage <- function(db,
   } else if (is.null(offset) || (tolower(offset) == "none")) {
     offset <- NULL
   } else {
-    stop("Argument offset must be either 'None', 1 day, or 2, 3, 4, ... days.")
+    abort("Argument offset must be either 'None', 1 day, or 2, 3, 4, ... days.")
   }
 
   # Helper function for checking if a string is convertible to date
@@ -162,14 +162,14 @@ coverage <- function(db,
 
   # Check start_date, end_date
   if ((!is.null(start_date) && !is.null(end_date)) && !is.null(offset)) {
-    warning("Argument start_date/end_date and offset cannot be present at the same time. ",
-            "Ignoring the offset argument.",
-            call. = FALSE
-    )
+    warn(c(
+      "Argument start_date/end_date and offset cannot be present at the same time. ",
+      i = "Ignoring the offset argument."
+    ))
     offset <- NULL
   } else if (!(is.null(start_date) | convert2date(start_date)) ||
              !(is.null(end_date) | convert2date(end_date))) {
-    stop("start_date and end_date must be NULL, a character string, or date.", call. = FALSE)
+    abort("start_date and end_date must be NULL, a character string, or date.")
   }
 
   # Retain only frequencies that appear in the sensor list
@@ -192,12 +192,10 @@ coverage <- function(db,
   if (plot) {
     # Check if required packages are available
     if (!requireNamespace("ggplot2", quietly = TRUE)) {
-      stop(paste0(
+      abort(c(
         "package ggplot2 is needed for this function to work. ",
-        "Please install it using install.packages(\"ggplot2\")"
-      ),
-      call. = FALSE
-      )
+        i = "Please install it using install.packages(\"ggplot2\")"
+      ))
     }
 
     out <- ggplot2::ggplot(

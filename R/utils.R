@@ -21,13 +21,13 @@ ccopy <- function(from,
                   to,
                   recursive = TRUE) {
   if (is.null(from) || !is.character(from)) {
-    stop("from must be a character", call. = FALSE)
+    stop("from must be a character")
   }
   if (is.null(to) || !is.character(to)) {
-    stop("to must be a character", call. = FALSE)
+    stop("to must be a character")
   }
   if (is.null(from) || !is.logical(recursive)) {
-    stop("recursive must be a logical", call. = FALSE)
+    stop("recursive must be a logical")
   }
 
   from_list <- dir(path = from, pattern = "*.zip$", recursive = recursive)
@@ -35,10 +35,10 @@ ccopy <- function(from,
   copy <- setdiff(from_list, to_list)
 
   if (length(copy) == 0) {
-    return(message("No files left to copy"))
+    return(inform("No files left to copy"))
   }
 
-  message(paste0("Copying ", length(copy), " files."))
+  inform(paste0("Copying ", length(copy), " files."))
   to_copy <- file.path(from, copy)
   invisible(do.call(
     file.copy,
@@ -82,19 +82,19 @@ fix_jsons <- function(path = getwd(),
                       recursive = TRUE,
                       parallel = deprecated()) {
   if (!requireNamespace("vroom", quietly = TRUE)) {
-    stop(paste0(
+    abort(c(
       "package vroom is needed for this function to work. ",
-      "Please install it using install.packages(\"vroom\")"
+      i = "Please install it using install.packages(\"vroom\")"
     ),
     call. = FALSE
     )
   }
 
   if (!is.null(path) && !is.character(path)) {
-    stop("path must be a character string of the path name")
+    abort("path must be a character string of the path name")
   }
   if (!is.null(files) && !is.character(files)) {
-    stop("files must be NULL or a character vector of file names")
+    abort("files must be NULL or a character vector of file names")
   }
 
   # Find all JSON files that are _not_ zipped Thus, make sure you didn't unzip them yet,
@@ -113,7 +113,7 @@ fix_jsons <- function(path = getwd(),
         {
           normalizePath(file.path(path, files), mustWork = TRUE)
         },
-        error = function(e) stop(e)
+        error = function(e) abort(as.character(e))
       )
       jsonfiles <- normalizePath(file.path(files))
     } else {
@@ -121,7 +121,7 @@ fix_jsons <- function(path = getwd(),
         {
           normalizePath(files, mustWork = TRUE)
         },
-        error = function(e) stop(e)
+        error = function(e) abort(as.character(e))
       )
       jsonfiles <- normalizePath(files)
     }
@@ -145,10 +145,12 @@ fix_jsons <- function(path = getwd(),
       n_fixed <- fix_jsons_impl(jsonfiles)
     }
   } else {
-    return(message("No JSON files found."))
+    inform("No JSON files found.")
+    return(invisible(0))
   }
 
-  return(message("Fixed ", sum(n_fixed), " files"))
+  inform(paste0("Fixed ", sum(n_fixed), " files"))
+  return(invisible(sum(n_fixed)))
 }
 
 fix_jsons_impl <- function(jsonfiles) {
@@ -289,10 +291,10 @@ test_jsons <- function(path = getwd(),
                        recursive = TRUE,
                        parallel = deprecated()) {
   if (!is.null(path) && !is.character(path)) {
-    stop("path must be a character string of the path name")
+    abort("path must be a character string of the path name")
   }
   if (!is.null(files) && !is.character(files)) {
-    stop("files must be NULL or a character vector of file names")
+    abort("files must be NULL or a character vector of file names")
   }
 
   if (is.null(files)) {
@@ -309,7 +311,7 @@ test_jsons <- function(path = getwd(),
         {
           normalizePath(file.path(path, files), mustWork = TRUE)
         },
-        error = function(e) stop(e)
+        error = function(e) abort(as.character(e))
       )
       jsonfiles <- normalizePath(file.path(files))
     } else {
@@ -317,7 +319,7 @@ test_jsons <- function(path = getwd(),
         {
           normalizePath(files, mustWork = TRUE)
         },
-        error = function(e) stop(e)
+        error = function(e) abort(as.character(e))
       )
       jsonfiles <- normalizePath(files)
     }
@@ -355,10 +357,10 @@ test_jsons <- function(path = getwd(),
 
   jsonfiles <- jsonfiles[!missing]
   if (length(jsonfiles) == 0) {
-    message("No issues found.")
+    inform("No issues found.")
     return(invisible(""))
   } else {
-    warning("There were issues in some files")
+    warn("There were issues in some files")
     return(normalizePath(jsonfiles))
   }
 }
@@ -439,9 +441,9 @@ unzip_data <- function(path = getwd(),
   }
 
   if (unzipped_files > 0) {
-    message(paste("Unzipped", unzipped_files, "files."))
+    inform(paste("Unzipped", unzipped_files, "files."))
   } else {
-    message("No files found to unzip.")
+    inform("No files found to unzip.")
   }
 }
 
@@ -470,7 +472,7 @@ unzip_impl <- function(path, to, overwrite) {
             exdir = to
           ))
         },
-        error = function(e) warning(paste0("Failed to unzip", x), call. = FALSE)
+        error = function(e) warn(paste0("Failed to unzip", x))
       )
     })
   }

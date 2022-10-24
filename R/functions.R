@@ -139,7 +139,7 @@ import <- function(path = getwd(),
 
     if (length(files) == 0) {
       dbDisconnect(db)
-      return(message("No new files to process."))
+      return(inform("No new files to process."))
     }
   }
 
@@ -193,9 +193,9 @@ import <- function(path = getwd(),
   processed_files <- get_processed_files(db)
   complete <- all(unlist(files, use.names = FALSE) %in% processed_files$file_name)
   if (complete) {
-    message("All files were successfully written to the database.")
+    inform("All files were successfully written to the database.")
   } else {
-    warning("Some files could not be written to the database.", call. = FALSE)
+    warn("Some files could not be written to the database.")
   }
 }
 
@@ -229,7 +229,7 @@ import <- function(path = getwd(),
   }
 
   if (!jsonlite::validate(file)) {
-    warning(paste0("Invalid JSON in file ", filename[1]), call. = FALSE)
+    warn(paste0("Invalid JSON in file ", filename[1]))
     return(out)
   }
 
@@ -241,7 +241,7 @@ import <- function(path = getwd(),
   )
 
   if (inherits(possible_error, "error")) {
-    warning(paste("Could not read", filename[1]), call. = FALSE)
+    warn(paste("Could not read", filename[1]))
     return(out)
   }
 }
@@ -276,7 +276,7 @@ import_impl <- function(path, filename, db_name, sensors) {
   }
 
   if (!jsonlite::validate(file)) {
-    warning(paste0("Invalid JSON in file ", filename[1]), call. = FALSE)
+    warn(paste0("Invalid JSON in file ", filename[1]))
     return(out)
   }
 
@@ -288,7 +288,7 @@ import_impl <- function(path, filename, db_name, sensors) {
   )
 
   if (inherits(possible_error, "error")) {
-    warning(paste("Could not read", filename[1]), call. = FALSE)
+    warn(paste("Could not read", filename[1]))
     return(out)
   }
 
@@ -414,7 +414,7 @@ import_impl <- function(path, filename, db_name, sensors) {
       out$data[[1]] <- data
     },
     error = function(e) {
-      warning(paste0("processing failed for file ", filename[1]), call. = FALSE)
+      warn(paste0("processing failed for file ", filename[1]))
     }
   )
 

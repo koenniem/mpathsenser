@@ -321,19 +321,19 @@ link_db <- function(db,
                     reverse = FALSE,
                     ignore_large = FALSE) {
   if (!dbIsValid(db)) {
-    stop("Database connection is not valid")
+    abort("Database connection is not valid")
   }
   if (is.null(external) & is.null(sensor_two)) {
-    stop("either a second sensor or an external data frame must be supplied")
+    abort("either a second sensor or an external data frame must be supplied")
   }
   if (!is.null(external) & !is.null(sensor_two)) {
-    stop("only a second sensor or an external data frame can be supplied, but not both")
+    abort("only a second sensor or an external data frame can be supplied, but not both")
   }
   if (!is.null(external) && !is.data.frame(external)) {
-    stop("external must be a data frame")
+    abort("external must be a data frame")
   }
   if (!is.null(sensor_two) && !is.character(sensor_two)) {
-    stop("sensor_two must be a character vector")
+    abort("sensor_two must be a character vector")
   }
 
   # See if data is not incredibly large
@@ -343,7 +343,7 @@ link_db <- function(db,
       nrow(external)
     )
     if (n > 1e+05) {
-      stop("the total number of rows is higher than 100000. Use ignore_large = TRUE to continue")
+      abort("the total number of rows is higher than 100000. Use ignore_large = TRUE to continue")
     }
   }
 
@@ -355,10 +355,10 @@ link_db <- function(db,
       mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", tz = "UTC"))
   } else {
     if (any(format(external$time, "%Z") != "UTC")) {
-      warning(paste0(
-        "external data is not using UTC as a time zone, unlike the data in the ",
-        "database. Consider converting the time column to UTC."
-      ), call. = FALSE)
+      warn(c(
+        "`external` is not using UTC as a time zone, unlike the data in the database.",
+        i = "Consider converting the time column to UTC."
+      ))
     }
 
     dat_two <- external
@@ -434,23 +434,23 @@ link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0
     )
 
   if (!is.null(by) && !is.character(by)) {
-    stop("by must be a character vector of variables to join by", call. = FALSE)
+    abort("by must be a character vector of variables to join by")
   }
 
   # offset checks
   if ((is.null(offset_before) | all(offset_before == 0)) &
       (is.null(offset_after) | all(offset_after == 0))) {
-    stop("either offset_before or offset_after must not be 0 or NULL, or both", call. = FALSE)
+    abort("either offset_before or offset_after must not be 0 or NULL, or both")
   }
   if (!is.null(offset_before) && !(is.character(offset_before) |
                                    lubridate::is.period(offset_before) |
                                    is.numeric(offset_before))) {
-    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
+    abort("offset_before must be a character vector, numeric vector, or a period")
   }
   if (!is.null(offset_after) && !(is.character(offset_after) |
                                   lubridate::is.period(offset_after) |
                                   is.numeric(offset_after))) {
-    stop("offset_before must be a character vector, numeric vector, or a period", call. = FALSE)
+    abort("offset_before must be a character vector, numeric vector, or a period")
   }
 
   # Convert offset_before to integer time
@@ -466,44 +466,44 @@ link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0
   }
 
   if (is.na(offset_before) | is.na(offset_after)) {
-    stop(paste(
+    abort(paste(
       "Invalid offset specified. Try something like '30 minutes', ",
       "lubridate::minutes(30), or 1800."
-    ), call. = FALSE)
+    ))
   }
   if (!is.null(offset_before) && offset_before < 0) {
     offset_before <- abs(offset_before)
-    warning(paste(
+    warn(c(
       "offset_before must be a positive period (i.e. greater than 0).",
-      "Taking the absolute value"
-    ), call. = FALSE)
+      i = "Taking the absolute value"
+    ))
   }
   if (!is.null(offset_after) && offset_after < 0) {
     offset_after <- abs(offset_after)
-    warning(paste(
+    warn(c(
       "offset_after must be a positive period (i.e. greater than 0).",
-      "Taking the absolute value"
-    ), call. = FALSE)
+      i = "Taking the absolute value"
+    ))
   }
 
   # Check for time column in data
   if (!("time" %in% colnames(data))) {
-    stop("column 'time' must be present in data", call. = FALSE)
+    abort("column 'time' must be present in data")
   }
   # Check for time column
   if (!("from" %in% colnames(gaps) & "to" %in% colnames(gaps))) {
-    stop("column 'from' and 'to' must be present in gaps.", call. = FALSE)
+    abort("column 'from' and 'to' must be present in gaps.")
   }
   if (!lubridate::is.POSIXct(data$time)) {
-    stop("column 'time' in x must be a POSIXct", call. = FALSE)
+    abort("column 'time' in x must be a POSIXct")
   }
 
   # Check that gap or gap_data is not already present in data
   if ("gap" %in% colnames(data)) {
-    stop("column 'gap' should not already be present in data")
+    abort("column 'gap' should not already be present in data")
   }
   if (raw_data & "gap_data" %in% colnames(data)) {
-    stop("column 'gap_data' should not already be present in data")
+    abort("column 'gap_data' should not already be present in data")
   }
 
   # Calculate the start and end time of the interval (in seconds) of each row in data
@@ -721,7 +721,7 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
   } else if (is.numeric(by) & !fixed) {
     by_duration <- by
   } else {
-    stop("by must be one of 'sec', 'min', 'hour', or 'day', or a numeric value if fixed = FALSE.")
+    abort("by must be one of 'sec', 'min', 'hour', or 'day', or a numeric value if fixed = FALSE.")
   }
 
   tz <- attr(pull(data, {{ start_time }}), "tz")

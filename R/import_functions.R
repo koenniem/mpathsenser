@@ -6,7 +6,7 @@ save2db <- function(db, name, data) {
       DBI::dbAppendTable(db, name, data)
     },
     error = function(e) {
-      message("Could not add data to the data base. Falling back to UPSERT method")
+      inform("Could not add data to the data base. Falling back to UPSERT method")
 
       dbx::dbxUpsert(
         db,
@@ -394,7 +394,7 @@ gyroscope_fun <- function(data) {
 }
 
 keyboard_fun <- function(data) {
-  stop("Function not implemented")
+  abort("Function not implemented")
 }
 
 light_fun <- function(data) {

@@ -30,8 +30,8 @@ sensors <- c(
 #' @return A database connection using prepared database schemas.
 #' @export
 create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
-  if (!is.character(db_name)) stop("Argument db_name must be a filename")
-  if (!(is.null(path) | is.character(path))) stop("Argument path must be a character string")
+  if (!is.character(db_name)) abort("Argument db_name must be a filename")
+  if (!(is.null(path) | is.character(path))) abort("Argument path must be a character string")
 
   # Merge path and file name
   if (!is.null(path)) {
@@ -42,11 +42,11 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   if (file.exists(db_name)) {
     if (overwrite) {
       tryCatch(file.remove(db_name),
-        warning = function(e) stop(warningCondition(e)),
-        error = function(e) stop(errorCondition(e))
+        warning = function(e) abort(as.character(e)),
+        error = function(e) abort(as.character(e))
       )
     } else {
-      stop(paste("Database", db_name, "already exists. Use overwrite = TRUE to overwrite."))
+      abort(paste("Database", db_name, "already exists. Use overwrite = TRUE to overwrite."))
     }
   }
 
@@ -64,7 +64,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
     },
     error = function(e) {
       dbDisconnect(db)
-      stop(e)
+      abort(as.character(e))
     }
   )
 
@@ -87,8 +87,8 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 #' @return A connection to an mpathsenser database.
 #' @export
 open_db <- function(path = getwd(), db_name = "sense.db") {
-  if (!is.character(db_name)) stop("Argument db_name must be a filename")
-  if (!(is.null(path) | is.character(path))) stop("Argument path must be a character string")
+  if (!is.character(db_name)) abort("Argument db_name must be a filename")
+  if (!(is.null(path) | is.character(path))) abort("Argument path must be a character string")
 
   # Merge path and file name
   if (!is.null(path)) {
@@ -96,12 +96,12 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
   }
 
   if (!file.exists(db_name)) {
-    stop("There is no such file")
+    abort("There is no such file")
   }
   db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
   if (!DBI::dbExistsTable(db, "Participant")) {
     dbDisconnect(db)
-    stop("Sorry, this does not appear to be a mpathsenser database.")
+    abort("Sorry, this does not appear to be a mpathsenser database.")
   }
   return(db)
 }
@@ -139,7 +139,7 @@ close_db <- function(db) {
 #' @return No return value, called for side effects.
 #' @export
 index_db <- function(db) {
-  if (is.null(db) || !dbIsValid(db)) stop("Database connection is not valid")
+  if (is.null(db) || !dbIsValid(db)) abort("Database connection is not valid")
 
   tryCatch(
     {
@@ -150,13 +150,13 @@ index_db <- function(db) {
       }
     },
     error = function(e) {
-      stop(e)
+      abort(as.character(e))
     }
   )
 }
 
 vacuum_db <- function(db) {
-  if (is.null(db) || !dbIsValid(db)) stop("Database connection is not valid")
+  if (is.null(db) || !dbIsValid(db)) abort("Database connection is not valid")
   dbExecute(db, "VACUUM")
 }
 
@@ -212,7 +212,7 @@ copy_db <- function(
   } else {
     missing <- sensor[!(sensor %in% sensors)]
     if (length(missing) != 0) {
-      stop(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
+      abort(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
     }
   }
 
@@ -308,7 +308,7 @@ get_processed_files <- function(db) {
 #' @return A data frame containing all \code{participant_id} and \code{study_id}.
 #' @export
 get_participants <- function(db, lazy = FALSE) {
-  if (!dbIsValid(db)) stop("Database connection is not valid")
+  if (!dbIsValid(db)) abort("Database connection is not valid")
   if (lazy) {
     dplyr::tbl(db, "Participant")
   } else {
@@ -327,7 +327,7 @@ get_participants <- function(db, lazy = FALSE) {
 #' @return A data frame containing all studies.
 #' @export
 get_studies <- function(db, lazy = FALSE) {
-  if (!dbIsValid(db)) stop("Database connection is not valid")
+  if (!dbIsValid(db)) abort("Database connection is not valid")
   if (lazy) {
     dplyr::tbl(db, "Study")
   } else {
@@ -357,7 +357,7 @@ get_studies <- function(db, lazy = FALSE) {
 #' @export
 get_nrows <- function(db, sensor = "All", participant_id = NULL, start_date = NULL,
                       end_date = NULL) {
-  if (!dbIsValid(db)) stop("Database connection is not valid")
+  if (!dbIsValid(db)) abort("Database connection is not valid")
 
   if (sensor[[1]] == "All") {
     sensor <- sensors

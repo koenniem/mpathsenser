@@ -60,7 +60,7 @@ test_that("coverage", {
     ),
     paste0(
       "Argument start_date/end_date and offset cannot be present at the same ",
-      "time. Ignoring the offset argument."
+      "time."
     )
   )
   expect_error(
