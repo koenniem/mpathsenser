@@ -165,20 +165,47 @@ vacuum_db <- function(db) {
 #' @description
 #' `r lifecycle::badge("stable")`
 #'
-#' @param from_db A mpathsenser database connection from where the data will be transferred.
-#' @param to_db A mpathsenser database connection where the data will be transferred to. If no
-#' new_db is specified, a path (and possibly a db_name) must be specified for
+#' @param source_db A mpathsenser database connection from where the data will be transferred.
+#' @param target_db A mpathsenser database connection where the data will be transferred to.
 #' \link[mpathsenser]{create_db} to create a new database.
 #' @param sensor A character vector containing one or multiple sensors. See
 #' \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
 #' sensors.
-#' @param path The path to the database. Use NULL to use the full path name in db_name.
-#' @param db_name The name of the database.
+#' @param path  `r lifecycle::badge("deprecated")`: This argument was used when database
+#'   creation in \code{copy_db} was still supported. As this functionality is deprecated,
+#'   \code{overwrite_db} is now ignored and will be removed in future versions.
+#' @param db_name  `r lifecycle::badge("deprecated")`: Creating new databases on the fly has been
+#'   deprecated as it is better to separate the two functions. You must now create a new database
+#'   using \code{\link[mpathsenser]{create_db}} or reuse an existing one.
 #'
 #' @return No return value, called for side effects.
 #' @export
-copy_db <- function(from_db, to_db = NULL, sensor = "All", path = getwd(), db_name = "sense.db") {
-  if (is.null(from_db) || !DBI::dbIsValid(from_db)) stop("Database connection is not valid")
+copy_db <- function(
+    source_db,
+    target_db,
+    sensor = "All",
+    path = deprecated(),
+    db_name = deprecated()
+) {
+
+  # Handle old database creation functionality
+  if (lifecycle::is_present(path)) {
+    lifecycle::deprecate_warn(when = "1.1.1",
+                              what = "copy_db(path)",
+                              details = c(
+                                i = "Please create a database using `create_db()` first."
+                              ))
+  }
+  if (lifecycle::is_present(db_name)) {
+    lifecycle::deprecate_stop(when = "1.1.1",
+                              what = "copy_db(db_name)",
+                              details = c(
+                                i = "Please create a database using `create_db()` first."
+                              ))
+  }
+
+  if (!dbIsValid(source_db)) abort("The connection to source_db is not valid.")
+  if (!dbIsValid(target_db)) abort("The connection to target_db is not valid.")
   # Check sensors
   if (length(sensor) == 1 && sensor == "All") {
     sensor <- sensors
@@ -186,22 +213,6 @@ copy_db <- function(from_db, to_db = NULL, sensor = "All", path = getwd(), db_na
     missing <- sensor[!(sensor %in% sensors)]
     if (length(missing) != 0) {
       stop(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
-    }
-  }
-
-  # If no new database is specified, create a new one
-  no_db_specified <- FALSE
-  if (is.null(to_db)) {
-    no_db_specified <- TRUE
-
-    if (!file.exists(file.path(path, db_name))) {
-      to_db <- create_db(path, db_name)
-      message(paste0("New database created in ", file.path(path, db_name)))
-    } else {
-      stop(paste0(
-        "A file in ", path, " with the name ", db_name, " already exists. Please choose ",
-        "a different name or path or remove the file."
-      ))
     }
   }
 
