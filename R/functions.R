@@ -35,12 +35,12 @@
 #' @param batch_size The number of files that are to be processed in a single batch.
 #' @param backend Name of the database backend that is used. Currently, only RSQLite is supported.
 #' @param recursive Should the listing recurse into directories?
-#' @param dbname `r lifecycle::badge("deprecated")`: Creating new databases on the fly using
-#'   \code{import} has been deprecated as it is better to separate the two functions. You must now
-#'   create a new database using \code{\link[mpathsenser]{create_db}} or reuse an existing one.
+#' @param dbname `r lifecycle::badge("deprecated")`: Creating new databases on the fly has been
+#'   deprecated as it is better to separate the two functions. You must now create a new database
+#'   using \code{\link[mpathsenser]{create_db}} or reuse an existing one.
 #' @param overwrite_db `r lifecycle::badge("deprecated")`: This argument was used when database
 #'   creation in \code{import} was still supported. As this functionality is deprecated,
-#'   \code{overwrite_db}  is now ignored and will be removed in future versions.
+#'   \code{overwrite_db} is now ignored and will be removed in future versions.
 #' @param parallel A value that indicates whether to do reading in and processing in parallel. If
 #'   this argument is a number, this indicates the number of workers that will be used.
 #'
@@ -64,14 +64,14 @@ import <- function(path = getwd(),
 
   # Check if required packages are installed
   if (!requireNamespace("dbx", quietly = TRUE)) {
-    cli::cli_abort(c(
-      "!" = "package `dbx` must be installed for `import()` to work. ",
+    abort(c(
+      "package `dbx` must be installed for `import()` to work. ",
       i = "Please install it using install.packages(\"dbx\")."
     ))
   }
   if (!requireNamespace("rjson", quietly = TRUE)) {
-    cli::cli_abort(c(
-      "!" = "package `rjson` is needed for this function to work. ",
+    abort(c(
+      "package `rjson` is needed for this function to work. ",
       i = "Please install it using install.packages(\"rjson\")"
     ))
   }
@@ -95,11 +95,20 @@ import <- function(path = getwd(),
     )
   }
 
+  # Handle old parallel argument
+  if (lifecycle::is_present(parallel)) {
+    lifecycle::deprecate_warn(when = "1.1.1",
+                              what = "import(parallel)",
+                              details = c(
+                                i = "Use future::plan(\"multisession\") instead"
+                              ))
+  }
+
   # Check if database is valid
   if (!is.null(db)) {
-    if (!DBI::dbIsValid(db)) {
-      cli::cli_abort(c(
-        "!" = "db must be a valid database connection.",
+    if (!dbIsValid(db)) {
+      abort(c(
+        "db must be a valid database connection.",
         i = "Did you forget to save the connection to the variable?"))
     }
   }
@@ -110,14 +119,14 @@ import <- function(path = getwd(),
   if (length(files) == 0) {
     path <- normalizePath(path, "/", mustWork = FALSE)
     if (!dir.exists("foo")) {
-      cli::cli_abort(c(
-        "!" = "Directory {path} does not exist.",
+      abort(c(
+        "Directory {path} does not exist.",
         i = "Did you make a typo in the path name?"
       ))
     }
 
-    cli::cli_abort(c(
-      "!" = "Can't find JSON files in {path}.",
+    abort(c(
+      "Can't find JSON files in {path}.",
       i = "Did you put the JSON files in the correct directory?"))
   }
 
@@ -687,4 +696,3 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
   names(data) <- names(sensor)
 
   data
-}
