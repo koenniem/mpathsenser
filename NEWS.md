@@ -1,24 +1,37 @@
 # mpathsenser 1.1.1 (in development)
-* Added `lifecycle` as a dependency for deprecating arguments.
+## Major changes
+* `identify_gaps()` now allows multiple sensors to be used. This is particularly useful when there 
+are no sensors with high frequency sampling (like accelerometer and gyroscope) or to ensure there 
+can be no measurements within the gaps from any sensor.
+* Changed the arguments names of `copy_db()` `from_db` and `to__db` to `source_db` and `target_db`
+respectively.
 * Deprecated the `parallel` argument in several functions. If you wish to process in parallel, you
-must now specify this beforehand using a [future](https://rdrr.io/cran/future/), e.g.
+must now specify this beforehand using a [future plan](https://rdrr.io/cran/future/), e.g.
 `future::plan("multisession")`.
 * As a consequence, the package `future` is no longer a dependency (but `furrr` is).
-* Fixed a note when first running `link()` or `link_gaps()` in a session, stating that using 
-external vectors `dplyr::select()` is ambiguous.
-* `bin_data()` now also includes measurements in bins that do not have a stop time. This is in 
-particular a problem with the last measurement of a series.
-* Fixed a non-working example in `bin_data()`.
-* Switched `identify_gaps()` from using the lag of each measurements towards using the lead. This
-makes no difference in the output but is a little easier to read.
+* Added `lifecycle` as a dependency for deprecating arguments.
+* Deprecated functionality for on-the-fly database creation in several functions. This disentangles 
+the functionalities of `create_db()` and the other functions, where the latter implicitly depended 
+on the former. The following arguments are thereby rendered disabled:
+  - `dbname` and `overwrite_db` arguments in `import()`
+  - `path` and `db_name` in `copy_db()`
+
+## Minor changes
 * Added a warning section in `identify_gaps()` and friends to inform the user of a possible 
 inconsistency when identifying gaps. 
-* `identify_gaps()` now allows multiple sensors to be used.
+* Switched `identify_gaps()` from using the lag of each measurements towards using the lead. This
+makes no difference in the output but is a little easier to read.
+* The package now provides more nicely formatted errors, warnings, and messages through 
+[`rlang::abort`, `rlang::warn`, and `rlang::inform`](https://rlang.r-lib.org/reference/abort.html).
+
+## Bug fixes
+* Fixed a note when first running `link()` or `link_gaps()` in a session, stating that using 
+external vectors `dplyr::select()` is ambiguous.
+* `bin_data()` now correctly includes measurements in bins that do not have a stop time. This was in 
+particular a problem with the last measurement of a series.
+* Fixed a non-working example in `bin_data()`.
 * Fixed a bug in `add_gaps()` where multiple gaps in succession (i.e. without other data in between)
 were incorrectly handled.
-* Deprecated `dbname` and `overwrite_db` arguments in `import()`, thereby removing the functionality
-of `import()` to create new databases on-the-fly. This disentangles the functionalities of 
-`create_db()` and `import()`, where the latter implicitly depended on the former.
 
 # mpathsenser 1.1.0
 ## Major changes
