@@ -46,6 +46,10 @@ test_that("link", {
   )
   expect_equal(res, true)
 
+  # Test split argument
+  res <- link(dat1, dat2, "participant_id", offset_before = 1800, split = 6)
+  expect_equal(res, true)
+
   # Scrambled test
   scramble <- function(data) {
     idx <- sample(1:nrow(data), nrow(data))
@@ -165,16 +169,20 @@ test_that("link", {
   )
 
   expect_error(
-    link(dplyr::mutate(dat1, time = as.character(time)), dat2, offset_before = 1800),
+    link(mutate(dat1, time = as.character(time)), dat2, offset_before = 1800),
     "column 'time' in x must be a POSIXct"
   )
   expect_error(
-    link(dat1, dplyr::mutate(dat2, time = as.character(time)), offset_before = 1800),
+    link(dat1, mutate(dat2, time = as.character(time)), offset_before = 1800),
     "column 'time' in y must be a POSIXct"
   )
   expect_error(
     link(dat1, dat2, offset_before = TRUE),
     "offset_before must be a character vector, numeric vector, or a period"
+  )
+  expect_error(
+    link(dat1, dat2, offset_after = TRUE),
+    "offset_after must be a character vector, numeric vector, or a period"
   )
   expect_error(
     link(dat1, dat2, offset_before = "1800"),
@@ -189,6 +197,18 @@ test_that("link", {
   expect_error(
     link(dat1, dplyr::select(dat2, -time), offset_before = 1800),
     "column 'time' must be present in both x and y"
+  )
+  expect_error(
+    link(dat1, dat2),
+    "offset_before and offset_after cannot be 0 or NULL at the same time."
+  )
+  expect_warning(
+    link(dat1, dat2, "participant_id", offset_before = -1800),
+    "offset_before must be a positive period \\(i.e. greater than 0\\)."
+  )
+  expect_warning(
+    link(dat1, dat2, "participant_id", offset_after = -1800),
+    "offset_after must be a positive period \\(i.e. greater than 0\\)."
   )
 
   # Bug #6: Test whether original_time is present in all nested data columns
@@ -361,6 +381,7 @@ test_that("link_db", {
   )
   expect_equal(res, true)
 
+  # Argument checks
   expect_error(
     link_db(db, "Activity", 1:10, offset_before = 1800),
     "sensor_two must be a character vector"
@@ -382,6 +403,16 @@ test_that("link_db", {
     link_db(db, "Activity", "Bluetooth", offset_before = 1800),
     "Database connection is not valid"
   )
+  db <- open_db(NULL, db@dbname)
+
+  # Check time zone differences
+  dat1$time <- lubridate::force_tz(dat1$time, "Europe/Brussels")
+  expect_warning(
+    link_db(db, "Activity", external = dat1, offset_after = 1800),
+    "`external` is not using UTC as a time zone, unlike the data in the database."
+  )
+  dat1$time <- lubridate::force_tz(dat1$time, "UTC")
+  dbDisconnect(db)
 
   # Check if ignore_large works
   filename <- tempfile("big", fileext = ".db")
@@ -625,7 +656,7 @@ test_that("link_gaps", {
   # Test whether results from raw_data = FALSE and TRUE are the same
   expect_equal(
     res_raw %>%
-      dplyr::mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
       dplyr::select(-gap_data),
     res
   )
@@ -698,7 +729,7 @@ test_that("link_gaps", {
   # Test whether results from raw_data = FALSE and TRUE are the same
   expect_equal(
     res_raw %>%
-      dplyr::mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
       dplyr::select(-gap_data),
     res
   )
@@ -777,10 +808,121 @@ test_that("link_gaps", {
   # Test whether results from raw_data = FALSE and TRUE are the same
   expect_equal(
     res_raw %>%
-      dplyr::mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
       dplyr::select(-gap_data),
     res
   )
+
+  # Argument checks
+  expect_error(
+    link_gaps(
+      data = dat1$participant_id,
+      gaps = dat2,
+      by = "participant_id",
+      offset_before = 1800L
+    ),
+    "`data` must be a data frame"
+  )
+  expect_error(
+    link_gaps(
+      data = dat1,
+      gaps = dat2$participant_id,
+      by = "participant_id",
+      offset_before = 1800L
+    ),
+    "`gaps` must be a data frame"
+  )
+  expect_error(
+    link_gaps(
+      data = dat1,
+      gaps = dat2,
+      by = as.integer(dat1$participant_id),
+      offset_before = 1800L
+    ),
+    "`by` must be a character vector of variables to join by"
+  )
+  expect_error(
+    link_gaps(
+      data = dat1,
+      gaps = dat2,
+      by = "participant_id"
+    ),
+    "`offset_before` and `offset_after` cannot be 0 or NULL at the same time."
+  )
+  expect_error(
+    link_gaps(
+      data = dat1,
+      gaps = dat2,
+      by = "participant_id",
+      offset_before = TRUE
+    ),
+    "`offset_before` must be a character vector, numeric vector, or a period."
+  )
+  expect_error(
+    link_gaps(
+      data = dat1,
+      gaps = dat2,
+      by = "participant_id",
+      offset_after = TRUE
+    ),
+    "`offset_after` must be a character vector, numeric vector, or a period."
+  )
+  expect_error(
+    link_gaps(
+      data = dat1,
+      gaps = dat2,
+      by = "participant_id",
+      offset_before = "20 foos",
+      offset_after = "20 bars"
+    ),
+    "Invalid offset specified."
+  )
+  expect_warning(
+    link_gaps(
+      data = dat1,
+      gaps = dat2,
+      by = "participant_id",
+      offset_before = -1800
+    ),
+    "`offset_before` must be a positive period \\(i.e. greater than 0\\)."
+  )
+  expect_warning(
+    link_gaps(
+      data = dat1,
+      gaps = dat2,
+      by = "participant_id",
+      offset_after = -1800
+    ),
+    "`offset_after` must be a positive period \\(i.e. greater than 0\\)."
+  )
+  expect_error(
+    link_gaps(
+      data = dat1[,-2],
+      gaps = dat2,
+      by = "participant_id",
+      offset_after = 1800
+    ),
+    "Column `time` must be present in `data`"
+  )
+  expect_error(
+    link_gaps(
+      data = dat1,
+      gaps = dat2[,-2],
+      by = "participant_id",
+      offset_after = 1800
+    ),
+    "Column `from` and `to` must be present in `gaps`."
+  )
+  expect_error(
+    link_gaps(
+      data = mutate(dat1, time = as.character(time)),
+      gaps = dat2,
+      by = "participant_id",
+      offset_after = 1800
+    ),
+    "Column `time` in `data` must be a POSIXct."
+  )
+
 })
 
 ## bin_data =================
@@ -797,8 +939,8 @@ test_that("bin_data", {
 
   # get bins per hour, even if the interval is longer than one hour
   res <- data %>%
-    dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-    dplyr::mutate(lead = lead(datetime)) %>%
+    mutate(datetime = as.POSIXct(datetime)) %>%
+    mutate(lead = lead(datetime)) %>%
     bin_data(
       start_time = datetime,
       end_time = lead,
@@ -838,8 +980,8 @@ test_that("bin_data", {
   # as in this example 30 minutes, but rather depends on the earliest time
   # in the group.
   res <- data %>%
-    dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-      dplyr::mutate(lead = lead(datetime)) %>%
+    mutate(datetime = as.POSIXct(datetime)) %>%
+      mutate(lead = lead(datetime)) %>%
       bin_data(
         start_time = datetime,
         end_time = lead,
@@ -902,9 +1044,9 @@ test_that("bin_data", {
 
   # binned_intervals also takes into account the prior grouping structure
   res <- data %>%
-    dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
+    mutate(datetime = as.POSIXct(datetime)) %>%
     group_by(participant_id) %>%
-    dplyr::mutate(lead = lead(datetime)) %>%
+    mutate(lead = lead(datetime)) %>%
     group_by(participant_id, type) %>%
     bin_data(
       start_time = datetime,
@@ -962,7 +1104,7 @@ test_that("bin_data", {
   # Or:
   duration2 <- res %>%
     unnest(bin_data, keep_empty = TRUE) %>%
-    dplyr::mutate(duration = .data$lead - .data$datetime) %>%
+    mutate(duration = .data$lead - .data$datetime) %>%
     group_by(bin, .add = TRUE) %>%
     summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
 
@@ -970,4 +1112,29 @@ test_that("bin_data", {
   expect_equal(duration, as.double(duration2$duration))
   expect_equal(duration, true)
   expect_equal(as.double(duration2$duration), true)
+
+  # Argument checks
+  data <- data %>%
+    mutate(datetime = as.POSIXct(datetime)) %>%
+    mutate(lead = lead(datetime))
+
+  expect_error(
+      bin_data(
+        data = data,
+        start_time = datetime,
+        end_time = lead,
+        by = TRUE
+      ),
+      "`by` must be one of 'sec', 'min', 'hour', or 'day', or a numeric value if `fixed = FALSE`."
+  )
+  expect_error(
+    data %>%
+      mutate(datetime = as.character(datetime)) %>%
+      bin_data(
+        start_time = datetime,
+        end_time = lead,
+        by = "hour"
+      ),
+    NA
+  )
 })

@@ -459,6 +459,14 @@ test_that("app_usage", {
         end = NA,
         usage = list()
       )
+    ),
+    list(
+      body = list(
+        id = "12345d",
+        timestamp = "2021-11-14T16:40:01.123456Z",
+        start = NA,
+        end = NA
+      )
     )
   )
 
@@ -467,17 +475,45 @@ test_that("app_usage", {
   true <- data.frame(
     measurement_id = c(
       "12345a_1", "12345a_2", "12345a_3", "12345b_1",
-      "12345b_2", "12345b_3", "12345c_1"
+      "12345b_2", "12345b_3", "12345c_1", "12345d_1"
     ),
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
-    start = c(rep("2021-11-15T14:05:00.123456Z", 6), NA),
-    end = c(rep("2021-11-15T14:35.00.123456Z", 6), NA),
-    usage = c(rep(c(10, 5, 7), 2), NA),
-    app = c(rep(c("a", "b", "c"), 2), "")
+    start = c(rep("2021-11-15T14:05:00.123456Z", 6), NA, NA),
+    end = c(rep("2021-11-15T14:35.00.123456Z", 6), NA, NA),
+    usage = c(rep(c(10, 5, 7), 2), NA, NA),
+    app = c(rep(c("a", "b", "c"), 2), "", "")
   )
 
+  expect_equal(res, res_which)
+  expect_equal(res, true)
+  expect_equal(res_which, true)
+
+  # Test without "usage" column
+  dat <- common_test(
+    "app_usage",
+    list(
+      body = list(
+        id = "12345a",
+        timestamp = "2021-11-14T16:40:01.123456Z",
+        start = "2021-11-15T14:05:00.123456Z",
+        end = "2021-11-15T14:35.00.123456Z"
+      )
+    )
+  )
+  res <- app_usage_fun(dat)
+  res_which <- which_sensor(dat, "app_usage")
+  true <- data.frame(
+    measurement_id = "12345a_1",
+    participant_id = "12345",
+    date = "2021-11-14",
+    time = "16:40:00",
+    start = "2021-11-15T14:05:00.123456Z",
+    end = "2021-11-15T14:35.00.123456Z",
+    usage = NA,
+    app = NA
+  )
   expect_equal(res, res_which)
   expect_equal(res, true)
   expect_equal(res_which, true)
@@ -593,7 +629,8 @@ test_that("calendar", {
             attendees = list(
               "a",
               "b",
-              NA
+              NA,
+              "NA"
             )
           ),
           list(
@@ -617,8 +654,10 @@ test_that("calendar", {
             start = "2021-11-14T13:00:00.000Z",
             end = "2021-11-14T13:30:00.000Z",
             all_day = FALSE,
-            location = "Microsoft Teams Meeting"
-          )
+            location = "Microsoft Teams Meeting",
+            attendees = list(NA)
+          ),
+          list()
         )
       )
     ),
@@ -633,19 +672,19 @@ test_that("calendar", {
   res <- calendar_fun(dat)
   res_which <- which_sensor(dat, "calendar")
   true <- data.frame(
-    measurement_id = c("12345a_1", "12345a_2", "12345a_3", "12345b_1"),
+    measurement_id = c("12345a_1", "12345a_2", "12345a_3", "12345a_4", "12345b_1"),
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
-    event_id = c(rep("8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9", 3), NA),
-    calendar_id = c(rep("45ED76B4-87A1-D7E0-FA93-A7A1F64CF3E7", 3), NA),
-    title = c(rep("96475fc78435bef84354fc05dd185ac944c5c3c1", 3), NA),
-    description = c(rep("81af04ac942e1bbf4f3c638b086395dfabe2164a", 3), NA),
-    start = c(rep("2021-11-14T13:00:00.000Z", 3), NA),
-    end = c(rep("2021-11-14T13:30:00.000Z", 3), NA),
-    all_day = c(rep(FALSE, 3), NA),
-    location = c(rep("Microsoft Teams Meeting", 3), NA),
-    attendees = c("a, b, NA", NA, NA, NA)
+    event_id = c(rep("8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9", 3), NA, NA),
+    calendar_id = c(rep("45ED76B4-87A1-D7E0-FA93-A7A1F64CF3E7", 3), NA, NA),
+    title = c(rep("96475fc78435bef84354fc05dd185ac944c5c3c1", 3), NA, NA),
+    description = c(rep("81af04ac942e1bbf4f3c638b086395dfabe2164a", 3), NA, NA),
+    start = c(rep("2021-11-14T13:00:00.000Z", 3), NA, NA),
+    end = c(rep("2021-11-14T13:30:00.000Z", 3), NA, NA),
+    all_day = c(rep(FALSE, 3), NA, NA),
+    location = c(rep("Microsoft Teams Meeting", 3), NA, NA),
+    attendees = c("a, b, NA, NA", NA, NA, NA, NA)
   )
 
   expect_equal(res, res_which)
@@ -824,6 +863,79 @@ test_that("pedometer", {
     step_count = NA
   )
 })
+
+# Phone log ===========
+test_that("phone_log", {
+  dat <- common_test(
+    "phone_log",
+    list(
+      body = list(
+        id = "12345a",
+        start_time = "2021-11-14T16:40:01.123456Z",
+        phone_log = list(
+          list(
+            call_type = "incoming",
+            datetime = "2021-05-10 10:00:00",
+            duration = 60,
+            formatted_number = "+32 1234 5678",
+            name = "test subject",
+            number = "+3212345678"
+          ),
+          list(
+            call_type = "outgoing",
+            datetime = "2021-05-10 10:01:00",
+            duration = 120.50,
+            formatted_number = "+32 1234 5678",
+            name = "test subject",
+            number = "+3212345678"
+          )
+        )
+      )
+    ),
+    list(
+      body = list(
+        id = "12345b",
+        start_time = "2021-11-14T16:40:01.123456Z",
+        phone_log = list(
+          list(
+            call_type = "incoming",
+            timestamp = "2021-05-10 10:00:00",
+            duration = 60,
+            formatted_number = "+32 1234 5678",
+            name = "test subject",
+            number = "+3212345678"
+          )
+        )
+      )
+    ),
+    list(
+      body = list(
+        id = "12345c",
+        start_time = "2021-11-14T16:40:01.123456Z",
+        phone_log = list()
+      )
+    )
+  )
+  res <- phone_log_fun(dat)
+  res_which <- which_sensor(dat, "phone_log")
+  true <- data.frame(
+    measurement_id = c("12345a_1", "12345a_2", "12345b_1", "12345c_1"),
+    participant_id = "12345",
+    date = "2021-11-14",
+    time = "16:40:00",
+    call_type = c("incoming", "outgoing", "incoming", NA),
+    datetime = c("2021-05-10 10:00:00", "2021-05-10 10:01:00", "2021-05-10 10:00:00", NA),
+    duration = c(60, 120.50, 60, NA),
+    formatted_number = c("+32 1234 5678", "+32 1234 5678", "+32 1234 5678", NA),
+    name = c("test subject", "test subject", "test subject", NA),
+    number = c("+3212345678", "+3212345678", "+3212345678", NA)
+  )
+
+  expect_equal(res, res_which)
+  expect_equal(res, true)
+  expect_equal(res_which, true)
+})
+
 
 # Screen ===========
 test_that("screen", {

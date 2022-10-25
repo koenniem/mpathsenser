@@ -84,7 +84,7 @@ coverage:
     script:
         - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "never", force = TRUE)'
         - Rscript -e 'remotes::install_cran(c("covr", "DT"), upgrade = "never")'
-        - Rscript -e 'covr::gitlab(quiet = FALSE)'
+        - Rscript -e 'covr::gitlab(line_exclusions = list("R/zzz.R", "R/stats.R"), quiet = FALSE)'
     artifacts:
         paths:
             - public

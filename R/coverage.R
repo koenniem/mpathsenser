@@ -234,7 +234,7 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
     # Extract the data for this participant and sensor
     tmp <- dplyr::tbl(tmp_db, .x) %>%
       filter(participant_id == p_id) %>%
-      select(.data$measurement_id, .data$time, .data$date)
+      select("measurement_id", "time", "date")
 
     # Filter by date if needed
     if (!is.null(start_date) && !is.null(end_date)) {

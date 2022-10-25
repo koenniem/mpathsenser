@@ -6,7 +6,7 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
     mutate(x_time = as.integer(.data$time)) %>%
     mutate(start_time = .data$x_time - offset_before) %>%
     mutate(end_time = .data$x_time + offset_after) %>%
-    select({{ by }}, .data$start_time, .data$end_time) %>%
+    select({{ by }}, "start_time", "end_time") %>%
     tibble::as_tibble() %>%
     mutate(row_id = dplyr::row_number()) # For rematching later
 
@@ -21,9 +21,9 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
   data_main <- data %>%
     filter(.data$y_time >= .data$start_time & .data$y_time <= .data$end_time) %>%
     arrange({{ by }}, .data$y_time) %>%
-    select(-.data$y_time) %>%
-    nest(data = -c({{ by }}, .data$start_time, .data$end_time, .data$row_id)) %>%
-    select(.data$row_id, .data$data)
+    select(-"y_time") %>%
+    nest(data = -c({{ by }}, "start_time", "end_time", "row_id")) %>%
+    select("row_id", "data")
 
   # Merge back with original data
   # Bug: if this happens after merging data_before and data_after, they would be lost in the case
@@ -43,15 +43,15 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
       ungroup() %>%
       mutate(original_time = .data$time) %>%
       mutate(time = lubridate::as_datetime(.data$start_time, tz = tz)) %>%
-      select(-.data$y_time) %>%
-      nest(data_before = !c({{ by }}, .data$start_time, .data$end_time, .data$row_id)) %>%
-      select(.data$row_id, .data$data_before)
+      select(-"y_time") %>%
+      nest(data_before = !c({{ by }}, "start_time", "end_time", "row_id")) %>%
+      select("row_id", "data_before")
 
     # Add to the main result
     data_main <- data_main %>%
       dplyr::left_join(data_before, by = "row_id") %>%
       mutate(data = purrr::map2(.data$data_before, .data$data, bind_rows)) %>%
-      select(-.data$data_before)
+      select(-"data_before")
   }
 
   # Add the first measurements after end_time
@@ -64,15 +64,15 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
       ungroup() %>%
       mutate(original_time = .data$time) %>%
       mutate(time = lubridate::as_datetime(.data$end_time, tz = tz)) %>%
-      select(-.data$y_time) %>%
-      nest(data_after = -c({{ by }}, .data$start_time, .data$end_time, .data$row_id)) %>%
-      select(.data$row_id, .data$data_after)
+      select(-"y_time") %>%
+      nest(data_after = -c({{ by }}, "start_time", "end_time", "row_id")) %>%
+      select("row_id", "data_after")
 
     # Add to the main result
     data_main <- data_main %>%
       dplyr::left_join(data_after, by = "row_id") %>%
       mutate(data = purrr::map2(.data$data, .data$data_after, bind_rows)) %>%
-      select(-.data$data_after)
+      select(-"data_after")
   }
 
   # Create an empty tibble (prototype) by retrieving rows with time before UNIX start (not possible)
@@ -96,7 +96,7 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
 
   res <- data_main %>%
     mutate(data = ifelse(lapply(.data$data, is.null), list(proto), .data$data)) %>%
-    select(-.data$row_id)
+    select(-"row_id")
 
   res
 }
@@ -217,7 +217,7 @@ link <- function(x,
   if (!is.null(offset_after) && !(is.character(offset_after) |
                                   lubridate::is.period(offset_after) |
                                   is.numeric(offset_after))) {
-    abort("offset_before must be a character vector, numeric vector, or a period")
+    abort("offset_after must be a character vector, numeric vector, or a period")
   }
   if (is.character(offset_before) | is.numeric(offset_before)) {
     offset_before <- lubridate::as.period(offset_before)
@@ -235,16 +235,16 @@ link <- function(x,
   }
   if (!is.null(offset_before) && offset_before < 0) {
     offset_before <- abs(offset_before)
-    rlang::warn(c(
-      `*` = "offset_before must be a positive period (i.e. greater than 0).",
-      i = "Taking the absolute value"
+    warn(c(
+      "offset_before must be a positive period (i.e. greater than 0).",
+      i = "Taking the absolute value."
     ))
   }
   if (!is.null(offset_after) && offset_after < 0) {
     offset_after <- abs(offset_after)
-    rlang::warn(c(
-      `*` = "offset_after must be a positive period (i.e. greater than 0).",
-      i = "Taking the absolute value"
+    warn(c(
+      "offset_after must be a positive period (i.e. greater than 0).",
+      i = "Taking the absolute value."
     ))
   }
 
@@ -275,7 +275,8 @@ link <- function(x,
   }
 
   x %>%
-    furrr::future_map(~ link_impl(.x, y, by, offset_before, offset_after, add_before, add_after),
+    furrr::future_map(~ link_impl(.x, y, {{ by }}, offset_before,
+                                  offset_after, add_before, add_after),
                       .options = furrr::furrr_options(seed = TRUE)
     ) %>%
     bind_rows()
@@ -350,7 +351,7 @@ link_db <- function(db,
   if (!is.null(sensor_two)) {
     dat_two <- get_data(db, sensor_two, participant_id, start_date, end_date) %>%
       mutate(time = paste(.data$date, .data$time)) %>%
-      select(-.data$date) %>%
+      select(-"date") %>%
       collect() %>%
       mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", tz = "UTC"))
   } else {
@@ -370,7 +371,7 @@ link_db <- function(db,
   dat_one <- get_data(db, sensor_one, participant_id, start_date, end_date) %>%
     filter(.data$date %in% dates) %>%
     mutate(time = paste(.data$date, .data$time)) %>%
-    select(-.data$date) %>%
+    select(-"date") %>%
     collect() %>%
     mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", "UTC"))
 
@@ -425,32 +426,42 @@ link_db <- function(db,
 #'   \code{gap_data} containing the gaps within the interval. The function ensures all durations and
 #'   gap time stamps are within the range of the interval.
 #' @export
-link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0, raw_data = FALSE) {
+link_gaps <- function(
+    data,
+    gaps,
+    by = NULL,
+    offset_before = 0,
+    offset_after = 0,
+    raw_data = FALSE
+) {
 
   # Argument checking
-  stopifnot(
-    "data must be a data frame" = is.data.frame(data),
-    "gaps must be a data frame" = is.data.frame(gaps)
-    )
+  if (!is.data.frame(data)) {
+    abort("`data` must be a data frame")
+  }
+
+  if (!is.data.frame(gaps)) {
+    abort("`gaps` must be a data frame")
+  }
 
   if (!is.null(by) && !is.character(by)) {
-    abort("by must be a character vector of variables to join by")
+    abort("`by` must be a character vector of variables to join by")
   }
 
   # offset checks
   if ((is.null(offset_before) | all(offset_before == 0)) &
       (is.null(offset_after) | all(offset_after == 0))) {
-    abort("either offset_before or offset_after must not be 0 or NULL, or both")
+    abort("`offset_before` and `offset_after` cannot be 0 or NULL at the same time.")
   }
   if (!is.null(offset_before) && !(is.character(offset_before) |
                                    lubridate::is.period(offset_before) |
                                    is.numeric(offset_before))) {
-    abort("offset_before must be a character vector, numeric vector, or a period")
+    abort("`offset_before` must be a character vector, numeric vector, or a period.")
   }
   if (!is.null(offset_after) && !(is.character(offset_after) |
                                   lubridate::is.period(offset_after) |
                                   is.numeric(offset_after))) {
-    abort("offset_before must be a character vector, numeric vector, or a period")
+    abort("`offset_after` must be a character vector, numeric vector, or a period.")
   }
 
   # Convert offset_before to integer time
@@ -466,36 +477,36 @@ link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0
   }
 
   if (is.na(offset_before) | is.na(offset_after)) {
-    abort(paste(
-      "Invalid offset specified. Try something like '30 minutes', ",
-      "lubridate::minutes(30), or 1800."
+    abort(c(
+      "Invalid offset specified.",
+      i = "Try something like '30 minutes', lubridate::minutes(30), or 1800."
     ))
   }
   if (!is.null(offset_before) && offset_before < 0) {
     offset_before <- abs(offset_before)
     warn(c(
-      "offset_before must be a positive period (i.e. greater than 0).",
+      "`offset_before` must be a positive period (i.e. greater than 0).",
       i = "Taking the absolute value"
     ))
   }
   if (!is.null(offset_after) && offset_after < 0) {
     offset_after <- abs(offset_after)
     warn(c(
-      "offset_after must be a positive period (i.e. greater than 0).",
+      "`offset_after` must be a positive period (i.e. greater than 0).",
       i = "Taking the absolute value"
     ))
   }
 
   # Check for time column in data
   if (!("time" %in% colnames(data))) {
-    abort("column 'time' must be present in data")
+    abort("Column `time` must be present in `data`")
   }
   # Check for time column
   if (!("from" %in% colnames(gaps) & "to" %in% colnames(gaps))) {
-    abort("column 'from' and 'to' must be present in gaps.")
+    abort("Column `from` and `to` must be present in `gaps`.")
   }
   if (!lubridate::is.POSIXct(data$time)) {
-    abort("column 'time' in x must be a POSIXct")
+    abort("Column `time` in `data` must be a POSIXct.")
   }
 
   # Check that gap or gap_data is not already present in data
@@ -509,14 +520,14 @@ link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0
   # Calculate the start and end time of the interval (in seconds) of each row in data
   # Only retain gaps that are (partially) within or span over the interval
   data_gaps <- data %>%
-    select({{ by }}, .data$time) %>%
+    select({{ by }}, "time") %>%
     mutate(time_int = as.integer(.data$time)) %>%
     mutate(start_interval = .data$time_int - offset_before) %>%
     mutate(end_interval = .data$time_int + offset_after)
 
   data_gaps <- data_gaps %>%
     dplyr::left_join(gaps, by = by) %>%
-    mutate(across(c(.data$from, .data$to), as.integer)) %>%
+    mutate(across(c("from", "to"), as.integer)) %>%
     filter(.data$from < .data$end_interval & .data$to > .data$start_interval)
 
   # Set gaps time stamps out of the interval to the interval's bounds
@@ -531,7 +542,7 @@ link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0
   if (raw_data) {
     # Transform from and to back to POSIXct and nest the data
     data_gaps <- data_gaps %>%
-      select(by, .data$time, .data$from, .data$to, .data$gap) %>%
+      select({{ by }}, "time", "from", "to", "gap") %>%
       mutate(from = as.POSIXct(.data$from,
                                       origin = "1970-01-01",
                                       tz = attr(gaps$from, "tzone")
@@ -540,8 +551,8 @@ link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0
                                     origin = "1970-01-01",
                                     tz = attr(gaps$to, "tzone")
       )) %>%
-      group_by(across(c(by, .data$time))) %>%
-      nest(gap_data = c(.data$from, .data$to, .data$gap)) %>%
+      group_by(across(c({{ by }}, "time"))) %>%
+      nest(gap_data = c("from", "to", "gap")) %>%
       ungroup()
 
     # Add gaps at beep level
@@ -563,7 +574,7 @@ link_gaps <- function(data, gaps, by = NULL, offset_before = 0, offset_after = 0
     )
   } else {
     data_gaps <- data_gaps %>%
-      group_by(across(c(by, .data$time))) %>%
+      group_by(across(c({{ by }}, "time"))) %>%
       summarise(gap = sum(.data$gap), .groups = "drop")
   }
 
@@ -586,6 +597,7 @@ link_intervals <- function(x, x_start, x_end,
                            y, y_start, y_end,
                            by = NULL,
                            name = "data") {
+
   tz <- attr(pull(y, {{ y_start }}), "tz")
 
   res <- x %>%
@@ -599,24 +611,18 @@ link_intervals <- function(x, x_start, x_end,
 
   # Set gaps time stamps out of the interval to the interval's bounds
   res <- res %>%
-    mutate(!!rlang::ensym(y_start) := ifelse({{ y_start }} < {{ x_start }},
+    mutate({{ y_start }} := ifelse({{ y_start }} < {{ x_start }},
                                                     {{ x_start }},
                                                     {{ y_start }}
     )) %>%
-    mutate(!!rlang::ensym(y_end) := ifelse({{ y_end }} > {{ x_end }},
+    mutate({{ y_end }} := ifelse({{ y_end }} > {{ x_end }},
                                                   {{ x_end }},
                                                   {{ y_end }}
     )) %>%
     mutate(across(c({{ y_start }}, {{ y_end }}), lubridate::as_datetime, tz = tz))
 
   out <- x %>%
-    dplyr::nest_join(res,
-                     by = c(
-                       by, rlang::expr_text(rlang::call_args(rlang::enquo(x_start))[[2]]),
-                       rlang::expr_text(rlang::call_args(rlang::enquo(x_end))[[2]])
-                     ),
-                     name = name
-    )
+    dplyr::nest_join(res, by = c(by, "bin_start", "bin_end"), name = name)
   out
 }
 
@@ -711,7 +717,12 @@ link_intervals <- function(x, x_start, x_end,
 #'   dplyr::mutate(duration = .data$lead - .data$datetime) %>%
 #'   dplyr::group_by(bin, .add = TRUE) %>%
 #'   dplyr::summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
-bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "day"), fixed = TRUE) {
+bin_data <- function(data,
+                     start_time,
+                     end_time,
+                     by = c("sec", "min", "hour", "day"),
+                     fixed = TRUE) {
+
   group_vars <- dplyr::group_vars(data)
 
   if (!is.null(by) && is.character(by)) {
@@ -721,17 +732,18 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
   } else if (is.numeric(by) & !fixed) {
     by_duration <- by
   } else {
-    abort("by must be one of 'sec', 'min', 'hour', or 'day', or a numeric value if fixed = FALSE.")
+    abort(paste("`by` must be one of 'sec', 'min', 'hour', or 'day',",
+                "or a numeric value if `fixed = FALSE`."))
   }
 
   tz <- attr(pull(data, {{ start_time }}), "tz")
 
   # check that start_time and end_time are a datetime, or try to convert
-  if (!lubridate::is.POSIXt(pull(data, {{ start_time }})) &
+  if (!lubridate::is.POSIXt(pull(data, {{ start_time }})) |
       !lubridate::is.POSIXt(pull(data, {{ end_time }}))) {
     data <- data %>%
-      mutate(!!rlang::ensym(start_time) := as.POSIXct({{ start_time }}, origin = "1970-01-01")) %>%
-      mutate(!!rlang::ensym(end_time) := as.POSIXct({{ end_time }}, origin = "1970-01-01"))
+      mutate({{ start_time }} := as.POSIXct({{ start_time }}, origin = "1970-01-01")) %>%
+      mutate({{ end_time }} := as.POSIXct({{ end_time }}, origin = "1970-01-01"))
   }
 
   # Generate output structure with unique hours per day, keeping the grouping structure
@@ -749,16 +761,16 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
 
   out <- out %>%
     distinct() %>%
-    drop_na(.data$bin_start) %>%
+    drop_na("bin_start") %>%
     mutate(bin_start = as.integer(.data$bin_start)) %>%
     summarise(bin_start = seq.int(min(.data$bin_start, na.rm = TRUE),
-                                         max(.data$bin_start, na.rm = TRUE) + by_duration,
-                                         by = by_duration
+                                  max(.data$bin_start, na.rm = TRUE) + by_duration,
+                                  by = by_duration
     ))
 
   out <- out %>%
     mutate(bin_end = lead(.data$bin_start)) %>%
-    drop_na(.data$bin_end)
+    drop_na("bin_end")
 
   out <- link_intervals(
     x = out, x_start = .data$bin_start, x_end = .data$bin_end,
@@ -769,100 +781,8 @@ bin_data <- function(data, start_time, end_time, by = c("sec", "min", "hour", "d
 
   out <- out %>%
     mutate(bin_start = lubridate::as_datetime(.data$bin_start, tz = tz)) %>%
-    dplyr::rename(bin = .data$bin_start) %>%
-    select(-c(.data$bin_end))
+    dplyr::rename(bin = "bin_start") %>%
+    select(-"bin_end")
 
   out
 }
-
-# #' Bin duration in variable time series
-# #'
-# #' @description `r lifecycle::badge("deprecated")`
-# #'
-# #' This function has been deprecated in favour of the more general \link[mpathsenser]{bin_data} for
-# #' finding interval data in equally-spaced bins. Therefore, \code{bin_duration} is nothing more than
-# #' a wrapper around \link[mpathsenser]{bin_data}.
-# #'
-# #' In time series with variable measurements, an often recurring task is calculating the total time
-# #' spent (i.e. the duration) in fixed bins, for example per hour or day. However, this may be
-# #' difficult when two subsequent measurements are in different bins or span over multiple bins.
-# #'
-# #' @details Note that non-grouped columns are discarded in the output.
-# #'
-# #' @param data A data frame or tibble containing the time series.
-# #' @param start_time The column name of the start time of the interval, a POSIXt.
-# #' @param end_time The column name of the end time of the interval, a POSIXt.
-# #' @param by A binning specification, either \code{hour} or \code{day}.
-# #'
-# #' @return A tibble containing the group columns (if any), date, hour (if \code{by = "hour"}), and
-# #'   the duration in seconds.
-# #' @export
-# #'
-# #' @examples
-# #' data <- tibble::tibble(
-# #'   participant_id = 1,
-# #'   datetime = c(
-# #'     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
-# #'     "2022-06-21 17:05:00", "2022-06-21 17:10:00"
-# #'   ),
-# #'   confidence = 100,
-# #'   type = "WALKING"
-# #' )
-# #'
-# #' # get the duration per hour, even if the interval is longer than one hour
-# #' data %>%
-# #'   mutate(datetime = as.POSIXct(datetime)) %>%
-# #'   mutate(lead = lead(datetime)) %>%
-# #'   bin_duration(
-# #'     start_time = datetime,
-# #'     end_time = lead,
-# #'     by = "hour"
-# #'   )
-# #'
-# #' data <- tibble::tibble(
-# #'   participant_id = 1,
-# #'   datetime = c(
-# #'     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
-# #'     "2022-06-21 17:05:00", "2022-06-21 17:10:00"
-# #'   ),
-# #'   confidence = 100,
-# #'   type = c("STILL", "WALKING", "STILL", "WALKING")
-# #' )
-# #' # binned_intervals also takes into account the prior grouping structure
-# #' data %>%
-# #'   mutate(datetime = as.POSIXct(datetime)) %>%
-# #'   mutate(lead = lead(datetime)) %>%
-# #'   group_by(participant_id, type) %>%
-# #'   bin_duration(
-# #'     start_time = datetime,
-# #'     end_time = lead,
-# #'     by = "hour"
-# #'   )
-# bin_duration <- function(data, start_time, end_time, by = c("hour", "day")) {
-#   lifecycle::deprecate_warn("1.0.4", "bin_duration()", "bin_data()")
-#
-#   group_vars <- dplyr::group_vars(data)
-#   by <- match.arg(by)
-#
-#   out <- bin_data(data, {{ start_time }}, {{ end_time }}, by)
-#
-#   out <- out %>%
-#     unnest(.data$bin_data, keep_empty = TRUE) %>%
-#     mutate(duration = {{ end_time }} - {{ start_time }}) %>%
-#     group_by(.data$bin, .add = TRUE) %>%
-#     summarise(duration = sum(.data$duration), .groups = "drop") %>%
-#     dplyr::rename(date = .data$bin)
-#
-#   # Make the by column look pretty
-#   if (by == "hour") {
-#     out <- out %>%
-#       mutate(hour = lubridate::hour(.data$date)) %>%
-#       mutate(date = lubridate::date(.data$date)) %>%
-#       select(dplyr::group_cols(), .data$date, .data$hour, .data$duration)
-#   } else if (by == "day") {
-#     out <- out %>%
-#       mutate(date = lubridate::date(.data$date))
-#   }
-#
-#   out
-# }

@@ -25,7 +25,7 @@ be considered a gap.}
 sensors.}
 }
 \value{
-A tibble containing the time period of the gaps. The strucute of this tibble is as
+A tibble containing the time period of the gaps. The structure of this tibble is as
 follows:
 
 \tabular{ll}{ participant_id \tab the \code{participant_id} of where the gap occurred \cr from
@@ -36,34 +36,38 @@ seconds }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-Oftentimes in mobile sensing, gaps appear in the data as a result of the participant accidentally
-closing the app or the operating system killing the app to save power. This can lead to issues
-later on during data analysis when it becomes unclear whether there are no measurements because
-no events occurred or because the app quit in that period. For example, if no screen on/off event
-occur in a 6-hour period, it can either mean the participant did not turn on their phone in that
-period or that the app simply quit and potential events were missed. In the latter case, the
-6-hour missing period has to be compensated by either removing this interval altogether or by
-subtracting the gap from the interval itself (see examples).
+Oftentimes in mobile sensing, gaps appear in the data as a result of the participant
+accidentally closing the app or the operating system killing the app to save power. This can
+lead to issues later on during data analysis when it becomes unclear whether there are no
+measurements because no events occurred or because the app quit in that period. For example, if
+no screen on/off event occur in a 6-hour period, it can either mean the participant did not
+turn on their phone in that period or that the app simply quit and potential events were
+missed. In the latter case, the 6-hour missing period has to be compensated by either removing
+this interval altogether or by subtracting the gap from the interval itself (see examples).
 }
 \details{
 While any sensor can be used for identifying gaps, it is best to choose a sensor with a
-very high, near-continuous sample rate such as the accelerometer or gyroscope. This function then
-creates time between two subsequent measurements and returns the period in which this time was
-larger than \code{min_gap}.
+very high, near-continuous sample rate such as the accelerometer or gyroscope. This function
+then creates time between two subsequent measurements and returns the period in which this time
+was larger than \code{min_gap}.
 
-Note that the \code{from} and \code{to} columns in the output are character vectors in UTC time.
+Note that the \code{from} and \code{to} columns in the output are character vectors in UTC
+time.
 }
 \section{Warning}{
  Depending on the sensor that is used to identify the gaps (though this is
-typically the highest frequency sensor, such as the accelerometer or g yruscope), there may be
-a small delay between the start of the gap and the \emph{actual} start of the gap. For example, if
-the accelerometer samples every 5 seconds, it may be after 4.99 seconds after the last
+typically the highest frequency sensor, such as the accelerometer or gyroscope), there may be a
+small delay between the start of the gap and the \emph{actual} start of the gap. For example, if the
+accelerometer samples every 5 seconds, it may be after 4.99 seconds after the last
 accelerometer measurement (so just before the next measurement), the app was killed. However,
 within that time other measurements may still have taken place, thereby technically occurring
-"within" the gap. One way to account for this is to (as in this example) search for gaps 5
-seconds longer than you want and then afterwards increasing the start time of the gaps by 5
-seconds. This is especially important if you want to use these gaps in
+"within" the gap. This is especially important if you want to use these gaps in
 \code{\link[mpathsenser]{add_gaps}} since this issue may lead to erroneous results.
+
+An easy way to solve this problem is by taking into account all the sensors of interest when
+identifying the gaps, thereby ensuring there are no measurements of these sensors within the
+gap. One way to account for this is to (as in this example) search for gaps 5 seconds longer
+than you want and then afterwards increasing the start time of the gaps by 5 seconds.
 }
 
 \examples{

@@ -335,7 +335,7 @@ import_impl <- function(path, filename, db_name, sensors) {
   data$sensor <- safe_extract(data$data_format, "name")
   data$data_format <- safe_extract(data$data_format, "namespace")
   data$header <- NULL
-  data <- unnest(data, c(.data$study_id:.data$sensor))
+  data <- unnest(data, "study_id":"sensor")
 
   # Due to the hacky solution above, filter out rows where the participant_id is missing,
   # usually in the last entry of a file

@@ -118,14 +118,14 @@ periodic_accelerometer_fun <- function(data) {
   data$id <- vapply(data$body, function(x) x$body$id, character(1))
   data$body <- lapply(data$body, function(x) x$body$data)
 
-  data <- unnest(data, body, keep_empty = TRUE)
+  data <- unnest(data, "body", keep_empty = TRUE)
 
   data$timestamp <- lapply(data$body, function(x) x$timestamp)
   data$x <- lapply(data$body, function(x) x$x)
   data$y <- lapply(data$body, function(x) x$y)
   data$z <- lapply(data$body, function(x) x$z)
   data$body <- NULL
-  data <- unnest(data, .data$timestamp:.data$z)
+  data <- unnest(data, "x":"z")
 
   # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
@@ -202,9 +202,9 @@ apps_fun <- function(data) {
       apps = list(x$installed_apps)
     )
   })
-  data <- unnest(data, .data$body, keep_empty = TRUE)
-  data <- unnest(data, .data$apps, keep_empty = TRUE)
-  data <- unnest(data, .data$apps, keep_empty = TRUE)
+  data <- unnest(data, "body", keep_empty = TRUE)
+  data <- unnest(data, "apps", keep_empty = TRUE)
+  data <- unnest(data, "apps", keep_empty = TRUE)
 
   # TODO: Consider unique ID constraint Temporary fix
   ids <-
@@ -234,7 +234,7 @@ battery_fun <- function(data) {
 }
 
 bluetooth_fun <- function(data) {
-  data$id <- sapply(data$body, function(x) x$body$id)
+  data$id <- vapply(data$body, function(x) x$body$id, character(1))
   data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
   data$body <- lapply(data$body, function(x) x$body$scan_result)
   data$body <- lapply(data$body, bind_rows)
@@ -263,9 +263,7 @@ bluetooth_fun <- function(data) {
 # Currently, multiple entries are already possible but it's not clear why they are
 # wrapped in another list as well.
 calendar_fun <- function(data) {
-  data$id <- sapply(data$body, function(x) {
-    x$body$id
-  })
+  data$id <- vapply(data$body, function(x) x$body$id, character(1))
   data$body <- lapply(data$body, function(x) {
     x$body$calendar_events
   })
@@ -477,21 +475,28 @@ noise_fun <- function(data) {
 }
 
 phone_log_fun <- function(data) {
-  data$id <- sapply(data$body, function(x) x$body$id)
-  data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
+  data$id <- vapply(data$body, function(x) x$body$id, character(1))
+  # data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
+
   data$body <- lapply(data$body, function(x) x$body$phone_log)
   data$body <- lapply(data$body, bind_rows)
   data$body <- lapply(data$body, function(x) {
     # Replace double timestamp name
-    colnames(x)[colnames(x) == "timestamp"] <- "datetime"
+    if (nrow(x) > 0 & "timestamp" %in% colnames(x))
+      dplyr::rename(x, "datetime" = "timestamp")
+    else x
   })
   data <- unnest(data, body, keep_empty = TRUE)
+
+  # TODO: Consider unique ID constraint Temporary fix
+  ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
+  data$id <- paste0(data$id, "_", ids)
 
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 19),
+    date = substr(data$start_time, 1, 10),
+    time = substr(data$start_time, 12, 19),
     call_type = data$call_type,
     datetime = data$datetime,
     duration = data$duration,
@@ -527,7 +532,7 @@ screen_fun <- function(data) {
 
 # TODO: Check if text_message can be unnested
 text_message_fun <- function(data) {
-  data$id <- sapply(data$body, function(x) x$body$id)
+  data$id <- vapply(data$body, function(x) x$body$id, character(1))
   data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
   data$body <- lapply(data$body, function(x) x$body$text_message)
   data$body <- lapply(data$body, bind_rows)
