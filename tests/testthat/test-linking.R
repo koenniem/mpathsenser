@@ -406,7 +406,7 @@ test_that("link_db", {
   db <- open_db(NULL, db@dbname)
 
   # Check time zone differences
-  dat1$time <- lubridate::force_tz(dat1$time, "Europe/Brussels")
+  dat1$time <- format(dat1$time, tz = "Europe/Brussels", usetz = TRUE)
   expect_warning(
     link_db(db, "Activity", external = dat1, offset_after = 1800),
     "`external` is not using UTC as a time zone, unlike the data in the database."
