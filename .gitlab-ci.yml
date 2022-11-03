@@ -56,7 +56,7 @@ building:
 
   script:
     - apt-get update -qq && apt-get install -y libharfbuzz-dev libfribidi-dev libxt6
-    - apt-get install -y qpdf
+    - apt-get install -y qpdf libcctz-dev
     - echo "Library path for packages :" $R_LIBS
     - mkdir -p $R_LIBS
     - Rscript -e 'install.packages("remotes")'
@@ -84,7 +84,7 @@ coverage:
     script:
         - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "never", force = TRUE)'
         - Rscript -e 'remotes::install_cran(c("covr", "DT"), upgrade = "never")'
-        - Rscript -e 'covr::gitlab(line_exclusions = list("R/zzz.R", "R/stats.R"), quiet = FALSE)'
+        - Rscript -e 'covr::gitlab(quiet = FALSE)'
     artifacts:
         paths:
             - public
