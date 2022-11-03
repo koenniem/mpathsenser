@@ -645,12 +645,13 @@ n_screen_unlocks <- function(db,
 #' @inheritParams get_data
 #'
 #' @return A tibble with the 'date', 'hour', and the number of 'steps'.
-#' @export
+#' @keywords internal
 step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = NULL) {
   lifecycle::signal_stage("experimental", "step_count()")
+  check_db(db)
 
   get_data(db, "Pedometer", participant_id, start_date, end_date) %>%
-    mutate(hour = STRFTIME("%H", .data$time)) %>%
+    mutate(hour = strftime("%H", .data$time)) %>%
     group_by(.data$participant_id, .data$date, .data$hour) %>%
     window_order(.data$time, .data$step_count) %>%
     mutate(next_count = lead(.data$step_count, default = NA)) %>%
@@ -660,6 +661,7 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
     summarise(steps = sum(.data$steps, na.rm = TRUE), .groups = "drop") %>%
     collect()
 }
+# nocov end
 
 #' Moving average for values in an mpathsenser database
 #'
