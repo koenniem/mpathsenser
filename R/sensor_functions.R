@@ -665,34 +665,45 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
 
 #' Moving average for values in an mpathsenser database
 #'
-#' #' @description
-#' `r lifecycle::badge("experimental")`
+#' @description `r lifecycle::badge("experimental")`
 #'
 #' @inheritParams get_data
-#' @param participant_id A character string identifying a single participant. Use get_participants
-#' to retrieve all participants from the database.
-#' @param ... Unquoted names of columns of the \code{sensor} table to average over.
-#' @param n The number of observations to average over.
+#' @param cols Character vectors of the columns in the \code{sensor} table to average over.
+#' @param n The number of seconds to average over. The index of the result will be centered copmared
+#'   to the rolling window of observations.
+#' @param participant_id A character vector identifying one or multiple participants.
 #'
 #' @return A tibble with the same columns as the input, modified to be a moving average.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' get_moving_average(db, "Light", "12345", mean_lux, max_lux, n = 5)
+#' path <- system.file("testdata", "test.db", package = "mpathsenser")
+#' db <- open_db(NULL, path)
+#' moving_average(db = db,
+#'                sensor = "Light",
+#'                cols = c("mean_lux", "max_lux"),
+#'                n = 5, # seconds
+#'                participant_id = "12345")
+#' close_db(db)
 #' }
-moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL, end_date = NULL) {
+moving_average <- function(db, sensor, cols, n, participant_id, start_date = NULL, end_date = NULL) {
   lifecycle::signal_stage("experimental", "moving_average()")
-
-  cols <- rlang::ensyms(...)
+  check_db(db)
+  check_sensors(sensor, n = 1)
+  check_arg(participant_id, c("character", "integerish"))
+  check_arg(start_date, c("character", "POSIXt"), n = 1, allow_null = TRUE)
+  check_arg(end_date, c("character", "POSIXt"), n = 1, allow_null = TRUE)
 
   # SELECT
-  query <- "SELECT datetime, "
+  query <- "SELECT participant_id, datetime, "
 
   # Calculate moving average
   avgs <- lapply(cols, function(x) {
     paste0(
-      "avg(`", x, "`) OVER (", "ORDER BY CAST (strftime('%s', datetime) AS INT) ",
+      "avg(`", x, "`) OVER (",
+      "PARTITION BY `participant_id` ",
+      "ORDER BY CAST (strftime('%s', datetime) AS INT) ",
       "RANGE BETWEEN ", n / 2, " PRECEDING ", "AND ", n / 2, " FOLLOWING", ") AS ", x
     )
   })
@@ -702,14 +713,16 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
 
   # FROM
   query <- paste0(
-    query, " FROM (SELECT `date` || 'T' || `time` AS `datetime`, ",
+    query, " FROM (SELECT participant_id, `date` || 'T' || `time` AS `datetime`, ",
     paste0(cols, collapse = ", "), " FROM ", sensor
   )
 
   # Where
-  query <- paste0(query, " WHERE (`participant_id` = '", participant_id, "')")
+  query <- paste0(query, " WHERE (",
+                  paste0("`participant_id` = '", participant_id, "'", collapse = " OR "),
+                  ")")
 
-  if (!is.null(start_date) & !is.null(end_date)) {
+  if (!is.null(start_date) && !is.null(end_date)) {
     query <- paste0(query, " AND (`date` BETWEEN '", start_date, "' AND '", end_date, "')")
   }
 
@@ -717,7 +730,7 @@ moving_average <- function(db, sensor, participant_id, ..., n, start_date = NULL
   query <- paste0(query, ")")
 
   # Get data
-  DBI::dbGetQuery(db, query)
+  tibble::as_tibble(DBI::dbGetQuery(db, query))
 }
 
 
