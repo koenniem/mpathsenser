@@ -67,7 +67,9 @@ test_that("save2db", {
   dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
   dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
   db_size <- file.size(filename)
-  expect_error(save2db(db, "Accelerometer", data.frame(
+
+  # Define the data
+  data <- data.frame(
     measurement_id = paste0("12345_", 1:1000),
     participant_id = "12345",
     date = "2021-11-14",
@@ -75,23 +77,61 @@ test_that("save2db", {
     x = 0.123456789,
     y = 0.123456789,
     z = 9.123456789
-  )), NA)
+  )
+
+  # Write to db
+  expect_error(DBI::dbWithTransaction(db, save2db(db, "Accelerometer", data)),
+               NA)
+
+  # Check if the file size increased
   db_size2 <- file.size(filename)
   expect_gt(db_size2, db_size)
 
-  # Entry with the same ID should simply be skipped and give on error
-  expect_error(save2db(db, "Accelerometer", data.frame(
-    measurement_id = paste0("12345_", 1:1000),
+  # Check the data output
+  expect_equal(DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
+               data)
+
+  # Entry with the same ID should simply be skipped and give no error
+  expect_error(
+    DBI::dbWithTransaction(db, save2db(db = db, name = "Accelerometer", data = data)),
+    NA)
+  DBI::dbExecute(db, "VACUUM") # A vacuum to clear the tiny increase by replacement :)
+  db_size3 <- file.size(filename)
+  expect_equal(db_size2, db_size3)
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1000L)
+  expect_equal(DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
+               data)
+
+  # Now try with part of the data being replicated
+  data <- rbind(data, data.frame(
+    measurement_id = paste0("12345_", 500:1500),
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:01.123",
     x = 0.123456789,
     y = 0.123456789,
     z = 9.123456789
-  )), NA)
-  db_size3 <- file.size(filename)
-  expect_equal(db_size2, db_size3)
-  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1000L)
+  ))
+
+  expect_error(
+    DBI::dbWithTransaction(db,
+                           save2db(db = db,
+                                   name = "Accelerometer",
+                                   data = data.frame(
+                                     measurement_id = paste0("12345_", 500:1500),
+                                     participant_id = "12345",
+                                     date = "2021-11-14",
+                                     time = "16:40:01.123",
+                                     x = 0.123456789,
+                                     y = 0.123456789,
+                                     z = 9.123456789
+                                   ))),
+    NA)
+  db_size4 <- file.size(filename)
+  expect_gt(db_size4, db_size3)
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1500L)
+  expect_equal(DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
+               distinct(data))
 
   # Cleanup
   dbDisconnect(db)
@@ -262,17 +302,29 @@ test_that("periodic_accelerometer", {
           )
         )
       )
+    ),
+    list(
+      body = list(
+        id = "12345d",
+        timestamp = "2021-11-14T16:40:01.123456Z",
+        data = list(
+          list(
+            timestamp = "2021-11-14T16:40:01.223456Z"
+          )
+        )
+      )
     )
   )
   res <- accelerometer_fun(dat)
   true <- data.frame(
-    measurement_id = c("12345a_1", "12345a_2", "12345b_1", "12345b_2", "12345c_1", "12345c_2"),
-    participant_id = rep("12345", 3),
+    measurement_id = c("12345a_1", "12345a_2", "12345b_1",
+                       "12345b_2", "12345c_1", "12345c_2", "12345d_1"),
+    participant_id = rep("12345", 7),
     date = "2021-11-14",
-    time = rep(c("16:40:01.223", "16:40:01.323"), 3),
-    x = c(rep(1.12345, 4), NA, NA),
-    y = c(rep(-0.1234, 4), NA, NA),
-    z = c(rep(0.123456, 4), NA, NA)
+    time = c(rep(c("16:40:01.223", "16:40:01.323"), 3), "16:40:01.223"),
+    x = c(rep(1.12345, 4), NA, NA, NA),
+    y = c(rep(-0.1234, 4), NA, NA, NA),
+    z = c(rep(0.123456, 4), NA, NA, NA)
   )
   expect_equal(res, true)
 })
@@ -758,8 +810,10 @@ test_that("geofence", {
 
 # Keyboard ===========
 test_that("keyboard", {
-  expect_error(keyboard_fun(data.frame()), "Function not implemented")
-  expect_error(which_sensor(data.frame(), "keyboard"), "Function not implemented")
+  expect_warning(keyboard_fun(data.frame()),
+               "Function for implementing keyboard data currently not implemented.")
+  expect_warning(which_sensor(data.frame(), "keyboard"),
+               "Function for implementing keyboard data currently not implemented.")
 })
 
 # Light ===========

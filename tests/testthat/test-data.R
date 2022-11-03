@@ -3,7 +3,7 @@
 rand <- function(n, chars = TRUE, numbers = TRUE, uppercase = FALSE) {
   data <- NULL
 
-  if (!chars & !numbers) stop("Select either letters, numbers, or both.")
+  if (!chars && !numbers) abort("Select either letters, numbers, or both.")
 
   if (chars) {
     if (uppercase) {
@@ -34,7 +34,10 @@ gen_id <- function(uppercase = FALSE) {
 
 ### db_test ============
 db_test <- function(sensor, true_data) {
-  db <- open_db(NULL, system.file("testdata", "test.db", package = "mpathsenser"))
+  path <- system.file("testdata", package = "mpathsenser")
+  tempfile <- tempfile()
+  db <- create_db(NULL, tempfile)
+  suppressMessages(import(path, db = db, sensors = sensor, batch_size = 1, recursive = FALSE))
 
   data <- get_data(db, sensor, "12345", "2021-11-13", "2021-11-14") %>%
     collect()
@@ -43,6 +46,7 @@ db_test <- function(sensor, true_data) {
   testthat::expect_equal(data, true)
 
   close_db(db)
+  unlink(tempfile)
 }
 
 ### Accelerometer ============

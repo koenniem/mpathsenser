@@ -29,11 +29,30 @@ workers.}
 A message indicating how many files were fixed.
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
 When copying data directly coming from m-Path Sense, JSON files are sometimes corrupted due to
 the app not properly closing them. This function attempts to fix the most common
 problems associated with improper file closure by m-Path Sense.
+}
+\details{
+There are two distinct problems this functions tries to tackle. First of all, there are often
+bad file endings (e.g. no \code{]}) because the app was closed before it could properly close
+the file. There are several cases that may be wrong (or even multiple), so it unclear what the
+precise problems are. As this function is experimental, it may even make it worse by accidentally
+inserting an incorrect file ending.
+
+Secondly, in rare scenarios there are illegal ASCII characters in the JSON files. Not often does
+this happen, and it is likely because of an OS failure (such as a flush error), a disk failure,
+or corrupted data during transmit. Nevertheless, these illegal characters make the file
+completely unreadable. Fortunately, they are detected correctly by
+\link[mpathsenser]{test_jsons}, but they cannot be imported by \link[mpathsenser]{import}. This
+functions attempts to surgically remove lines with illegal characters, by removing that specific
+line as well as the next line, as this is often a comma. It may therefore be too liberal in its
+approach -- cutting away more data than necessary -- or not liberal enough when the corruption
+has spread throughout multiple lines. Nevertheless, it is a first step in removing some
+straightforward corruption from files so that only a small number may still need to be fixed by
+hand.
 }
 \section{Parallel}{
  This function supports parallel processing in the sense that it is able to

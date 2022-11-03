@@ -17,8 +17,8 @@ test_jsons(
 
 \item{files}{Alternatively, a character list of the input files.}
 
-\item{db}{A mpathsenser database connection (optional). If provided, will be used to check
-which files are already in the database and check only those JSON files which are not.}
+\item{db}{A mpathsenser database connection (optional). If provided, will be used to check which
+files are already in the database and check only those JSON files which are not.}
 
 \item{recursive}{Should the listing recurse into directories?}
 
@@ -32,8 +32,9 @@ directly toggling parallel support has been deprecated. Please use
 workers.}
 }
 \value{
-A message indicating whether there were any issues and a character vector of the file
-names that need to be fixed. If there were no issues, no result is returned.
+A message indicating whether there were any issues and a character vector of
+the file names that need to be fixed. If there were no issues, an invisible empty string is
+returned.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}

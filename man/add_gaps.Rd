@@ -26,7 +26,7 @@ that are added because of the gaps.}
 A tibble containing the data and the added gaps.
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
 Since there may be many gaps in mobile sensing data, it is pivotal to pay attention in the
 analysis to them. This function adds known gaps to data as "measurements", thereby allowing

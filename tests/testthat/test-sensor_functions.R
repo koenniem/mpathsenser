@@ -1,7 +1,5 @@
 # Tests for sensor_functions.R
-Sys.setenv("TZ" = "UTC")
 
-## get_data ===============
 test_that("get_data", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
   res <- get_data(db, "Activity", "12345", "2021-11-14", "2021-11-14") %>%
@@ -66,10 +64,8 @@ test_that("get_data", {
   )
 
   dbDisconnect(db)
-  expect_error(get_data(db, "Activity"), "Database connection is not valid")
 })
 
-## first_date ===============
 test_that("first_date", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
   expect_equal(first_date(db, "Device"), "2021-11-13")
@@ -77,7 +73,6 @@ test_that("first_date", {
   dbDisconnect(db)
 })
 
-## last_date ===============
 test_that("last_date", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
   expect_equal(last_date(db, "Device"), "2021-11-14")
@@ -85,10 +80,9 @@ test_that("last_date", {
   dbDisconnect(db)
 })
 
-## get_installed_apps ===============
-test_that("get_installed_apps", {
+test_that("installed_apps", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
-  res <- get_installed_apps(db, "12345")
+  res <- installed_apps(db, "12345")
   true <- tibble::tibble(app = c(
     "BBC News",
     "Calculator",
@@ -111,6 +105,92 @@ test_that("get_installed_apps", {
   dbDisconnect(db)
 })
 
+test_that("app_category", {
+  res <- app_category("whatsapp")
+  expect_equal(
+    res,
+    data.frame(
+      app = "whatsapp",
+      package = "com.whatsapp",
+      genre = "COMMUNICATION"
+    )
+  )
+
+  res2 <- app_category("whatsapp", exact = FALSE)
+  expect_equal(res, res2)
+
+  res <- app_category(c("whatsapp", "weather"), rate_limit = 1)
+  expect_equal(colnames(res), c("app", "package", "genre"))
+  expect_true(nrow(res) == 2)
+
+  res <- app_category("joizmfoipjfjjf9803j")
+  expect_equal(res$package, NA)
+  expect_equal(res$genre, NA)
+
+  expect_equal(app_category("foo", num = 1e10)$package, NA)
+})
+
+test_that("device_info", {
+    path <- system.file("testdata", "test.db", package = "mpathsenser")
+    db <- open_db(NULL, path)
+
+    expect_error(device_info(db, participant_id = "12345"), NA)
+    res <- device_info(db, participant_id = "12345")
+    expect_equal(colnames(res), c("participant_id", "device_id", "hardware", "device_name",
+                                  "device_manufacturer", "device_model", "operating_system",
+                                  "platform"))
+    expect_true(nrow(res) > 0)
+    dbDisconnect(db)
+})
+
+#
+# test_that("app_usage", {
+#   path <- system.file("testdata", "test.db", package = "mpathsenser")
+#   db <- open_db(NULL, path)
+#
+#   app_usage(db, "12345", by = "hour")
+# })
+
+test_that("moving_average", {
+  path <- system.file("testdata", "test.db", package = "mpathsenser")
+  db <- open_db(NULL, path)
+
+  expect_error(moving_average(db, "Accelerometer", cols = "x", participant_id = "12345", n = 2),
+               NA)
+  res <- moving_average(db = db,
+                        sensor = "Accelerometer",
+                        cols = "x",
+                        participant_id = "12345",
+                        n = 2,
+                        start_date = "2021-11-14",
+                        end_date = "2021-11-14")
+  expect_true(nrow(res) > 0)
+
+  dbDisconnect(db)
+})
+
+test_that("identify_gaps", {
+  path <- system.file("testdata", "test.db", package = "mpathsenser")
+  db <- open_db(NULL, path)
+
+  gaps <- identify_gaps(db, "12345", min_gap = 1, sensor = sensors)
+
+  true <- tibble::tibble(
+    participant_id = c( "12345"),
+    from = c("2021-11-13 13:00:00", "2021-11-14 13:00:00", "2021-11-14 13:59:59",
+             "2021-11-14 14:00:00", "2021-11-14 14:00:01", "2021-11-14 14:00:02",
+             "2021-11-14 14:00:10", "2021-11-14 14:01:00"),
+    to = c("2021-11-14 13:00:00", "2021-11-14 13:59:59", "2021-11-14 14:00:00",
+           "2021-11-14 14:00:01", "2021-11-14 14:00:02", "2021-11-14 14:00:10",
+           "2021-11-14 14:01:00", "2021-11-14 14:02:00"),
+    gap = c(86400L, 3599L, 1L, 1L, 1L, 8L, 50L, 60L)
+  )
+
+  expect_equal(gaps, true)
+  expect_true(nrow(gaps) > 0)
+  dbDisconnect(db)
+})
+
 # add_data
 test_that("add_data", {
   # Define some data
@@ -125,6 +205,12 @@ test_that("add_data", {
     participant_id = "12345",
     from = as.POSIXct(c("2022-05-10 10:05:00", "2022-05-10 10:50:00")),
     to = as.POSIXct(c("2022-05-10 10:20:00", "2022-05-10 11:10:00"))
+  )
+
+  # Test by
+  expect_error(
+    add_gaps(dat, gaps, by = "confidence"),
+    "Column\\(s\\) \"confidence\" must be present in both `data` and `gaps`."
   )
 
   # Define the true data
@@ -156,7 +242,7 @@ test_that("add_data", {
   dat <- data.frame(
     participant_id = c(rep("12345", 4), rep("23456", 4)),
     time = rep(as.POSIXct(c("2022-05-10 10:00:00", "2022-05-10 10:30:00", "2022-05-10 10:30:00",
-                        "2022-05-10 11:30:00")), 2),
+                            "2022-05-10 11:30:00")), 2),
     event = rep(c("a", "b", "c", "d"), 2),
     event2 = rep(c("a", "b", "c", "d"), 2)
   )
@@ -164,9 +250,9 @@ test_that("add_data", {
   gaps <- data.frame(
     participant_id = c(rep("12345", 5), rep("23456", 5)),
     from = rep(as.POSIXct(c("2022-05-10 09:05:00", "2022-05-10 09:20:00", "2022-05-10 10:10:00",
-                        "2022-05-10 10:40:00", "2022-05-10 11:00:00")), 2),
+                            "2022-05-10 10:40:00", "2022-05-10 11:00:00")), 2),
     to = rep(as.POSIXct(c("2022-05-10 09:10:00", "2022-05-10 09:40:00", "2022-05-10 10:20:00",
-                      "2022-05-10 10:50:00", "2022-05-10 11:10:00")), 2)
+                          "2022-05-10 10:50:00", "2022-05-10 11:10:00")), 2)
   )
   res <- add_gaps(data = dat,
                   gaps = gaps,
@@ -175,13 +261,13 @@ test_that("add_data", {
   true <- tibble::tibble(
     participant_id = c(rep("12345", 16), rep("23456", 16)),
     time = rep(as.POSIXct(c("2022-05-10 09:05:00", "2022-05-10 09:10:00", "2022-05-10 09:20:00",
-                        "2022-05-10 09:40:00", "2022-05-10 10:00:00", "2022-05-10 10:10:00",
-                        "2022-05-10 10:20:00", "2022-05-10 10:30:00", "2022-05-10 10:30:00",
-                        "2022-05-10 10:40:00", "2022-05-10 10:50:00", "2022-05-10 10:50:00",
-                        "2022-05-10 11:00:00", "2022-05-10 11:10:00", "2022-05-10 11:10:00",
-                        "2022-05-10 11:30:00")), 2),
+                            "2022-05-10 09:40:00", "2022-05-10 10:00:00", "2022-05-10 10:10:00",
+                            "2022-05-10 10:20:00", "2022-05-10 10:30:00", "2022-05-10 10:30:00",
+                            "2022-05-10 10:40:00", "2022-05-10 10:50:00", "2022-05-10 10:50:00",
+                            "2022-05-10 11:00:00", "2022-05-10 11:10:00", "2022-05-10 11:10:00",
+                            "2022-05-10 11:30:00")), 2),
     event = rep(c("GAP", NA, "GAP", NA, "a", "GAP", "a", "b",
-              "c", "GAP", "b", "c", "GAP", "b", "c", "d"), 2),
+                  "c", "GAP", "b", "c", "GAP", "b", "c", "d"), 2),
     event2 = event
   )
   expect_equal(res, true)

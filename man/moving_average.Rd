@@ -7,9 +7,9 @@
 moving_average(
   db,
   sensor,
-  participant_id,
-  ...,
+  cols,
   n,
+  participant_id,
   start_date = NULL,
   end_date = NULL
 )
@@ -20,12 +20,12 @@ moving_average(
 \item{sensor}{The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
 sensors.}
 
-\item{participant_id}{A character string identifying a single participant. Use get_participants
-to retrieve all participants from the database.}
+\item{cols}{Character vectors of the columns in the \code{sensor} table to average over.}
 
-\item{...}{Unquoted names of columns of the \code{sensor} table to average over.}
+\item{n}{The number of seconds to average over. The index of the result will be centered copmared
+to the rolling window of observations.}
 
-\item{n}{The number of observations to average over.}
+\item{participant_id}{A character vector identifying one or multiple participants.}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
 convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
@@ -39,11 +39,17 @@ last entry for a participant.}
 A tibble with the same columns as the input, modified to be a moving average.
 }
 \description{
-#' @description
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
 \examples{
 \dontrun{
-get_moving_average(db, "Light", "12345", mean_lux, max_lux, n = 5)
+path <- system.file("testdata", "test.db", package = "mpathsenser")
+db <- open_db(NULL, path)
+moving_average(db = db,
+               sensor = "Light",
+               cols = c("mean_lux", "max_lux"),
+               n = 5, # seconds
+               participant_id = "12345")
+close_db(db)
 }
 }

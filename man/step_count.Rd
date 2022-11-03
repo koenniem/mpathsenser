@@ -29,3 +29,4 @@ A tibble with the 'date', 'hour', and the number of 'steps'.
 
 Extracts the number of steps per hour as sensed by the underlying operating system.
 }
+\keyword{internal}

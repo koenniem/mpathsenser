@@ -2,7 +2,7 @@
 % Please edit documentation in R/sensor_functions.R
 \name{get_data}
 \alias{get_data}
-\title{Generic helper function from extracting data from an m-Path Sense database}
+\title{Extract data from an m-Path Sense database}
 \usage{
 get_data(db, sensor, participant_id = NULL, start_date = NULL, end_date = NULL)
 }
@@ -30,9 +30,9 @@ A lazy \code{\link[dplyr]{tbl}} containing the requested data.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-This is a generic function to help extract data from an m-Path sense database. For some sensors
-that require a bit more pre-processing, such as app usage and screen time, more specialised
-functions are available (e.g. \code{\link[mpathsenser]{get_app_usage}} and
+This is a convenience function to help extract data from an m-Path sense database. For some
+sensors that require a bit more pre-processing, such as app usage and screen time, more
+specialised functions are available (e.g. \code{\link[mpathsenser]{app_usage}} and
 \code{\link[mpathsenser]{screen_duration}}).
 }
 \examples{

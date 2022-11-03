@@ -52,7 +52,7 @@ test_that("link", {
 
   # Scrambled test
   scramble <- function(data) {
-    idx <- sample(1:nrow(data), nrow(data))
+    idx <- sample(seq_along(data[,1]), nrow(data))
     data[idx, ]
   }
   res <- link(scramble(dat1), scramble(dat2), "participant_id", offset_before = 1800) %>%
@@ -161,13 +161,6 @@ test_that("link", {
   expect_equal(res, true, ignore_attr = TRUE)
 
   # Test arguments
-  expect_error(link(1, dat2, "participant_id", offset_before = 1800), "x must be a data frame")
-  expect_error(link(dat1, 1, "participant_id", offset_before = 1800), "y must be a data frame")
-  expect_error(
-    link(dat1, dat2, 12345, offset_before = 1800),
-    "by must be a character vector of variables to join by"
-  )
-
   expect_error(
     link(mutate(dat1, time = as.character(time)), dat2, offset_before = 1800),
     "column 'time' in x must be a POSIXct"
@@ -383,14 +376,6 @@ test_that("link_db", {
 
   # Argument checks
   expect_error(
-    link_db(db, "Activity", 1:10, offset_before = 1800),
-    "sensor_two must be a character vector"
-  )
-  expect_error(
-    link_db(db, "Activity", offset_before = 1800, external = "Bluetooth"),
-    "external must be a data frame"
-  )
-  expect_error(
     link_db(db, "Activity", "Bluetooth", offset_before = 1800, external = dat1),
     "only a second sensor or an external data frame can be supplied, but not both"
   )
@@ -398,20 +383,19 @@ test_that("link_db", {
     link_db(db, "Activity", offset_before = 1800),
     "either a second sensor or an external data frame must be supplied"
   )
-  dbDisconnect(db)
-  expect_error(
-    link_db(db, "Activity", "Bluetooth", offset_before = 1800),
-    "Database connection is not valid"
-  )
-  db <- open_db(NULL, db@dbname)
 
+  expect_error(
+    link_db(db, "Activity", external = dplyr::mutate(dat1, time = as.character(time)),
+            offset_after = 1800),
+    "Column `time` in `external` must be a POSIXct."
+  )
   # Check time zone differences
-  dat1$time <- format(dat1$time, tz = "Europe/Brussels", usetz = TRUE)
+  dat1$time <- .POSIXct(dat1$time, tz = "Europe/Brussels")
   expect_warning(
     link_db(db, "Activity", external = dat1, offset_after = 1800),
     "`external` is not using UTC as a time zone, unlike the data in the database."
   )
-  dat1$time <- lubridate::force_tz(dat1$time, "UTC")
+  dat1$time <- .POSIXct(dat1$time, tz = "UTC")
   dbDisconnect(db)
 
   # Check if ignore_large works
@@ -419,8 +403,8 @@ test_that("link_db", {
   db <- create_db(NULL, filename)
 
   # Populate database
-  add_study(db, data.frame(study_id = "test-study", data_format = "CARP"))
-  add_participant(db, data.frame(study_id = "test-study", participant_id = "12345"))
+  add_study(db, study_id = "test-study", data_format = "CARP")
+  add_participant(db, participant_id = "12345", study_id = "test-study")
 
   sens_value <- seq.int(0, 10, length.out = 50001)
   time_value <- seq.POSIXt(as.POSIXct("2021-11-14 14:00:00.000", format = "%F %H:%M:%OS"),
@@ -624,7 +608,7 @@ test_that("link_gaps", {
 
   # Scrambled test
   scramble <- function(data) {
-    idx <- sample(1:nrow(data), nrow(data))
+    idx <- sample(seq_along(data[,1]), nrow(data))
     data[idx, ]
   }
   res <- link_gaps(
@@ -816,33 +800,6 @@ test_that("link_gaps", {
   # Argument checks
   expect_error(
     link_gaps(
-      data = dat1$participant_id,
-      gaps = dat2,
-      by = "participant_id",
-      offset_before = 1800L
-    ),
-    "`data` must be a data frame"
-  )
-  expect_error(
-    link_gaps(
-      data = dat1,
-      gaps = dat2$participant_id,
-      by = "participant_id",
-      offset_before = 1800L
-    ),
-    "`gaps` must be a data frame"
-  )
-  expect_error(
-    link_gaps(
-      data = dat1,
-      gaps = dat2,
-      by = as.integer(dat1$participant_id),
-      offset_before = 1800L
-    ),
-    "`by` must be a character vector of variables to join by"
-  )
-  expect_error(
-    link_gaps(
       data = dat1,
       gaps = dat2,
       by = "participant_id"
@@ -897,7 +854,7 @@ test_that("link_gaps", {
   )
   expect_error(
     link_gaps(
-      data = dat1[,-2],
+      data = dat1[, -2],
       gaps = dat2,
       by = "participant_id",
       offset_after = 1800
@@ -907,7 +864,7 @@ test_that("link_gaps", {
   expect_error(
     link_gaps(
       data = dat1,
-      gaps = dat2[,-2],
+      gaps = dat2[, -2],
       by = "participant_id",
       offset_after = 1800
     ),
@@ -966,7 +923,8 @@ test_that("bin_data", {
       ),
       tibble::tibble(
         participant_id = 1,
-        datetime = as.POSIXct(c("2022-06-21 17:00:00", "2022-06-21 17:05:00", "2022-06-21 17:10:00")),
+        datetime = as.POSIXct(c("2022-06-21 17:00:00", "2022-06-21 17:05:00",
+                                "2022-06-21 17:10:00")),
         confidence = 100,
         type = "WALKING",
         lead = as.POSIXct(c("2022-06-21 17:05:00", "2022-06-21 17:10:00", NA))
@@ -1022,7 +980,8 @@ test_that("bin_data", {
       ),
       tibble::tibble(
         participant_id = 1,
-        datetime = as.POSIXct(c("2022-06-21 17:00:00", "2022-06-21 17:05:00", "2022-06-21 17:10:00")),
+        datetime = as.POSIXct(c("2022-06-21 17:00:00", "2022-06-21 17:05:00",
+                                "2022-06-21 17:10:00")),
         confidence = 100,
         type = "WALKING",
         lead = as.POSIXct(c("2022-06-21 17:05:00", "2022-06-21 17:10:00", NA))
@@ -1108,7 +1067,7 @@ test_that("bin_data", {
     group_by(bin, .add = TRUE) %>%
     summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
 
-  true <-c(55, 0, 5, 5, 60, 5, 55, 0, 5, 5, 60, 5)
+  true <- c(55, 0, 5, 5, 60, 5, 55, 0, 5, 5, 60, 5)
   expect_equal(duration, as.double(duration2$duration))
   expect_equal(duration, true)
   expect_equal(as.double(duration2$duration), true)

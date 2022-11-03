@@ -37,3 +37,4 @@ hour grouping returns a tibble with columns 'date' or 'hour' and the number of s
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 }
+\keyword{internal}

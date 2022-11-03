@@ -5,26 +5,31 @@ test_that("sensors-vec", {
 })
 
 test_that("create_db", {
-  filename <- tempfile("create", fileext = ".db")
 
+  filename <- tempfile("create", fileext = ".db")
   db <- create_db(path = NULL, filename)
   dbDisconnect(db)
   expect_true(file.exists(filename))
 
+  # Test merging path and filename
+  temp_file <- strsplit(tempfile(), "\\\\")[[1]]
+  temp_file <- temp_file[length(temp_file)]
+  expect_error({
+    db <- create_db(path = tempdir(), db_name = temp_file)
+    dbDisconnect(db)
+  }, NA)
+
   # Test overwrite argument
-  expect_error(
-    {
+  expect_error({
       db <- create_db(path = NULL, filename, overwrite = TRUE)
       dbDisconnect(db)
-    },
-    NA
-  )
-  expect_error(
-    {
+    }, NA)
+
+  expect_error({
       db <- create_db(path = NULL, filename, overwrite = FALSE)
       dbDisconnect(db)
     },
-    "Database .+?(?=\\.db)\\.db already exists\\. Use overwrite = TRUE to overwrite\\.",
+    "Database .+?(?=\\.db)\\.db already exists\\.",
     perl = TRUE
   )
 
@@ -32,6 +37,7 @@ test_that("create_db", {
 })
 
 test_that("open_db", {
+
   fake_db <- tempfile("foo", fileext = ".db")
   expect_error(open_db(NULL, fake_db), "There is no such file")
 
@@ -61,6 +67,24 @@ test_that("copy_db", {
   db <- open_db(NULL, test_db_name)
   new_db <- create_db(NULL, filename)
 
+  # Arguments
+  expect_warning(
+    copy_db(db, new_db, path = "foo"),
+    "The `path` argument of `copy_db\\(\\)` is deprecated as of mpathsenser 1.1.1."
+  )
+
+  expect_error(
+    copy_db(db, new_db, db_name = "foo"),
+    paste("The `db_name` argument of `copy_db\\(\\)` was deprecated in mpathsenser 1.1.1",
+          "and is now defunct.")
+  )
+
+  # Invalid sensor
+  expect_error(
+    copy_db(db, new_db, sensor = "foo"),
+    "Sensor\\(s\\) foo not found."
+  )
+
   copy_db(db, new_db, sensor = "All")
   expect_equal(get_nrows(db), get_nrows(new_db))
   close_db(new_db)
@@ -73,17 +97,8 @@ test_that("copy_db", {
   names(true) <- sensors
   expect_equal(get_nrows(new_db), true)
 
-  dbDisconnect(new_db)
-  expect_error(
-    copy_db(db, new_db, sensor = "Accelerometer"),
-    "The connection to target_db is not valid."
-  )
-
   dbDisconnect(db)
-  expect_error(
-    copy_db(db, new_db, sensor = "Accelerometer"),
-    "The connection to source_db is not valid."
-  )
+  dbDisconnect(new_db)
 
   file.remove(test_db_name)
   file.remove(filename)
@@ -111,6 +126,22 @@ test_that("index_db", {
   # Cleanup
   dbDisconnect(db)
   file.remove(filename)
+
+  expect_error(
+    index_db(db),
+    "Database connection `db` is not valid."
+  )
+})
+
+test_that("vacuum_db", {
+  # Create db
+  filename <- tempfile("foo", fileext = ".db")
+  db <- create_db(NULL, filename)
+  expect_error(vacuum_db(db), NA)
+
+  # Cleanup
+  dbDisconnect(db)
+  file.remove(filename)
 })
 
 test_that("add_study", {
@@ -119,12 +150,12 @@ test_that("add_study", {
   db <- create_db(NULL, filename)
 
   data <- data.frame(study_id = "12345", data_format = "mpathsenser")
-  expect_equal(add_study(db, data), 1)
+  expect_equal(add_study(db, data$study_id, data$data_format), 1)
 
   studies <- DBI::dbGetQuery(db, "SELECT * FROM Study")
   expect_equal(studies, data)
-  expect_equal(add_study(db, data), 0)
-  expect_equal(add_study(db, data.frame(foo = 1, bar = 2)), 0)
+  expect_equal(add_study(db, data$study_id, data$data_format), 0)
+  expect_equal(add_study(db, NULL, NULL), 0)
 
   # Cleanup
   dbDisconnect(db)
@@ -138,11 +169,11 @@ test_that("add_participant", {
 
   data <- data.frame(participant_id = "12345", study_id = "12345")
   dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
-  expect_equal(add_participant(db, data), 1)
+  expect_equal(add_participant(db, data$participant_id, data$study_id), 1)
   participants <- DBI::dbGetQuery(db, "SELECT * FROM Participant")
   expect_equal(participants, data)
-  expect_equal(add_participant(db, data), 0)
-  expect_equal(add_participant(db, data.frame(foo = 1, bar = 2)), 0)
+  expect_equal(add_participant(db, data$participant_id, data$study_id), 0)
+  expect_equal(add_participant(db, NULL, NULL), 0)
 
   # Cleanup
   dbDisconnect(db)
@@ -157,11 +188,11 @@ test_that("add_processed_file", {
   data <- data.frame(file_name = "12345.json", participant_id = "12345", study_id = "12345")
   dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
   dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
-  expect_equal(add_processed_files(db, data), 1)
+  expect_equal(add_processed_files(db, data$file_name, data$study_id, data$participant_id), 1)
   files <- DBI::dbGetQuery(db, "SELECT * FROM ProcessedFiles")
   expect_equal(files, data)
-  expect_equal(add_processed_files(db, data), 0)
-  expect_equal(add_processed_files(db, data.frame(foo = 1, bar = 2)), 0)
+  expect_equal(add_processed_files(db, data$file_name, data$study_id, data$participant_id), 0)
+  expect_equal(add_processed_files(db, NULL, NULL, NULL), 0)
 
   # Cleanup
   dbDisconnect(db)

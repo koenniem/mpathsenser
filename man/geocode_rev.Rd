@@ -16,12 +16,11 @@ geocode_rev(lat, lon, zoom = 18, email = "", rate_limit = 1)
 \item{email}{If you are making large numbers of request please include an appropriate email
 address to identify your requests. See Nominatim's Usage Policy for more details.}
 
-\item{rate_limit}{The time interval to keep between queries, in seconds. If the rate limit is
-too low, the OpenStreetMaps may reject further requests or even ban your entirely.}
+\item{rate_limit}{The time interval to keep between queries, in seconds. If the rate limit is too
+low, OpenStreetMaps may reject further requests or even ban your entirely.}
 }
 \value{
-A list of information about the location. See
-\href{https://nominatim.org/release-docs/develop/api/Reverse/#example-with-formatjsonv2}{Nominatim's documentation}
+A list of information about the location. See \href{https://nominatim.org/release-docs/develop/api/Reverse/#example-with-formatjsonv2}{Nominatim's documentation}
 for more details.
 }
 \description{
@@ -31,10 +30,9 @@ This functions allows you to extract information about a place based on the lati
 longitude from the OpenStreetMaps nominatim API.
 }
 \section{Warning}{
-
-Do not abuse this function or you will be banned by OpenStreetMap. The maximum number
-of requests is around 1 per second. Also make sure not to do batch lookups, as many subsequent
-requests will get you blocked as well.
+ Do not abuse this function or you will be banned by OpenStreetMap. The maximum
+number of requests is around 1 per second. Also make sure not to do too many batch lookups, as
+many subsequent requests will get you blocked as well.
 }
 
 \examples{

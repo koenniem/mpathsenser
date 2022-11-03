@@ -11,20 +11,11 @@ test_that("coverage", {
     "ggplot"
   )
 
-  # Database
-  db2 <- "foo"
-  expect_error(coverage(db2, "12345"), "Argument db is not a database connection.")
-  db2 <- dbConnect(RSQLite::SQLite(), "")
-  dbDisconnect(db2)
-  expect_error(coverage(db2, "12345"), "Database is invalid.")
-
   # Sensors
   expect_error(coverage(db, "12345", sensor = "foo"), "Sensor\\(s\\) foo not found.")
 
   # participant_id
   expect_error(coverage(db, "-1"), "Participant_id not known.")
-  expect_error(coverage(db, 12345), "participant_id must be a character string")
-  expect_error(coverage(db, c("12345", "12345")), "Only 1 participant per coverage chart allowed")
 
   # Frequency
   expect_error(

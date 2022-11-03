@@ -40,3 +40,4 @@ tibble is returned with the date, time, and duration since the previous measurem
 
 Calculate the screen duration time where the screen was \emph{unlocked} (i.e. not just on).
 }
+\keyword{internal}

@@ -17,8 +17,8 @@ A tibble containing the non-lazy, decrypted GPS data
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-By default, the latitude and longitude of the GPS data collected by m-Path Sense will be encrypted
-using an asymmetric curve25519 key to provide extra protection for these highly sensitive data.
-This function takes the entire location data set and decrypts its longitude and latitude columns
-using the provided \code{key}.
+By default, the latitude and longitude of the GPS data collected by m-Path Sense will be
+encrypted using an asymmetric curve25519 key to provide extra protection for these highly
+sensitive data. This function takes the entire location data set and decrypts its longitude and
+latitude columns using the provided \code{key}.
 }

@@ -15,6 +15,14 @@ the functionalities of `create_db()` and the other functions, where the latter i
 on the former. The following arguments are thereby rendered disabled:
   - `dbname` and `overwrite_db` arguments in `import()`
   - `path` and `db_name` in `copy_db()`
+* All functions gained basic argument checking, ensuring that at least the proper type has been 
+input.
+* Improved error and warning messages (and formatting).
+* Partially rewrote `import()` to be more manageable in code. As a consequency, the dependency on 
+`rjson` and `dbx` can be dropped in favour of jsonlite and native SQL. 
+* Set `activity_duration()`, `screen_duration()`, `n_screen_on()`, `n_screen_unlocks()`, and 
+`step_count()` to internal until it is clear how these functions should behave and, more 
+importantly, what their output should be.
 
 ## Minor changes
 * Added a warning section in `identify_gaps()` and friends to inform the user of a possible 
@@ -23,6 +31,7 @@ inconsistency when identifying gaps.
 makes no difference in the output but is a little easier to read.
 * The package now provides more nicely formatted errors, warnings, and messages through 
 [`rlang::abort`, `rlang::warn`, and `rlang::inform`](https://rlang.r-lib.org/reference/abort.html).
+* Reworked `moving_average()` to work correctly on multiple participants
 
 ## Bug fixes
 * Fixed a note when first running `link()` or `link_gaps()` in a session, stating that using 
@@ -32,6 +41,8 @@ particular a problem with the last measurement of a series.
 * Fixed a non-working example in `bin_data()`.
 * Fixed a bug in `add_gaps()` where multiple gaps in succession (i.e. without other data in between)
 were incorrectly handled.
+* Fixed `app_category()` not  being able to find the exact app name in the search results, thereby 
+defaulting to the `n`th result (default 1).
 
 # mpathsenser 1.1.0
 ## Major changes

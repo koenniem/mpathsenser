@@ -42,7 +42,7 @@ path <- system.file("extdata", "example", package = "mpathsenser")
 copy_list <- list.files(path, "carp-data", full.names = TRUE)
 
 # Copy all data
-file.copy(from = copy_list, 
+file.copy(from = copy_list,
           to = tempdir,
           overwrite = TRUE,
           copy.mode = FALSE)
@@ -75,8 +75,8 @@ fix_jsons(path = NULL, to_fix)
 db <- create_db(tempdir, "getstarted.db")
 
 # Import the data
-import(path = tempdir, 
-       db = db, 
+import(path = tempdir,
+       db = db,
        batch_size = 12)
 ```
 
@@ -84,8 +84,8 @@ import(path = tempdir,
 sensors <- c("Accelerometer", "Activity", "AppUsage", "Bluetooth", "Calendar",
              "Connectivity", "Device", "Gyroscope", "InstalledApps", "Light",
              "Location", "Memory", "Pedometer", "Screen", "Weather", "Wifi")
-coverage(db = db, 
-         participant_id = "2784", 
+coverage(db = db,
+         participant_id = "2784",
          sensor = sensors,
          relative = FALSE)
 ```
