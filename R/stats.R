@@ -1,15 +1,15 @@
+# nocov start
 icc <- function(data, ..., group) {
-  if (missing(...) | rlang::dots_n(...) == 0) stop("No variables selected to be evaluated")
-  if (missing(group)) stop("group may not be missing")
+  if (missing(...) || rlang::dots_n(...) == 0) abort("No variables selected to be evaluated")
+  if (missing(group)) abort("group may not be missing")
 
   data <- select(data, {{ group }}, ...)
   group <- colnames(select(data, {{ group }}))
   cols <- colnames(select(data, ...))
   res <- data.frame(Variable = cols, ICC = NA)
-  # quiet_lmer <- quiet(purrr::possibly(lme4::lmer, NA))
 
-  for (i in 1:length(cols)) {
-    lmer.res <- lme4::lmer(
+  for (i in seq_along(cols)) {
+    lmer_res <- lme4::lmer(
       formula = stats::as.formula(paste0(
         "`",
         cols[i], "` ~ 1 + (1 | ", group, " )"
@@ -17,7 +17,7 @@ icc <- function(data, ..., group) {
       data = data,
       na.action = stats::na.omit
     )
-    intraccc <- as.data.frame(lme4::VarCorr(lmer.res))$sdcor^2
+    intraccc <- as.data.frame(lme4::VarCorr(lmer_res))$sdcor^2
     res$ICC[i] <- intraccc[1] / sum(intraccc)
   }
 
@@ -70,7 +70,7 @@ multilevel_cor <- function(x,
       select(dplyr::all_of(colnames(x)))
 
     if (!dplyr::all_equal(select(x, {{ group }}), select(y, {{ group }}))) {
-      stop("group is not equal in x and y")
+      abort("group is not equal in x and y")
     }
 
     # names_y <- var_names
@@ -80,7 +80,7 @@ multilevel_cor <- function(x,
     names_y <- names_x
   }
 
-  if (!is.logical(p_adjust)) stop("p_adjust must be a logical value")
+  if (!is.logical(p_adjust)) abort("p_adjust must be a logical value")
 
   # Create a tibble for every combination
   res <- tidyr::crossing(var1 = names_x, var2 = names_y)
@@ -88,7 +88,6 @@ multilevel_cor <- function(x,
 
   # Calculate a multilevel model for each combination
   model_cor <- function(var1, var2, group) {
-    # browser()
     dat1 <- x %>%
       select(dplyr::all_of(c(group, var1)))
     # %>% rename("var1" = all_of(var1))
@@ -96,7 +95,6 @@ multilevel_cor <- function(x,
       select(dplyr::all_of(c(var2)))
     # %>% rename("var2" = all_of(var2))
     dat <- dplyr::bind_cols(dat1, dat2)
-    # browser()
 
     # Set up random intercept model
     fixed <- paste0(var1, " ~ -1 + ", var2)
@@ -132,7 +130,7 @@ multilevel_cor <- function(x,
   }
 
   # Apply multiple testing correction
-  if (p_adjust & nrow(res) > 1) {
+  if (p_adjust && nrow(res) > 1) {
     res$p.value <- stats::p.adjust(res$p.value, n = nrow(res) / 2)
   }
 
@@ -185,7 +183,7 @@ multilevel_autocor <- function(data,
       select(dplyr::all_of(c(group, var, lag_var))) %>%
       drop_na() %>%
       group_by(across(dplyr::all_of(c(group, lag_var)))) %>%
-      mutate(!!paste0(var, "_lag") := lag(!!rlang::sym(var))) %>%
+      mutate("{{ var }}_lag" := lag(!!rlang::sym(var))) %>%
       ungroup()
 
     # Set up random intercept model
@@ -212,10 +210,11 @@ multilevel_autocor <- function(data,
   }
 
   # Apply multiple testing correction
-  if (p_adjust & nrow(res) > 1) {
+  if (p_adjust && nrow(res) > 1) {
     # res$p.value <- vapply(res$p.value, p.adjust, double(1), n = nrow(res) / 2)
     res$p.value <- stats::p.adjust(res$p.value, n = nrow(res) / 2)
   }
 
   return(res)
 }
+# nocov end

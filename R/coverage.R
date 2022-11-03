@@ -101,17 +101,16 @@ coverage <- function(db,
                      start_date = NULL,
                      end_date = NULL,
                      plot = TRUE) {
-  # Check db
-  if (!inherits(db, "DBIConnection")) {
-    abort("Argument db is not a database connection.")
-  }
 
-  if (!dbIsValid(db)) {
-    abort("Database is invalid.")
-  }
+  check_db(db)
+  check_arg(participant_id, type = c("character"), n = 1)
+  check_arg(sensor, "character", allow_null = TRUE)
+  check_arg(frequency, type = "double")
+  check_arg(relative, "logical", n = 1)
+  check_arg(plot, "logical", n = 1)
 
   # Check sensors
-  if (length(sensor) == 1 && sensor == "All") {
+  if (is.null(sensor) || length(sensor) == 1 && sensor == "All") {
     sensor <- sensors
   } else {
     missing <- sensor[!(sensor %in% sensors)]
@@ -121,20 +120,12 @@ coverage <- function(db,
   }
 
   # Check participants
-  if (length(participant_id) > 1) {
-    abort("Only 1 participant per coverage chart allowed")
-  }
-
-  if (is.character(participant_id)) {
-    if (!(participant_id %in% get_participants(db)$participant_id)) {
-      abort("Participant_id not known.")
-    }
-  } else {
-    abort("participant_id must be a character string")
+  if (!(participant_id %in% get_participants(db)$participant_id)) {
+    abort("Participant_id not known.")
   }
 
   # Check frequency
-  if (!relative && !is.numeric(frequency) | is.null(names(frequency))) {
+  if (!relative && !is.numeric(frequency) || is.null(names(frequency))) {
     abort("Frequency must be a named numeric vector")
   }
 
@@ -149,7 +140,7 @@ coverage <- function(db,
 
   # Helper function for checking if a string is convertible to date
   convert2date <- function(s) {
-    if (!inherits(s, "Date") & !is.character(s)) {
+    if (!inherits(s, "Date") && !is.character(s)) {
       return(FALSE)
     }
     s <- try(as.Date(s), silent = TRUE)
@@ -167,8 +158,8 @@ coverage <- function(db,
       i = "Ignoring the offset argument."
     ))
     offset <- NULL
-  } else if (!(is.null(start_date) | convert2date(start_date)) ||
-             !(is.null(end_date) | convert2date(end_date))) {
+  } else if (!(is.null(start_date) || convert2date(start_date)) ||
+             !(is.null(end_date) || convert2date(end_date))) {
     abort("start_date and end_date must be NULL, a character string, or date.")
   }
 
@@ -191,12 +182,7 @@ coverage <- function(db,
   # Plot the result if needed
   if (plot) {
     # Check if required packages are available
-    if (!requireNamespace("ggplot2", quietly = TRUE)) {
-      abort(c(
-        "package ggplot2 is needed for this function to work. ",
-        i = "Please install it using install.packages(\"ggplot2\")"
-      ))
-    }
+    ensure_suggested_package("ggplot2")
 
     out <- ggplot2::ggplot(
       data = data,

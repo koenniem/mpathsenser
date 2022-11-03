@@ -20,15 +20,9 @@
 ccopy <- function(from,
                   to,
                   recursive = TRUE) {
-  if (is.null(from) || !is.character(from)) {
-    stop("from must be a character")
-  }
-  if (is.null(to) || !is.character(to)) {
-    stop("to must be a character")
-  }
-  if (is.null(from) || !is.logical(recursive)) {
-    stop("recursive must be a logical")
-  }
+  check_arg(from, "character", n = 1)
+  check_arg(to, "character", n = 1)
+  check_arg(recursive, "logical", n = 1)
 
   from_list <- dir(path = from, pattern = "*.zip$", recursive = recursive)
   to_list <- dir(path = to, pattern = "*.zip$", recursive = recursive)
@@ -49,11 +43,30 @@ ccopy <- function(from,
 #' Fix the end of JSON files
 #'
 #' @description
-#' `r lifecycle::badge("stable")`
+#' `r lifecycle::badge("experimental")`
 #'
 #' When copying data directly coming from m-Path Sense, JSON files are sometimes corrupted due to
 #' the app not properly closing them. This function attempts to fix the most common
 #' problems associated with improper file closure by m-Path Sense.
+#'
+#' @details
+#' There are two distinct problems this functions tries to tackle. First of all, there are often
+#' bad file endings (e.g. no \code{]}) because the app was closed before it could properly close
+#' the file. There are several cases that may be wrong (or even multiple), so it unclear what the
+#' precise problems are. As this function is experimental, it may even make it worse by accidentally
+#' inserting an incorrect file ending.
+#'
+#' Secondly, in rare scenarios there are illegal ASCII characters in the JSON files. Not often does
+#' this happen, and it is likely because of an OS failure (such as a flush error), a disk failure,
+#' or corrupted data during transmit. Nevertheless, these illegal characters make the file
+#' completely unreadable. Fortunately, they are detected correctly by
+#' \link[mpathsenser]{test_jsons}, but they cannot be imported by \link[mpathsenser]{import}. This
+#' functions attempts to surgically remove lines with illegal characters, by removing that specific
+#' line as well as the next line, as this is often a comma. It may therefore be too liberal in its
+#' approach -- cutting away more data than necessary -- or not liberal enough when the corruption
+#' has spread throughout multiple lines. Nevertheless, it is a first step in removing some
+#' straightforward corruption from files so that only a small number may still need to be fixed by
+#' hand.
 #'
 #' @inheritSection import Parallel
 #'
@@ -81,50 +94,33 @@ fix_jsons <- function(path = getwd(),
                       files = NULL,
                       recursive = TRUE,
                       parallel = deprecated()) {
-  if (!requireNamespace("vroom", quietly = TRUE)) {
-    abort(c(
-      "package vroom is needed for this function to work. ",
-      i = "Please install it using install.packages(\"vroom\")"
-    ),
-    call. = FALSE
-    )
-  }
+  ensure_suggested_package("vroom")
 
   if (!is.null(path) && !is.character(path)) {
-    abort("path must be a character string of the path name")
+    abort("`path` must be a character string of the path name.")
   }
   if (!is.null(files) && !is.character(files)) {
-    abort("files must be NULL or a character vector of file names")
+    abort("`files` must be NULL or a character vector of file names.")
   }
+  if (is.null(path) && is.null(files)) {
+    abort("`path` and `files` cannot be NULL at the same time.")
+  }
+  check_arg(recursive, "logical", n = 1)
 
   # Find all JSON files that are _not_ zipped Thus, make sure you didn't unzip them yet,
   # otherwise this may take a long time
-  if (is.null(files)) {
-    jsonfiles <- dir(
+  if (!is.null(path) && is.null(files)) {
+    jsonfiles <- list.files(
       path = path,
       pattern = "*.json$",
       all.files = TRUE,
       recursive = recursive,
       full.names = TRUE
     )
+  } else if (!is.null(path) && !is.null(files)) {
+    jsonfiles <- normalizePath(file.path(path, files), mustWork = TRUE)
   } else {
-    if (!missing(path)) {
-      tryCatch(
-        {
-          normalizePath(file.path(path, files), mustWork = TRUE)
-        },
-        error = function(e) abort(as.character(e))
-      )
-      jsonfiles <- normalizePath(file.path(files))
-    } else {
-      tryCatch(
-        {
-          normalizePath(files, mustWork = TRUE)
-        },
-        error = function(e) abort(as.character(e))
-      )
-      jsonfiles <- normalizePath(files)
-    }
+    jsonfiles <- normalizePath(file.path(files), mustWork = TRUE)
   }
 
   # Old parallel argument
@@ -138,15 +134,14 @@ fix_jsons <- function(path = getwd(),
 
   if (length(jsonfiles > 0)) {
     # Test if files are still corrupted
-    jsonfiles <- suppressWarnings(test_jsons(files = jsonfiles))
+    jsonfiles <- suppressWarnings(test_jsons(path = NULL, files = jsonfiles))
     n_fixed <- 0L
 
     if (jsonfiles[1] != "") {
       n_fixed <- fix_jsons_impl(jsonfiles)
     }
   } else {
-    inform("No JSON files found.")
-    return(invisible(0))
+    abort("No JSON files found.")
   }
 
   inform(paste0("Fixed ", sum(n_fixed), " files"))
@@ -261,8 +256,7 @@ fix_eof <- function(file, eof, lines) {
 
 #' Test JSON files for being in the correct format.
 #'
-#' @description
-#' `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
 #'
 #' @inheritSection import Parallel
 #'
@@ -270,20 +264,21 @@ fix_eof <- function(file, eof, lines) {
 #'
 #' @param path The path name of the JSON files.
 #' @param files Alternatively, a character list of the input files.
-#' @param db A mpathsenser database connection (optional). If provided, will be used to check
-#' which files are already in the database and check only those JSON files which are not.
+#' @param db A mpathsenser database connection (optional). If provided, will be used to check which
+#'   files are already in the database and check only those JSON files which are not.
 #' @param recursive Should the listing recurse into directories?
 #' @param parallel A logical value whether you want to check in parallel. Useful when there are a
-#' lot of files. If you have already used \code{\link[future]{plan}}, you can leave this parameter
-#' to \code{FALSE}.
+#'   lot of files. If you have already used \code{\link[future]{plan}}, you can leave this parameter
+#'   to \code{FALSE}.
 #'
 #'   `r lifecycle::badge("deprecated")` As functions should not modify the user's workspace,
 #'   directly toggling parallel support has been deprecated. Please use
 #'   \code{\link[future]{plan}("multisession")} before calling this function to use multiple
 #'   workers.
 #'
-#' @return A message indicating whether there were any issues and a character vector of the file
-#' names that need to be fixed. If there were no issues, no result is returned.
+#' @return A message indicating whether there were any issues and a character vector of
+#'   the file names that need to be fixed. If there were no issues, an invisible empty string is
+#'   returned.
 #' @export
 test_jsons <- function(path = getwd(),
                        files = NULL,
@@ -291,39 +286,32 @@ test_jsons <- function(path = getwd(),
                        recursive = TRUE,
                        parallel = deprecated()) {
   if (!is.null(path) && !is.character(path)) {
-    abort("path must be a character string of the path name")
+    abort("`path` must be a character string of the path name.")
   }
   if (!is.null(files) && !is.character(files)) {
-    abort("files must be NULL or a character vector of file names")
+    abort("`files` must be NULL or a character vector of file names.")
   }
+  if (is.null(path) && is.null(files)) {
+    abort("`path` and `files` cannot be NULL at the same time.")
+  }
+  check_arg(recursive, "logical", n = 1)
 
-  if (is.null(files)) {
-    jsonfiles <- dir(
+  # Find all JSON files that are _not_ zipped Thus, make sure you didn't unzip them yet,
+  # otherwise this may take a long time
+  if (!is.null(path) && is.null(files)) {
+    jsonfiles <- list.files(
       path = path,
       pattern = "*.json$",
       all.files = TRUE,
       recursive = recursive,
       full.names = TRUE
     )
+  } else if (!is.null(path) && !is.null(files)) {
+    jsonfiles <- normalizePath(file.path(path, files), mustWork = TRUE)
   } else {
-    if (!missing(path)) {
-      tryCatch(
-        {
-          normalizePath(file.path(path, files), mustWork = TRUE)
-        },
-        error = function(e) abort(as.character(e))
-      )
-      jsonfiles <- normalizePath(file.path(files))
-    } else {
-      tryCatch(
-        {
-          normalizePath(files, mustWork = TRUE)
-        },
-        error = function(e) abort(as.character(e))
-      )
-      jsonfiles <- normalizePath(files)
-    }
+    jsonfiles <- normalizePath(file.path(files), mustWork = TRUE)
   }
+
 
   if (!is.null(db)) {
     processed_files <- get_processed_files(db)
@@ -335,7 +323,7 @@ test_jsons <- function(path = getwd(),
     lifecycle::deprecate_warn(when = "1.1.1",
                               what = "test_jsons(parallel)",
                               details = c(
-                                i = "Use future::plan(\"multisession\") instead"
+                                i = "Use future::plan(\"multisession\") instead."
                               ))
   }
 
@@ -398,15 +386,11 @@ unzip_data <- function(path = getwd(),
                        overwrite = FALSE,
                        recursive = TRUE,
                        parallel = deprecated()) {
-  if (is.null(path) || !is.character(path)) {
-    stop("path must be a character string")
-  }
-  if (is.null(overwrite) || !is.logical(overwrite)) {
-    stop("overwrite must be TRUE or FALSE")
-  }
-  if (is.null(recursive) || !is.logical(recursive)) {
-    stop("recursive must be TRUE or FALSE")
-  }
+  check_arg(path, "character", n = 1)
+  check_arg(to, "character", allow_null = TRUE, n = 1)
+  check_arg(overwrite, "logical", n = 1)
+  check_arg(recursive, "logical", n = 1)
+
   if (is.null(to)) {
     to <- path
   }

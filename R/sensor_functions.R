@@ -1,25 +1,24 @@
-#' Generic helper function from extracting data from an m-Path Sense database
+#' Extract data from an m-Path Sense database
 #'
-#' @description
-#' `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
 #'
-#' This is a generic function to help extract data from an m-Path sense database. For some sensors
-#' that require a bit more pre-processing, such as app usage and screen time, more specialised
-#' functions are available (e.g. \code{\link[mpathsenser]{get_app_usage}} and
+#' This is a convenience function to help extract data from an m-Path sense database. For some
+#' sensors that require a bit more pre-processing, such as app usage and screen time, more
+#' specialised functions are available (e.g. \code{\link[mpathsenser]{app_usage}} and
 #' \code{\link[mpathsenser]{screen_duration}}).
 #'
 #' @param db A database connection to an m-Path Sense database.
 #' @param sensor The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
-#' sensors.
+#'   sensors.
 #' @param participant_id A character string identifying a single participant. Use
-#' \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
-#' Leave empty to get data for all participants.
+#'   \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
+#'   Leave empty to get data for all participants.
 #' @param start_date Optional search window specifying date where to begin search. Must be
-#' convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
-#' date of the first entry for a participant.
+#'   convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
+#'   date of the first entry for a participant.
 #' @param end_date Optional search window specifying date where to end search. Must be convertible
-#' to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
-#' last entry for a participant.
+#'   to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
+#'   last entry for a participant.
 #'
 #' @return A lazy \code{\link[dplyr]{tbl}} containing the requested data.
 #' @export
@@ -36,17 +35,12 @@
 #' get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
 #' }
 get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_date = NULL) {
-  if (!dbIsValid(db)) {
-    abort("Database connection is not valid")
-  }
-  if (!is.character(sensor) | length(sensor) == 0 | length(sensor) > 1) {
-    abort("sensor should be a character vector of size 1")
-  }
-  if (!(tolower(sensor) %in% tolower(sensors))) {
-    msg <- sprintf("Sensor '%s' does not exist.", sensor)
-    abort(c(msg,
-            i = "See `mpathsenser::sensors` for the full list of available sensors."))
-  }
+  check_db(db)
+  check_sensors(sensor, n = 1)
+  check_arg(participant_id, type = c("character", "integerish"), n = 1, allow_null = TRUE)
+  check_arg(sensor, "character", n = 1)
+  check_arg(start_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
+  check_arg(end_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
 
   out <- dplyr::tbl(db, sensor)
 
@@ -91,6 +85,9 @@ get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_d
 #' first_date(db, "Accelerometer", "12345")
 #' }
 first_date <- function(db, sensor, participant_id = NULL) {
+  check_db(db)
+  check_arg(sensor, "character", n = 1)
+
   query <- paste0("SELECT MIN(date) AS `min` FROM `", sensor, "`")
 
   if (!is.null(participant_id)) {
@@ -120,6 +117,9 @@ first_date <- function(db, sensor, participant_id = NULL) {
 #' first_date(db, "Accelerometer", "12345")
 #' }
 last_date <- function(db, sensor, participant_id = NULL) {
+  check_db(db)
+  check_arg(sensor, c("character", "integerish"), n = 1, allow_null = TRUE)
+
   query <- paste0("SELECT MAX(date) AS `max` FROM `", sensor, "`")
 
   if (!is.null(participant_id)) {
@@ -137,14 +137,16 @@ last_date <- function(db, sensor, participant_id = NULL) {
 #' this package, start and end dates are not used since installed apps are assumed to be fixed
 #' throughout the study.
 #'
-#' @param db A database connection to a mpathsenser database.
+#' @param db A database connection to an mpathsenser database.
 #' @param participant_id A character string identifying a single participant. Use
 #' \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 #' Leave empty to get data for all participants.
 #'
 #' @return A tibble containing app names.
 #' @export
-get_installed_apps <- function(db, participant_id = NULL) {
+installed_apps <- function(db, participant_id = NULL) {
+  check_db(db)
+
   get_data(db, "InstalledApps", participant_id) %>%
     filter(!is.na(.data$app)) %>%
     distinct(.data$app) %>%
@@ -196,24 +198,13 @@ get_installed_apps <- function(db, participant_id = NULL) {
 #' app_category("net.oneplus.weather")
 app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE) {
   # Check if required packages are available
-  if (!requireNamespace("curl", quietly = TRUE)) {
-    abort(c(
-      "package curl is needed for this function to work. ",
-      i = "Please install it using install.packages(\"curl\")"
-    ))
-  }
-  if (!requireNamespace("httr", quietly = TRUE)) {
-    abort(c(
-      "package httr is needed for this function to work. ",
-      i = "Please install it using install.packages(\"httr\")"
-    ))
-  }
-  if (!requireNamespace("rvest", quietly = TRUE)) {
-    abort(c(
-      "package rvest is needed for this function to work. ",
-      i = "Please install it using install.packages(\"rvest\")"
-    ))
-  }
+  ensure_suggested_package("curl")
+  ensure_suggested_package("httr")
+  ensure_suggested_package("rvest")
+  check_arg(name, "character")
+  check_arg(num, "integerish", n = 1)
+  check_arg(rate_limit, "double", n = 1)
+  check_arg(exact, "logical", n = 1)
 
   res <- data.frame(app = name, package = rep(NA, length(name)), genre = rep(NA, length(name)))
 
@@ -244,14 +235,15 @@ app_category_impl <- function(name, num, exact) {
 
   query <- paste0("https://play.google.com/store/search?q=", name, "&c=apps")
 
-  ua <- httr::user_agent("Mozilla/5.0 (Windows NT 10.0; WOW64; rv:70.0) Gecko/20100101 Firefox/70.0")
+  ua <- httr::user_agent(
+    "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:70.0) Gecko/20100101 Firefox/70.0")
 
   session <- httr::GET(query, ua)
 
   if (!httr::http_error(session)) {
     session <- httr::content(session)
   } else {
-    return(list(package = NA, genre = NA))
+    return(list(package = NA, genre = NA)) # nocov
   }
 
   # Get the link
@@ -294,7 +286,7 @@ app_category_impl <- function(name, num, exact) {
   if (!httr::http_error(session)) {
     session <- httr::content(session)
   } else {
-    return(list(package = NA, genre = NA))
+    return(list(package = NA, genre = NA)) # nocov
   }
 
   # Extract the genre and return results
@@ -306,7 +298,7 @@ app_category_impl <- function(name, num, exact) {
   list(package = gsub("^.+?(?<=\\?id=)", "", link, perl = TRUE), genre = genre)
 }
 
-
+# nocov start
 #' Get app usage per hour
 #'
 #' @description
@@ -319,32 +311,36 @@ app_category_impl <- function(name, num, exact) {
 #' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results.
 #'
 #' @return A data frame containing a column 'app' and a column 'usage' for the hourly app usage.
-#' @export
-get_app_usage <- function(db,
-                          participant_id = NULL,
-                          start_date = NULL,
-                          end_date = NULL,
-                          by = c("Total", "Day", "Hour")) {
-  if (!is.null(start_date) & is.null(end_date)) {
+#' @keywords internal
+app_usage <- function(db,
+                      participant_id = NULL,
+                      start_date = NULL,
+                      end_date = NULL,
+                      by = c("Total", "Day", "Hour")) {
+  check_db(db)
+  check_arg(by, "character", n = 1)
+
+  if (!is.null(start_date) && is.null(end_date)) {
     end_date <- start_date
   }
   data <- get_data(db, "AppUsage", participant_id, start_date, end_date) %>%
-    select("date", "time", "app", "usage") %>%
+    mutate(time = paste(.data$date, .data$time)) %>%
+    select("time", "app", "usage") %>%
     collect() %>%
-    drop_na("app", "usage") %>%
-    group_by(.data$date, .data$app)
+    drop_na("app", "usage")
+
 
   if (is.null(by)) {
     data <- data %>%
       slice(n()) %>%
       mutate(usage = .data$usage / 60 / 60)
-  } else if (by[1] == "Total" | by[1] == "total") {
+  } else if (by[1] == "Total" || by[1] == "total") {
     data <- data %>%
       slice(n()) %>%
       mutate(usage = .data$usage / 60 / 60) %>%
       group_by(.data$app) %>%
       summarise(usage = round(mean(.data$usage), 2), .groups = "drop")
-  } else if (by[1] == "Hour" | by[1] == "hour") {
+  } else if (by[1] == "Hour" || by[1] == "hour") {
     data <- data %>%
       mutate(prev_usage = lag(.data$usage, default = 0)) %>%
       mutate(hour = substr(.data$time, 1, 2)) %>%
@@ -354,7 +350,7 @@ get_app_usage <- function(db,
       summarise(usage = .data$usage / 60 / 60, .groups = "drop") %>%
       mutate(hour = as.numeric(.data$hour)) %>%
       complete(hour = 0:23, .data$app, fill = list(n = 0))
-  } else if (by[1] == "Day" | by[1] == "day") {
+  } else if (by[1] == "Day" || by[1] == "day") {
     data <- data %>%
       slice(n()) %>%
       mutate(usage = round(.data$usage / 60 / 60, 2))
@@ -383,7 +379,7 @@ get_app_usage <- function(db,
 #'
 #' @return A tibble containing a column 'activity' and a column 'duration' for the hourly
 #' activity duration.
-#' @export
+#' @keywords internal
 activity_duration <- function(
     data = NULL,
     db = NULL,
@@ -392,13 +388,19 @@ activity_duration <- function(
     direction = "forward",
     start_date = NULL,
     end_date = NULL,
-    by = c("Total", "Day", "Hour")
-) {
-  if (is.null(data) & is.null(db)) {
+    by = c("Total", "Day", "Hour")) {
+
+  check_arg(data, "data.frame", allow_null = TRUE)
+  check_db(db, allow_null = TRUE)
+  check_arg(confidence, "numeric", n = 1)
+  check_arg(direction, "character", n = 1)
+  check_arg(by, "character", n = 1, allow_null = TRUE)
+
+  if (is.null(data) && is.null(db)) {
     abort("Either data or db must be specified")
   }
 
-  if (!is.null(data) & !is.null(db)) {
+  if (!is.null(data) && !is.null(db)) {
     abort("Either data or db must be specified, but not both")
   }
 
@@ -411,17 +413,17 @@ activity_duration <- function(
       mutate(datetime = paste(.data$date, .data$time))
   }
 
-  if (tolower(direction) == "forward" | tolower(direction) == "forwards") {
+  if (tolower(direction) == "forward" || tolower(direction) == "forwards") {
     data <- data %>%
-      mutate(duration = STRFTIME("%s", lead(.data$datetime)) - STRFTIME("%s", .data$datetime))
-  } else if (tolower(direction) == "backward" | tolower(direction) == "backwards") {
+      mutate(duration = strftime("%s", lead(.data$datetime)) - strftime("%s", .data$datetime))
+  } else if (tolower(direction) == "backward" || tolower(direction) == "backwards") {
     data <- data %>%
-      mutate(duration = STRFTIME("%s", .data$datetime) - STRFTIME("%s", lag(.data$datetime)))
+      mutate(duration = strftime("%s", .data$datetime) - strftime("%s", lag(.data$datetime)))
   } else {
-    stop("Invalid direction")
+    abort("Invalid direction")
   }
 
-  if (is.null(by) || missing(by) || by[1] == "total" | by[1] == "Total") {
+  if (is.null(by) || missing(by) || by[1] == "total" || by[1] == "Total") {
     data <- group_by(data, .data$type)
   } else if (by[1] == "Hour") {
     data <- data %>%
@@ -438,6 +440,7 @@ activity_duration <- function(
     summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop") %>%
     collect()
 }
+# nocov end
 
 #' Get the device info for one or more participants
 #'
@@ -450,14 +453,15 @@ activity_duration <- function(
 #' @export
 device_info <- function(db, participant_id = NULL) {
   get_data(db, "Device", participant_id = participant_id) %>%
-    select("participant_id", .data$device_id:.data$platform) %>%
+    select("participant_id", "device_id":"platform") %>%
     distinct() %>%
     collect()
 }
 
+# nocov start
 compress_activity <- function(data, direction = "forward") {
   data %>%
-    arrange(.data$date, .data$time) %>%
+    arrange("date", "time") %>%
     filter(!(lead(.data$type) == .data$type & lag(.data$type) == .data$type))
 }
 
@@ -475,12 +479,16 @@ compress_activity <- function(data, direction = "forward") {
 #' @return A tibble with either 'hour' and 'duration' columns or 'date' and 'duration' columns
 #' depending on the \code{by} argument. Alternatively, if no \code{by} is specified, a remote
 #' tibble is returned with the date, time, and duration since the previous measurement.
-#' @export
+#' @keywords internal
 screen_duration <- function(db,
                             participant_id,
                             start_date = NULL,
                             end_date = NULL,
                             by = c("Hour", "Day")) {
+  lifecycle::signal_stage("experimental", "screen_duration()")
+  check_db(db)
+  check_arg(by, "character", n = 1, allow_null = TRUE)
+
   out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
     filter(.data$screen_event != "SCREEN_ON") %>%
     mutate(datetime = paste(.data$date, .data$time)) %>%
@@ -528,13 +536,16 @@ screen_duration <- function(db,
 #'
 #' @return In case grouping is by the total amount, returns a single numeric value. For date and
 #' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen on's 'n'.
-#' @export
+#' @keywords internal
 n_screen_on <- function(db,
                         participant_id,
                         start_date = NULL,
                         end_date = NULL,
                         by = c("Total", "Hour", "Day")) {
   lifecycle::signal_stage("experimental", "n_screen_on()")
+
+  check_db(db)
+  check_arg(by, "character", n = 1, allow_null = TRUE)
 
   out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
     select(-c("measurement_id", "participant_id")) %>%
@@ -544,18 +555,18 @@ n_screen_on <- function(db,
     out <- out %>%
       summarise(n = n()) %>%
       pull("n")
-  } else if (by[1] == "Total" | by[1] == "total") {
+  } else if (by[1] == "Total" || by[1] == "total") {
     out <- out %>%
       summarise(n = n()) %>%
       pull("n")
-  } else if (by[1] == "Hour" | by[1] == "hour") {
+  } else if (by[1] == "Hour" || by[1] == "hour") {
     out <- out %>%
-      mutate(hour = STRFTIME("%H", .data$time)) %>%
+      mutate(hour = strftime("%H", .data$time)) %>%
       dplyr::count(.data$hour) %>%
       collect() %>%
       mutate(hour = as.numeric(.data$hour)) %>%
       complete(hour = 0:23, fill = list(n = 0))
-  } else if (by[1] == "Day" | by[1] == "day") {
+  } else if (by[1] == "Day" || by[1] == "day") {
     out <- out %>%
       dplyr::count(.data$date) %>%
       collect()
@@ -580,13 +591,16 @@ n_screen_on <- function(db,
 #' @return In case grouping is by the total amount, returns a single numeric value. For date and
 #' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen unlocks
 #' 'n'.
-#' @export
+#' @keywords internal
 n_screen_unlocks <- function(db,
                              participant_id,
                              start_date = NULL,
                              end_date = NULL,
                              by = c("Total", "Hour", "Day")) {
   lifecycle::signal_stage("experimental", "n_screen_unlocks()")
+
+  check_db(db)
+  check_arg(by, "character", n = 1, allow_null = TRUE)
 
   out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
     select(-c("measurement_id", "participant_id")) %>%
@@ -596,18 +610,18 @@ n_screen_unlocks <- function(db,
     out <- out %>%
       summarise(n = n()) %>%
       pull("n")
-  } else if (by[1] == "Total" | by[1] == "total") {
+  } else if (by[1] == "Total" || by[1] == "total") {
     out <- out %>%
       summarise(n = n()) %>%
       pull("n")
-  } else if (by[1] == "Hour" | by[1] == "hour") {
+  } else if (by[1] == "Hour" || by[1] == "hour") {
     out <- out %>%
-      mutate(hour = STRFTIME("%H", .data$time)) %>%
+      mutate(hour = strftime("%H", .data$time)) %>%
       dplyr::count(.data$hour) %>%
       collect() %>%
       mutate(hour = as.numeric(.data$hour)) %>%
       complete(hour = 0:23, fill = list(n = 0))
-  } else if (by[1] == "Day" | by[1] == "day") {
+  } else if (by[1] == "Day" || by[1] == "day") {
     out <- out %>%
       dplyr::count(.data$date) %>%
       collect()

@@ -1,16 +1,17 @@
+# nocov start
 .onLoad <- function(libname, pkgname) {
 
   # Set progress default
   op <- options()
-  op.mpathsenser <- list(
+  op_mpathsenser <- list(
     mpathsenser.show_progress = TRUE
   )
-  toset <- !(names(op.mpathsenser) %in% names(op))
-  if (any(toset)) options(op.mpathsenser[toset])
+  toset <- !(names(op_mpathsenser) %in% names(op))
+  if (any(toset)) options(op_mpathsenser[toset])
 
   rlang::run_on_load()
 
-  invisible()
+  invisible(NULL)
 }
 
 .onAttach <- function(libname, pkgname) {
@@ -20,3 +21,4 @@
 .onDetach <- function(libpath) {
   # Empty for now...
 }
+# nocov end

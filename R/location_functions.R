@@ -1,12 +1,11 @@
 #' Decrypt GPS data from a curve25519 public key
 #'
-#' @description
-#' `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
 #'
-#' By default, the latitude and longitude of the GPS data collected by m-Path Sense will be encrypted
-#' using an asymmetric curve25519 key to provide extra protection for these highly sensitive data.
-#' This function takes the entire location data set and decrypts its longitude and latitude columns
-#' using the provided \code{key}.
+#' By default, the latitude and longitude of the GPS data collected by m-Path Sense will be
+#' encrypted using an asymmetric curve25519 key to provide extra protection for these highly
+#' sensitive data. This function takes the entire location data set and decrypts its longitude and
+#' latitude columns using the provided \code{key}.
 #'
 #' @param data A (lazy) tibble containing the GPS data
 #' @param key A curve25519 public key
@@ -14,15 +13,14 @@
 #' @return A tibble containing the non-lazy, decrypted GPS data
 #' @export
 decrypt_gps <- function(data, key) {
-  if (!requireNamespace("sodium", quietly = TRUE)) {
-    abort(c(
-      "package sodium is needed for this function to work. ",
-      i = "Please install it using install.packages(\"sodium\")"
-    ))
-  }
+  ensure_suggested_package("sodium")
 
-  if (!is.raw(key) & !is.character(key)) {
-    abort("key must be either a character or raw vector")
+  if (!(is.raw(key) && length(key) == 32) && !is.character(key)) {
+    abort(c(
+      "`key` must be either in a hex or bin format.",
+      i = "Try to use `sodium::hex2bin(key)` or `sodium::bin2hex(key)`",
+      x = "Steer clear of `charToRaw(key)`, as this delivers an incorrect key format."
+      ))
   }
 
   if (!is.raw(key)) {
@@ -32,14 +30,14 @@ decrypt_gps <- function(data, key) {
   # Make some functions vectorised for neater syntax later on
   vec_hex2bin <- Vectorize(sodium::hex2bin, SIMPLIFY = FALSE)
   vec_simple_decrypt <- Vectorize(sodium::simple_decrypt, vectorize.args = "bin", SIMPLIFY = FALSE)
-  vec_rawToChar <- Vectorize(rawToChar, SIMPLIFY = FALSE)
+  vec_raw_to_char <- Vectorize(rawToChar, SIMPLIFY = FALSE)
 
   # Internal decryption process
   internal_decrypt <- function(hex_vec) {
     hex_vec <- hex_vec %>%
       vec_hex2bin() %>%
       vec_simple_decrypt(key) %>%
-      vec_rawToChar() %>%
+      vec_raw_to_char() %>%
       unlist()
 
     hex_vec
@@ -47,16 +45,18 @@ decrypt_gps <- function(data, key) {
 
   data <- data %>%
     collect() %>%
-    mutate(across(c(.data$latitude, .data$longitude), internal_decrypt))
+    mutate(across(c("latitude", "longitude"), internal_decrypt))
 
   data
 }
 
 deg2rad <- function(deg) {
+  check_arg(deg, "double")
   deg * pi / 180
 }
 
 rad2deg <- function(rad) {
+  check_arg(rad, "double")
   rad * 180 / pi
 }
 
@@ -81,32 +81,29 @@ rad2deg <- function(rad) {
 #' ord <- c(41.97861, -87.90472) # Chicago O'Hare International Airport
 #' haversine(fra[1], fra[2], ord[1], ord[2]) # 6971.059 km
 haversine <- function(lat1, lon1, lat2, lon2, r = 6371) {
-  lat1 <- deg2rad(lat1)
-  lon1 <- deg2rad(lon1)
-  lat2 <- deg2rad(lat2)
-  lon2 <- deg2rad(lon2)
+  check_arg(lat1, "double")
+  check_arg(lon1, "double")
+  check_arg(lat2, "double")
+  check_arg(lon2, "double")
+  check_arg(r, "double")
 
-  dlon <- lon2 - lon1
-  dlat <- lat2 - lat1
-  a <- sin(dlat / 2)^2 + cos(lat1) * cos(lat2) * sin(dlon / 2)^2
-  c <- 2 * asin(sqrt(a))
-  d <- r * c
-  d
+  p <- pi / 180
+  a <- 0.5 - cos((lat2 - lat1) * p) / 2 +
+    cos(lat1 * p) * cos(lat2 * p) *
+    (1 - cos((lon2 - lon1) * p)) / 2
+  return(r * 2 * asin(sqrt(a))) #2*R*asin...
 }
 
-location_variance <- function(lat, lon, time) {
-  lat_sd <- stats::sd(lat)
-  lon_sd <- stats::sd(lon)
-  if (lat_sd == 0 & lon_sd == 0) {
-    return(log(1e-09))
-  }
-  return(log(lat_sd^2 + lon^2))
+location_variance <- function(lat, lon) {
+  check_arg(lat, "double")
+  check_arg(lon, "double")
+
+  log((stats::sd(lat) * 2 + stats::sd(lon) * 2) + 1)
 }
 
 #' Reverse geocoding with latitude and longitude
 #'
-#' @description
-#' `r lifecycle::badge("experimental")`
+#' @description `r lifecycle::badge("experimental")`
 #'
 #' This functions allows you to extract information about a place based on the latitude and
 #' longitude from the OpenStreetMaps nominatim API.
@@ -115,24 +112,26 @@ location_variance <- function(lat, lon, time) {
 #' @param lon The longitude of the location (in degrees)
 #' @param zoom The desired zoom level from 1-18. The lowest level, 18, is building level.
 #' @param email If you are making large numbers of request please include an appropriate email
-#' address to identify your requests. See Nominatim's Usage Policy for more details.
-#' @param rate_limit The time interval to keep between queries, in seconds. If the rate limit is
-#' too low, the OpenStreetMaps may reject further requests or even ban your entirely.
+#'   address to identify your requests. See Nominatim's Usage Policy for more details.
+#' @param rate_limit The time interval to keep between queries, in seconds. If the rate limit is too
+#'   low, OpenStreetMaps may reject further requests or even ban your entirely.
 #'
-#' @section Warning:
-#' Do not abuse this function or you will be banned by OpenStreetMap. The maximum number
-#' of requests is around 1 per second. Also make sure not to do batch lookups, as many subsequent
-#' requests will get you blocked as well.
+#' @section Warning: Do not abuse this function or you will be banned by OpenStreetMap. The maximum
+#'   number of requests is around 1 per second. Also make sure not to do too many batch lookups, as
+#'   many subsequent requests will get you blocked as well.
 #'
-#' @return A list of information about the location. See
-#' [Nominatim's documentation](https://nominatim.org/release-docs/develop/api/Reverse/#example-with-formatjsonv2)
-#' for more details.
+#' @return A list of information about the location. See [Nominatim's
+#'documentation](https://nominatim.org/release-docs/develop/api/Reverse/#example-with-formatjsonv2)
+#'    for more details.
 #' @export
 #'
 #' @examples
 #' # Frankfurt Airport
 #' geocode_rev(50.037936, 8.5599631)
 geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1) {
+  check_arg(email, "character", n = 1, allow_null = TRUE)
+  check_arg(rate_limit, "double", n = 1)
+
   base_query <- "https://nominatim.openstreetmap.org/reverse.php?"
   args <- list(
     lat = lat,

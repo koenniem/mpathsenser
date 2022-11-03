@@ -79,7 +79,7 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
   # This is needed to fill in the data entries where there would otherwise be nothing left
   # because nothing matched within the start_time and end_time
   proto <- tibble::as_tibble(y[0, setdiff(colnames(y), {{ by }})])
-  if (add_before | add_after) {
+  if (add_before || add_after) {
     proto$original_time <- as.POSIXct(vector(mode = "double"))
 
     # In case data_main is empty, applying the solution below leads to NA in the next step causing
@@ -194,40 +194,36 @@ link <- function(x,
                  add_after = FALSE,
                  split = by) {
 
-  if (!is.data.frame(x)) {
-    abort("x must be a data frame")
-  }
-  if (!is.data.frame(y)) {
-    abort("y must be a data frame")
-  }
-  if (!is.null(by) && !is.character(by)) {
-    abort("by must be a character vector of variables to join by")
-  }
+  check_arg(x, type = "data.frame")
+  check_arg(y, type = "data.frame")
+  check_arg(by, type = "character", allow_null = TRUE)
+  check_arg(add_before, type = "logical")
+  check_arg(add_after, type = "logical")
 
   # offset checks
-  if ((is.null(offset_before) | all(offset_before == 0)) &
-      (is.null(offset_after) | all(offset_after == 0))) {
+  if ((is.null(offset_before) || all(offset_before == 0)) &&
+      (is.null(offset_after) || all(offset_after == 0))) {
     abort(paste0("offset_before and offset_after cannot be 0 or NULL at the same time."))
   }
-  if (!is.null(offset_before) && !(is.character(offset_before) |
-                                   lubridate::is.period(offset_before) |
+  if (!is.null(offset_before) && !(is.character(offset_before) ||
+                                   lubridate::is.period(offset_before) ||
                                    is.numeric(offset_before))) {
     abort("offset_before must be a character vector, numeric vector, or a period")
   }
-  if (!is.null(offset_after) && !(is.character(offset_after) |
-                                  lubridate::is.period(offset_after) |
+  if (!is.null(offset_after) && !(is.character(offset_after) ||
+                                  lubridate::is.period(offset_after) ||
                                   is.numeric(offset_after))) {
     abort("offset_after must be a character vector, numeric vector, or a period")
   }
-  if (is.character(offset_before) | is.numeric(offset_before)) {
+  if (is.character(offset_before) || is.numeric(offset_before)) {
     offset_before <- lubridate::as.period(offset_before)
     offset_before <- as.integer(as.double(offset_before))
   }
-  if (is.character(offset_after) | is.numeric(offset_after)) {
+  if (is.character(offset_after) || is.numeric(offset_after)) {
     offset_after <- lubridate::as.period(offset_after)
     offset_after <- as.integer(as.double(offset_after))
   }
-  if (is.na(offset_before) | is.na(offset_after)) {
+  if (is.na(offset_before) || is.na(offset_after)) {
     abort(c(
       "Invalid offset specified.",
       i = "Try something like '30 minutes', lubridate::minutes(30), or 1800."
@@ -249,7 +245,7 @@ link <- function(x,
   }
 
   # Check for time column
-  if (!("time" %in% colnames(x) & "time" %in% colnames(y))) {
+  if (!("time" %in% colnames(x) && "time" %in% colnames(y))) {
     abort("column 'time' must be present in both x and y")
   }
   if (!lubridate::is.POSIXct(x$time)) {
@@ -321,20 +317,20 @@ link_db <- function(db,
                     end_date = NULL,
                     reverse = FALSE,
                     ignore_large = FALSE) {
-  if (!dbIsValid(db)) {
-    abort("Database connection is not valid")
-  }
-  if (is.null(external) & is.null(sensor_two)) {
+
+  check_db(db)
+  check_arg(sensor_one, type = "character", n = 1)
+  check_arg(sensor_two, type = "character", n = 1, allow_null = TRUE)
+  check_arg(external, type = "data.frame", allow_null = TRUE)
+  check_arg(participant_id, type = "character", allow_null = TRUE)
+  check_arg(reverse, type = "logical", n = 1)
+  check_arg(ignore_large, type = "logical", n = 1)
+
+  if (is.null(external) && is.null(sensor_two)) {
     abort("either a second sensor or an external data frame must be supplied")
   }
-  if (!is.null(external) & !is.null(sensor_two)) {
+  if (!is.null(external) && !is.null(sensor_two)) {
     abort("only a second sensor or an external data frame can be supplied, but not both")
-  }
-  if (!is.null(external) && !is.data.frame(external)) {
-    abort("external must be a data frame")
-  }
-  if (!is.null(sensor_two) && !is.character(sensor_two)) {
-    abort("sensor_two must be a character vector")
   }
 
   # See if data is not incredibly large
@@ -355,6 +351,10 @@ link_db <- function(db,
       collect() %>%
       mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", tz = "UTC"))
   } else {
+    if (!lubridate::is.POSIXct(external$time)) {
+      abort("Column `time` in `external` must be a POSIXct.")
+    }
+
     if (any(format(external$time, "%Z") != "UTC")) {
       warn(c(
         "`external` is not using UTC as a time zone, unlike the data in the database.",
@@ -376,11 +376,11 @@ link_db <- function(db,
     mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", "UTC"))
 
 
-  if (is.null(external) & reverse) {
+  if (is.null(external) && reverse) {
     tmp <- dat_one
     dat_one <- dat_two
     dat_two <- tmp
-  } else if (!is.null(external) & !reverse) {
+  } else if (!is.null(external) && !reverse) {
     tmp <- dat_one
     dat_one <- external
     dat_two <- tmp
@@ -432,51 +432,43 @@ link_gaps <- function(
     by = NULL,
     offset_before = 0,
     offset_after = 0,
-    raw_data = FALSE
-) {
+    raw_data = FALSE) {
 
   # Argument checking
-  if (!is.data.frame(data)) {
-    abort("`data` must be a data frame")
-  }
-
-  if (!is.data.frame(gaps)) {
-    abort("`gaps` must be a data frame")
-  }
-
-  if (!is.null(by) && !is.character(by)) {
-    abort("`by` must be a character vector of variables to join by")
-  }
+  check_arg(data, type ="data.frame")
+  check_arg(gaps, type = "data.frame")
+  check_arg(by, type = "character", allow_null = TRUE)
+  check_arg(raw_data, type = "logical", n = 1)
 
   # offset checks
-  if ((is.null(offset_before) | all(offset_before == 0)) &
-      (is.null(offset_after) | all(offset_after == 0))) {
+  if ((is.null(offset_before) || all(offset_before == 0)) &&
+      (is.null(offset_after) || all(offset_after == 0))) {
     abort("`offset_before` and `offset_after` cannot be 0 or NULL at the same time.")
   }
-  if (!is.null(offset_before) && !(is.character(offset_before) |
-                                   lubridate::is.period(offset_before) |
+  if (!is.null(offset_before) && !(is.character(offset_before) ||
+                                   lubridate::is.period(offset_before) ||
                                    is.numeric(offset_before))) {
     abort("`offset_before` must be a character vector, numeric vector, or a period.")
   }
-  if (!is.null(offset_after) && !(is.character(offset_after) |
-                                  lubridate::is.period(offset_after) |
+  if (!is.null(offset_after) && !(is.character(offset_after) ||
+                                  lubridate::is.period(offset_after) ||
                                   is.numeric(offset_after))) {
     abort("`offset_after` must be a character vector, numeric vector, or a period.")
   }
 
   # Convert offset_before to integer time
-  if (is.character(offset_before) | is.numeric(offset_before)) {
+  if (is.character(offset_before) || is.numeric(offset_before)) {
     offset_before <- lubridate::as.period(offset_before)
     offset_before <- as.integer(as.double(offset_before))
   }
 
   # Convert offset_after to integer time
-  if (is.character(offset_after) | is.numeric(offset_after)) {
+  if (is.character(offset_after) || is.numeric(offset_after)) {
     offset_after <- lubridate::as.period(offset_after)
     offset_after <- as.integer(as.double(offset_after))
   }
 
-  if (is.na(offset_before) | is.na(offset_after)) {
+  if (is.na(offset_before) || is.na(offset_after)) {
     abort(c(
       "Invalid offset specified.",
       i = "Try something like '30 minutes', lubridate::minutes(30), or 1800."
@@ -502,7 +494,7 @@ link_gaps <- function(
     abort("Column `time` must be present in `data`")
   }
   # Check for time column
-  if (!("from" %in% colnames(gaps) & "to" %in% colnames(gaps))) {
+  if (!("from" %in% colnames(gaps) && "to" %in% colnames(gaps))) {
     abort("Column `from` and `to` must be present in `gaps`.")
   }
   if (!lubridate::is.POSIXct(data$time)) {
@@ -513,7 +505,7 @@ link_gaps <- function(
   if ("gap" %in% colnames(data)) {
     abort("column 'gap' should not already be present in data")
   }
-  if (raw_data & "gap_data" %in% colnames(data)) {
+  if (raw_data && "gap_data" %in% colnames(data)) {
     abort("column 'gap_data' should not already be present in data")
   }
 
@@ -723,13 +715,16 @@ bin_data <- function(data,
                      by = c("sec", "min", "hour", "day"),
                      fixed = TRUE) {
 
+  check_arg(data, "data.frame")
+  check_arg(fixed, "logical")
+
   group_vars <- dplyr::group_vars(data)
 
   if (!is.null(by) && is.character(by)) {
     by <- match.arg(by, c("sec", "min", "hour", "day"))
     by_duration <- c(sec = 1L, min = 60L, hour = 3600L, day = 86400L)
     by_duration <- by_duration[grepl(by, names(by_duration))]
-  } else if (is.numeric(by) & !fixed) {
+  } else if (is.numeric(by) && !fixed) {
     by_duration <- by
   } else {
     abort(paste("`by` must be one of 'sec', 'min', 'hour', or 'day',",
@@ -739,7 +734,7 @@ bin_data <- function(data,
   tz <- attr(pull(data, {{ start_time }}), "tz")
 
   # check that start_time and end_time are a datetime, or try to convert
-  if (!lubridate::is.POSIXt(pull(data, {{ start_time }})) |
+  if (!lubridate::is.POSIXt(pull(data, {{ start_time }})) ||
       !lubridate::is.POSIXt(pull(data, {{ end_time }}))) {
     data <- data %>%
       mutate({{ start_time }} := as.POSIXct({{ start_time }}, origin = "1970-01-01")) %>%
