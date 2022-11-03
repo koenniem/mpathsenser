@@ -250,36 +250,39 @@ copy_db <- function(
   return(invisible(TRUE))
 }
 
-add_study <- function(db, data) {
+add_study <- function(db, study_id, data_format) {
   check_db(db)
+
   dbExecute(
     db,
-    "INSERT OR IGNORE INTO Study(study_id, data_format)
-  VALUES(:study_id, :data_format);",
-    list(study_id = data$study_id, data_format = data$data_format)
+    paste("INSERT OR IGNORE INTO Study(study_id, data_format)",
+          "VALUES(:study_id, :data_format);"),
+    list(study_id = study_id, data_format = data_format)
   )
 }
 
-add_participant <- function(db, data) {
+add_participant <- function(db, participant_id, study_id) {
   check_db(db)
+
   dbExecute(
     db,
-    "INSERT OR IGNORE INTO Participant(participant_id, study_id)
-  VALUES(:participant_id, :study_id);",
-    list(participant_id = data$participant_id, study_id = data$study_id)
+    paste("INSERT OR IGNORE INTO Participant(participant_id, study_id)",
+          "VALUES(:participant_id, :study_id);"),
+    list(participant_id = participant_id, study_id = study_id)
   )
 }
 
-add_processed_files <- function(db, data) {
+add_processed_files <- function(db, file_name, study_id, participant_id) {
   check_db(db)
+
   dbExecute(
     db,
-    "INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)
-  VALUES(:file_name, :study_id, :participant_id);",
+    paste("INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)",
+          "VALUES(:file_name, :study_id, :participant_id);"),
     list(
-      file_name = data$file_name,
-      study_id = data$study_id,
-      participant_id = data$participant_id
+      file_name = file_name,
+      study_id = study_id,
+      participant_id = participant_id
     )
   )
 }
