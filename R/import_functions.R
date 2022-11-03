@@ -1,29 +1,21 @@
 # First, try to simply add the data to the table If the measurement already exists,
 # skip that measurement
 save2db <- function(db, name, data) {
-  tryCatch(
-    {
-      DBI::dbAppendTable(db, name, data)
-    },
-    error = function(e) {
-      inform("Could not add data to the data base. Falling back to UPSERT method")
-
-      dbx::dbxUpsert(
-        db,
-        name,
-        data,
-        where_cols = c("measurement_id"),
-        skip_existing = TRUE
-      )
-    }
+  insert_cols <- paste0("`", colnames(data), "`", collapse = ", ")
+  cols <- paste0(":", colnames(data), collapse = ", ")
+  res <- DBI::dbSendStatement(
+    conn = db,
+    statement = paste0("INSERT OR REPLACE INTO ", name, " (", insert_cols, ") VALUES (", cols, ")"),
+    params = as.list(data)
   )
+  DBI::dbClearResult(res)
 }
 
 # This function is needed because calling the function on the fly from the sensor name
 # (i.e. dynamic evaluation) poses a problem from the globals package, which would then not
 # include these import functions in the futures.
 which_sensor <- function(data, sensor) {
-  switch(sensor,
+  switch(tolower(sensor),
     accelerometer = accelerometer_fun(data),
     activity = activity_fun(data),
     air_quality = air_quality_fun(data),
@@ -115,7 +107,7 @@ accelerometer_fun <- function(data) {
 }
 
 periodic_accelerometer_fun <- function(data) {
-  data$id <- vapply(data$body, function(x) x$body$id, character(1))
+  data$id <- vapply(data$body, function(x) x$body$id, character(1), USE.NAMES = FALSE)
   data$body <- lapply(data$body, function(x) x$body$data)
 
   data <- unnest(data, "body", keep_empty = TRUE)
@@ -125,7 +117,7 @@ periodic_accelerometer_fun <- function(data) {
   data$y <- lapply(data$body, function(x) x$y)
   data$z <- lapply(data$body, function(x) x$z)
   data$body <- NULL
-  data <- unnest(data, "x":"z")
+  data <- unnest(data, "x":"z", keep_empty = TRUE)
 
   # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)
@@ -392,7 +384,8 @@ gyroscope_fun <- function(data) {
 }
 
 keyboard_fun <- function(data) {
-  abort("Function not implemented")
+  warn("Function for implementing keyboard data currently not implemented.")
+  return(NULL)
 }
 
 light_fun <- function(data) {

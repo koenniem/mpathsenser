@@ -36,7 +36,6 @@ Imports:
     lubridate,
     magrittr,
     purrr,
-    rjson,
     rlang,
     RSQLite,
     stats,
@@ -45,7 +44,6 @@ Imports:
 Suggests: 
     cli,
     curl,
-    dbx,
     ggplot2,
     httr,
     knitr,
