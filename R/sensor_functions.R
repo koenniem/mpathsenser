@@ -260,7 +260,7 @@ app_category_impl <- function(name, num, exact) {
   # If so, select the num (usually first) link from this list
   if (exact) {
     name_detected <- vapply(links,
-                            function(x) grepl(paste0("\\.", name, "$/i"), x),
+                            function(x) grepl(paste0("\\.", tolower(name), "$"), tolower(x)),
                             FUN.VALUE = logical(1))
     if (any(name_detected)) {
       links <- links[name_detected]
