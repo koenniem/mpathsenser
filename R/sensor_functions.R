@@ -835,7 +835,7 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 
 #'Add gap periods to sensor data
 #'
-#'@description `r lifecycle::badge("experimental")`
+#'@description `r lifecycle::badge("stable")`
 #'
 #'  Since there may be many gaps in mobile sensing data, it is pivotal to pay attention in the
 #'  analysis to them. This function adds known gaps to data as "measurements", thereby allowing
@@ -899,9 +899,20 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 #'          by = "participant_id",
 #'          fill = list(type = "GAP", confidence = 100))
 add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
-  by_names <- colnames(select(data, {{ by }}))
-  if (!all(by_names %in% c(colnames(data), colnames(gaps)))) {
-    stop(paste(by, "must be a column in both data and gaps."))
+  check_arg(data, "data.frame")
+  check_arg(gaps, "data.frame")
+  check_arg(by, "character", allow_null = TRUE)
+
+  if (!is.null(by)) {
+    err <- try({
+      select(data, dplyr::all_of({{ by }}))
+      select(gaps, dplyr::all_of({{ by }}))
+    }, silent = TRUE)
+
+    if (inherits(err, "try-error")) {
+      abort(paste0("Column(s) ", paste0("\"", by, "\"", collapse = ", "),
+                   " must be present in both `data` and `gaps`."))
+    }
   }
 
   # Pour the gaps in a different format so that they can be added to the sensor data as

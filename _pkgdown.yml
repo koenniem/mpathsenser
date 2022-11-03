@@ -67,11 +67,11 @@ reference:
     contents:
       - activity_duration
       - app_category
+      - app_usage
       - decrypt_gps
       - device_info
       - geocode_rev
-      - get_app_usage
-      - get_installed_apps
+      - installed_apps
       - n_screen_on
       - n_screen_unlocks
       - screen_duration
