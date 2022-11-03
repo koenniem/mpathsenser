@@ -158,7 +158,8 @@ fix_jsons_impl <- function(jsonfiles) {
       p()
     }
 
-    lines <- suppressWarnings(vroom::vroom_lines(.x, altrep = FALSE, skip_empty_rows = TRUE))
+    # lines <- suppressWarnings(vroom::vroom_lines(.x, altrep = FALSE, skip_empty_rows = TRUE))
+    lines <- readLines(.x, warn = FALSE, skipNul = TRUE)
     res <- 0L
 
     # Are there any illegal characters in the file? If so, these prevent readLines from reading
@@ -170,11 +171,12 @@ fix_jsons_impl <- function(jsonfiles) {
     }
 
     if (length(lines) == 0) {
-      return(0L)
+      return(res)
     } else if (length(lines) > 2) {
       eof <- lines[(length(lines) - 2):length(lines)]
     } else {
-      eof <- lines
+      eof <- character(3)
+      eof[seq_along(lines)] <- lines
     }
 
     res <- res + fix_eof(.x, eof, lines)
@@ -187,8 +189,6 @@ fix_jsons_impl <- function(jsonfiles) {
 }
 
 fix_illegal_ascii <- function(file, lines) {
-  # Read in the file using vroom, since this doesn't stop early when encountering illegal ASCII's
-  # lines <- suppressWarnings(vroom::vroom_lines(path, altrep = FALSE, skip_empty_rows = TRUE))
 
   # Find which lines contain non ASCII characters
   corrupt <- which(grepl("[^ -~]", lines))
@@ -203,47 +203,51 @@ fix_illegal_ascii <- function(file, lines) {
 }
 
 fix_eof <- function(file, eof, lines) {
-  last <- eof[length(eof)]
+  last <- eof[eof != ""]
+  last <- last[length(last)]
 
   # Cases where it can go wrong
-  if (length(eof) == 1 & eof[1] == "[") {
-    # 1: Similar to 8?
+  if (eof[1] == "[" && eof[2] == "" && eof[3] == "") {
+    # 1: If the last (and also only) line in the file is [ then it means the file was only
+    # opened but nothing was written. So, just close it with ] to have an empty JSON file.
     write("]", file, append = TRUE)
-  } else if (eof[2] == "," & eof[3] == "{}]") {
-    return(0L)
-  } else if (eof[1] == "{}]" & eof[2] == "]" & eof[3] == "]") {
+
+  } else if (eof[1] == "{}]" && eof[2] == "]" && eof[3] == "]") {
     # 2: Closing bracket applied thrice. Probably the result of a bad fix applied by this function
     write(lines[1:(length(lines) - 2)], file, append = FALSE)
-  } else if (eof[2] == "]" & eof[3] == "]") {
+
+  } else if (eof[2] == "]" && eof[3] == "]") {
     # 3: Closing bracket applied twice. Probably the result of a bad fix applied by this function
     write(lines[1:(length(lines) - 1)], file, append = FALSE)
+
   } else if (all(eof == "{}]")) {
     # 4: An empty object followed by a closing bracket is generally the result of a bad fix
     # applied by this function. This autocorrects it.
     write(lines[1:(length(lines) - 2)], file, append = FALSE)
-  } else if (eof[2] == "{}]" & eof[3] == "{}]") {
+
+  } else if (eof[2] == "{}]" && eof[3] == "{}]") {
     # 5: An empty object followed by a closing bracket is generally the result of a bad fix
     # applied by this function. This autocorrects it.
     write(lines[1:(length(lines) - 1)], file, append = FALSE)
-  } else if (eof[2] == "," & eof[3] == "]") {
+
+  } else if (eof[2] == "," && eof[3] == "]") {
     # 6: If the file closed with a comma, another object is expected
     # To fix this, rewrite the entire file without the comma as deleting characters
     # is not possible
     write(lines[1:(length(lines) - 2)], file, append = FALSE)
     write("]", file, append = TRUE)
+
   } else if (last == ",") {
     # 7: Similar to 6, but without a closing ] for the file
     # Instead of rewriting the file, just add an empty object
     write("{}]", file, append = TRUE)
-  } else if (last == "[") {
-    # 8: If the last (and also only) line in the file is [ then it means the file was only
-    # opened but nothing was written. So, just close it with ] to have an empty JSON file.
-    write("]", file, append = TRUE)
+
   } else if (nchar(last) > 3 &&
     substr(last, nchar(last) - 1, nchar(last)) == "}}") {
-    # 9: Is the last line long (>3) and are the last two characters "}}"? Then somehow all
+    # 8: Is the last line long (>3) and are the last two characters "}}"? Then somehow all
     # we are missing is a closing bracket.
     write("]", file, append = TRUE)
+
   } else {
     # If no known pattern is detected, return without counting it as a fixed file
     return(0L)
