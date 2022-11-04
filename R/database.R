@@ -31,12 +31,12 @@ sensors <- c(
 #' @export
 create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
-  check_arg(db_name, c("character", "integerish"), n = 1)
+  check_arg(db_name, "character", n = 1)
   check_arg(overwrite, "logical", n = 1)
 
   # Merge path and file name
   if (!is.null(path)) {
-    db_name <- suppressWarnings(normalizePath(file.path(path, db_name)))
+    db_name <- normalizePath(file.path(path, db_name), mustWork = FALSE)
   }
 
   # If db already exists, remove it or throw an error
@@ -54,8 +54,21 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
     }
   }
 
+  # Check if path exists
+  if (!dir.exists(dirname(db_name))) {
+    abort(paste0("Directory ", dirname(db_name), " does not exist."))
+  }
+
   # Create a new db instance
-  db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
+  tryCatch(
+    {
+      db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
+    },
+    error = function(e) {
+      abort(paste0("Could not create a database in ", db_name))
+    }
+  )
+
 
   # Populate the db with empty tables
   tryCatch(

@@ -5,27 +5,32 @@ test_that("sensors-vec", {
 })
 
 test_that("create_db", {
-
   filename <- tempfile("create", fileext = ".db")
   db <- create_db(path = NULL, filename)
   dbDisconnect(db)
   expect_true(file.exists(filename))
 
   # Test merging path and filename
-  temp_file <- strsplit(tempfile(), "\\\\")[[1]]
-  temp_file <- temp_file[length(temp_file)]
-  expect_error({
-    db <- create_db(path = tempdir(), db_name = temp_file)
-    dbDisconnect(db)
-  }, NA)
+  temp_file <- basename(tempfile())
+  expect_error(
+    {
+      db <- create_db(path = tempdir(), db_name = temp_file)
+      dbDisconnect(db)
+    },
+    NA
+  )
 
   # Test overwrite argument
-  expect_error({
+  expect_error(
+    {
       db <- create_db(path = NULL, filename, overwrite = TRUE)
       dbDisconnect(db)
-    }, NA)
+    },
+    NA
+  )
 
-  expect_error({
+  expect_error(
+    {
       db <- create_db(path = NULL, filename, overwrite = FALSE)
       dbDisconnect(db)
     },
@@ -33,11 +38,16 @@ test_that("create_db", {
     perl = TRUE
   )
 
+  # Test non-existing path
+  expect_error(create_db("foo", "bar"), "Directory .+?(?=foo)foo does not exist\\.", perl = TRUE)
+
+  # Test path where a database cnanot be created, e.g. with an invalid filename
+  expect_error(create_db(path = NULL, "*?."), "Could not create a database in \\*\\?\\.")
+
   file.remove(filename)
 })
 
 test_that("open_db", {
-
   fake_db <- tempfile("foo", fileext = ".db")
   expect_error(open_db(NULL, fake_db), "There is no such file")
 
