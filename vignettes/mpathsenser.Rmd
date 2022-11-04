@@ -42,10 +42,12 @@ path <- system.file("extdata", "example", package = "mpathsenser")
 copy_list <- list.files(path, "carp-data", full.names = TRUE)
 
 # Copy all data
-file.copy(from = copy_list,
-          to = tempdir,
-          overwrite = TRUE,
-          copy.mode = FALSE)
+file.copy(
+  from = copy_list,
+  to = tempdir,
+  overwrite = TRUE,
+  copy.mode = FALSE
+)
 ```
 
 The `extdata` folder contains several `.zip` files as well as some `JSON` files. It is likely that the data for your study will look the same only much more. Note that all of these data files came directly from m-Path Sense (i.e. there was no pre-processing yet).
@@ -75,19 +77,25 @@ fix_jsons(path = NULL, to_fix)
 db <- create_db(tempdir, "getstarted.db")
 
 # Import the data
-import(path = tempdir,
-       db = db,
-       batch_size = 12)
+import(
+  path = tempdir,
+  db = db,
+  batch_size = 12
+)
 ```
 
 ```{r, fig.width=13, fig.height=8, fig.align='center', dpi=55}
-sensors <- c("Accelerometer", "Activity", "AppUsage", "Bluetooth", "Calendar",
-             "Connectivity", "Device", "Gyroscope", "InstalledApps", "Light",
-             "Location", "Memory", "Pedometer", "Screen", "Weather", "Wifi")
-coverage(db = db,
-         participant_id = "2784",
-         sensor = sensors,
-         relative = FALSE)
+sensors <- c(
+  "Accelerometer", "Activity", "AppUsage", "Bluetooth", "Calendar",
+  "Connectivity", "Device", "Gyroscope", "InstalledApps", "Light",
+  "Location", "Memory", "Pedometer", "Screen", "Weather", "Wifi"
+)
+coverage(
+  db = db,
+  participant_id = "2784",
+  sensor = sensors,
+  relative = FALSE
+)
 ```
 
 Finally, recall that once you're done working with a database to also close it.

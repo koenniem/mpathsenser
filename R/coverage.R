@@ -101,7 +101,6 @@ coverage <- function(db,
                      start_date = NULL,
                      end_date = NULL,
                      plot = TRUE) {
-
   check_db(db)
   check_arg(participant_id, type = c("character"), n = 1)
   check_arg(sensor, "character", allow_null = TRUE)
@@ -159,7 +158,7 @@ coverage <- function(db,
     ))
     offset <- NULL
   } else if (!(is.null(start_date) || convert2date(start_date)) ||
-             !(is.null(end_date) || convert2date(end_date))) {
+    !(is.null(end_date) || convert2date(end_date))) {
     abort("start_date and end_date must be NULL, a character string, or date.")
   }
 

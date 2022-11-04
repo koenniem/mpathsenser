@@ -7,8 +7,10 @@ test_that("import", {
   # Arguments
   expect_error(
     import(dbname = "foo"),
-    paste("The `dbname` argument of `import\\(\\)` was deprecated",
-    "in mpathsenser 1.1.1 and is now defunct.")
+    paste(
+      "The `dbname` argument of `import\\(\\)` was deprecated",
+      "in mpathsenser 1.1.1 and is now defunct."
+    )
   )
 
   # Create db
@@ -56,10 +58,14 @@ test_that("import", {
   ))
   expect_match(warnings_log, "Invalid JSON format in file broken\\/broken\\d\\.json", all = FALSE)
   expect_match(warnings_log, "Some files could not be written to the database.", all = FALSE)
-  expect_match(warnings_log, paste("The `overwrite_db` argument of `import\\(\\)`",
-                                   "is deprecated as of mpathsenser 1.1.1."), all = FALSE)
-  expect_match(warnings_log, paste("The `parallel` argument of `import\\(\\)`",
-                                   "is deprecated as of mpathsenser 1.1.1."), all = FALSE)
+  expect_match(warnings_log, paste(
+    "The `overwrite_db` argument of `import\\(\\)`",
+    "is deprecated as of mpathsenser 1.1.1."
+  ), all = FALSE)
+  expect_match(warnings_log, paste(
+    "The `parallel` argument of `import\\(\\)`",
+    "is deprecated as of mpathsenser 1.1.1."
+  ), all = FALSE)
   dbDisconnect(db2)
   file.remove(filename)
 })
@@ -67,30 +73,43 @@ test_that("import", {
 test_that(".import_read_json", {
   path <- system.file("testdata", package = "mpathsenser")
 
-  expect_type(.import_read_json(path, "test.json"),
-              "list")
-  expect_type(.import_read_json(NULL, file.path(path, "test.json")),
-              "list")
+  expect_type(
+    .import_read_json(path, "test.json"),
+    "list"
+  )
+  expect_type(
+    .import_read_json(NULL, file.path(path, "test.json")),
+    "list"
+  )
 
-  expect_warning(.import_read_json(path, "foo"),
-                 "foo does not exist.")
-  expect_equal(suppressWarnings(.import_read_json(path, "foo")),
-               NA)
+  expect_warning(
+    .import_read_json(path, "foo"),
+    "foo does not exist."
+  )
+  expect_equal(
+    suppressWarnings(.import_read_json(path, "foo")),
+    NA
+  )
 
   # Empty file
-  expect_equal(suppressWarnings(.import_read_json(path, "empty.json")),
-               NA)
+  expect_equal(
+    suppressWarnings(.import_read_json(path, "empty.json")),
+    NA
+  )
   tempfile <- tempfile(fileext = ".json")
   file.create(tempfile)
   expect_equal(.import_read_json(NULL, tempfile), NA)
   unlink(tempfile)
 
   path <- system.file("testdata", "broken", package = "mpathsenser")
-  expect_warning(.import_read_json(path, "broken1.json"),
-                 "Invalid JSON format in file broken1.json")
-  expect_equal(suppressWarnings(.import_read_json(path, "broken1.json")),
-               NULL)
-
+  expect_warning(
+    .import_read_json(path, "broken1.json"),
+    "Invalid JSON format in file broken1.json"
+  )
+  expect_equal(
+    suppressWarnings(.import_read_json(path, "broken1.json")),
+    NULL
+  )
 })
 
 test_that("safe_extract", {
@@ -119,34 +138,36 @@ test_that("safe_extract", {
 })
 
 test_that(".import_clean", {
-  data <- list(list(
-    header = list(
-      study_id = "test-study",
-      device_role_name = "masterphone",
-      trigger_id = "1",
-      user_id = "12345",
-      start_time = "2021-11-14T14:01:00.000000Z",
-      data_format = list(
-        namespace = "dk.cachet.carp",
-        name = "accelerometer"
-      )
+  data <- list(
+    list(
+      header = list(
+        study_id = "test-study",
+        device_role_name = "masterphone",
+        trigger_id = "1",
+        user_id = "12345",
+        start_time = "2021-11-14T14:01:00.000000Z",
+        data_format = list(
+          namespace = "dk.cachet.carp",
+          name = "accelerometer"
+        )
+      ),
+      body = list()
     ),
-    body = list()
-  ),
-  list(
-    header = list(
-      study_id = "test-study",
-      device_role_name = "masterphone",
-      trigger_id = "1",
-      user_id = "12345",
-      start_time = "2021-11-14T14:01:00.000000Z",
-      data_format = list(
-        namespace = "dk.cachet.carp",
-        name = "accelerometer"
-      )
-    ),
-    body = list()
-  ))
+    list(
+      header = list(
+        study_id = "test-study",
+        device_role_name = "masterphone",
+        trigger_id = "1",
+        user_id = "12345",
+        start_time = "2021-11-14T14:01:00.000000Z",
+        data_format = list(
+          namespace = "dk.cachet.carp",
+          name = "accelerometer"
+        )
+      ),
+      body = list()
+    )
+  )
 
   expect_error(.import_clean(data), NA)
   expect_equal(nrow(.import_clean(data)), 2)
@@ -182,9 +203,11 @@ test_that(".import_is_duplicate", {
   )
   add_study(db, study_id = data$study_id, data_format = data$data_format)
   add_participant(db, participant_id = data$participant_id, study_id = data$study_id)
-  add_processed_files(db, file_name = data$file_name,
-                      study_id = data$study_id,
-                      participant_id = data$participant_id)
+  add_processed_files(db,
+    file_name = data$file_name,
+    study_id = data$study_id,
+    participant_id = data$participant_id
+  )
 
   expect_equal(.import_is_duplicate(db@dbname, data), rep(TRUE, 4))
 
@@ -194,7 +217,7 @@ test_that(".import_is_duplicate", {
     participant_id = c("12345", "23456", "34567", "34567"),
     file_name = c("12345/test3.json", "23456/test3.json", "34567/test1.json", "34567/test2.json")
   )
-  data2 <- rbind(data[c(1,2), ], data2)
+  data2 <- rbind(data[c(1, 2), ], data2)
 
   expect_equal(
     .import_is_duplicate(db@dbname, data2),
@@ -263,10 +286,12 @@ test_that(".import_extract_sensor_data", {
 
   expect_equal(
     .import_extract_sensor_data(data)$Accelerometer$measurement_id,
-    c("5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_1",
+    c(
+      "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_1",
       "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2",
       "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5f_1",
-      "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5f_2")
+      "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5f_2"
+    )
   )
 
   # Test sensor function that provides a warning
@@ -280,8 +305,10 @@ test_that(".import_extract_sensor_data", {
     suppressWarnings(.import_extract_sensor_data(data)),
     list(
       Accelerometer = data.frame(
-        measurement_id = c("5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_1",
-                           "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2"),
+        measurement_id = c(
+          "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_1",
+          "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2"
+        ),
         participant_id = "12345",
         date = "2021-02-25",
         time = "15:15:58.557",
@@ -305,8 +332,10 @@ test_that(".import_extract_sensor_data", {
   data$sensor[1] <- "unknown"
   expect_equal(
     .import_extract_sensor_data(data)$Accelerometer$measurement_id,
-    c("5d0ac8d0-777c-11eb-bf47-ed3b61db1e5f_1",
-      "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5f_2")
+    c(
+      "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5f_1",
+      "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5f_2"
+    )
   )
 
   data$sensor[1] <- "foo"
@@ -371,8 +400,10 @@ test_that(".import_write_to_db", {
   names(data) <- c("Accelerometer", "Gyroscope")
   data$Accelerometer$measurement_id <- "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2"
   data$Gyroscope$measurement_id <- NULL
-  expect_error(.import_write_to_db(db, meta_data, data),
-               "NOT NULL constraint failed: Gyroscope.measurement_id")
+  expect_error(
+    .import_write_to_db(db, meta_data, data),
+    "NOT NULL constraint failed: Gyroscope.measurement_id"
+  )
   expect_equal(nrow(DBI::dbGetQuery(db, "SELECT * FROM  Gyroscope")), 0)
   expect_false(
     "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2" %in%

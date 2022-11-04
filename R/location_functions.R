@@ -20,7 +20,7 @@ decrypt_gps <- function(data, key) {
       "`key` must be either in a hex or bin format.",
       i = "Try to use `sodium::hex2bin(key)` or `sodium::bin2hex(key)`",
       x = "Steer clear of `charToRaw(key)`, as this delivers an incorrect key format."
-      ))
+    ))
   }
 
   if (!is.raw(key)) {
@@ -90,8 +90,8 @@ haversine <- function(lat1, lon1, lat2, lon2, r = 6371) {
   p <- pi / 180
   a <- 0.5 - cos((lat2 - lat1) * p) / 2 +
     cos(lat1 * p) * cos(lat2 * p) *
-    (1 - cos((lon2 - lon1) * p)) / 2
-  return(r * 2 * asin(sqrt(a))) #2*R*asin...
+      (1 - cos((lon2 - lon1) * p)) / 2
+  return(r * 2 * asin(sqrt(a))) # 2*R*asin...
 }
 
 location_variance <- function(lat, lon) {
@@ -121,7 +121,7 @@ location_variance <- function(lat, lon) {
 #'   many subsequent requests will get you blocked as well.
 #'
 #' @return A list of information about the location. See [Nominatim's
-#'documentation](https://nominatim.org/release-docs/develop/api/Reverse/#example-with-formatjsonv2)
+#' documentation](https://nominatim.org/release-docs/develop/api/Reverse/#example-with-formatjsonv2)
 #'    for more details.
 #' @export
 #'

@@ -71,7 +71,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
       abort(c(
         "Database definition file not found. The package is probably corrupted.",
         i = "Please reinstall mpathsenser using `install.packages(\"mpathsenser\")`"
-      )) #nocov end
+      )) # nocov end
     }
   )
 
@@ -187,27 +187,29 @@ vacuum_db <- function(db) {
 #'
 #' @return No return value, called for side effects.
 #' @export
-copy_db <- function(
-    source_db,
-    target_db,
-    sensor = "All",
-    path = deprecated(),
-    db_name = deprecated()) {
-
+copy_db <- function(source_db,
+                    target_db,
+                    sensor = "All",
+                    path = deprecated(),
+                    db_name = deprecated()) {
   # Handle old database creation functionality
   if (lifecycle::is_present(path)) {
-    lifecycle::deprecate_warn(when = "1.1.1",
-                              what = "copy_db(path)",
-                              details = c(
-                                i = "Please create a database using `create_db()` first."
-                              ))
+    lifecycle::deprecate_warn(
+      when = "1.1.1",
+      what = "copy_db(path)",
+      details = c(
+        i = "Please create a database using `create_db()` first."
+      )
+    )
   }
   if (lifecycle::is_present(db_name)) {
-    lifecycle::deprecate_stop(when = "1.1.1",
-                              what = "copy_db(db_name)",
-                              details = c(
-                                i = "Please create a database using `create_db()` first."
-                              ))
+    lifecycle::deprecate_stop(
+      when = "1.1.1",
+      what = "copy_db(db_name)",
+      details = c(
+        i = "Please create a database using `create_db()` first."
+      )
+    )
   }
 
   check_db(source_db, arg = "source_db")
@@ -255,8 +257,10 @@ add_study <- function(db, study_id, data_format) {
 
   dbExecute(
     db,
-    paste("INSERT OR IGNORE INTO Study(study_id, data_format)",
-          "VALUES(:study_id, :data_format);"),
+    paste(
+      "INSERT OR IGNORE INTO Study(study_id, data_format)",
+      "VALUES(:study_id, :data_format);"
+    ),
     list(study_id = study_id, data_format = data_format)
   )
 }
@@ -266,8 +270,10 @@ add_participant <- function(db, participant_id, study_id) {
 
   dbExecute(
     db,
-    paste("INSERT OR IGNORE INTO Participant(participant_id, study_id)",
-          "VALUES(:participant_id, :study_id);"),
+    paste(
+      "INSERT OR IGNORE INTO Participant(participant_id, study_id)",
+      "VALUES(:participant_id, :study_id);"
+    ),
     list(participant_id = participant_id, study_id = study_id)
   )
 }
@@ -277,8 +283,10 @@ add_processed_files <- function(db, file_name, study_id, participant_id) {
 
   dbExecute(
     db,
-    paste("INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)",
-          "VALUES(:file_name, :study_id, :participant_id);"),
+    paste(
+      "INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)",
+      "VALUES(:file_name, :study_id, :participant_id);"
+    ),
     list(
       file_name = file_name,
       study_id = study_id,

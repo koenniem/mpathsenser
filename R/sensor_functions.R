@@ -236,7 +236,8 @@ app_category_impl <- function(name, num, exact) {
   query <- paste0("https://play.google.com/store/search?q=", name, "&c=apps")
 
   ua <- httr::user_agent(
-    "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:70.0) Gecko/20100101 Firefox/70.0")
+    "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:70.0) Gecko/20100101 Firefox/70.0"
+  )
 
   session <- httr::GET(query, ua)
 
@@ -260,8 +261,9 @@ app_category_impl <- function(name, num, exact) {
   # If so, select the num (usually first) link from this list
   if (exact) {
     name_detected <- vapply(links,
-                            function(x) grepl(paste0("\\.", tolower(name), "$"), tolower(x)),
-                            FUN.VALUE = logical(1))
+      function(x) grepl(paste0("\\.", tolower(name), "$"), tolower(x)),
+      FUN.VALUE = logical(1)
+    )
     if (any(name_detected)) {
       links <- links[name_detected]
       link <- links[num]
@@ -380,16 +382,14 @@ app_usage <- function(db,
 #' @return A tibble containing a column 'activity' and a column 'duration' for the hourly
 #' activity duration.
 #' @keywords internal
-activity_duration <- function(
-    data = NULL,
-    db = NULL,
-    participant_id = NULL,
-    confidence = 70,
-    direction = "forward",
-    start_date = NULL,
-    end_date = NULL,
-    by = c("Total", "Day", "Hour")) {
-
+activity_duration <- function(data = NULL,
+                              db = NULL,
+                              participant_id = NULL,
+                              confidence = 70,
+                              direction = "forward",
+                              start_date = NULL,
+                              end_date = NULL,
+                              by = c("Total", "Day", "Hour")) {
   check_arg(data, "data.frame", allow_null = TRUE)
   check_db(db, allow_null = TRUE)
   check_arg(confidence, "numeric", n = 1)
@@ -493,11 +493,13 @@ screen_duration <- function(db,
     filter(.data$screen_event != "SCREEN_ON") %>%
     mutate(datetime = paste(.data$date, .data$time)) %>%
     arrange(.data$participant_id, .data$datetime) %>%
-    distinct(.data$participant_id,
-             .data$date,
-             .data$time,
-             .data$datetime,
-             .data$screen_event) %>%
+    distinct(
+      .data$participant_id,
+      .data$date,
+      .data$time,
+      .data$datetime,
+      .data$screen_event
+    ) %>%
     mutate(next_event = lead(.data$screen_event, n = 1)) %>%
     mutate(next_time = lead(.data$datetime, n = 1)) %>%
     filter(.data$screen_event == "SCREEN_UNLOCKED" & .data$next_event == "SCREEN_OFF") %>%
@@ -680,11 +682,13 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
 #' \dontrun{
 #' path <- system.file("testdata", "test.db", package = "mpathsenser")
 #' db <- open_db(NULL, path)
-#' moving_average(db = db,
-#'                sensor = "Light",
-#'                cols = c("mean_lux", "max_lux"),
-#'                n = 5, # seconds
-#'                participant_id = "12345")
+#' moving_average(
+#'   db = db,
+#'   sensor = "Light",
+#'   cols = c("mean_lux", "max_lux"),
+#'   n = 5, # seconds
+#'   participant_id = "12345"
+#' )
 #' close_db(db)
 #' }
 moving_average <- function(db, sensor, cols, n, participant_id, start_date = NULL, end_date = NULL) {
@@ -718,9 +722,11 @@ moving_average <- function(db, sensor, cols, n, participant_id, start_date = NUL
   )
 
   # Where
-  query <- paste0(query, " WHERE (",
-                  paste0("`participant_id` = '", participant_id, "'", collapse = " OR "),
-                  ")")
+  query <- paste0(
+    query, " WHERE (",
+    paste0("`participant_id` = '", participant_id, "'", collapse = " OR "),
+    ")"
+  )
 
   if (!is.null(start_date) && !is.null(end_date)) {
     query <- paste0(query, " AND (`date` BETWEEN '", start_date, "' AND '", end_date, "')")
@@ -811,7 +817,7 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
   check_sensors(sensor)
 
   # Get the data for each sensor
-  data <- purrr::map(sensor, ~{
+  data <- purrr::map(sensor, ~ {
     get_data(db, .x, participant_id) %>%
       mutate(datetime = DATETIME(paste(.data$date, .data$time))) %>%
       select("participant_id", "datetime")
@@ -833,9 +839,9 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 }
 
 
-#'Add gap periods to sensor data
+#' Add gap periods to sensor data
 #'
-#'@description `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
 #'
 #'  Since there may be many gaps in mobile sensing data, it is pivotal to pay attention in the
 #'  analysis to them. This function adds known gaps to data as "measurements", thereby allowing
@@ -844,7 +850,7 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 #'  we should somehow account for it. \code{add_gaps} accounts for this by adding the gap data to
 #'  sensors data by splitting intervals where gaps occur.
 #'
-#'@details In the example of 30 minutes walking where a 15 minute gap occurred (say after 5
+#' @details In the example of 30 minutes walking where a 15 minute gap occurred (say after 5
 #'  minutes), \code{add_gaps} adds two rows: one after 5 minutes of the start of the interval
 #'  indicating the start of the gap(if needed containing values from \code{fill}), and one after 20
 #'  minutes of the start of the interval signalling the walking activity. Then, when calculating
@@ -852,27 +858,27 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 #'  Note that if multiple measurements occurred before the gap, they will both be continued after
 #'  the gap.
 #'
-#'@inheritSection identify_gaps Warning
+#' @inheritSection identify_gaps Warning
 #'
-#'@param data A data frame containing the activity data. See \link[mpathsenser]{get_data} for
+#' @param data A data frame containing the activity data. See \link[mpathsenser]{get_data} for
 #'  retrieving activity data from an mpathsenser database.
-#'@param gaps A data frame (extension) containing the gap data. See
+#' @param gaps A data frame (extension) containing the gap data. See
 #'  \link[mpathsenser]{identify_gaps} for retrieving gap data from an mpathsenser database. It
 #'  should at least contain the columns \code{from} and \code{to} (both in a date-time format), as
 #'  well as any specified columns in \code{by}.
-#'@param by A character vector indicating the variable(s) to match by, typically the participant
+#' @param by A character vector indicating the variable(s) to match by, typically the participant
 #'  IDs. If NULL, the default, \code{*_join()} will perform a natural join, using all variables in
 #'  common across \code{x} and \code{y}.
-#'@param fill A named list of the columns to fill with default values for the extra measurements
+#' @param fill A named list of the columns to fill with default values for the extra measurements
 #'  that are added because of the gaps.
 #'
-#'@seealso \code{\link[mpathsenser]{identify_gaps}} for finding gaps in the sampling;
+#' @seealso \code{\link[mpathsenser]{identify_gaps}} for finding gaps in the sampling;
 #'  \code{\link[mpathsenser]{link_gaps}} for finding which gaps occur in the data;
 #'
-#'@return A tibble containing the data and the added gaps.
-#'@export
+#' @return A tibble containing the data and the added gaps.
+#' @export
 #'
-#'@examples
+#' @examples
 #' # Define some data
 #' dat <- data.frame(
 #'   participant_id = "12345",
@@ -889,29 +895,38 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 #' )
 #'
 #' # Now add the gaps to the data
-#' add_gaps(data = dat,
-#'          gaps = gaps,
-#'          by = "participant_id")
+#' add_gaps(
+#'   data = dat,
+#'   gaps = gaps,
+#'   by = "participant_id"
+#' )
 #'
 #' # You can use fill if  you want to get rid of those pesky NA's
-#' add_gaps(data = dat,
-#'          gaps = gaps,
-#'          by = "participant_id",
-#'          fill = list(type = "GAP", confidence = 100))
+#' add_gaps(
+#'   data = dat,
+#'   gaps = gaps,
+#'   by = "participant_id",
+#'   fill = list(type = "GAP", confidence = 100)
+#' )
 add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
   check_arg(data, "data.frame")
   check_arg(gaps, "data.frame")
   check_arg(by, "character", allow_null = TRUE)
 
   if (!is.null(by)) {
-    err <- try({
-      select(data, dplyr::all_of({{ by }}))
-      select(gaps, dplyr::all_of({{ by }}))
-    }, silent = TRUE)
+    err <- try(
+      {
+        select(data, dplyr::all_of({{ by }}))
+        select(gaps, dplyr::all_of({{ by }}))
+      },
+      silent = TRUE
+    )
 
     if (inherits(err, "try-error")) {
-      abort(paste0("Column(s) ", paste0("\"", by, "\"", collapse = ", "),
-                   " must be present in both `data` and `gaps`."))
+      abort(paste0(
+        "Column(s) ", paste0("\"", by, "\"", collapse = ", "),
+        " must be present in both `data` and `gaps`."
+      ))
     }
   }
 
@@ -923,11 +938,13 @@ add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
   prepared_gaps <- gaps %>%
     select({{ by }}, "from", "to") %>%
     mutate(gap_id = dplyr::row_number()) %>%
-    tidyr::pivot_longer(cols = c("from", "to"),
-                        names_to = "gap_type",
-                        values_to = "time") %>%
+    tidyr::pivot_longer(
+      cols = c("from", "to"),
+      names_to = "gap_type",
+      values_to = "time"
+    ) %>%
     rlang::exec(.fn = mutate, !!!fill) %>%
-    mutate(across(names(fill), ~ifelse(gap_type == "to", NA, .x)))
+    mutate(across(names(fill), ~ ifelse(gap_type == "to", NA, .x)))
 
   # Assign groups numbers to the data based on their time stamp and by column In principle, each row
   # is its own group, but if their are multiple measurements with the same time stamp they will get
@@ -1007,8 +1024,9 @@ add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
     # and data2 will be identical. Only for the end points of gaps, set data to data2.
     dplyr::nest_join(lead_data, by = c("participant_id", "row_id"), name = "data2") %>%
     mutate(data = ifelse(!is.na(.data$gap_type) & .data$gap_type == "to",
-                                .data$data2,
-                                .data$data)) %>%
+      .data$data2,
+      .data$data
+    )) %>%
     # Lastly, unnest the data to get the original (and modified for "to") nested data, and ungroup
     # and cleanup
     # Make sure not to remove empty data tibbles as these are true NA's, i.e. either gaps where

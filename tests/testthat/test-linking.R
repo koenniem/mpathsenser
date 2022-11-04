@@ -52,7 +52,7 @@ test_that("link", {
 
   # Scrambled test
   scramble <- function(data) {
-    idx <- sample(seq_along(data[,1]), nrow(data))
+    idx <- sample(seq_along(data[, 1]), nrow(data))
     data[idx, ]
   }
   res <- link(scramble(dat1), scramble(dat2), "participant_id", offset_before = 1800) %>%
@@ -385,8 +385,10 @@ test_that("link_db", {
   )
 
   expect_error(
-    link_db(db, "Activity", external = dplyr::mutate(dat1, time = as.character(time)),
-            offset_after = 1800),
+    link_db(db, "Activity",
+      external = dplyr::mutate(dat1, time = as.character(time)),
+      offset_after = 1800
+    ),
     "Column `time` in `external` must be a POSIXct."
   )
   # Check time zone differences
@@ -466,7 +468,8 @@ test_that("link_gaps", {
         "2021-11-14 15:30:00", # 4 before, after
         "2021-11-14 12:15:00", # 5 before, after
         "2021-11-14 18:35:00" # 6 before, after
-      ))), 2),
+      ))
+    ), 2),
     to = rep(c(
       seq.POSIXt(as.POSIXct("2021-11-14 12:41:00"), by = "1 min", length.out = 20), # 1 before
       seq.POSIXt(as.POSIXct("2021-11-14 13:11:00"), by = "1 min", length.out = 20), # 1 after
@@ -477,7 +480,8 @@ test_that("link_gaps", {
         "2021-11-14 16:30:00", # 4 before, after
         "2021-11-14 12:25:00", # 5 before, after
         "2021-11-14 18:40:00" # 6 before, after
-      ))), 2)
+      ))
+    ), 2)
   )
 
   # Test difference types of input for offset_before
@@ -608,7 +612,7 @@ test_that("link_gaps", {
 
   # Scrambled test
   scramble <- function(data) {
-    idx <- sample(seq_along(data[,1]), nrow(data))
+    idx <- sample(seq_along(data[, 1]), nrow(data))
     data[idx, ]
   }
   res <- link_gaps(
@@ -879,7 +883,6 @@ test_that("link_gaps", {
     ),
     "Column `time` in `data` must be a POSIXct."
   )
-
 })
 
 ## bin_data =================
@@ -923,8 +926,10 @@ test_that("bin_data", {
       ),
       tibble::tibble(
         participant_id = 1,
-        datetime = as.POSIXct(c("2022-06-21 17:00:00", "2022-06-21 17:05:00",
-                                "2022-06-21 17:10:00")),
+        datetime = as.POSIXct(c(
+          "2022-06-21 17:00:00", "2022-06-21 17:05:00",
+          "2022-06-21 17:10:00"
+        )),
         confidence = 100,
         type = "WALKING",
         lead = as.POSIXct(c("2022-06-21 17:05:00", "2022-06-21 17:10:00", NA))
@@ -939,16 +944,18 @@ test_that("bin_data", {
   # in the group.
   res <- data %>%
     mutate(datetime = as.POSIXct(datetime)) %>%
-      mutate(lead = lead(datetime)) %>%
-      bin_data(
-        start_time = datetime,
-        end_time = lead,
-        by = 1800L,
-        fixed = FALSE
-      )
+    mutate(lead = lead(datetime)) %>%
+    bin_data(
+      start_time = datetime,
+      end_time = lead,
+      by = 1800L,
+      fixed = FALSE
+    )
   true <- tibble::tibble(
-    bin = as.POSIXct(c("2022-06-21 15:00:00", "2022-06-21 15:30:00", "2022-06-21 16:00:00",
-                       "2022-06-21 16:30:00", "2022-06-21 17:00:00")),
+    bin = as.POSIXct(c(
+      "2022-06-21 15:00:00", "2022-06-21 15:30:00", "2022-06-21 16:00:00",
+      "2022-06-21 16:30:00", "2022-06-21 17:00:00"
+    )),
     bin_data = list(
       tibble::tibble(
         participant_id = 1,
@@ -980,8 +987,10 @@ test_that("bin_data", {
       ),
       tibble::tibble(
         participant_id = 1,
-        datetime = as.POSIXct(c("2022-06-21 17:00:00", "2022-06-21 17:05:00",
-                                "2022-06-21 17:10:00")),
+        datetime = as.POSIXct(c(
+          "2022-06-21 17:00:00", "2022-06-21 17:05:00",
+          "2022-06-21 17:10:00"
+        )),
         confidence = 100,
         type = "WALKING",
         lead = as.POSIXct(c("2022-06-21 17:05:00", "2022-06-21 17:10:00", NA))
@@ -1015,8 +1024,10 @@ test_that("bin_data", {
   true <- tibble::tibble(
     participant_id = c(rep(1, 6), rep(2, 6)),
     type = rep(c("STILL", "STILL", "STILL", "WALKING", "WALKING", "WALKING"), 2),
-    bin = rep(as.POSIXct(c("2022-06-21 15:00:00", "2022-06-21 16:00:00",
-                           "2022-06-21 17:00:00")), 4),
+    bin = rep(as.POSIXct(c(
+      "2022-06-21 15:00:00", "2022-06-21 16:00:00",
+      "2022-06-21 17:00:00"
+    )), 4),
     bin_data = rep(list(
       # STILL
       tibble::tibble(
@@ -1056,9 +1067,12 @@ test_that("bin_data", {
   expect_equal(res, true)
 
   # To get the duration for each bin (note to change the variable names in sum):
-  duration <- purrr::map_dbl(.x = res$bin_data,
-                             .f = ~ sum(as.double(.x$lead) - as.double(.x$datetime),
-                                        na.rm = TRUE) / 60)
+  duration <- purrr::map_dbl(
+    .x = res$bin_data,
+    .f = ~ sum(as.double(.x$lead) - as.double(.x$datetime),
+      na.rm = TRUE
+    ) / 60
+  )
 
   # Or:
   duration2 <- res %>%
@@ -1078,13 +1092,13 @@ test_that("bin_data", {
     mutate(lead = lead(datetime))
 
   expect_error(
-      bin_data(
-        data = data,
-        start_time = datetime,
-        end_time = lead,
-        by = TRUE
-      ),
-      "`by` must be one of 'sec', 'min', 'hour', or 'day', or a numeric value if `fixed = FALSE`."
+    bin_data(
+      data = data,
+      start_time = datetime,
+      end_time = lead,
+      by = TRUE
+    ),
+    "`by` must be one of 'sec', 'min', 'hour', or 'day', or a numeric value if `fixed = FALSE`."
   )
   expect_error(
     data %>%

@@ -475,9 +475,11 @@ phone_log_fun <- function(data) {
   data$body <- lapply(data$body, bind_rows)
   data$body <- lapply(data$body, function(x) {
     # Replace double timestamp name
-    if (nrow(x) > 0 & "timestamp" %in% colnames(x))
+    if (nrow(x) > 0 & "timestamp" %in% colnames(x)) {
       dplyr::rename(x, "datetime" = "timestamp")
-    else x
+    } else {
+      x
+    }
   })
   data <- unnest(data, body, keep_empty = TRUE)
 

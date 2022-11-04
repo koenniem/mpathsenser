@@ -49,8 +49,8 @@ In m-Path Sense, data is written to JSON files as it comes in. In the JSON file 
 to_fix <- test_jsons(path = path)
 
 # Fix JSON files if there are any
-if(to_fix != "") {
-	fix_jsons(path = path, files = to_fix, parallel = TRUE)
+if (to_fix != "") {
+  fix_jsons(path = path, files = to_fix, parallel = TRUE)
 }
 ```
 
@@ -99,11 +99,11 @@ Now let's find out how to actually retrieve data from the database. There is a s
 
 ```{r, eval = FALSE}
 get_data(
-	db = db, # the ACTIVE database connection, open with open_db AND save to a variable
-	sensor = "Activity", # A sensor name, see mpathsenser::sensors for the full list
-	participant_id = "12345", # A participant ID, see get_participants
-	start_date = "2021-11-14", # An optional start date, in the format YYYY-MM-DD
-	end_date = "2021-11-15" # An optional end date, in the format YYYY-MM-DD
+  db = db, # the ACTIVE database connection, open with open_db AND save to a variable
+  sensor = "Activity", # A sensor name, see mpathsenser::sensors for the full list
+  participant_id = "12345", # A participant ID, see get_participants
+  start_date = "2021-11-14", # An optional start date, in the format YYYY-MM-DD
+  end_date = "2021-11-15" # An optional end date, in the format YYYY-MM-DD
 )
 ```
 

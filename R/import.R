@@ -61,15 +61,15 @@ import <- function(path = getwd(),
                    dbname = deprecated(),
                    overwrite_db = deprecated(),
                    parallel = deprecated()) {
-
-
   # Handle old dbname argument
   if (lifecycle::is_present(dbname)) {
-    lifecycle::deprecate_stop(when = "1.1.1",
-                              what = "import(dbname)",
-                              details = c(
-                                i = "Please create a database using `create_db()` first."
-                              ))
+    lifecycle::deprecate_stop(
+      when = "1.1.1",
+      what = "import(dbname)",
+      details = c(
+        i = "Please create a database using `create_db()` first."
+      )
+    )
   }
 
   # Handle old overwrite argument
@@ -77,18 +77,22 @@ import <- function(path = getwd(),
     lifecycle::deprecate_warn(
       when = "1.1.1",
       what = "import(overwrite_db)",
-      details = c("*" = "`import()` no longer supports the ability to create databases.",
-                  i = "Argument `overwrite_db` is ignored.")
+      details = c(
+        "*" = "`import()` no longer supports the ability to create databases.",
+        i = "Argument `overwrite_db` is ignored."
+      )
     )
   }
 
   # Handle old parallel argument
   if (lifecycle::is_present(parallel)) {
-    lifecycle::deprecate_warn(when = "1.1.1",
-                              what = "import(parallel)",
-                              details = c(
-                                i = "Use future::plan(\"multisession\") instead"
-                              ))
+    lifecycle::deprecate_warn(
+      when = "1.1.1",
+      what = "import(parallel)",
+      details = c(
+        i = "Use future::plan(\"multisession\") instead"
+      )
+    )
   }
 
   # Check arguments
@@ -114,8 +118,8 @@ import <- function(path = getwd(),
   if (length(files) == 0) {
     abort(c(
       paste("Can't find JSON files in", path, "."),
-      i = "Did you put the JSON files in the correct directory?")
-    )
+      i = "Did you put the JSON files in the correct directory?"
+    ))
   }
 
   # If there are no duplicate files Proceed with the unsafe (but fast) check to prevent duplicate
@@ -140,14 +144,13 @@ import <- function(path = getwd(),
   }
 
   for (i in seq_along(batches)) {
-
     # All the files in the batch
     batch_files <- batches[[i]]
 
     # Read in all the files, in parallel
     batch_data <- furrr::future_map(
       .x = batch_files,
-      .f = ~.import_read_json(path, .x),
+      .f = ~ .import_read_json(path, .x),
       .options = furrr::furrr_options(seed = TRUE)
     )
     names(batch_data) <- batch_files
@@ -185,29 +188,36 @@ import <- function(path = getwd(),
     # be possible), there will be more entries in the meta data than there are entries in the
     # batch_data. Therefore, we must use the meta_data as an index whenever combining it with
     # meta_data.
-    meta_data <- purrr::pmap_dfr(.l = list(batch_data,
-                                           names(batch_data),
-                                           seq_along(batch_data)),
-                                 .f = ~distinct(..1,
-                                                participant_id,
-                                                study_id,
-                                                data_format,
-                                                file_name = ..2,
-                                                id = ..3))
+    meta_data <- purrr::pmap_dfr(
+      .l = list(
+        batch_data,
+        names(batch_data),
+        seq_along(batch_data)
+      ),
+      .f = ~ distinct(..1,
+        participant_id,
+        study_id,
+        data_format,
+        file_name = ..2,
+        id = ..3
+      )
+    )
     names(batch_data) <- seq_along(batch_data)
 
     # From the dataframes we can get the participant_id and study_id
     # Use this information to query the database to find out whether this file has already been
     # processed. If already process, drop it.
-    duplicates <- .import_is_duplicate(db_name = db@dbname,
-                                       meta_data)
+    duplicates <- .import_is_duplicate(
+      db_name = db@dbname,
+      meta_data
+    )
     meta_data <- meta_data[!duplicates, ]
     batch_data <- batch_data[names(batch_data) %in% meta_data[["id"]]]
 
     # Extract the sensor data
     batch_data <- furrr::future_map(
       .x = batch_data,
-      .f = ~.import_extract_sensor_data(.x, sensors),
+      .f = ~ .import_extract_sensor_data(.x, sensors),
       .options = furrr::furrr_options(seed = TRUE)
     )
 
@@ -289,9 +299,12 @@ import <- function(path = getwd(),
   # format first, this issue could not arise. As jsonlite::fromJSON also validates the format while
   # parsing, and now readLines is used in conjunction with skipNUL, the problem no longer seems to
   # occur.
-  possible_error <- try({
-    data <- jsonlite::fromJSON(file, simplifyVector = FALSE)
-  }, silent = TRUE)
+  possible_error <- try(
+    {
+      data <- jsonlite::fromJSON(file, simplifyVector = FALSE)
+    },
+    silent = TRUE
+  )
 
   # If reading in the file failed, provide a warning to the user and return an empty result.
   # Similar reasoning as above.
@@ -305,10 +318,10 @@ import <- function(path = getwd(),
 
   # Check if it is not an empty file Skip this file if empty, but add it to the list of
   # processed file to register this incident and to avoid having to do it again
-  if (length(data) == 0
-      || identical(data, list())
-      || identical(data, list(list()))
-      || identical(data, list(structure(list(), names = character(0))))) {
+  if (length(data) == 0 ||
+    identical(data, list()) ||
+    identical(data, list(list())) ||
+    identical(data, list(structure(list(), names = character(0))))) {
     return(NA)
   }
 
@@ -332,7 +345,6 @@ safe_extract <- function(vec, var) {
 # Function for cleaning the raw data
 # The goal is to have a list of all the sensors
 .import_clean <- function(data) {
-
   # Clean-up and extract the header and body
   data <- tibble::tibble(
     header = lapply(data, function(x) x[1]),
@@ -362,7 +374,6 @@ safe_extract <- function(vec, var) {
 # Check if file is already registered as processed
 # Based on the ProcessedFiles in the database.
 .import_is_duplicate <- function(db_name, meta_data) {
-
   if (!is.data.frame(meta_data) || nrow(meta_data) == 0) {
     return(NA)
   }
@@ -377,10 +388,13 @@ safe_extract <- function(vec, var) {
       "SELECT COUNT(*) AS `n` FROM `ProcessedFiles` ",
       "WHERE (`file_name` = :file_name ",
       "AND `participant_id` = :participant_id ",
-      "AND `study_id` = :study_id)"),
-    params = list(file_name = meta_data$file_name,
-                  participant_id = meta_data$participant_id,
-                  study_id = meta_data$study_id)
+      "AND `study_id` = :study_id)"
+    ),
+    params = list(
+      file_name = meta_data$file_name,
+      participant_id = meta_data$participant_id,
+      study_id = meta_data$study_id
+    )
   )
 
   # Close db connection of worker
@@ -391,7 +405,6 @@ safe_extract <- function(vec, var) {
 }
 
 .import_extract_sensor_data <- function(data, sensors = NULL) {
-
   # Make sure top-level of data$body is called body and not carp_body as in the new version
   data$body <- lapply(data$body, function(x) rlang::set_names(x, "body"))
 
@@ -427,7 +440,8 @@ safe_extract <- function(vec, var) {
 
   # Call function for each sensor
   # Return result or NA
-  tryCatch({
+  tryCatch(
+    {
       out <- purrr::imap(data, which_sensor)
       names(out) <- names
       return(out)
@@ -441,24 +455,32 @@ safe_extract <- function(vec, var) {
 # Function for writing all data in a batch to the database
 .import_write_to_db <- function(db, meta_data, sensor_data) {
   DBI::dbWithTransaction(db, {
-    add_study(db = db,
-              study_id = meta_data$study_id,
-              data_format = meta_data$data_format)
+    add_study(
+      db = db,
+      study_id = meta_data$study_id,
+      data_format = meta_data$data_format
+    )
 
-    add_participant(db = db,
-                    participant_id = meta_data$participant_id,
-                    study_id = meta_data$study_id)
+    add_participant(
+      db = db,
+      participant_id = meta_data$participant_id,
+      study_id = meta_data$study_id
+    )
 
     for (i in seq_along(sensor_data)) {
-      save2db(db = db,
-              name = names(sensor_data)[[i]],
-              data = sensor_data[[i]])
+      save2db(
+        db = db,
+        name = names(sensor_data)[[i]],
+        data = sensor_data[[i]]
+      )
     }
 
     # Add files to list of processed files
-    add_processed_files(db = db,
-                        file_name = meta_data$file_name,
-                        study_id = meta_data$study_id,
-                        participant_id = meta_data$participant_id)
+    add_processed_files(
+      db = db,
+      file_name = meta_data$file_name,
+      study_id = meta_data$study_id,
+      participant_id = meta_data$participant_id
+    )
   })
 }

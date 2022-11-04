@@ -80,27 +80,34 @@ test_that("save2db", {
   )
 
   # Write to db
-  expect_error(DBI::dbWithTransaction(db, save2db(db, "Accelerometer", data)),
-               NA)
+  expect_error(
+    DBI::dbWithTransaction(db, save2db(db, "Accelerometer", data)),
+    NA
+  )
 
   # Check if the file size increased
   db_size2 <- file.size(filename)
   expect_gt(db_size2, db_size)
 
   # Check the data output
-  expect_equal(DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
-               data)
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
+    data
+  )
 
   # Entry with the same ID should simply be skipped and give no error
   expect_error(
     DBI::dbWithTransaction(db, save2db(db = db, name = "Accelerometer", data = data)),
-    NA)
+    NA
+  )
   DBI::dbExecute(db, "VACUUM") # A vacuum to clear the tiny increase by replacement :)
   db_size3 <- file.size(filename)
   expect_equal(db_size2, db_size3)
   expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1000L)
-  expect_equal(DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
-               data)
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
+    data
+  )
 
   # Now try with part of the data being replicated
   data <- rbind(data, data.frame(
@@ -114,24 +121,31 @@ test_that("save2db", {
   ))
 
   expect_error(
-    DBI::dbWithTransaction(db,
-                           save2db(db = db,
-                                   name = "Accelerometer",
-                                   data = data.frame(
-                                     measurement_id = paste0("12345_", 500:1500),
-                                     participant_id = "12345",
-                                     date = "2021-11-14",
-                                     time = "16:40:01.123",
-                                     x = 0.123456789,
-                                     y = 0.123456789,
-                                     z = 9.123456789
-                                   ))),
-    NA)
+    DBI::dbWithTransaction(
+      db,
+      save2db(
+        db = db,
+        name = "Accelerometer",
+        data = data.frame(
+          measurement_id = paste0("12345_", 500:1500),
+          participant_id = "12345",
+          date = "2021-11-14",
+          time = "16:40:01.123",
+          x = 0.123456789,
+          y = 0.123456789,
+          z = 9.123456789
+        )
+      )
+    ),
+    NA
+  )
   db_size4 <- file.size(filename)
   expect_gt(db_size4, db_size3)
   expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1500L)
-  expect_equal(DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
-               distinct(data))
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
+    distinct(data)
+  )
 
   # Cleanup
   dbDisconnect(db)
@@ -317,8 +331,10 @@ test_that("periodic_accelerometer", {
   )
   res <- accelerometer_fun(dat)
   true <- data.frame(
-    measurement_id = c("12345a_1", "12345a_2", "12345b_1",
-                       "12345b_2", "12345c_1", "12345c_2", "12345d_1"),
+    measurement_id = c(
+      "12345a_1", "12345a_2", "12345b_1",
+      "12345b_2", "12345c_1", "12345c_2", "12345d_1"
+    ),
     participant_id = rep("12345", 7),
     date = "2021-11-14",
     time = c(rep(c("16:40:01.223", "16:40:01.323"), 3), "16:40:01.223"),
@@ -810,10 +826,14 @@ test_that("geofence", {
 
 # Keyboard ===========
 test_that("keyboard", {
-  expect_warning(keyboard_fun(data.frame()),
-               "Function for implementing keyboard data currently not implemented.")
-  expect_warning(which_sensor(data.frame(), "keyboard"),
-               "Function for implementing keyboard data currently not implemented.")
+  expect_warning(
+    keyboard_fun(data.frame()),
+    "Function for implementing keyboard data currently not implemented."
+  )
+  expect_warning(
+    which_sensor(data.frame(), "keyboard"),
+    "Function for implementing keyboard data currently not implemented."
+  )
 })
 
 # Light ===========

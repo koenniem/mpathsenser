@@ -55,16 +55,21 @@ test_that("check_db", {
 })
 
 test_that("check_arg", {
-
   # Test NULL behaviour
-  expect_error(check_arg(NULL, type = "character", arg = "x"),
-               "Argument `x` must be a character.")
+  expect_error(
+    check_arg(NULL, type = "character", arg = "x"),
+    "Argument `x` must be a character."
+  )
 
-  expect_error(check_arg(NULL, type = "character", n = 1, arg = "x"),
-               "Argument `x` must be a character of length 1.")
+  expect_error(
+    check_arg(NULL, type = "character", n = 1, arg = "x"),
+    "Argument `x` must be a character of length 1."
+  )
 
-  expect_error(check_arg(NULL, type = "character", allow_null = TRUE),
-               NA)
+  expect_error(
+    check_arg(NULL, type = "character", allow_null = TRUE),
+    NA
+  )
 
   # Test whether cases work
   expect_true(check_arg("foo", type = "character"))
@@ -94,52 +99,92 @@ test_that("check_arg", {
   expect_true(check_arg(list(foo = "bar"), type = "list", n = 1))
 
   # Test non-working cases
-  expect_error(check_arg(TRUE, type = "character", arg = "x"),
-              "Argument `x` must be a character.")
-  expect_error(check_arg(TRUE, type = "double", arg = "x"),
-              "Argument `x` must be a double.")
-  expect_error(check_arg(TRUE, type = "integer", arg = "x"),
-              "Argument `x` must be an integer.")
-  expect_error(check_arg(TRUE, type = "integerish", arg = "x"),
-              "Argument `x` must be an integerish.")
-  expect_error(check_arg(1, type = "logical", arg = "x"),
-              "Argument `x` must be a logical.")
-  expect_error(check_arg(TRUE, type = "factor", arg = "x"),
-              "Argument `x` must be a factor.")
-  expect_error(check_arg(TRUE, type = "numeric", arg = "x"),
-              "Argument `x` must be a numeric.")
-  expect_error(check_arg(TRUE, type = "POSIXt", arg = "x"),
-              "Argument `x` must be a POSIXt.")
-  expect_error(check_arg(TRUE, type = "data.frame", arg = "x"),
-              "Argument `x` must be a data.frame.")
-  expect_error(check_arg(TRUE, type = "list", arg = "x"),
-              "Argument `x` must be a list.")
+  expect_error(
+    check_arg(TRUE, type = "character", arg = "x"),
+    "Argument `x` must be a character."
+  )
+  expect_error(
+    check_arg(TRUE, type = "double", arg = "x"),
+    "Argument `x` must be a double."
+  )
+  expect_error(
+    check_arg(TRUE, type = "integer", arg = "x"),
+    "Argument `x` must be an integer."
+  )
+  expect_error(
+    check_arg(TRUE, type = "integerish", arg = "x"),
+    "Argument `x` must be an integerish."
+  )
+  expect_error(
+    check_arg(1, type = "logical", arg = "x"),
+    "Argument `x` must be a logical."
+  )
+  expect_error(
+    check_arg(TRUE, type = "factor", arg = "x"),
+    "Argument `x` must be a factor."
+  )
+  expect_error(
+    check_arg(TRUE, type = "numeric", arg = "x"),
+    "Argument `x` must be a numeric."
+  )
+  expect_error(
+    check_arg(TRUE, type = "POSIXt", arg = "x"),
+    "Argument `x` must be a POSIXt."
+  )
+  expect_error(
+    check_arg(TRUE, type = "data.frame", arg = "x"),
+    "Argument `x` must be a data.frame."
+  )
+  expect_error(
+    check_arg(TRUE, type = "list", arg = "x"),
+    "Argument `x` must be a list."
+  )
 
   # Test non-working with n
-  expect_error(check_arg(TRUE, type = "character", n = 2, arg = "x"),
-               "Argument `x` must be a character of length 2.")
-  expect_error(check_arg(TRUE, type = "double", n = 2, arg = "x"),
-               "Argument `x` must be a double of length 2.")
-  expect_error(check_arg(TRUE, type = "integer", n = 2, arg = "x"),
-               "Argument `x` must be an integer of length 2.")
-  expect_error(check_arg(TRUE, type = "integerish", n = 2, arg = "x"),
-               "Argument `x` must be an integerish of length 2.")
-  expect_error(check_arg(1, type = "logical", n = 2, arg = "x"),
-               "Argument `x` must be a logical of length 2.")
-  expect_error(check_arg(TRUE, type = "factor", n = 2, arg = "x"),
-               "Argument `x` must be a factor of length 2.")
-  expect_error(check_arg(TRUE, type = "numeric", n = 2, arg = "x"),
-               "Argument `x` must be a numeric of length 2.")
-  expect_error(check_arg(TRUE, type = "POSIXt", n = 2, arg = "x"),
-               "Argument `x` must be a POSIXt of length 2.")
-  expect_error(check_arg(TRUE, type = "list", n = 2, arg = "x"),
-               "Argument `x` must be a list of length 2.")
+  expect_error(
+    check_arg(TRUE, type = "character", n = 2, arg = "x"),
+    "Argument `x` must be a character of length 2."
+  )
+  expect_error(
+    check_arg(TRUE, type = "double", n = 2, arg = "x"),
+    "Argument `x` must be a double of length 2."
+  )
+  expect_error(
+    check_arg(TRUE, type = "integer", n = 2, arg = "x"),
+    "Argument `x` must be an integer of length 2."
+  )
+  expect_error(
+    check_arg(TRUE, type = "integerish", n = 2, arg = "x"),
+    "Argument `x` must be an integerish of length 2."
+  )
+  expect_error(
+    check_arg(1, type = "logical", n = 2, arg = "x"),
+    "Argument `x` must be a logical of length 2."
+  )
+  expect_error(
+    check_arg(TRUE, type = "factor", n = 2, arg = "x"),
+    "Argument `x` must be a factor of length 2."
+  )
+  expect_error(
+    check_arg(TRUE, type = "numeric", n = 2, arg = "x"),
+    "Argument `x` must be a numeric of length 2."
+  )
+  expect_error(
+    check_arg(TRUE, type = "POSIXt", n = 2, arg = "x"),
+    "Argument `x` must be a POSIXt of length 2."
+  )
+  expect_error(
+    check_arg(TRUE, type = "list", n = 2, arg = "x"),
+    "Argument `x` must be a list of length 2."
+  )
 
   # Multiple tests
   expect_true(check_arg("foo", type = c("character", "double")))
   expect_true(check_arg(1, type = c("character", "double")))
-  expect_error(check_arg(TRUE, type = c("character", "double"), arg = "x"),
-               "Argument `x` must be a character or a double.")
+  expect_error(
+    check_arg(TRUE, type = c("character", "double"), arg = "x"),
+    "Argument `x` must be a character or a double."
+  )
 })
 
 test_that("check_sensors", {

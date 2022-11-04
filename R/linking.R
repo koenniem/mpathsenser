@@ -1,5 +1,4 @@
 link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_after) {
-
   # Match sensing data with ESM using a nested join
   # Set a start_time (beep time - offset) and an end_time (beep time)
   data <- x %>%
@@ -193,7 +192,6 @@ link <- function(x,
                  add_before = FALSE,
                  add_after = FALSE,
                  split = by) {
-
   check_arg(x, type = "data.frame")
   check_arg(y, type = "data.frame")
   check_arg(by, type = "character", allow_null = TRUE)
@@ -202,17 +200,17 @@ link <- function(x,
 
   # offset checks
   if ((is.null(offset_before) || all(offset_before == 0)) &&
-      (is.null(offset_after) || all(offset_after == 0))) {
+    (is.null(offset_after) || all(offset_after == 0))) {
     abort(paste0("offset_before and offset_after cannot be 0 or NULL at the same time."))
   }
   if (!is.null(offset_before) && !(is.character(offset_before) ||
-                                   lubridate::is.period(offset_before) ||
-                                   is.numeric(offset_before))) {
+    lubridate::is.period(offset_before) ||
+    is.numeric(offset_before))) {
     abort("offset_before must be a character vector, numeric vector, or a period")
   }
   if (!is.null(offset_after) && !(is.character(offset_after) ||
-                                  lubridate::is.period(offset_after) ||
-                                  is.numeric(offset_after))) {
+    lubridate::is.period(offset_after) ||
+    is.numeric(offset_after))) {
     abort("offset_after must be a character vector, numeric vector, or a period")
   }
   if (is.character(offset_before) || is.numeric(offset_before)) {
@@ -271,9 +269,12 @@ link <- function(x,
   }
 
   x %>%
-    furrr::future_map(~ link_impl(.x, y, {{ by }}, offset_before,
-                                  offset_after, add_before, add_after),
-                      .options = furrr::furrr_options(seed = TRUE)
+    furrr::future_map(
+      ~ link_impl(
+        .x, y, {{ by }}, offset_before,
+        offset_after, add_before, add_after
+      ),
+      .options = furrr::furrr_options(seed = TRUE)
     ) %>%
     bind_rows()
 }
@@ -317,7 +318,6 @@ link_db <- function(db,
                     end_date = NULL,
                     reverse = FALSE,
                     ignore_large = FALSE) {
-
   check_db(db)
   check_arg(sensor_one, type = "character", n = 1)
   check_arg(sensor_two, type = "character", n = 1, allow_null = TRUE)
@@ -426,33 +426,31 @@ link_db <- function(db,
 #'   \code{gap_data} containing the gaps within the interval. The function ensures all durations and
 #'   gap time stamps are within the range of the interval.
 #' @export
-link_gaps <- function(
-    data,
-    gaps,
-    by = NULL,
-    offset_before = 0,
-    offset_after = 0,
-    raw_data = FALSE) {
-
+link_gaps <- function(data,
+                      gaps,
+                      by = NULL,
+                      offset_before = 0,
+                      offset_after = 0,
+                      raw_data = FALSE) {
   # Argument checking
-  check_arg(data, type ="data.frame")
+  check_arg(data, type = "data.frame")
   check_arg(gaps, type = "data.frame")
   check_arg(by, type = "character", allow_null = TRUE)
   check_arg(raw_data, type = "logical", n = 1)
 
   # offset checks
   if ((is.null(offset_before) || all(offset_before == 0)) &&
-      (is.null(offset_after) || all(offset_after == 0))) {
+    (is.null(offset_after) || all(offset_after == 0))) {
     abort("`offset_before` and `offset_after` cannot be 0 or NULL at the same time.")
   }
   if (!is.null(offset_before) && !(is.character(offset_before) ||
-                                   lubridate::is.period(offset_before) ||
-                                   is.numeric(offset_before))) {
+    lubridate::is.period(offset_before) ||
+    is.numeric(offset_before))) {
     abort("`offset_before` must be a character vector, numeric vector, or a period.")
   }
   if (!is.null(offset_after) && !(is.character(offset_after) ||
-                                  lubridate::is.period(offset_after) ||
-                                  is.numeric(offset_after))) {
+    lubridate::is.period(offset_after) ||
+    is.numeric(offset_after))) {
     abort("`offset_after` must be a character vector, numeric vector, or a period.")
   }
 
@@ -525,8 +523,8 @@ link_gaps <- function(
   # Set gaps time stamps out of the interval to the interval's bounds
   data_gaps <- data_gaps %>%
     mutate(from = ifelse(.data$from < .data$start_interval,
-                                .data$start_interval,
-                                .data$from
+      .data$start_interval,
+      .data$from
     )) %>%
     mutate(to = ifelse(.data$to > .data$end_interval, .data$end_interval, .data$to)) %>%
     mutate(gap = .data$to - .data$from)
@@ -536,12 +534,12 @@ link_gaps <- function(
     data_gaps <- data_gaps %>%
       select({{ by }}, "time", "from", "to", "gap") %>%
       mutate(from = as.POSIXct(.data$from,
-                                      origin = "1970-01-01",
-                                      tz = attr(gaps$from, "tzone")
+        origin = "1970-01-01",
+        tz = attr(gaps$from, "tzone")
       )) %>%
       mutate(to = as.POSIXct(.data$to,
-                                    origin = "1970-01-01",
-                                    tz = attr(gaps$to, "tzone")
+        origin = "1970-01-01",
+        tz = attr(gaps$to, "tzone")
       )) %>%
       group_by(across(c({{ by }}, "time"))) %>%
       nest(gap_data = c("from", "to", "gap")) %>%
@@ -549,18 +547,18 @@ link_gaps <- function(
 
     # Add gaps at beep level
     data_gaps$gap <- vapply(data_gaps$gap_data, function(x) sum(x$gap, na.rm = TRUE),
-                            FUN.VALUE = double(1)
+      FUN.VALUE = double(1)
     )
 
     # Create empty data frame in case no results are found
     proto <- tibble::tibble(
       from = as.POSIXct(vector(mode = "double"),
-                        origin = "1970-01-01",
-                        tz = attr(gaps$from, "tzone")
+        origin = "1970-01-01",
+        tz = attr(gaps$from, "tzone")
       ),
       to = as.POSIXct(vector(mode = "double"),
-                      origin = "1970-01-01", tz =
-                        attr(gaps$from, "tzone")
+        origin = "1970-01-01", tz =
+          attr(gaps$from, "tzone")
       ),
       gap = integer(0)
     )
@@ -589,14 +587,13 @@ link_intervals <- function(x, x_start, x_end,
                            y, y_start, y_end,
                            by = NULL,
                            name = "data") {
-
   tz <- attr(pull(y, {{ y_start }}), "tz")
 
   res <- x %>%
     dplyr::left_join(y, by = by) %>%
     mutate(across(c({{ y_start }}, {{ y_end }}), as.integer)) %>%
     filter(
-        ((is.na({{ y_end }} & {{ y_start }} >= {{ x_start }} & {{ y_start }} < {{ x_end }})) &
+      ((is.na({{ y_end }} & {{ y_start }} >= {{ x_start }} & {{ y_start }} < {{ x_end }})) &
         (is.na({{ y_start }} & {{ y_end }} >= {{ x_start }} & {{ y_end }} < {{ x_end }}))) |
         ({{ y_start }} < {{ x_end }} & {{ y_end }} > {{ x_start }})
     )
@@ -604,12 +601,12 @@ link_intervals <- function(x, x_start, x_end,
   # Set gaps time stamps out of the interval to the interval's bounds
   res <- res %>%
     mutate({{ y_start }} := ifelse({{ y_start }} < {{ x_start }},
-                                                    {{ x_start }},
-                                                    {{ y_start }}
+      {{ x_start }},
+      {{ y_start }}
     )) %>%
     mutate({{ y_end }} := ifelse({{ y_end }} > {{ x_end }},
-                                                  {{ x_end }},
-                                                  {{ y_end }}
+      {{ x_end }},
+      {{ y_end }}
     )) %>%
     mutate(across(c({{ y_start }}, {{ y_end }}), lubridate::as_datetime, tz = tz))
 
@@ -699,9 +696,12 @@ link_intervals <- function(x, x_start, x_end,
 #' print(out)
 #'
 #' # To get the duration for each bin (note to change the variable names in sum):
-#' purrr::map_dbl(out$bin_data,
-#'                ~ sum(as.double(.x$lead) - as.double(.x$datetime),
-#'                           na.rm = TRUE))
+#' purrr::map_dbl(
+#'   out$bin_data,
+#'   ~ sum(as.double(.x$lead) - as.double(.x$datetime),
+#'     na.rm = TRUE
+#'   )
+#' )
 #'
 #' # Or:
 #' out %>%
@@ -714,7 +714,6 @@ bin_data <- function(data,
                      end_time,
                      by = c("sec", "min", "hour", "day"),
                      fixed = TRUE) {
-
   check_arg(data, "data.frame")
   check_arg(fixed, "logical")
 
@@ -727,15 +726,17 @@ bin_data <- function(data,
   } else if (is.numeric(by) && !fixed) {
     by_duration <- by
   } else {
-    abort(paste("`by` must be one of 'sec', 'min', 'hour', or 'day',",
-                "or a numeric value if `fixed = FALSE`."))
+    abort(paste(
+      "`by` must be one of 'sec', 'min', 'hour', or 'day',",
+      "or a numeric value if `fixed = FALSE`."
+    ))
   }
 
   tz <- attr(pull(data, {{ start_time }}), "tz")
 
   # check that start_time and end_time are a datetime, or try to convert
   if (!lubridate::is.POSIXt(pull(data, {{ start_time }})) ||
-      !lubridate::is.POSIXt(pull(data, {{ end_time }}))) {
+    !lubridate::is.POSIXt(pull(data, {{ end_time }}))) {
     data <- data %>%
       mutate({{ start_time }} := as.POSIXct({{ start_time }}, origin = "1970-01-01")) %>%
       mutate({{ end_time }} := as.POSIXct({{ end_time }}, origin = "1970-01-01"))
@@ -759,8 +760,8 @@ bin_data <- function(data,
     drop_na("bin_start") %>%
     mutate(bin_start = as.integer(.data$bin_start)) %>%
     summarise(bin_start = seq.int(min(.data$bin_start, na.rm = TRUE),
-                                  max(.data$bin_start, na.rm = TRUE) + by_duration,
-                                  by = by_duration
+      max(.data$bin_start, na.rm = TRUE) + by_duration,
+      by = by_duration
     ))
 
   out <- out %>%

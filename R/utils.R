@@ -125,11 +125,13 @@ fix_jsons <- function(path = getwd(),
 
   # Old parallel argument
   if (lifecycle::is_present(parallel)) {
-    lifecycle::deprecate_warn(when = "1.1.1",
-                              what = "fix_jsons(parallel)",
-                              details = c(
-                                i = "Use future::plan(\"multisession\") instead"
-                              ))
+    lifecycle::deprecate_warn(
+      when = "1.1.1",
+      what = "fix_jsons(parallel)",
+      details = c(
+        i = "Use future::plan(\"multisession\") instead"
+      )
+    )
   }
 
   if (length(jsonfiles > 0)) {
@@ -189,7 +191,6 @@ fix_jsons_impl <- function(jsonfiles) {
 }
 
 fix_illegal_ascii <- function(file, lines) {
-
   # Find which lines contain non ASCII characters
   corrupt <- which(grepl("[^ -~]", lines))
 
@@ -211,43 +212,35 @@ fix_eof <- function(file, eof, lines) {
     # 1: If the last (and also only) line in the file is [ then it means the file was only
     # opened but nothing was written. So, just close it with ] to have an empty JSON file.
     write("]", file, append = TRUE)
-
   } else if (eof[1] == "{}]" && eof[2] == "]" && eof[3] == "]") {
     # 2: Closing bracket applied thrice. Probably the result of a bad fix applied by this function
     write(lines[1:(length(lines) - 2)], file, append = FALSE)
-
   } else if (eof[2] == "]" && eof[3] == "]") {
     # 3: Closing bracket applied twice. Probably the result of a bad fix applied by this function
     write(lines[1:(length(lines) - 1)], file, append = FALSE)
-
   } else if (all(eof == "{}]")) {
     # 4: An empty object followed by a closing bracket is generally the result of a bad fix
     # applied by this function. This autocorrects it.
     write(lines[1:(length(lines) - 2)], file, append = FALSE)
-
   } else if (eof[2] == "{}]" && eof[3] == "{}]") {
     # 5: An empty object followed by a closing bracket is generally the result of a bad fix
     # applied by this function. This autocorrects it.
     write(lines[1:(length(lines) - 1)], file, append = FALSE)
-
   } else if (eof[2] == "," && eof[3] == "]") {
     # 6: If the file closed with a comma, another object is expected
     # To fix this, rewrite the entire file without the comma as deleting characters
     # is not possible
     write(lines[1:(length(lines) - 2)], file, append = FALSE)
     write("]", file, append = TRUE)
-
   } else if (last == ",") {
     # 7: Similar to 6, but without a closing ] for the file
     # Instead of rewriting the file, just add an empty object
     write("{}]", file, append = TRUE)
-
   } else if (nchar(last) > 3 &&
     substr(last, nchar(last) - 1, nchar(last)) == "}}") {
     # 8: Is the last line long (>3) and are the last two characters "}}"? Then somehow all
     # we are missing is a closing bracket.
     write("]", file, append = TRUE)
-
   } else {
     # If no known pattern is detected, return without counting it as a fixed file
     return(0L)
@@ -324,11 +317,13 @@ test_jsons <- function(path = getwd(),
 
   # Old parallel argument
   if (lifecycle::is_present(parallel)) {
-    lifecycle::deprecate_warn(when = "1.1.1",
-                              what = "test_jsons(parallel)",
-                              details = c(
-                                i = "Use future::plan(\"multisession\") instead."
-                              ))
+    lifecycle::deprecate_warn(
+      when = "1.1.1",
+      what = "test_jsons(parallel)",
+      details = c(
+        i = "Use future::plan(\"multisession\") instead."
+      )
+    )
   }
 
   if (requireNamespace("progressr", quietly = TRUE)) {
@@ -401,11 +396,13 @@ unzip_data <- function(path = getwd(),
 
   # Old parallel argument
   if (lifecycle::is_present(parallel)) {
-    lifecycle::deprecate_warn(when = "1.1.1",
-                              what = "unzip_data(parallel)",
-                              details = c(
-                                i = "Use future::plan(\"multisession\") instead"
-                              ))
+    lifecycle::deprecate_warn(
+      when = "1.1.1",
+      what = "unzip_data(parallel)",
+      details = c(
+        i = "Use future::plan(\"multisession\") instead"
+      )
+    )
   }
 
   unzipped_files <- 0

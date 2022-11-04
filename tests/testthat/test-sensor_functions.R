@@ -131,16 +131,18 @@ test_that("app_category", {
 })
 
 test_that("device_info", {
-    path <- system.file("testdata", "test.db", package = "mpathsenser")
-    db <- open_db(NULL, path)
+  path <- system.file("testdata", "test.db", package = "mpathsenser")
+  db <- open_db(NULL, path)
 
-    expect_error(device_info(db, participant_id = "12345"), NA)
-    res <- device_info(db, participant_id = "12345")
-    expect_equal(colnames(res), c("participant_id", "device_id", "hardware", "device_name",
-                                  "device_manufacturer", "device_model", "operating_system",
-                                  "platform"))
-    expect_true(nrow(res) > 0)
-    dbDisconnect(db)
+  expect_error(device_info(db, participant_id = "12345"), NA)
+  res <- device_info(db, participant_id = "12345")
+  expect_equal(colnames(res), c(
+    "participant_id", "device_id", "hardware", "device_name",
+    "device_manufacturer", "device_model", "operating_system",
+    "platform"
+  ))
+  expect_true(nrow(res) > 0)
+  dbDisconnect(db)
 })
 
 #
@@ -155,15 +157,19 @@ test_that("moving_average", {
   path <- system.file("testdata", "test.db", package = "mpathsenser")
   db <- open_db(NULL, path)
 
-  expect_error(moving_average(db, "Accelerometer", cols = "x", participant_id = "12345", n = 2),
-               NA)
-  res <- moving_average(db = db,
-                        sensor = "Accelerometer",
-                        cols = "x",
-                        participant_id = "12345",
-                        n = 2,
-                        start_date = "2021-11-14",
-                        end_date = "2021-11-14")
+  expect_error(
+    moving_average(db, "Accelerometer", cols = "x", participant_id = "12345", n = 2),
+    NA
+  )
+  res <- moving_average(
+    db = db,
+    sensor = "Accelerometer",
+    cols = "x",
+    participant_id = "12345",
+    n = 2,
+    start_date = "2021-11-14",
+    end_date = "2021-11-14"
+  )
   expect_true(nrow(res) > 0)
 
   dbDisconnect(db)
@@ -176,13 +182,17 @@ test_that("identify_gaps", {
   gaps <- identify_gaps(db, "12345", min_gap = 1, sensor = sensors)
 
   true <- tibble::tibble(
-    participant_id = c( "12345"),
-    from = c("2021-11-13 13:00:00", "2021-11-14 13:00:00", "2021-11-14 13:59:59",
-             "2021-11-14 14:00:00", "2021-11-14 14:00:01", "2021-11-14 14:00:02",
-             "2021-11-14 14:00:10", "2021-11-14 14:01:00"),
-    to = c("2021-11-14 13:00:00", "2021-11-14 13:59:59", "2021-11-14 14:00:00",
-           "2021-11-14 14:00:01", "2021-11-14 14:00:02", "2021-11-14 14:00:10",
-           "2021-11-14 14:01:00", "2021-11-14 14:02:00"),
+    participant_id = c("12345"),
+    from = c(
+      "2021-11-13 13:00:00", "2021-11-14 13:00:00", "2021-11-14 13:59:59",
+      "2021-11-14 14:00:00", "2021-11-14 14:00:01", "2021-11-14 14:00:02",
+      "2021-11-14 14:00:10", "2021-11-14 14:01:00"
+    ),
+    to = c(
+      "2021-11-14 13:00:00", "2021-11-14 13:59:59", "2021-11-14 14:00:00",
+      "2021-11-14 14:00:01", "2021-11-14 14:00:02", "2021-11-14 14:00:10",
+      "2021-11-14 14:01:00", "2021-11-14 14:02:00"
+    ),
     gap = c(86400L, 3599L, 1L, 1L, 1L, 8L, 50L, 60L)
   )
 
@@ -216,24 +226,30 @@ test_that("add_data", {
   # Define the true data
   true <- tibble::tibble(
     participant_id = "12345",
-    time = as.POSIXct(c("2022-05-10 10:00:00", "2022-05-10 10:05:00", "2022-05-10 10:20:00",
-                        "2022-05-10 10:30:00", "2022-05-10 10:50:00", "2022-05-10 11:10:00",
-                        "2022-05-10 11:30:00")),
+    time = as.POSIXct(c(
+      "2022-05-10 10:00:00", "2022-05-10 10:05:00", "2022-05-10 10:20:00",
+      "2022-05-10 10:30:00", "2022-05-10 10:50:00", "2022-05-10 11:10:00",
+      "2022-05-10 11:30:00"
+    )),
     type = c("WALKING", NA, "WALKING", "STILL", NA, "STILL", "RUNNING"),
     confidence = c(80, NA, 80, 100, NA, 100, 20)
   )
 
   # Check basic functionality
-  res <- add_gaps(data = dat,
-                  gaps = gaps,
-                  by = "participant_id")
+  res <- add_gaps(
+    data = dat,
+    gaps = gaps,
+    by = "participant_id"
+  )
   expect_identical(res, true)
 
   # You can use fill if  you want to get rid of those pesky NA's
-  res <- add_gaps(data = dat,
-                  gaps = gaps,
-                  by = "participant_id",
-                  fill = list(type = "GAP", confidence = 100))
+  res <- add_gaps(
+    data = dat,
+    gaps = gaps,
+    by = "participant_id",
+    fill = list(type = "GAP", confidence = 100)
+  )
   true <- tidyr::replace_na(true, list(type = "GAP", confidence = 100))
   expect_identical(res, true)
 
@@ -241,33 +257,45 @@ test_that("add_data", {
   #
   dat <- data.frame(
     participant_id = c(rep("12345", 4), rep("23456", 4)),
-    time = rep(as.POSIXct(c("2022-05-10 10:00:00", "2022-05-10 10:30:00", "2022-05-10 10:30:00",
-                            "2022-05-10 11:30:00")), 2),
+    time = rep(as.POSIXct(c(
+      "2022-05-10 10:00:00", "2022-05-10 10:30:00", "2022-05-10 10:30:00",
+      "2022-05-10 11:30:00"
+    )), 2),
     event = rep(c("a", "b", "c", "d"), 2),
     event2 = rep(c("a", "b", "c", "d"), 2)
   )
 
   gaps <- data.frame(
     participant_id = c(rep("12345", 5), rep("23456", 5)),
-    from = rep(as.POSIXct(c("2022-05-10 09:05:00", "2022-05-10 09:20:00", "2022-05-10 10:10:00",
-                            "2022-05-10 10:40:00", "2022-05-10 11:00:00")), 2),
-    to = rep(as.POSIXct(c("2022-05-10 09:10:00", "2022-05-10 09:40:00", "2022-05-10 10:20:00",
-                          "2022-05-10 10:50:00", "2022-05-10 11:10:00")), 2)
+    from = rep(as.POSIXct(c(
+      "2022-05-10 09:05:00", "2022-05-10 09:20:00", "2022-05-10 10:10:00",
+      "2022-05-10 10:40:00", "2022-05-10 11:00:00"
+    )), 2),
+    to = rep(as.POSIXct(c(
+      "2022-05-10 09:10:00", "2022-05-10 09:40:00", "2022-05-10 10:20:00",
+      "2022-05-10 10:50:00", "2022-05-10 11:10:00"
+    )), 2)
   )
-  res <- add_gaps(data = dat,
-                  gaps = gaps,
-                  by = "participant_id",
-                  fill = list(event = "GAP", event2 = "GAP"))
+  res <- add_gaps(
+    data = dat,
+    gaps = gaps,
+    by = "participant_id",
+    fill = list(event = "GAP", event2 = "GAP")
+  )
   true <- tibble::tibble(
     participant_id = c(rep("12345", 16), rep("23456", 16)),
-    time = rep(as.POSIXct(c("2022-05-10 09:05:00", "2022-05-10 09:10:00", "2022-05-10 09:20:00",
-                            "2022-05-10 09:40:00", "2022-05-10 10:00:00", "2022-05-10 10:10:00",
-                            "2022-05-10 10:20:00", "2022-05-10 10:30:00", "2022-05-10 10:30:00",
-                            "2022-05-10 10:40:00", "2022-05-10 10:50:00", "2022-05-10 10:50:00",
-                            "2022-05-10 11:00:00", "2022-05-10 11:10:00", "2022-05-10 11:10:00",
-                            "2022-05-10 11:30:00")), 2),
-    event = rep(c("GAP", NA, "GAP", NA, "a", "GAP", "a", "b",
-                  "c", "GAP", "b", "c", "GAP", "b", "c", "d"), 2),
+    time = rep(as.POSIXct(c(
+      "2022-05-10 09:05:00", "2022-05-10 09:10:00", "2022-05-10 09:20:00",
+      "2022-05-10 09:40:00", "2022-05-10 10:00:00", "2022-05-10 10:10:00",
+      "2022-05-10 10:20:00", "2022-05-10 10:30:00", "2022-05-10 10:30:00",
+      "2022-05-10 10:40:00", "2022-05-10 10:50:00", "2022-05-10 10:50:00",
+      "2022-05-10 11:00:00", "2022-05-10 11:10:00", "2022-05-10 11:10:00",
+      "2022-05-10 11:30:00"
+    )), 2),
+    event = rep(c(
+      "GAP", NA, "GAP", NA, "a", "GAP", "a", "b",
+      "c", "GAP", "b", "c", "GAP", "b", "c", "d"
+    ), 2),
     event2 = event
   )
   expect_equal(res, true)

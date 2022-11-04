@@ -9,8 +9,9 @@ test_that("ccopy", {
 
   # Zip in the new temp directory
   utils::zip(zipfile,
-             system.file("testdata", "test.json", package = "mpathsenser"),
-             flags = "-q")
+    system.file("testdata", "test.json", package = "mpathsenser"),
+    flags = "-q"
+  )
 
   expect_message(ccopy(zip_dir, zip_dir), "No files left to copy")
   expect_message(ccopy(zip_dir, tempdir()), "Copying 1 files\\.")
@@ -44,18 +45,24 @@ test_that("fix_jsons", {
   ))
 
   # Test arguments
-  expect_error(fix_jsons(path = TRUE),
-               "`path` must be a character string of the path name.")
+  expect_error(
+    fix_jsons(path = TRUE),
+    "`path` must be a character string of the path name."
+  )
   expect_error(
     fix_jsons(path = NULL, files = TRUE),
     "`files` must be NULL or a character vector of file names."
   )
-  expect_error(fix_jsons(path = NULL, files = NULL),
-               "`path` and `files` cannot be NULL at the same time.")
+  expect_error(
+    fix_jsons(path = NULL, files = NULL),
+    "`path` and `files` cannot be NULL at the same time."
+  )
 
   # With path argument
-  expect_message(fix_jsons(path = tempdir, recursive = FALSE),
-                 "Fixed 12 files")
+  expect_message(
+    fix_jsons(path = tempdir, recursive = FALSE),
+    "Fixed 12 files"
+  )
 
   # copy again after fixing
   invisible(do.call(
@@ -69,12 +76,14 @@ test_that("fix_jsons", {
   ))
 
   # With files argument
-  expect_message(fix_jsons(
-    path = NULL,
-    files = file.path(tempdir, files),
-    recursive = FALSE
-  ),
-  "Fixed 12 files")
+  expect_message(
+    fix_jsons(
+      path = NULL,
+      files = file.path(tempdir, files),
+      recursive = FALSE
+    ),
+    "Fixed 12 files"
+  )
 
   # copy again after fixing
   invisible(do.call(
@@ -88,17 +97,21 @@ test_that("fix_jsons", {
   ))
 
   # With both path and files arguments
-  expect_message(fix_jsons(
-    path = tempdir,
-    files = files,
-    recursive = FALSE
-  ),
-  "Fixed 12 files")
+  expect_message(
+    fix_jsons(
+      path = tempdir,
+      files = files,
+      recursive = FALSE
+    ),
+    "Fixed 12 files"
+  )
 
   file.remove(file.path(tempdir, files))
 
-  expect_error(fix_jsons(path = tempdir),
-               "No JSON files found.")
+  expect_error(
+    fix_jsons(path = tempdir),
+    "No JSON files found."
+  )
 
   invisible(do.call(
     file.copy,
@@ -117,7 +130,6 @@ test_that("fix_jsons", {
     )
   )
   unlink(tempdir, recursive = TRUE)
-
 })
 
 test_that("test_jsons", {
@@ -127,50 +139,69 @@ test_that("test_jsons", {
   files <- list.files(path, pattern = "*.json", full.names = TRUE)
 
   # Test with path argument
-  expect_message(test_jsons(path, recursive = FALSE),
-                 "No issues found.")
+  expect_message(
+    test_jsons(path, recursive = FALSE),
+    "No issues found."
+  )
 
   # Test with files argument
-  expect_message(test_jsons(path = NULL, files = files),
-                 "No issues found.")
+  expect_message(
+    test_jsons(path = NULL, files = files),
+    "No issues found."
+  )
 
   # Test with both path and files argument
-  expect_message(test_jsons(path = path,
-                            files = list.files(path, pattern = "*.json")),
-                 "No issues found.")
+  expect_message(
+    test_jsons(
+      path = path,
+      files = list.files(path, pattern = "*.json")
+    ),
+    "No issues found."
+  )
 
   # Test arguments
-  expect_error(test_jsons(path = TRUE),
-               "`path` must be a character string of the path name.")
+  expect_error(
+    test_jsons(path = TRUE),
+    "`path` must be a character string of the path name."
+  )
   expect_error(
     test_jsons(path = NULL, files = TRUE),
     "`files` must be NULL or a character vector of file names."
   )
-  expect_error(test_jsons(path = NULL, files = NULL),
-               "`path` and `files` cannot be NULL at the same time.")
+  expect_error(
+    test_jsons(path = NULL, files = NULL),
+    "`path` and `files` cannot be NULL at the same time."
+  )
 
   # Test output type if errors are found
   suppressWarnings(expect_vector(test_jsons(broken_path),
-                                 ptype = character()))
+    ptype = character()
+  ))
 
   # Test empty file
   empty <- tempfile(fileext = ".json")
   file.create(empty)
-  expect_message(test_jsons(path = NULL, files = empty),
-                 "No issues found.")
+  expect_message(
+    test_jsons(path = NULL, files = empty),
+    "No issues found."
+  )
 
   # Test with db
   db <- create_db(NULL, tempfile())
-  expect_message(test_jsons(path, db = db, recursive = FALSE),
-                 "No issues found.")
+  expect_message(
+    test_jsons(path, db = db, recursive = FALSE),
+    "No issues found."
+  )
   dbDisconnect(db)
 
   # Arguments
-  expect_error(test_jsons(path = TRUE),
-               "`path` must be a character string of the path name.")
+  expect_error(
+    test_jsons(path = TRUE),
+    "`path` must be a character string of the path name."
+  )
 
   expect_error(
-    test_jsons(path, files  = TRUE),
+    test_jsons(path, files = TRUE),
     "`files` must be NULL or a character vector of file names."
   )
 
@@ -192,22 +223,24 @@ test_that("unzip_data", {
 
   # Zip in the new temp directory
   utils::zip(zipfile,
-             system.file("testdata", "test.json", package = "mpathsenser"),
-             flags = "-q")
-
-  expect_message(
-    unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE),
-    "Unzipped 1 files.")
-
-  expect_message(
-    unzip_data(zip_dir, recursive = TRUE, overwrite = FALSE),
-    "No files found to unzip."
-    )
+    system.file("testdata", "test.json", package = "mpathsenser"),
+    flags = "-q"
+  )
 
   expect_message(
     unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE),
     "Unzipped 1 files."
-    )
+  )
+
+  expect_message(
+    unzip_data(zip_dir, recursive = TRUE, overwrite = FALSE),
+    "No files found to unzip."
+  )
+
+  expect_message(
+    unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE),
+    "Unzipped 1 files."
+  )
 
   suppressMessages(
     expect_warning(

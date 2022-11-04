@@ -32,10 +32,8 @@ multilevel_cor <- function(x,
                            center = TRUE,
                            scale = FALSE,
                            p_adjust = TRUE) {
-
   # If ... is specified
   if (rlang::dots_n(...) != 0) {
-
     # Extract and normalise data
     x <- x %>%
       select({{ group }}, ...)
@@ -144,10 +142,8 @@ multilevel_autocor <- function(data,
                                center = TRUE,
                                scale = FALSE,
                                p_adjust = TRUE) {
-
   # If ... is specified
   if (rlang::dots_n(...) != 0) {
-
     # Extract and normalise data
     data <- data %>%
       select({{ group }}, {{ lag_var }}, ...)

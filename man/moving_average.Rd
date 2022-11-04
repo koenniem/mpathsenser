@@ -45,11 +45,13 @@ A tibble with the same columns as the input, modified to be a moving average.
 \dontrun{
 path <- system.file("testdata", "test.db", package = "mpathsenser")
 db <- open_db(NULL, path)
-moving_average(db = db,
-               sensor = "Light",
-               cols = c("mean_lux", "max_lux"),
-               n = 5, # seconds
-               participant_id = "12345")
+moving_average(
+  db = db,
+  sensor = "Light",
+  cols = c("mean_lux", "max_lux"),
+  n = 5, # seconds
+  participant_id = "12345"
+)
 close_db(db)
 }
 }

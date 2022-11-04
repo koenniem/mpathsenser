@@ -75,8 +75,10 @@ test_that("copy_db", {
 
   expect_error(
     copy_db(db, new_db, db_name = "foo"),
-    paste("The `db_name` argument of `copy_db\\(\\)` was deprecated in mpathsenser 1.1.1",
-          "and is now defunct.")
+    paste(
+      "The `db_name` argument of `copy_db\\(\\)` was deprecated in mpathsenser 1.1.1",
+      "and is now defunct."
+    )
   )
 
   # Invalid sensor
@@ -206,7 +208,7 @@ test_that("clear_sensors_db", {
   filename <- tempfile("foo", fileext = ".db")
   db <- create_db(NULL, filename)
 
-  import(path, db = db, recursive = FALSE)
+  suppressMessages(import(path, db = db, recursive = FALSE))
   original <- get_nrows(db)
   res <- clear_sensors_db(db)
   expect_type(res, "list")

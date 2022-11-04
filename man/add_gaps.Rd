@@ -77,15 +77,19 @@ gaps <- data.frame(
 )
 
 # Now add the gaps to the data
-add_gaps(data = dat,
-         gaps = gaps,
-         by = "participant_id")
+add_gaps(
+  data = dat,
+  gaps = gaps,
+  by = "participant_id"
+)
 
 # You can use fill if  you want to get rid of those pesky NA's
-add_gaps(data = dat,
-         gaps = gaps,
-         by = "participant_id",
-         fill = list(type = "GAP", confidence = 100))
+add_gaps(
+  data = dat,
+  gaps = gaps,
+  by = "participant_id",
+  fill = list(type = "GAP", confidence = 100)
+)
 }
 \seealso{
 \code{\link[mpathsenser]{identify_gaps}} for finding gaps in the sampling;

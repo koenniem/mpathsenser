@@ -46,8 +46,8 @@ test_that("coverage", {
   # Offset
   expect_warning(
     coverage(db, "12345",
-             start_date = "2021-02-25", end_date = "2021-02-25",
-             offset = "1 day"
+      start_date = "2021-02-25", end_date = "2021-02-25",
+      offset = "1 day"
     ),
     paste0(
       "Argument start_date/end_date and offset cannot be present at the same ",

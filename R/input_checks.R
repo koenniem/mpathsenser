@@ -13,7 +13,6 @@ check_db <- function(db,
                      allow_null = FALSE,
                      arg = rlang::caller_arg(db),
                      call = rlang::caller_env()) {
-
   if (allow_null && rlang::is_null(db)) {
     return(invisible(TRUE))
   }
@@ -25,13 +24,15 @@ check_db <- function(db,
 
   if (!inherits(db, "DBIConnection")) {
     msg <- c(paste0("Argument `", arg, "` is not a database connection."),
-             x = paste0("You supplied ", with_article(utils::tail(class(db), 1)), "."))
+      x = paste0("You supplied ", with_article(utils::tail(class(db), 1)), ".")
+    )
     abort(msg, arg = arg, call = call)
   }
 
   if (!dbIsValid(db)) {
     msg <- c(paste0("Database connection `", arg, "` is not valid."),
-             i = "Did you forget to open the connection or save it to a variable?")
+      i = "Did you forget to open the connection or save it to a variable?"
+    )
     abort(msg, arg = arg, call = call)
   }
 
@@ -44,28 +45,30 @@ check_arg <- function(x,
                       allow_null = FALSE,
                       arg = rlang::caller_arg(x),
                       call = rlang::caller_env()) {
-
   if (allow_null && rlang::is_null(x)) {
     return(invisible(TRUE))
   }
 
   type <- match.arg(type,
-                    c("character", "integer", "double", "logical", "integerish", "numeric",
-                            "factor", "POSIXt", "data.frame", "list"),
-                    several.ok = TRUE)
+    c(
+      "character", "integer", "double", "logical", "integerish", "numeric",
+      "factor", "POSIXt", "data.frame", "list"
+    ),
+    several.ok = TRUE
+  )
 
   res <- lapply(type, function(y) {
     switch(y,
-           character = rlang::is_character(x, n),
-           integer = rlang::is_integer(x, n),
-           double = rlang::is_double(x, n),
-           logical = rlang::is_logical(x, n),
-           integerish = rlang::is_integerish(x, n),
-           numeric = rlang::is_double(x, n) || rlang::is_integer(x, n),
-           factor = is.factor(x) && (is.null(n) || length(x) == n),
-           POSIXt = inherits(x, "POSIXt") && (is.null(n) || length(x) == n),
-           data.frame = is.data.frame(x),
-           list = rlang::is_list(x, n)
+      character = rlang::is_character(x, n),
+      integer = rlang::is_integer(x, n),
+      double = rlang::is_double(x, n),
+      logical = rlang::is_logical(x, n),
+      integerish = rlang::is_integerish(x, n),
+      numeric = rlang::is_double(x, n) || rlang::is_integer(x, n),
+      factor = is.factor(x) && (is.null(n) || length(x) == n),
+      POSIXt = inherits(x, "POSIXt") && (is.null(n) || length(x) == n),
+      data.frame = is.data.frame(x),
+      list = rlang::is_list(x, n)
     )
   })
   res <- unlist(res)
@@ -78,8 +81,10 @@ check_arg <- function(x,
     }
 
     msg <- c(paste0("Argument `", arg, "` must be ", with_article(type), n, "."),
-             x = paste0("You supplied ", with_article(utils::tail(class(x), 1)),
-                        n_provided, ".")
+      x = paste0(
+        "You supplied ", with_article(utils::tail(class(x), 1)),
+        n_provided, "."
+      )
     )
     abort(msg, arg = arg, call = call)
   }
@@ -89,9 +94,11 @@ check_arg <- function(x,
 
 with_article <- function(x) {
   article <- lapply(x, function(y) {
-    if (any(substr(y, 1, 1) == c("a", "e", "h", "i", "o", "u")))
+    if (any(substr(y, 1, 1) == c("a", "e", "h", "i", "o", "u"))) {
       return("an")
-    else return("a")
+    } else {
+      return("a")
+    }
   })
   article <- unlist(article)
   paste(article, x, collapse = " or ")
@@ -102,7 +109,6 @@ check_sensors <- function(x,
                           allow_null = FALSE,
                           arg = rlang::caller_arg(x),
                           call = rlang::caller_env()) {
-
   check_arg(x, type = "character", allow_null = allow_null, n = n, arg = arg, call = call)
   missing <- x[!(tolower(x) %in% tolower(sensors))]
 
@@ -116,4 +122,3 @@ check_sensors <- function(x,
 
   return(invisible(TRUE))
 }
-

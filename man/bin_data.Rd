@@ -96,9 +96,12 @@ out <- data \%>\%
 print(out)
 
 # To get the duration for each bin (note to change the variable names in sum):
-purrr::map_dbl(out$bin_data,
-               ~ sum(as.double(.x$lead) - as.double(.x$datetime),
-                          na.rm = TRUE))
+purrr::map_dbl(
+  out$bin_data,
+  ~ sum(as.double(.x$lead) - as.double(.x$datetime),
+    na.rm = TRUE
+  )
+)
 
 # Or:
 out \%>\%
