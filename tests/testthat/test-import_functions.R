@@ -39,7 +39,7 @@ unit_test <- function(sensor, ...) {
     )
     true$measurement_id <- paste0(true$measurement_id, "_", seq_len(true))
 
-    true <- unnest_wider(true, names(which(depth > 1)))
+    true <- tidyr::unnest_wider(true, names(which(depth > 1)))
     true <- as.data.frame(true)
   } else {
     true <- data.frame(

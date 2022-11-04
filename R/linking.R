@@ -198,49 +198,9 @@ link <- function(x,
   check_arg(add_before, type = "logical")
   check_arg(add_after, type = "logical")
 
-  # offset checks
-  if ((is.null(offset_before) || all(offset_before == 0)) &&
-    (is.null(offset_after) || all(offset_after == 0))) {
-    abort(paste0("offset_before and offset_after cannot be 0 or NULL at the same time."))
-  }
-  if (!is.null(offset_before) && !(is.character(offset_before) ||
-    lubridate::is.period(offset_before) ||
-    is.numeric(offset_before))) {
-    abort("offset_before must be a character vector, numeric vector, or a period")
-  }
-  if (!is.null(offset_after) && !(is.character(offset_after) ||
-    lubridate::is.period(offset_after) ||
-    is.numeric(offset_after))) {
-    abort("offset_after must be a character vector, numeric vector, or a period")
-  }
-  if (is.character(offset_before) || is.numeric(offset_before)) {
-    offset_before <- lubridate::as.period(offset_before)
-    offset_before <- as.integer(as.double(offset_before))
-  }
-  if (is.character(offset_after) || is.numeric(offset_after)) {
-    offset_after <- lubridate::as.period(offset_after)
-    offset_after <- as.integer(as.double(offset_after))
-  }
-  if (is.na(offset_before) || is.na(offset_after)) {
-    abort(c(
-      "Invalid offset specified.",
-      i = "Try something like '30 minutes', lubridate::minutes(30), or 1800."
-    ))
-  }
-  if (!is.null(offset_before) && offset_before < 0) {
-    offset_before <- abs(offset_before)
-    warn(c(
-      "offset_before must be a positive period (i.e. greater than 0).",
-      i = "Taking the absolute value."
-    ))
-  }
-  if (!is.null(offset_after) && offset_after < 0) {
-    offset_after <- abs(offset_after)
-    warn(c(
-      "offset_after must be a positive period (i.e. greater than 0).",
-      i = "Taking the absolute value."
-    ))
-  }
+  offsets <- check_offset(offset_before, offset_after)
+  offset_before <- offsets$offset_before
+  offset_after <- offsets$offset_after
 
   # Check for time column
   if (!("time" %in% colnames(x) && "time" %in% colnames(y))) {
@@ -326,11 +286,8 @@ link_db <- function(db,
   check_arg(reverse, type = "logical", n = 1)
   check_arg(ignore_large, type = "logical", n = 1)
 
-  if (is.null(external) && is.null(sensor_two)) {
-    abort("either a second sensor or an external data frame must be supplied")
-  }
-  if (!is.null(external) && !is.null(sensor_two)) {
-    abort("only a second sensor or an external data frame can be supplied, but not both")
+  if ((is.null(external) && is.null(sensor_two)) || (!is.null(external) && !is.null(sensor_two))) {
+    abort("Either a second sensor or an external data frame must be supplied.")
   }
 
   # See if data is not incredibly large
@@ -351,10 +308,7 @@ link_db <- function(db,
       collect() %>%
       mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", tz = "UTC"))
   } else {
-    if (!lubridate::is.POSIXct(external$time)) {
-      abort("Column `time` in `external` must be a POSIXct.")
-    }
-
+    check_arg(external$time, "POSIXt")
     if (any(format(external$time, "%Z") != "UTC")) {
       warn(c(
         "`external` is not using UTC as a time zone, unlike the data in the database.",
@@ -438,54 +392,9 @@ link_gaps <- function(data,
   check_arg(by, type = "character", allow_null = TRUE)
   check_arg(raw_data, type = "logical", n = 1)
 
-  # offset checks
-  if ((is.null(offset_before) || all(offset_before == 0)) &&
-    (is.null(offset_after) || all(offset_after == 0))) {
-    abort("`offset_before` and `offset_after` cannot be 0 or NULL at the same time.")
-  }
-  if (!is.null(offset_before) && !(is.character(offset_before) ||
-    lubridate::is.period(offset_before) ||
-    is.numeric(offset_before))) {
-    abort("`offset_before` must be a character vector, numeric vector, or a period.")
-  }
-  if (!is.null(offset_after) && !(is.character(offset_after) ||
-    lubridate::is.period(offset_after) ||
-    is.numeric(offset_after))) {
-    abort("`offset_after` must be a character vector, numeric vector, or a period.")
-  }
-
-  # Convert offset_before to integer time
-  if (is.character(offset_before) || is.numeric(offset_before)) {
-    offset_before <- lubridate::as.period(offset_before)
-    offset_before <- as.integer(as.double(offset_before))
-  }
-
-  # Convert offset_after to integer time
-  if (is.character(offset_after) || is.numeric(offset_after)) {
-    offset_after <- lubridate::as.period(offset_after)
-    offset_after <- as.integer(as.double(offset_after))
-  }
-
-  if (is.na(offset_before) || is.na(offset_after)) {
-    abort(c(
-      "Invalid offset specified.",
-      i = "Try something like '30 minutes', lubridate::minutes(30), or 1800."
-    ))
-  }
-  if (!is.null(offset_before) && offset_before < 0) {
-    offset_before <- abs(offset_before)
-    warn(c(
-      "`offset_before` must be a positive period (i.e. greater than 0).",
-      i = "Taking the absolute value"
-    ))
-  }
-  if (!is.null(offset_after) && offset_after < 0) {
-    offset_after <- abs(offset_after)
-    warn(c(
-      "`offset_after` must be a positive period (i.e. greater than 0).",
-      i = "Taking the absolute value"
-    ))
-  }
+  offsets <- check_offset(offset_before, offset_after)
+  offset_before <- offsets$offset_before
+  offset_after <- offsets$offset_after
 
   # Check for time column in data
   if (!("time" %in% colnames(data))) {

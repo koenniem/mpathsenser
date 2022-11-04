@@ -122,3 +122,57 @@ check_sensors <- function(x,
 
   return(invisible(TRUE))
 }
+
+check_offset <- function(offset_before, offset_after, call = rlang::caller_env()) {
+  if ((is.null(offset_before) || all(offset_before == 0)) &&
+      (is.null(offset_after) || all(offset_after == 0))) {
+    return(abort("`offset_before` and `offset_after` cannot be 0 or NULL at the same time.",
+          call = call))
+  }
+  if (!is.null(offset_before) && !(is.character(offset_before) ||
+                                   lubridate::is.period(offset_before) ||
+                                   is.numeric(offset_before))) {
+    return(abort("`offset_before` must be a character vector, numeric vector, or a period.",
+          call = call))
+  }
+  if (!is.null(offset_after) && !(is.character(offset_after) ||
+                                  lubridate::is.period(offset_after) ||
+                                  is.numeric(offset_after))) {
+    return(abort("`offset_after` must be a character vector, numeric vector, or a period.",
+          call = call))
+  }
+
+  # Convert offset_before to integer time
+  if (is.character(offset_before) || is.numeric(offset_before)) {
+    offset_before <- lubridate::as.period(offset_before)
+    offset_before <- as.integer(as.double(offset_before))
+  }
+
+  # Convert offset_after to integer time
+  if (is.character(offset_after) || is.numeric(offset_after)) {
+    offset_after <- lubridate::as.period(offset_after)
+    offset_after <- as.integer(as.double(offset_after))
+  }
+  if (is.na(offset_before) || is.na(offset_after)) {
+    return(abort(c(
+      "Invalid offset specified.",
+      i = "Try something like '30 minutes', lubridate::minutes(30), or 1800."
+    ), call = call))
+  }
+  if (!is.null(offset_before) && offset_before < 0) {
+    offset_before <- abs(offset_before)
+    warn(c(
+      "`offset_before` must be a positive period (i.e. greater than 0).",
+      i = "Taking the absolute value."
+    ), call = call)
+  }
+  if (!is.null(offset_after) && offset_after < 0) {
+    offset_after <- abs(offset_after)
+    warn(c(
+      "`offset_after` must be a positive period (i.e. greater than 0).",
+      i = "Taking the absolute value."
+    ), call = call)
+  }
+
+  return(list(offset_before = offset_before, offset_after = offset_after))
+}

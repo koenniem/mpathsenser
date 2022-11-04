@@ -46,14 +46,6 @@ test_that("fix_jsons", {
 
   # Test arguments
   expect_error(
-    fix_jsons(path = TRUE),
-    "`path` must be a character string of the path name."
-  )
-  expect_error(
-    fix_jsons(path = NULL, files = TRUE),
-    "`files` must be NULL or a character vector of file names."
-  )
-  expect_error(
     fix_jsons(path = NULL, files = NULL),
     "`path` and `files` cannot be NULL at the same time."
   )
@@ -161,14 +153,6 @@ test_that("test_jsons", {
 
   # Test arguments
   expect_error(
-    test_jsons(path = TRUE),
-    "`path` must be a character string of the path name."
-  )
-  expect_error(
-    test_jsons(path = NULL, files = TRUE),
-    "`files` must be NULL or a character vector of file names."
-  )
-  expect_error(
     test_jsons(path = NULL, files = NULL),
     "`path` and `files` cannot be NULL at the same time."
   )
@@ -195,16 +179,6 @@ test_that("test_jsons", {
   dbDisconnect(db)
 
   # Arguments
-  expect_error(
-    test_jsons(path = TRUE),
-    "`path` must be a character string of the path name."
-  )
-
-  expect_error(
-    test_jsons(path, files = TRUE),
-    "`files` must be NULL or a character vector of file names."
-  )
-
   suppressMessages(
     expect_warning(
       test_jsons(path, recursive = FALSE, parallel = TRUE),

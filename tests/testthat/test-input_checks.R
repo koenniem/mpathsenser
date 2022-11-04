@@ -216,3 +216,32 @@ test_that("check_sensors", {
     "Argument `sensors` must be a character of length 1."
   )
 })
+
+test_that("check_offset", {
+  expect_error(
+    check_offset(TRUE, 0),
+    "`offset_before` must be a character vector, numeric vector, or a period."
+  )
+  expect_error(
+    check_offset(0, offset_after = TRUE),
+    "`offset_after` must be a character vector, numeric vector, or a period."
+  )
+  expect_error(
+    check_offset(offset_before = "1800", 0),
+    paste(
+      "Invalid offset specified\\."
+    )
+  )
+  expect_error(
+    check_offset(0, 0),
+    "`offset_before` and `offset_after` cannot be 0 or NULL at the same time."
+  )
+  expect_warning(
+    check_offset(offset_before = -1800, 0),
+    "`offset_before` must be a positive period \\(i.e. greater than 0\\)."
+  )
+  expect_warning(
+    check_offset(0, offset_after = -1800),
+    "`offset_after` must be a positive period \\(i.e. greater than 0\\)."
+  )
+})

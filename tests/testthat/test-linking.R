@@ -170,38 +170,12 @@ test_that("link", {
     "column 'time' in y must be a POSIXct"
   )
   expect_error(
-    link(dat1, dat2, offset_before = TRUE),
-    "offset_before must be a character vector, numeric vector, or a period"
-  )
-  expect_error(
-    link(dat1, dat2, offset_after = TRUE),
-    "offset_after must be a character vector, numeric vector, or a period"
-  )
-  expect_error(
-    link(dat1, dat2, offset_before = "1800"),
-    paste(
-      "Invalid offset specified\\."
-    )
-  )
-  expect_error(
     link(dplyr::select(dat1, -time), dat2, offset_before = 1800),
     "column 'time' must be present in both x and y"
   )
   expect_error(
     link(dat1, dplyr::select(dat2, -time), offset_before = 1800),
     "column 'time' must be present in both x and y"
-  )
-  expect_error(
-    link(dat1, dat2),
-    "offset_before and offset_after cannot be 0 or NULL at the same time."
-  )
-  expect_warning(
-    link(dat1, dat2, "participant_id", offset_before = -1800),
-    "offset_before must be a positive period \\(i.e. greater than 0\\)."
-  )
-  expect_warning(
-    link(dat1, dat2, "participant_id", offset_after = -1800),
-    "offset_after must be a positive period \\(i.e. greater than 0\\)."
   )
 
   # Bug #6: Test whether original_time is present in all nested data columns
@@ -377,20 +351,13 @@ test_that("link_db", {
   # Argument checks
   expect_error(
     link_db(db, "Activity", "Bluetooth", offset_before = 1800, external = dat1),
-    "only a second sensor or an external data frame can be supplied, but not both"
+    "Either a second sensor or an external data frame must be supplied."
   )
   expect_error(
     link_db(db, "Activity", offset_before = 1800),
-    "either a second sensor or an external data frame must be supplied"
+    "Either a second sensor or an external data frame must be supplied."
   )
 
-  expect_error(
-    link_db(db, "Activity",
-      external = dplyr::mutate(dat1, time = as.character(time)),
-      offset_after = 1800
-    ),
-    "Column `time` in `external` must be a POSIXct."
-  )
   # Check time zone differences
   dat1$time <- .POSIXct(dat1$time, tz = "Europe/Brussels")
   expect_warning(
@@ -802,60 +769,6 @@ test_that("link_gaps", {
   )
 
   # Argument checks
-  expect_error(
-    link_gaps(
-      data = dat1,
-      gaps = dat2,
-      by = "participant_id"
-    ),
-    "`offset_before` and `offset_after` cannot be 0 or NULL at the same time."
-  )
-  expect_error(
-    link_gaps(
-      data = dat1,
-      gaps = dat2,
-      by = "participant_id",
-      offset_before = TRUE
-    ),
-    "`offset_before` must be a character vector, numeric vector, or a period."
-  )
-  expect_error(
-    link_gaps(
-      data = dat1,
-      gaps = dat2,
-      by = "participant_id",
-      offset_after = TRUE
-    ),
-    "`offset_after` must be a character vector, numeric vector, or a period."
-  )
-  expect_error(
-    link_gaps(
-      data = dat1,
-      gaps = dat2,
-      by = "participant_id",
-      offset_before = "20 foos",
-      offset_after = "20 bars"
-    ),
-    "Invalid offset specified."
-  )
-  expect_warning(
-    link_gaps(
-      data = dat1,
-      gaps = dat2,
-      by = "participant_id",
-      offset_before = -1800
-    ),
-    "`offset_before` must be a positive period \\(i.e. greater than 0\\)."
-  )
-  expect_warning(
-    link_gaps(
-      data = dat1,
-      gaps = dat2,
-      by = "participant_id",
-      offset_after = -1800
-    ),
-    "`offset_after` must be a positive period \\(i.e. greater than 0\\)."
-  )
   expect_error(
     link_gaps(
       data = dat1[, -2],

@@ -27,51 +27,52 @@ repo:
 reference:
   - title: Import data
     contents:
-      - ccopy
-      - fix_jsons
       - import
+      - fix_jsons
       - test_jsons
       - unzip_data
+      - ccopy
 
   - title: Database handling
     contents:
-      - close_db
-      - copy_db
       - create_db
-      - index_db
       - open_db
+      - close_db
+      - index_db
+      - copy_db
 
   - title: Data retrieval
     contents:
       - get_data
-      - get_nrows
       - get_participants
       - get_processed_files
       - get_studies
+      - get_nrows
 
   - title: Analysis
     contents:
-      - add_gaps
-      - bin_data
-      - coverage
-      - first_date
-      - haversine
-      - identify_gaps
-      - last_date
       - link
       - link_db
       - link_gaps
+      - identify_gaps
+      - add_gaps
+      - bin_data
+      - coverage
+      - plot.coverage
       - moving_average
+      - first_date
+      - last_date
+      - haversine      
 
   - title: Sensor-specific functions
     contents:
-      - activity_duration
-      - app_category
-      - app_usage
-      - decrypt_gps
       - device_info
-      - geocode_rev
+      - app_category
+      - activity_duration
       - installed_apps
+      - decrypt_gps
+      - geocode_rev
+      - app_usage
       - n_screen_on
       - n_screen_unlocks
       - screen_duration
@@ -79,8 +80,8 @@ reference:
 
   - title: Miscelaneous
     contents:
-      - freq
       - sensors
+      - freq
 
 # articles:
 # - title: Get started

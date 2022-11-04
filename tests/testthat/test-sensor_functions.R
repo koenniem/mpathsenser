@@ -106,6 +106,8 @@ test_that("installed_apps", {
 })
 
 test_that("app_category", {
+  skip_if_offline()
+
   res <- app_category("whatsapp")
   expect_equal(
     res,
@@ -144,14 +146,6 @@ test_that("device_info", {
   expect_true(nrow(res) > 0)
   dbDisconnect(db)
 })
-
-#
-# test_that("app_usage", {
-#   path <- system.file("testdata", "test.db", package = "mpathsenser")
-#   db <- open_db(NULL, path)
-#
-#   app_usage(db, "12345", by = "hour")
-# })
 
 test_that("moving_average", {
   path <- system.file("testdata", "test.db", package = "mpathsenser")
