@@ -41,9 +41,6 @@ test_that("create_db", {
   # Test non-existing path
   expect_error(create_db("foo", "bar"), "Directory .*?(?=foo)foo does not exist\\.", perl = TRUE)
 
-  # Test path where a database cnanot be created, e.g. with an invalid filename
-  expect_error(create_db(path = NULL, "*?."), "Could not create a database in \\*\\?\\.")
-
   file.remove(filename)
 })
 

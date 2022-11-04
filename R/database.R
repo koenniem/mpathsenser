@@ -65,7 +65,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
       db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
     },
     error = function(e) {
-      abort(paste0("Could not create a database in ", db_name))
+      abort(paste0("Could not create a database in ", db_name)) # nocov
     }
   )
 
