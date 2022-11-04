@@ -46,7 +46,7 @@ freq <- c(
 #' \link[mpathsenser]{open_db}.
 #' @param participant_id A character string of _one_ participant ID.
 #' @param sensor A character vector containing one or multiple sensors. See
-#' \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use 'All' for all
+#' \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use \code{NULL} for all
 #' available sensors.
 #' @param frequency A named numeric vector with sensors as names and the number of expected samples
 #' per hour
@@ -57,7 +57,8 @@ freq <- c(
 #' the earliest date to show. Leave empty for all data. Must be used with \code{end_date}.
 #' @param end_date A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
 #' the latest date to show.Leave empty for all data. Must be used with \code{start_date}.
-#' @param plot Whether to return a ggplot or its underlying data.
+#' @param plot `r lifecycle::badge("deprecated")` Instead of built-in functionality, use
+#'  \code{\link[mpathsenser]{plot.coverage}} to plot the output.
 #'
 #'
 #' @return A ggplot of the coverage results if \code{plot} is \code{TRUE} or a tibble containg the
@@ -94,28 +95,22 @@ freq <- c(
 #' }
 coverage <- function(db,
                      participant_id,
-                     sensor = "All",
+                     sensor = NULL,
                      frequency = mpathsenser::freq,
                      relative = TRUE,
                      offset = "None",
                      start_date = NULL,
                      end_date = NULL,
-                     plot = TRUE) {
+                     plot = deprecated()) {
   check_db(db)
   check_arg(participant_id, type = c("character"), n = 1)
-  check_arg(sensor, "character", allow_null = TRUE)
+  check_sensors(sensor, allow_null = TRUE)
   check_arg(frequency, type = "double")
   check_arg(relative, "logical", n = 1)
-  check_arg(plot, "logical", n = 1)
 
   # Check sensors
   if (is.null(sensor) || length(sensor) == 1 && sensor == "All") {
     sensor <- sensors
-  } else {
-    missing <- sensor[!(sensor %in% sensors)]
-    if (length(missing) != 0) {
-      abort(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
-    }
   }
 
   # Check participants
@@ -126,6 +121,15 @@ coverage <- function(db,
   # Check frequency
   if (!relative && !is.numeric(frequency) || is.null(names(frequency))) {
     abort("Frequency must be a named numeric vector")
+  }
+
+  # Old plot argument
+  if (lifecycle::is_present(plot)) {
+    lifecycle::deprecate_warn(
+      when = "1.1.1",
+      what = "coverage(plot)",
+      with = "plot()"
+    )
   }
 
   # Check time subset
@@ -143,11 +147,7 @@ coverage <- function(db,
       return(FALSE)
     }
     s <- try(as.Date(s), silent = TRUE)
-    if (inherits(s, "Date")) {
-      TRUE
-    } else {
-      FALSE
-    }
+    return(inherits(s, "Date"))
   }
 
   # Check start_date, end_date
@@ -178,39 +178,51 @@ coverage <- function(db,
   data$measure <- factor(data$measure)
   data$measure <- factor(data$measure, levels = rev(levels(data$measure)))
 
-  # Plot the result if needed
-  if (plot) {
-    # Check if required packages are available
-    ensure_suggested_package("ggplot2")
+  class(data) <- c("coverage", class(data))
+  attr(data, "participant_id") <- participant_id
+  return(data)
+}
 
-    out <- ggplot2::ggplot(
-      data = data,
-      mapping = ggplot2::aes(x = .data$hour, y = .data$measure, fill = .data$coverage)
+#' Plot a coverage overview
+#'
+#' @param x A tibble with the coverage data coming from \code{\link[mpathsenser]{coverage}}.
+#' @param ... Other arguments passed on to methods. Not currently used.
+#'
+#' @seealso \code{\link[mpathsenser]{coverage}}
+#' @return A \code{\link[ggplot2]{ggplot}} object.
+#' @export plot.coverage
+#' @export
+plot.coverage <- function(x, ...) {
+  ensure_suggested_package("ggplot2")
+
+  ggplot2::ggplot(
+    data = x,
+    mapping = ggplot2::aes(x = .data$hour, y = .data$measure, fill = .data$coverage)
+  ) +
+    ggplot2::geom_tile() +
+    ggplot2::geom_text(
+      mapping = ggplot2::aes(label = coverage),
+      colour = "white"
     ) +
-      ggplot2::geom_tile() +
-      ggplot2::geom_text(
-        mapping = ggplot2::aes(label = coverage),
-        colour = "white"
-      ) +
-      ggplot2::scale_x_continuous(breaks = 0:23) +
-      ggplot2::scale_fill_gradientn(
-        colours = c("#d70525", "#645a6c", "#3F7F93"),
-        breaks = c(0, 0.5, 1),
-        labels = c(0, 0.5, 1),
-        limits = c(0, 1)
-      ) +
-      ggplot2::theme_minimal() +
-      ggplot2::ggtitle(paste0("Coverage for participant ", participant_id))
-    return(out)
-  } else {
-    return(data)
-  }
+    ggplot2::scale_x_continuous(breaks = 0:23) +
+    ggplot2::scale_fill_gradientn(
+      colours = c("#d70525", "#645a6c", "#3F7F93"),
+      breaks = c(0, 0.5, 1),
+      labels = c(0, 0.5, 1),
+      limits = c(0, 1)
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::labs(
+      title = paste0("Coverage for participant ", attr(x, "participant_id")),
+      x = "Hour",
+      y = "Sensor"
+    )
 }
 
 coverage_impl <- function(db, participant_id, sensor, frequency, relative, start_date, end_date) {
   # Interesting bug/feature in dbplyr: If participant_id is used in the query, the index of the
   # table is not used. Hence, we rename participant_id to p_id
-  p_id <- as.character(participant_id)
+  p_id <- as.character(participant_id) # nolint
 
   # Loop over each sensor and calculate the coverage rate for that sensor
   data <- furrr::future_map(.x = sensor, .f = ~ {

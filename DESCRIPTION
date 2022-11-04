@@ -47,6 +47,7 @@ Suggests:
     ggplot2,
     httr,
     knitr,
+    lintr,
     lme4,
     lmerTest,
     progressr,

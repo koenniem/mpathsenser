@@ -7,7 +7,7 @@
 coverage(
   db,
   participant_id,
-  sensor = "All",
+  sensor = NULL,
   frequency = mpathsenser::freq,
   relative = TRUE,
   offset = "None",
@@ -23,7 +23,7 @@ coverage(
 \item{participant_id}{A character string of \emph{one} participant ID.}
 
 \item{sensor}{A character vector containing one or multiple sensors. See
-\code{\link[mpathsenser]{sensors}} for a list of available sensors. Use 'All' for all
+\code{\link[mpathsenser]{sensors}} for a list of available sensors. Use \code{NULL} for all
 available sensors.}
 
 \item{frequency}{A named numeric vector with sensors as names and the number of expected samples
@@ -40,7 +40,8 @@ the earliest date to show. Leave empty for all data. Must be used with \code{end
 \item{end_date}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
 the latest date to show.Leave empty for all data. Must be used with \code{start_date}.}
 
-\item{plot}{Whether to return a ggplot or its underlying data.}
+\item{plot}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Instead of built-in functionality, use
+\code{\link[mpathsenser]{plot.coverage}} to plot the output.}
 }
 \value{
 A ggplot of the coverage results if \code{plot} is \code{TRUE} or a tibble containg the
