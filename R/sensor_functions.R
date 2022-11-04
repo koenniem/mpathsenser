@@ -691,7 +691,13 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
 #' )
 #' close_db(db)
 #' }
-moving_average <- function(db, sensor, cols, n, participant_id, start_date = NULL, end_date = NULL) {
+moving_average <- function(db,
+                           sensor,
+                           cols,
+                           n,
+                           participant_id,
+                           start_date = NULL,
+                           end_date = NULL) {
   lifecycle::signal_stage("experimental", "moving_average()")
   check_db(db)
   check_sensors(sensor, n = 1)

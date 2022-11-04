@@ -469,7 +469,6 @@ noise_fun <- function(data) {
 
 phone_log_fun <- function(data) {
   data$id <- vapply(data$body, function(x) x$body$id, character(1))
-  # data$timestamp <- sapply(data$body, function(x) x$body$timestamp)
 
   data$body <- lapply(data$body, function(x) x$body$phone_log)
   data$body <- lapply(data$body, bind_rows)

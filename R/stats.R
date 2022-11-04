@@ -71,7 +71,6 @@ multilevel_cor <- function(x,
       abort("group is not equal in x and y")
     }
 
-    # names_y <- var_names
     names_y <- colnames(y)
   } else {
     y <- x
@@ -82,7 +81,6 @@ multilevel_cor <- function(x,
 
   # Create a tibble for every combination
   res <- tidyr::crossing(var1 = names_x, var2 = names_y)
-  # res <- filter(res, var1 != var2)
 
   # Calculate a multilevel model for each combination
   model_cor <- function(var1, var2, group) {
@@ -179,7 +177,7 @@ multilevel_autocor <- function(data,
       select(dplyr::all_of(c(group, var, lag_var))) %>%
       drop_na() %>%
       group_by(across(dplyr::all_of(c(group, lag_var)))) %>%
-      mutate("{{ var }}_lag" := lag(!!rlang::sym(var))) %>%
+      mutate(!!paste0(var, "_lag") := lag(!!rlang::sym(var))) %>% # nolint
       ungroup()
 
     # Set up random intercept model
@@ -207,7 +205,6 @@ multilevel_autocor <- function(data,
 
   # Apply multiple testing correction
   if (p_adjust && nrow(res) > 1) {
-    # res$p.value <- vapply(res$p.value, p.adjust, double(1), n = nrow(res) / 2)
     res$p.value <- stats::p.adjust(res$p.value, n = nrow(res) / 2)
   }
 

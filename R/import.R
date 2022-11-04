@@ -98,7 +98,7 @@ import <- function(path = getwd(),
   # Check arguments
   check_arg(path, type = "character", n = 1)
   check_db(db)
-  check_arg(sensors, type = "character", allow_null = TRUE)
+  check_sensors(sensors, allow_null = TRUE)
   check_arg(batch_size, "integerish", n = 1)
   check_arg(backend, "character", n = 1)
   check_arg(recursive, "logical", n = 1)
@@ -352,9 +352,8 @@ safe_extract <- function(vec, var) {
   )
 
   # Extract columns
+  # device_role_name and trigger_id are simply ignored
   data$study_id <- safe_extract(data$header, "study_id")
-  # data$device_role_name <- safe_extract(data$header, 'device_role_name')
-  # data$trigger_id <- safe_extract(data$header, 'trigger_id')
   data$device_role_name <- NULL
   data$trigger_id <- NULL
   data$participant_id <- safe_extract(data$header, "user_id")

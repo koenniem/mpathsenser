@@ -96,16 +96,13 @@ fix_jsons <- function(path = getwd(),
                       parallel = deprecated()) {
   ensure_suggested_package("vroom")
 
-  if (!is.null(path) && !is.character(path)) {
-    abort("`path` must be a character string of the path name.")
-  }
-  if (!is.null(files) && !is.character(files)) {
-    abort("`files` must be NULL or a character vector of file names.")
-  }
+  check_arg(path, "character", n = 1, allow_null = TRUE)
+  check_arg(files, "character", allow_null = TRUE)
+  check_arg(recursive, "logical", n = 1)
+
   if (is.null(path) && is.null(files)) {
     abort("`path` and `files` cannot be NULL at the same time.")
   }
-  check_arg(recursive, "logical", n = 1)
 
   # Find all JSON files that are _not_ zipped Thus, make sure you didn't unzip them yet,
   # otherwise this may take a long time
@@ -152,7 +149,7 @@ fix_jsons <- function(path = getwd(),
 
 fix_jsons_impl <- function(jsonfiles) {
   if (requireNamespace("progressr", quietly = TRUE)) {
-    p <- progressr::progressor(steps = length(jsonfiles))
+    p <- progressr::progressor(steps = length(jsonfiles)) # nolint
   }
 
   furrr::future_map_int(jsonfiles, ~ {
@@ -160,7 +157,6 @@ fix_jsons_impl <- function(jsonfiles) {
       p()
     }
 
-    # lines <- suppressWarnings(vroom::vroom_lines(.x, altrep = FALSE, skip_empty_rows = TRUE))
     lines <- readLines(.x, warn = FALSE, skipNul = TRUE)
     res <- 0L
 
@@ -236,8 +232,7 @@ fix_eof <- function(file, eof, lines) {
     # 7: Similar to 6, but without a closing ] for the file
     # Instead of rewriting the file, just add an empty object
     write("{}]", file, append = TRUE)
-  } else if (nchar(last) > 3 &&
-    substr(last, nchar(last) - 1, nchar(last)) == "}}") {
+  } else if (nchar(last) > 3 && substr(last, nchar(last) - 1, nchar(last)) == "}}") {
     # 8: Is the last line long (>3) and are the last two characters "}}"? Then somehow all
     # we are missing is a closing bracket.
     write("]", file, append = TRUE)
@@ -282,16 +277,13 @@ test_jsons <- function(path = getwd(),
                        db = NULL,
                        recursive = TRUE,
                        parallel = deprecated()) {
-  if (!is.null(path) && !is.character(path)) {
-    abort("`path` must be a character string of the path name.")
-  }
-  if (!is.null(files) && !is.character(files)) {
-    abort("`files` must be NULL or a character vector of file names.")
-  }
+  check_arg(path, "character", n = 1, allow_null = TRUE)
+  check_arg(files, "character", allow_null = TRUE)
+  check_arg(recursive, "logical", n = 1)
+
   if (is.null(path) && is.null(files)) {
     abort("`path` and `files` cannot be NULL at the same time.")
   }
-  check_arg(recursive, "logical", n = 1)
 
   # Find all JSON files that are _not_ zipped Thus, make sure you didn't unzip them yet,
   # otherwise this may take a long time
@@ -327,7 +319,7 @@ test_jsons <- function(path = getwd(),
   }
 
   if (requireNamespace("progressr", quietly = TRUE)) {
-    p <- progressr::progressor(steps = length(jsonfiles))
+    p <- progressr::progressor(steps = length(jsonfiles)) # nolint
   }
 
   missing <- furrr::future_map_lgl(jsonfiles, ~ {
@@ -411,7 +403,7 @@ unzip_data <- function(path = getwd(),
     dirs <- list.dirs(path = path, recursive = TRUE)
 
     if (requireNamespace("progressr", quietly = TRUE)) {
-      p <- progressr::progressor(steps = length(dirs))
+      p <- progressr::progressor(steps = length(dirs)) # nolint
     }
 
     unzipped_files <- furrr::future_map_int(dirs, ~ {
