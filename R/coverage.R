@@ -190,8 +190,8 @@ coverage <- function(db,
 #'
 #' @seealso \code{\link[mpathsenser]{coverage}}
 #' @return A \code{\link[ggplot2]{ggplot}} object.
-#' @export plot.coverage
 #' @export
+#' @keywords internal
 plot.coverage <- function(x, ...) {
   ensure_suggested_package("ggplot2")
 

@@ -58,7 +58,6 @@ reference:
       - add_gaps
       - bin_data
       - coverage
-      - plot.coverage
       - moving_average
       - first_date
       - last_date

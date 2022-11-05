@@ -20,3 +20,4 @@ Plot a coverage overview
 \seealso{
 \code{\link[mpathsenser]{coverage}}
 }
+\keyword{internal}
