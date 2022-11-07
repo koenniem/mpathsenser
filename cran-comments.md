@@ -1,6 +1,7 @@
 ## Test environments
-* local Windows 10 install, R 4.2.1
+* local Windows 10 install, R 4.2.2
 * Fedora Linux (on R-hub) R-devel
+* Ubuntu Linux (devel and release)
 * Mac OSX M1 (devel and release)
 * Windows (devel and release)
 

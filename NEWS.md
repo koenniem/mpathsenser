@@ -10,7 +10,7 @@ respectively.
 importantly, what their output should be.
 * Reworked `moving_average()` to work correctly on multiple participants.
 
-# Deprecations
+## Deprecations
 * Deprecated functionality for on-the-fly database creation in several functions. This disentangles 
 the functionalities of `create_db()` and the other functions, where the latter implicitly depended 
 on the former. The following arguments are thereby rendered disabled:
