@@ -22,7 +22,7 @@ sensors.}
 
 \item{cols}{Character vectors of the columns in the \code{sensor} table to average over.}
 
-\item{n}{The number of seconds to average over. The index of the result will be centered copmared
+\item{n}{The number of seconds to average over. The index of the result will be centered compared
 to the rolling window of observations.}
 
 \item{participant_id}{A character vector identifying one or multiple participants.}
