@@ -128,7 +128,7 @@ test_that("app_category", {
   expect_equal(res$package, NA)
   expect_equal(res$genre, NA)
 
-  expect_equal(app_category("foo", num = 1e10)$package, NA)
+  expect_equal(app_category("foo", num = 1e9)$package, NA)
 })
 
 test_that("device_info", {
