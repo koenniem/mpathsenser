@@ -44,6 +44,7 @@ commit-man:
         git commit -m "Updated manual files"
 
         ## Push back to Gitlab using secret token created earlier with "skip-ci" option to stop builds triggering in a loop
+        echo git push "https://${GITLAB_USER_NAME}:${CI_ACCESS_TOKEN}@${CI_REPOSITORY_URL#*@}" "HEAD:${CI_COMMIT_REF_NAME}" -o ci.skip
         git push "https://${GITLAB_USER_NAME}:${CI_ACCESS_TOKEN}@${CI_REPOSITORY_URL#*@}" "HEAD:${CI_COMMIT_REF_NAME}" -o ci.skip
       fi
 
