@@ -48,8 +48,8 @@ format and fix those that are not.
 to_fix <- test_jsons(path = path)
 
 # Fix JSON files if there are any
-if(to_fix != "") {
-    fix_jsons(path = path, files = to_fix, parallel = TRUE)
+if (to_fix != "") {
+  fix_jsons(path = path, files = to_fix, parallel = TRUE)
 }
 ```
 
@@ -113,11 +113,11 @@ retrieve all data (e.g. not in a specific time window).
 
 ``` r
 get_data(
-    db = db, # the ACTIVE database connection, open with open_db AND save to a variable
-    sensor = "Activity", # A sensor name, see mpathsenser::sensors for the full list
-    participant_id = "12345", # A participant ID, see get_participants
-    start_date = "2021-11-14", # An optional start date, in the format YYYY-MM-DD
-    end_date = "2021-11-15" # An optional end date, in the format YYYY-MM-DD
+  db = db, # the ACTIVE database connection, open with open_db AND save to a variable
+  sensor = "Activity", # A sensor name, see mpathsenser::sensors for the full list
+  participant_id = "12345", # A participant ID, see get_participants
+  start_date = "2021-11-14", # An optional start date, in the format YYYY-MM-DD
+  end_date = "2021-11-15" # An optional end date, in the format YYYY-MM-DD
 )
 ```
 
@@ -135,7 +135,7 @@ If you encounter a clear bug or need help getting a function to run,
 please file an issue with a minimal reproducible example on
 [Gitlab](https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/issues).
 
-------------------------------------------------------------------------
+## Code of Conduct
 
 Please note that this project is released with a [Contributor Code of
 Conduct](https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/blob/master/CONTRIBUTING.md).
