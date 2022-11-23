@@ -934,6 +934,24 @@ add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
         " must be present in both `data` and `gaps`."
       ))
     }
+
+    # Remove gaps that do not occur in the data based on the `by` column
+    gaps <- semi_join(gaps, data, by = rlang::as_name(rlang::enquo(by)))
+  }
+
+  # If we don't want to continue the previous measurement after the gap, we can
+  if (!continue) {
+    gaps <- gaps %>%
+      select({{ by }}, time = "from") %>%
+      mutate(!!!fill)
+
+    data <- data %>%
+      bind_rows(gaps) %>%
+      arrange(across(c({{ by }}, "time"))) %>%
+      distinct() %>%
+      tibble::as_tibble() # Ensure consistent output format
+
+    return(data)
   }
 
   # Pour the gaps in a different format so that they can be added to the sensor data as
@@ -949,7 +967,7 @@ add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
       names_to = "gap_type",
       values_to = "time"
     ) %>%
-    rlang::exec(.fn = mutate, !!!fill) %>%
+    mutate(!!!fill) %>%
     mutate(across(names(fill), ~ ifelse(gap_type == "to", NA, .x)))
 
   # Assign groups numbers to the data based on their time stamp and by column In principle, each row
@@ -983,61 +1001,72 @@ add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
   lead_data <- data %>%
     select(-"time")
 
-  data %>%
-    # Add the gaps to the data
-    bind_rows(prepared_gaps) %>%
-    # Sort the data to get the correct order, i.e. measurement followed by their respective gaps.
-    arrange(across(c({{ by }}, "time"))) %>%
-    # As in the example above, fill the row_ids belonging to the data downwards to each gap. By
-    # doing this, each gap (no matter how many following the measurement) is now associated with the
-    # previous measurement, solving the multiple-gap-problem.
-    tidyr::fill("row_id", .direction = "down") %>%
-    # Then, nest confidence and type by time to calculate the "lag - 2" for the end of gaps "to".
-    # This is necessary because if two measurements at the same time were present just before the
-    # gap, they should also both continue after the gap.
-    #
-    # Note: The code below is equivalent to
-    # group_by(participant_id, time, gap_type, gap_id) %>%
-    # nest() %>%
-    # ungroup() %>%
-    # or
-    # group_by(across(c({{ by }}, .data$time))) %>%
-    # nest(data = !c(.data$gap_id, .data$gap_type, .data$row_id)) %>%
-    # ungroup() %>%
-    #
-    # This means that if there is a (or multiple) measurement of the same participant at the same
-    # time and also the start or end of a gap (gap_type "from" or "to"), there will two groups: one
-    # with the measurements that are not the gap, and one with the gap measurement, while both
-    # having the same participant_id and time stamp. For example:
-    #
-    # participant_id  time      type    gap_type  gap_id  row_id
-    # 12345           10:00:00  STILL   NA        NA      1
-    # 12345           10:00:00  ACTIVE  NA        NA      1
-    # 12345           10:00:00  GAP     from      1       2
-    #
-    # Nesting then results in the following:
-    # participant_id  time    gap_type  gap_id  row_id  data
-    # 12345           10:00:00   NA        NA      1     <tibble [2 × 1]>
-    # 12345           10:00:00   from      1       2     <tibble [1 × 1]>
-    #
-    # Creating the from_lag column as below, it would mean that row 2 would get the data  from row
-    # 1, which is intended behaviour. If all 3 rows would be nested in the same tibble, we would get
-    # the measurement before that in from_lag, even though there were more recent measurements.
-    # Besides, any other nesting would inevitably include gap_type and gap_id in the nested tibble,
-    # breaking the code.
-    nest(data = !c({{ by }}, "time", "gap_id", "gap_type", "row_id")) %>%
-    # Now, match the data (without the gaps) to each corresponding row_id. Thus, in some cases data
-    # and data2 will be identical. Only for the end points of gaps, set data to data2.
-    dplyr::nest_join(lead_data, by = c("participant_id", "row_id"), name = "data2") %>%
+  # Add the gaps to the data
+  data <- bind_rows(data, prepared_gaps)
+
+  # Sort the data to get the correct order, i.e. measurement followed by their respective gaps.
+  data <- arrange(data, across(c({{ by }}, "time")))
+
+  # As in the example above, fill the row_ids belonging to the data downwards to each gap. By
+  # doing this, each gap (no matter how many following the measurement) is now associated with the
+  # previous measurement, solving the multiple-gap-problem.
+  data <- tidyr::fill(data, "row_id", .direction = "down")
+
+  # Then, nest confidence and type by time to calculate the "lag - 2" for the end of gaps "to".
+  # This is necessary because if two measurements at the same time were present just before the
+  # gap, they should also both continue after the gap.
+  #
+  # Note: The code below is equivalent to
+  # group_by(participant_id, time, gap_type, gap_id) %>%
+  # nest() %>%
+  # ungroup() %>%
+  # or
+  # group_by(across(c({{ by }}, .data$time))) %>%
+  # nest(data = !c(.data$gap_id, .data$gap_type, .data$row_id)) %>%
+  # ungroup() %>%
+  #
+  # This means that if there is a (or multiple) measurement of the same participant at the same
+  # time and also the start or end of a gap (gap_type "from" or "to"), there will two groups: one
+  # with the measurements that are not the gap, and one with the gap measurement, while both
+  # having the same participant_id and time stamp. For example:
+  #
+  # participant_id  time      type    gap_type  gap_id  row_id
+  # 12345           10:00:00  STILL   NA        NA      1
+  # 12345           10:00:00  ACTIVE  NA        NA      1
+  # 12345           10:00:00  GAP     from      1       2
+  #
+  # Nesting then results in the following:
+  # participant_id  time    gap_type  gap_id  row_id  data
+  # 12345           10:00:00   NA        NA      1     <tibble [2 × 1]>
+  # 12345           10:00:00   from      1       2     <tibble [1 × 1]>
+  #
+  # Creating the from_lag column as below, it would mean that row 2 would get the data  from row
+  # 1, which is intended behaviour. If all 3 rows would be nested in the same tibble, we would get
+  # the measurement before that in from_lag, even though there were more recent measurements.
+  # Besides, any other nesting would inevitably include gap_type and gap_id in the nested tibble,
+  # breaking the code.
+  data <- nest(data, data = !c({{ by }}, "time", "gap_id", "gap_type", "row_id"))
+
+  # Now, match the data (without the gaps) to each corresponding row_id. Thus, in some cases data
+  # and data2 will be identical. Only for the end points of gaps, set data to data2.
+  data <- dplyr::nest_join(data, lead_data, by = c(rlang::as_name(rlang::enquo(by)), "row_id"),
+                           name = "data2") %>%
     mutate(data = ifelse(!is.na(.data$gap_type) & .data$gap_type == "to",
-      .data$data2,
-      .data$data
-    )) %>%
-    # Lastly, unnest the data to get the original (and modified for "to") nested data, and ungroup
-    # and cleanup
-    # Make sure not to remove empty data tibbles as these are true NA's, i.e. either gaps where
-    # fill was not specified or gaps where there was no prio data present
+                         .data$data2,
+                         .data$data
+    ))
+
+  # Lastly, unnest the data to get the original (and modified for "to") nested data, and ungroup
+  # and cleanup
+  # Make sure not to remove empty data tibbles as these are true NA's, i.e. either gaps where
+  # fill was not specified or gaps where there was no prio data present
+  data <- data %>%
     unnest("data", keep_empty = TRUE) %>%
     ungroup() %>%
     select(-c("gap_id", "gap_type", "data2", "row_id"))
+
+  # Finally, filter out duplicates that may occur when the gap ends exactly at the same time as
+  # when another measurement begins
+  data <- distinct(data)
+  data
 }
