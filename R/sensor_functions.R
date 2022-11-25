@@ -530,13 +530,13 @@ screen_duration <- function(db,
 #' Get number of times screen turned on
 #'
 #' @description
-#' `r lifecycle::badge("experimental")`
+#' `r lifecycle::badge("deprecated")`
 #'
 #' @inheritParams get_data
 #' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results. Defaults to
 #' total.
 #'
-#' @return In case grouping is by the total amount, returns a single numeric value. For date and
+#' @returns In case grouping is by the total amount, returns a single numeric value. For date and
 #' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen on's 'n'.
 #' @keywords internal
 n_screen_on <- function(db,
@@ -544,53 +544,25 @@ n_screen_on <- function(db,
                         start_date = NULL,
                         end_date = NULL,
                         by = c("Total", "Hour", "Day")) {
-  lifecycle::signal_stage("experimental", "n_screen_on()")
-
-  check_db(db)
-  check_arg(by, "character", n = 1, allow_null = TRUE)
-
-  out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
-    select(-c("measurement_id", "participant_id")) %>%
-    filter(.data$screen_event == "SCREEN_ON")
-
-  if (is.null(by)) {
-    out <- out %>%
-      summarise(n = n()) %>%
-      pull("n")
-  } else if (by[1] == "Total" || by[1] == "total") {
-    out <- out %>%
-      summarise(n = n()) %>%
-      pull("n")
-  } else if (by[1] == "Hour" || by[1] == "hour") {
-    out <- out %>%
-      mutate(hour = strftime("%H", .data$time)) %>%
-      dplyr::count(.data$hour) %>%
-      collect() %>%
-      mutate(hour = as.numeric(.data$hour)) %>%
-      complete(hour = 0:23, fill = list(n = 0))
-  } else if (by[1] == "Day" || by[1] == "day") {
-    out <- out %>%
-      dplyr::count(.data$date) %>%
-      collect()
-  } else {
-    # Default case
-    out <- out %>%
-      summarise(n = n()) %>%
-      pull("n")
-  }
-  return(out)
+  lifecycle::deprecate_stop(when = "1.1.2",
+                            what = "n_screen_on()",
+                            with = "screen_on()",
+                            details = c(
+                              i = paste("Note that the functionality of `screen_on()`",
+                                        "has changed significantly.")
+                            ))
 }
 
 #' Get number of screen unlocks
 #'
 #' @description
-#' `r lifecycle::badge("experimental")`
+#' `r lifecycle::badge("deprecated")`
 #'
 #' @inheritParams get_data
 #' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results. Defaults to
 #' total.
 #'
-#' @return In case grouping is by the total amount, returns a single numeric value. For date and
+#' @returns In case grouping is by the total amount, returns a single numeric value. For date and
 #' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen unlocks
 #' 'n'.
 #' @keywords internal
@@ -599,54 +571,26 @@ n_screen_unlocks <- function(db,
                              start_date = NULL,
                              end_date = NULL,
                              by = c("Total", "Hour", "Day")) {
-  lifecycle::signal_stage("experimental", "n_screen_unlocks()")
-
-  check_db(db)
-  check_arg(by, "character", n = 1, allow_null = TRUE)
-
-  out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
-    select(-c("measurement_id", "participant_id")) %>%
-    filter(.data$screen_event == "SCREEN_UNLOCKED")
-
-  if (is.null(by)) {
-    out <- out %>%
-      summarise(n = n()) %>%
-      pull("n")
-  } else if (by[1] == "Total" || by[1] == "total") {
-    out <- out %>%
-      summarise(n = n()) %>%
-      pull("n")
-  } else if (by[1] == "Hour" || by[1] == "hour") {
-    out <- out %>%
-      mutate(hour = strftime("%H", .data$time)) %>%
-      dplyr::count(.data$hour) %>%
-      collect() %>%
-      mutate(hour = as.numeric(.data$hour)) %>%
-      complete(hour = 0:23, fill = list(n = 0))
-  } else if (by[1] == "Day" || by[1] == "day") {
-    out <- out %>%
-      dplyr::count(.data$date) %>%
-      collect()
-  } else {
-    # Default case
-    out <- out %>%
-      summarise(n = n()) %>%
-      pull("n")
-  }
-  return(out)
+  lifecycle::deprecate_stop(when = "1.1.2",
+                            what = "n_screen_unlocks()",
+                            with = "screen_unlocks()",
+                            details = c(
+                              i = paste("Note that the functionality of `screen_unlocks()`",
+                                        "has changed significantly.")
+                            ))
 }
 
 
 #' Get step count
 #'
 #' @description
-#' `r lifecycle::badge("experimental")`
+#' `r lifecycle::badge("deprecated")`
 #'
 #' Extracts the number of steps per hour as sensed by the underlying operating system.
 #'
 #' @inheritParams get_data
 #'
-#' @return A tibble with the 'date', 'hour', and the number of 'steps'.
+#' @returns A tibble with the 'date', 'hour', and the number of 'steps'.
 #' @keywords internal
 step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = NULL) {
   lifecycle::signal_stage("experimental", "step_count()")
