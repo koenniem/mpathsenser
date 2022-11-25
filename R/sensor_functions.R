@@ -782,11 +782,11 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 
   # Then, calculate the gap duration
   data %>%
+    dbplyr::window_order(.data$participant_id, .data$datetime) %>%
     group_by(.data$participant_id) %>%
-    window_order("datetime") %>%
     mutate(to = lead(.data$datetime)) %>%
     ungroup() %>%
-    mutate(gap = strftime("%s", .data$to) - strftime("%s", .data$datetime)) %>%
+    mutate(gap = UNIXEPOCH(.data$to) - UNIXEPOCH(.data$datetime)) %>%
     filter(.data$gap >= min_gap) %>%
     select("participant_id", from = "datetime", "to", "gap") %>%
     collect()
@@ -797,39 +797,40 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 #'
 #' @description `r lifecycle::badge("stable")`
 #'
-#'  Since there may be many gaps in mobile sensing data, it is pivotal to pay attention in the
-#'  analysis to them. This function adds known gaps to data as "measurements", thereby allowing
-#'  easier calculations for, for example, finding the duration. For instance, consider a participant
-#'  spent 30 minutes walking. However, if it is known there is gap of 15 minutes in this interval,
-#'  we should somehow account for it. \code{add_gaps} accounts for this by adding the gap data to
-#'  sensors data by splitting intervals where gaps occur.
+#'   Since there may be many gaps in mobile sensing data, it is pivotal to pay attention to them in
+#'   the analysis. This function adds known gaps to data as "measurements", thereby allowing easier
+#'   calculations for, for example, finding the duration. For instance, consider a participant spent
+#'   30 minutes walking. However, if it is known there is gap of 15 minutes in this interval, we
+#'   should somehow account for it. \code{add_gaps} accounts for this by adding the gap data to
+#'   sensors data by splitting intervals where gaps occur.
 #'
 #' @details In the example of 30 minutes walking where a 15 minute gap occurred (say after 5
-#'  minutes), \code{add_gaps} adds two rows: one after 5 minutes of the start of the interval
-#'  indicating the start of the gap(if needed containing values from \code{fill}), and one after 20
-#'  minutes of the start of the interval signalling the walking activity. Then, when calculating
-#'  time differences between subsequent measurements, the gap period is appropriately accounted for.
-#'  Note that if multiple measurements occurred before the gap, they will both be continued after
-#'  the gap.
+#'   minutes), \code{add_gaps} adds two rows: one after 5 minutes of the start of the interval
+#'   indicating the start of the gap(if needed containing values from \code{fill}), and one after 20
+#'   minutes of the start of the interval signalling the walking activity. Then, when calculating
+#'   time differences between subsequent measurements, the gap period is appropriately accounted
+#'   for. Note that if multiple measurements occurred before the gap, they will both be continued
+#'   after the gap.
 #'
 #' @inheritSection identify_gaps Warning
 #'
-#' @param data A data frame containing the activity data. See \link[mpathsenser]{get_data} for
-#'  retrieving activity data from an mpathsenser database.
+#' @param data A data frame containing the data. See [get_data()] for
+#'   retrieving activity data from an mpathsenser database.
 #' @param gaps A data frame (extension) containing the gap data. See
-#'  \link[mpathsenser]{identify_gaps} for retrieving gap data from an mpathsenser database. It
-#'  should at least contain the columns \code{from} and \code{to} (both in a date-time format), as
-#'  well as any specified columns in \code{by}.
+#'   \link[mpathsenser]{identify_gaps} for retrieving gap data from an mpathsenser database. It
+#'   should at least contain the columns \code{from} and \code{to} (both in a date-time format), as
+#'   well as any specified columns in \code{by}.
 #' @param by A character vector indicating the variable(s) to match by, typically the participant
-#'  IDs. If NULL, the default, \code{*_join()} will perform a natural join, using all variables in
-#'  common across \code{x} and \code{y}.
+#'   IDs. If NULL, the default, \code{*_join()} will perform a natural join, using all variables in
+#'   common across \code{x} and \code{y}.
+#' @param continue Whether to continue the measurement(s) prior to the gap once the gap ends.
 #' @param fill A named list of the columns to fill with default values for the extra measurements
-#'  that are added because of the gaps.
+#'   that are added because of the gaps.
 #'
-#' @seealso \code{\link[mpathsenser]{identify_gaps}} for finding gaps in the sampling;
-#'  \code{\link[mpathsenser]{link_gaps}} for finding which gaps occur in the data;
+#' @seealso [identify_gaps()] for finding gaps in the sampling;
+#'   [link_gaps()] for linking gaps to ESM data, analogous to [link()].
 #'
-#' @return A tibble containing the data and the added gaps.
+#' @returns A tibble containing the data and the added gaps.
 #' @export
 #'
 #' @examples
