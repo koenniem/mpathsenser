@@ -162,7 +162,7 @@ test_that("moving_average", {
     n = 2,
     start_date = "2021-11-14",
     end_date = "2021-11-14"
-  )
+  ) %>% dplyr::collect()
   expect_true(nrow(res) > 0)
 
   dbDisconnect(db)
@@ -195,7 +195,7 @@ test_that("identify_gaps", {
 })
 
 # add_data
-test_that("add_data", {
+test_that("add_gaps", {
   # Define some data
   dat <- data.frame(
     participant_id = "12345",
@@ -220,6 +220,16 @@ test_that("add_data", {
   true <- tibble::tibble(
     participant_id = "12345",
     time = as.POSIXct(c(
+      "2022-05-10 10:00:00", "2022-05-10 10:05:00", "2022-05-10 10:30:00", "2022-05-10 10:50:00",
+      "2022-05-10 11:30:00"
+    )),
+    type = c("WALKING", NA, "STILL", NA, "RUNNING"),
+    confidence = c(80, NA, 100, NA, 20)
+  )
+
+  true_continue <- tibble::tibble(
+    participant_id = "12345",
+    time = as.POSIXct(c(
       "2022-05-10 10:00:00", "2022-05-10 10:05:00", "2022-05-10 10:20:00",
       "2022-05-10 10:30:00", "2022-05-10 10:50:00", "2022-05-10 11:10:00",
       "2022-05-10 11:30:00"
@@ -232,22 +242,41 @@ test_that("add_data", {
   res <- add_gaps(
     data = dat,
     gaps = gaps,
-    by = "participant_id"
+    by = "participant_id",
+    continue = FALSE
+  )
+
+  res_continue <- add_gaps(
+    data = dat,
+    gaps = gaps,
+    by = "participant_id",
+    continue = TRUE
   )
   expect_identical(res, true)
+  expect_identical(res_continue, true_continue)
 
   # You can use fill if  you want to get rid of those pesky NA's
   res <- add_gaps(
     data = dat,
     gaps = gaps,
     by = "participant_id",
+    continue = FALSE,
+    fill = list(type = "GAP", confidence = 100)
+  )
+
+  res_continue <- add_gaps(
+    data = dat,
+    gaps = gaps,
+    by = "participant_id",
+    continue = TRUE,
     fill = list(type = "GAP", confidence = 100)
   )
   true <- tidyr::replace_na(true, list(type = "GAP", confidence = 100))
+  true_continue <- tidyr::replace_na(true_continue, list(type = "GAP", confidence = 100))
   expect_identical(res, true)
+  expect_identical(res_continue, true_continue)
 
   # Problems occur when there is no information _before_ the gap
-  #
   dat <- data.frame(
     participant_id = c(rep("12345", 4), rep("23456", 4)),
     time = rep(as.POSIXct(c(
@@ -273,9 +302,29 @@ test_that("add_data", {
     data = dat,
     gaps = gaps,
     by = "participant_id",
+    continue = FALSE,
+    fill = list(event = "GAP", event2 = "GAP")
+  )
+  res_continue <- add_gaps(
+    data = dat,
+    gaps = gaps,
+    by = "participant_id",
+    continue = TRUE,
     fill = list(event = "GAP", event2 = "GAP")
   )
   true <- tibble::tibble(
+    participant_id = c(rep("12345", 9), rep("23456", 9)),
+    time = rep(as.POSIXct(c(
+      "2022-05-10 09:05:00", "2022-05-10 09:20:00", "2022-05-10 10:00:00",
+      "2022-05-10 10:10:00", "2022-05-10 10:30:00", "2022-05-10 10:30:00",
+      "2022-05-10 10:40:00", "2022-05-10 11:00:00", "2022-05-10 11:30:00"
+    )), 2),
+    event = rep(c(
+      "GAP", "GAP", "a", "GAP", "b", "c", "GAP", "GAP", "d"
+    ), 2),
+    event2 = event
+  )
+  true_continue <- tibble::tibble(
     participant_id = c(rep("12345", 16), rep("23456", 16)),
     time = rep(as.POSIXct(c(
       "2022-05-10 09:05:00", "2022-05-10 09:10:00", "2022-05-10 09:20:00",
@@ -292,4 +341,45 @@ test_that("add_data", {
     event2 = event
   )
   expect_equal(res, true)
+  expect_equal(res_continue, true_continue)
+
+  # Bug: If the end of the gap is exactly equal to the first measurement after the gap, that
+  # measurement is replicated instead of the one before the gap.
+  dat <- tibble::tibble(
+    participant_id = "12345",
+    time = as.POSIXct(c(
+      "2022-05-10 09:50:00", "2022-05-10 10:00:00", "2022-05-10 10:10:00", "2022-05-10 10:30:00"
+    )),
+    event = c("a", "b", "c", "d")
+  )
+
+  gaps <- tibble::tibble(
+    participant_id = "12345",
+    from = as.POSIXct("2022-05-10 10:00:00"),
+    to = as.POSIXct("2022-05-10 10:10:00")
+  )
+  res <- add_gaps(
+    data = dat,
+    gaps = gaps,
+    by = "participant_id",
+    continue = FALSE
+  )
+  res_continue <- add_gaps(
+    data = dat,
+    gaps = gaps,
+    by = "participant_id",
+    continue = TRUE
+  )
+
+  true <- tibble::tibble(
+    participant_id = "12345",
+    time = as.POSIXct(c(
+      "2022-05-10 09:50:00", "2022-05-10 10:00:00", "2022-05-10 10:00:00", "2022-05-10 10:10:00",
+      "2022-05-10 10:30:00"
+    )),
+    event = c("a", "b", NA, "c", "d")
+  )
+  expect_equal(res, true)
+  expect_equal(res_continue, true)
+
 })
