@@ -13,6 +13,9 @@ check_db <- function(db,
                      allow_null = FALSE,
                      arg = rlang::caller_arg(db),
                      call = rlang::caller_env()) {
+
+  rlang::check_required(db, arg = arg, call = call)
+
   if (allow_null && rlang::is_null(db)) {
     return(invisible(TRUE))
   }
@@ -45,6 +48,9 @@ check_arg <- function(x,
                       allow_null = FALSE,
                       arg = rlang::caller_arg(x),
                       call = rlang::caller_env()) {
+
+  rlang::check_required(x, arg = arg, call = call)
+
   if (allow_null && rlang::is_null(x)) {
     return(invisible(TRUE))
   }
