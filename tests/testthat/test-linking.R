@@ -278,6 +278,12 @@ test_that("link_db", {
     item_one = c(40, 50, 60)
   )
 
+  # Check deprecation
+  lifecycle::expect_deprecated(link_db(db, "Activity", "Connectivity", offset_after = 1800L))
+
+  # Disable deprecation check
+  rlang::local_options(lifecycle_verbosity = "quiet")
+
   # Check basic functionality
   res <- link_db(db, "Activity", "Connectivity", offset_after = 1800)
   true <- tibble::tibble(

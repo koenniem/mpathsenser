@@ -284,6 +284,9 @@ link_db <- function(db,
                     end_date = NULL,
                     reverse = FALSE,
                     ignore_large = FALSE) {
+  # Soft deprecate warning
+  lifecycle::deprecate_soft("1.1.2", "link_db()", "link()")
+
   check_db(db)
   check_arg(sensor_one, type = "character", n = 1)
   check_arg(sensor_two, type = "character", n = 1, allow_null = TRUE)
