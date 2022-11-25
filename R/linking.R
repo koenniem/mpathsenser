@@ -34,7 +34,7 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
 
   # Add the last measurement before start_time
   if (add_before) {
-    tz <- attr(x$time, "tz")
+    tz <- attr(y$time, "tz")
     data_before <- data %>%
       filter(.data$y_time < .data$start_time) %>%
       group_by(.data$row_id) %>%
@@ -55,7 +55,7 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
 
   # Add the first measurements after end_time
   if (add_after) {
-    tz <- attr(x$time, "tz")
+    tz <- attr(y$time, "tz")
     data_after <- data %>%
       filter(.data$y_time > .data$end_time) %>%
       group_by(.data$row_id) %>%

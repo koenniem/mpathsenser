@@ -234,6 +234,36 @@ test_that("link", {
   )
 
   expect_true(all(purrr::map_int(res$data, nrow) != 0))
+
+  # Check that timezones stay consistent, even with add_before and add_after
+  dat1 <- data.frame(
+    time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00", tz = "Europe/Brussels"),
+                          by = "1 hour",
+                          length.out = 3),
+               2),
+    participant_id = c(rep("12345", 3), rep("23456", 3)),
+    item_one = rep(c(40, 50, 60), 2)
+  )
+
+  dat2 <- data.frame(
+    time = rep(seq.POSIXt(as.POSIXct("2021-11-14 11:00:00", tz = "UTC"),
+                          by = "10 mins",
+                          length.out = 40),
+               2),
+    participant_id = c(rep("12345", 40), rep("23456", 40)),
+    x = rep(1:2, 2)
+  )
+  res <- link(
+    x = dat1,
+    y = dat2,
+    by = "participant_id",
+    offset_before = 1800L,
+    add_before = TRUE,
+    add_after = TRUE
+  )
+  expect_equal(attr(res$time, "tz"), "Europe/Brussels")
+  expect_equal(unique(map_chr(res$data, ~attr(.x$time, "tz"))), "UTC")
+  expect_equal(unique(map_chr(res$data, ~attr(.x$original_time, "tz"))), "UTC")
 })
 
 ## link_db ===============
