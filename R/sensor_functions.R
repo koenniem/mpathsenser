@@ -863,10 +863,12 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 #'   by = "participant_id",
 #'   fill = list(type = "GAP", confidence = 100)
 #' )
-add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
+add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
   check_arg(data, "data.frame")
   check_arg(gaps, "data.frame")
   check_arg(by, "character", allow_null = TRUE)
+  check_arg(continue, "logical")
+  check_arg(fill, "list", allow_null = TRUE)
 
   if (!is.null(by)) {
     err <- try(
@@ -885,7 +887,7 @@ add_gaps <- function(data, gaps, by = NULL, fill = NULL) {
     }
 
     # Remove gaps that do not occur in the data based on the `by` column
-    gaps <- semi_join(gaps, data, by = rlang::as_name(rlang::enquo(by)))
+    gaps <- dplyr::semi_join(gaps, data, by = rlang::as_name(rlang::enquo(by)))
   }
 
   # If we don't want to continue the previous measurement after the gap, we can
