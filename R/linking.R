@@ -1,5 +1,5 @@
 link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_after) {
-  # Match sensing data with ESM using a nested join
+  # Match sensing data with ESM using a left join
   # Set a start_time (beep time - offset) and an end_time (beep time)
   data <- x %>%
     mutate(x_time = as.integer(.data$time)) %>%
@@ -9,8 +9,10 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
     tibble::as_tibble() %>%
     mutate(row_id = dplyr::row_number()) # For rematching later
 
-  # Filter y based on by
-  y <- dplyr::semi_join(y, data, by = by)
+  # Filter y to keep only `by` instances that occur in x
+  if (!rlang::is_null(by) && length(by) != 0) {
+    y <- dplyr::semi_join(y, data, by = by)
+  }
 
   data <- data %>%
     dplyr::left_join(y, by = by) %>%
@@ -19,9 +21,9 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
   # The main data, i.e. data within the interval
   data_main <- data %>%
     filter(.data$y_time >= .data$start_time & .data$y_time <= .data$end_time) %>%
-    arrange({{ by }}, .data$y_time) %>%
+    arrange(across(c({{ by }}, "y_time"))) %>%
     select(-"y_time") %>%
-    nest(data = -c({{ by }}, "start_time", "end_time", "row_id")) %>%
+    nest(data = !c({{ by }}, "start_time", "end_time", "row_id")) %>%
     select("row_id", "data")
 
   # Merge back with original data
@@ -227,6 +229,10 @@ link <- function(x,
   } else {
     x <- list(x)
   }
+
+  # Temporarily override future global max size options
+  old <- options(future.globals.maxSize = .Machine$integer.max)
+  on.exit(options(old))
 
   x %>%
     furrr::future_map(
