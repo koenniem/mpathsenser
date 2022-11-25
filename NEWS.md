@@ -1,5 +1,26 @@
 # mpathsenser (in development)
+## Major changes
+* Added `continue` argument to `add_gaps` that controls whether the last measurement(s) should be 
+continued after a gap.
+* `link_db()` is now soft deprecated as it provides only marginal added functionality compared to 
+`link()`.
 
+## Deprecations
+* `n_screen_on()` and `n_screen_unlocks()` are now (in addition to being internal) also defunct. 
+Like `activity_duration()`, `screen_duration()`, and `step_count()`, their functionality will be 
+replaced by new versions in mpathsenser 2.0.0.
+
+## Minor changes
+* `moving_average()` now allows a lazy tibble to allow further computations in-database after 
+having called `moving_average()`.
+* `identify_gaps()` is now slightly more efficient.
+
+# Bugfixes
+* `link()` now correctly handles natural joins (when `by = NULL`) and cross joins (when 
+`by = character()`).
+* `link()` no longer suffers from `future`'s max object restriction (500MB by default).
+* When `x` and `y` use different time zones in `link()` and `add_before = TRUE`, `link()` now 
+correctly leaves all time zones equal to the input. 
 
 # mpathsenser 1.1.1
 ## Major changes
