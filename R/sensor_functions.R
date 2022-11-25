@@ -639,13 +639,15 @@ moving_average <- function(db,
                            sensor,
                            cols,
                            n,
-                           participant_id,
+                           participant_id = NULL,
                            start_date = NULL,
                            end_date = NULL) {
   lifecycle::signal_stage("experimental", "moving_average()")
   check_db(db)
   check_sensors(sensor, n = 1)
-  check_arg(participant_id, c("character", "integerish"))
+  check_arg(cols, "character")
+  check_arg(n, "numeric")
+  check_arg(participant_id, c("character", "integerish"), allow_null = TRUE)
   check_arg(start_date, c("character", "POSIXt"), n = 1, allow_null = TRUE)
   check_arg(end_date, c("character", "POSIXt"), n = 1, allow_null = TRUE)
 
@@ -657,7 +659,7 @@ moving_average <- function(db,
     paste0(
       "avg(`", x, "`) OVER (",
       "PARTITION BY `participant_id` ",
-      "ORDER BY CAST (strftime('%s', datetime) AS INT) ",
+      "ORDER BY UNIXEPOCH(datetime) ",
       "RANGE BETWEEN ", n / 2, " PRECEDING ", "AND ", n / 2, " FOLLOWING", ") AS ", x
     )
   })
@@ -672,11 +674,13 @@ moving_average <- function(db,
   )
 
   # Where
-  query <- paste0(
-    query, " WHERE (",
-    paste0("`participant_id` = '", participant_id, "'", collapse = " OR "),
-    ")"
-  )
+  if (!is.null(participant_id)) {
+    query <- paste0(
+      query, " WHERE (",
+      paste0("`participant_id` = '", participant_id, "'", collapse = " OR "),
+      ")"
+    )
+  }
 
   if (!is.null(start_date) && !is.null(end_date)) {
     query <- paste0(query, " AND (`date` BETWEEN '", start_date, "' AND '", end_date, "')")
@@ -686,7 +690,7 @@ moving_average <- function(db,
   query <- paste0(query, ")")
 
   # Get data
-  tibble::as_tibble(DBI::dbGetQuery(db, query))
+  dplyr::tbl(db, dplyr::sql(query))
 }
 
 
