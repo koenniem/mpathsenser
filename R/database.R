@@ -6,7 +6,7 @@
 #' A list containing all available sensors in this package you can work with. This variable was
 #' created so it is easier to use in your own functions, e.g. to loop over sensors.
 #'
-#' @return A character vector containing all sensor names supported by \code{mpathsenser}.
+#' @returns A character vector containing all sensor names supported by \code{mpathsenser}.
 #' @examples
 #' sensors
 #' @export sensors
@@ -27,7 +27,7 @@ sensors <- c(
 #' @param overwrite In case a database with `db_name` already exists, indicate whether it should
 #' be overwritten or not. Otherwise, this option is ignored.
 #'
-#' @return A database connection using prepared database schemas.
+#' @returns A database connection using prepared database schemas.
 #' @export
 create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
@@ -104,7 +104,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 #' \code{\link[mpathsenser]{index_db}} for indexing a database;
 #' \code{\link[mpathsenser]{get_data}} for extracting data from a database.
 #'
-#' @return A connection to an mpathsenser database.
+#' @returns A connection to an mpathsenser database.
 #' @export
 open_db <- function(path = getwd(), db_name = "sense.db") {
   check_arg(path, "character", n = 1, allow_null = TRUE)
@@ -137,7 +137,7 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 #'
 #' @seealso \code{\link[mpathsenser]{open_db}} for opening an mpathsenser database.
 #'
-#' @return \code{close_db} returns invisibly regardless of whether the database is active, valid,
+#' @returns \code{close_db} returns invisibly regardless of whether the database is active, valid,
 #' or even exists.
 #' @export
 close_db <- function(db) {
@@ -156,7 +156,7 @@ close_db <- function(db) {
 #'
 #' @inheritParams get_data
 #'
-#' @return No return value, called for side effects.
+#' @returns No return value, called for side effects.
 #' @export
 index_db <- function(db) {
   check_db(db)
@@ -198,7 +198,7 @@ vacuum_db <- function(db) {
 #'   deprecated as it is better to separate the two functions. You must now create a new database
 #'   using \code{\link[mpathsenser]{create_db}} or reuse an existing one.
 #'
-#' @return No return value, called for side effects.
+#' @returns No return value, called for side effects.
 #' @export
 copy_db <- function(source_db,
                     target_db,
@@ -325,7 +325,7 @@ clear_sensors_db <- function(db) {
 #'
 #' @param db A database connection, as created by \link[mpathsenser]{create_db}.
 #'
-#' @return A data frame containing the \code{file_name}, \code{participant_id}, and \code{study_id}
+#' @returns A data frame containing the \code{file_name}, \code{participant_id}, and \code{study_id}
 #' of the processed files.
 #' @export
 get_processed_files <- function(db) {
@@ -342,7 +342,7 @@ get_processed_files <- function(db) {
 #' @param db db A database connection, as created by \link[mpathsenser]{create_db}.
 #' @param lazy Whether to evaluate lazily using \link[dbplyr]{dbplyr}.
 #'
-#' @return A data frame containing all \code{participant_id} and \code{study_id}.
+#' @returns A data frame containing all \code{participant_id} and \code{study_id}.
 #' @export
 get_participants <- function(db, lazy = FALSE) {
   check_db(db)
@@ -363,7 +363,7 @@ get_participants <- function(db, lazy = FALSE) {
 #' @param db db A database connection, as created by \link[mpathsenser]{create_db}.
 #' @param lazy Whether to evaluate lazily using \link[dbplyr]{dbplyr}.
 #'
-#' @return A data frame containing all studies.
+#' @returns A data frame containing all studies.
 #' @export
 get_studies <- function(db, lazy = FALSE) {
   check_db(db)
@@ -394,7 +394,7 @@ get_studies <- function(db, lazy = FALSE) {
 #' to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
 #' last entry for a participant.
 #'
-#' @return A named vector containing the number of rows for each sensor.
+#' @returns A named vector containing the number of rows for each sensor.
 #' @export
 get_nrows <- function(db,
                       sensor = "All",

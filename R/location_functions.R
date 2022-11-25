@@ -10,7 +10,7 @@
 #' @param data A (lazy) tibble containing the GPS data
 #' @param key A curve25519 public key
 #'
-#' @return A tibble containing the non-lazy, decrypted GPS data
+#' @returns A tibble containing the non-lazy, decrypted GPS data
 #' @export
 decrypt_gps <- function(data, key) {
   ensure_suggested_package("sodium")
@@ -73,7 +73,7 @@ rad2deg <- function(rad) {
 #' @param lat2 The latitude of point 2 in degrees.
 #' @param r The average earth radius.
 #'
-#' @return A numeric value of the distance between point 1 and 2 in kilometers.
+#' @returns A numeric value of the distance between point 1 and 2 in kilometers.
 #' @export
 #'
 #' @examples
@@ -120,7 +120,7 @@ location_variance <- function(lat, lon) {
 #'   number of requests is around 1 per second. Also make sure not to do too many batch lookups, as
 #'   many subsequent requests will get you blocked as well.
 #'
-#' @return A list of information about the location. See [Nominatim's
+#' @returns A list of information about the location. See [Nominatim's
 #' documentation](https://nominatim.org/release-docs/develop/api/Reverse/#example-with-formatjsonv2)
 #'    for more details.
 #' @export

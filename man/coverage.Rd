@@ -18,7 +18,7 @@ coverage(
 }
 \arguments{
 \item{db}{A valid database connection. Schema must be that as it is created by
-\link[mpathsenser]{open_db}.}
+\link{open_db}.}
 
 \item{participant_id}{A character string of \emph{one} participant ID.}
 
@@ -34,17 +34,17 @@ Logical value.}
 
 \item{offset}{Currently not used.}
 
-\item{start_date}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
+\item{start_date}{A date (or convertible to a date using \code{\link[base:as.Date]{base::as.Date()}}) indicating
 the earliest date to show. Leave empty for all data. Must be used with \code{end_date}.}
 
-\item{end_date}{A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
+\item{end_date}{A date (or convertible to a date using \code{\link[base:as.Date]{base::as.Date()}}) indicating
 the latest date to show.Leave empty for all data. Must be used with \code{start_date}.}
 
 \item{plot}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Instead of built-in functionality, use
-\code{\link[mpathsenser]{plot.coverage}} to plot the output.}
+\code{\link[=plot.coverage]{plot.coverage()}} to plot the output.}
 }
 \value{
-A ggplot of the coverage results if \code{plot} is \code{TRUE} or a tibble containg the
+A ggplot of the coverage results if \code{plot} is \code{TRUE} or a tibble containing the
 hour, type of measure (i.e. sensor), and (relative) coverage.
 }
 \description{

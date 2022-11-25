@@ -49,7 +49,7 @@
 #'   \code{\link[future]{plan}("multisession")} before calling this function to use multiple
 #'   workers.
 #'
-#' @return A message indicating how many files were imported. Imported database can be reopened
+#' @returns A message indicating how many files were imported. Imported database can be reopened
 #'   using \link[mpathsenser]{open_db}.
 #' @export
 import <- function(path = getwd(),

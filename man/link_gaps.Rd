@@ -23,24 +23,26 @@ should at least contain the columns \code{from} and \code{to} (both in a date-ti
 well as any specified columns in \code{by}.}
 
 \item{by}{A character vector indicating the variable(s) to match by, typically the participant
-IDs. If NULL, the default, \code{*_join()} will perform a natural join, using all variables in
-common across \code{x} and \code{y}. Therefore, all data will be mapped to each other based on
-the time stamps of \code{x} and \code{y}. A message lists the variables so that you can check
-they're correct; suppress the message by supplying by explicitly.
+IDs. If NULL, the default, \verb{*_join()} will perform a natural join, using all variables in
+common across \code{x} and \code{y}. Therefore, all data will be mapped to each other based on the time
+stamps of \code{x} and \code{y}. A message lists the variables so that you can check they're correct;
+suppress the message by supplying by explicitly.
 
-To join by different variables on \code{x} and \code{y}, use a named vector. For example,
-\code{by = c('a' = 'b')} will match \code{x$a} to \code{y$b}
+To join by different variables on \code{x} and \code{y}, use a named vector. For example, \code{by = c('a' = 'b')} will match \code{x$a} to \code{y$b}.
 
-To join by multiple variables, use a vector with length > 1. For example, by = c('a', 'b') will
-match \code{x$a} to \code{y$a} and \code{x$b} to \code{y$b}. Use a named vector to match
-different variables in x and y. For example, \code{by = c('a' = 'b', 'c' = 'd')} will match
-\code{x$a} to \code{y$b} and \code{x$c} to \code{y$d}.}
+To join by multiple variables, use a vector with \code{length > 1}. For example, \code{by = c('a', 'b')}
+will match \code{x$a} to \code{y$a} and \code{x$b} to \code{y$b}. Use a named vector to match different variables
+in \code{x} and \code{y}. For example, \code{by = c('a' = 'b', 'c' = 'd')} will match \code{x$a} to \code{y$b} and \code{x$c}
+to \code{y$d}.
 
-\item{offset_before}{The time before each measurement in \code{x} that denotes the period in
-which \code{y} is matched. Must be convertible to a period by \link[lubridate]{as.period}.}
+To perform a cross-join (when \code{x} and \code{y} have no variables in common), use \code{by = character()}.
+Note that the \code{split} argument will then be set to 1.}
 
-\item{offset_after}{The time after each measurement in \code{x} that denotes the period in which
-\code{y} is matched. Must be convertible to a period by \link[lubridate]{as.period}.}
+\item{offset_before}{The time before each measurement in \code{x} that denotes the period in which \code{y}
+is matched. Must be convertible to a period by \code{\link[lubridate:as.period]{lubridate::as.period()}}.}
+
+\item{offset_after}{The time after each measurement in \code{x} that denotes the period in which \code{y}
+is matched. Must be convertible to a period by \code{\link[lubridate:as.period]{lubridate::as.period()}}.}
 
 \item{raw_data}{Whether to include the raw data (i.e. the matched gap data) to the output as
 gap_data.}
@@ -57,11 +59,11 @@ gap time stamps are within the range of the interval.
 Gaps in mobile sensing data typically occur when the app is stopped by the operating system or
 the user. While small gaps may not pose problems with analyses, greater gaps may cause bias or
 skew your data. As a result, gap data should be considered in order to inspect and limit their
-influence. This function, like \link[mpathsenser]{link}, allows you to connect gaps to other
+influence. This function, analogous to \code{\link[=link]{link()}}, allows you to connect gaps to other
 data (usually ESM/EMA data) within a user-specified time range.
 }
 \seealso{
 \code{\link[mpathsenser]{bin_data}} for linking two sets of intervals to each other;
 \code{\link[mpathsenser]{identify_gaps}} for finding gaps in the sampling;
-\code{\link[mpathsenser]{add_gaps}} for adding gaps to data;
+\code{\link[mpathsenser]{add_gaps}} for adding gaps to sensor data;
 }

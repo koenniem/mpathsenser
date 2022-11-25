@@ -20,7 +20,7 @@
 #'   to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
 #'   last entry for a participant.
 #'
-#' @return A lazy \code{\link[dplyr]{tbl}} containing the requested data.
+#' @returns A lazy \code{\link[dplyr]{tbl}} containing the requested data.
 #' @export
 #'
 #' @examples
@@ -76,7 +76,7 @@ get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_d
 #'
 #' @inheritParams get_data
 #'
-#' @return A string in the format 'YYYY-mm-dd' of the first entry date.
+#' @returns A string in the format 'YYYY-mm-dd' of the first entry date.
 #' @export
 #'
 #' @examples
@@ -108,7 +108,7 @@ first_date <- function(db, sensor, participant_id = NULL) {
 #'
 #' @inheritParams get_data
 #'
-#' @return A string in the format 'YYYY-mm-dd' of the last entry date.
+#' @returns A string in the format 'YYYY-mm-dd' of the last entry date.
 #' @export
 #'
 #' @examples
@@ -142,7 +142,7 @@ last_date <- function(db, sensor, participant_id = NULL) {
 #' \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 #' Leave empty to get data for all participants.
 #'
-#' @return A tibble containing app names.
+#' @returns A tibble containing app names.
 #' @export
 installed_apps <- function(db, participant_id = NULL) {
   check_db(db)
@@ -179,7 +179,7 @@ installed_apps <- function(db, participant_id = NULL) {
 #' between requests seems to be around 5 seconds, but this is untested. Also make sure not to do
 #' batch lookups, as many subsequent requests will get you blocked as well.
 #'
-#' @return A list containing the following fields:
+#' @returns A list containing the following fields:
 #'
 #' \tabular{ll}{
 #'   package \tab the package name that was selected from the Google Play search \cr
@@ -312,7 +312,7 @@ app_category_impl <- function(name, num, exact) {
 #' @inheritParams get_data
 #' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results.
 #'
-#' @return A data frame containing a column 'app' and a column 'usage' for the hourly app usage.
+#' @returns A data frame containing a column 'app' and a column 'usage' for the hourly app usage.
 #' @keywords internal
 app_usage <- function(db,
                       participant_id = NULL,
@@ -379,7 +379,7 @@ app_usage <- function(db,
 #' \eqn{t_{t+1} - t}.
 #' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results.
 #'
-#' @return A tibble containing a column 'activity' and a column 'duration' for the hourly
+#' @returns A tibble containing a column 'activity' and a column 'duration' for the hourly
 #' activity duration.
 #' @keywords internal
 activity_duration <- function(data = NULL,
@@ -449,7 +449,7 @@ activity_duration <- function(data = NULL,
 #'
 #' @inheritParams get_data
 #'
-#' @return A tibble containing device info for each participant
+#' @returns A tibble containing device info for each participant
 #' @export
 device_info <- function(db, participant_id = NULL) {
   get_data(db, "Device", participant_id = participant_id) %>%
@@ -476,7 +476,7 @@ compress_activity <- function(data, direction = "forward") {
 #' @param by Either 'Hour' or 'Day' indicating how to summarise the results. Leave empty to get raw
 #' screen duration per measurement.
 #'
-#' @return A tibble with either 'hour' and 'duration' columns or 'date' and 'duration' columns
+#' @returns A tibble with either 'hour' and 'duration' columns or 'date' and 'duration' columns
 #' depending on the \code{by} argument. Alternatively, if no \code{by} is specified, a remote
 #' tibble is returned with the date, time, and duration since the previous measurement.
 #' @keywords internal
@@ -619,7 +619,7 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
 #'   to the rolling window of observations.
 #' @param participant_id A character vector identifying one or multiple participants.
 #'
-#' @return A tibble with the same columns as the input, modified to be a moving average.
+#' @returns A tibble with the same columns as the input, modified to be a moving average.
 #' @export
 #'
 #' @examples
@@ -733,7 +733,7 @@ moving_average <- function(db,
 #' @param min_gap The minimum time (in seconds) passed between two subsequent measurements for it to
 #'   be considered a gap.
 #'
-#' @return A tibble containing the time period of the gaps. The structure of this tibble is as
+#' @returns A tibble containing the time period of the gaps. The structure of this tibble is as
 #'   follows:
 #'
 #'   \tabular{ll}{ participant_id \tab the \code{participant_id} of where the gap occurred \cr from
@@ -846,7 +846,7 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 #' gaps <- data.frame(
 #'   participant_id = "12345",
 #'   from = as.POSIXct(c("2022-05-10 10:05:00", "2022-05-10 10:50:00")),
-#'   to = as.POSIXct(c("2022-05-10 10:20:00", "2022-05-10 10:10:00"))
+#'   to = as.POSIXct(c("2022-05-10 10:20:00", "2022-05-10 11:10:00"))
 #' )
 #'
 #' # Now add the gaps to the data

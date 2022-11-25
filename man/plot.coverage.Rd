@@ -7,17 +7,17 @@
 \method{plot}{coverage}(x, ...)
 }
 \arguments{
-\item{x}{A tibble with the coverage data coming from \code{\link[mpathsenser]{coverage}}.}
+\item{x}{A tibble with the coverage data coming from \code{\link[=coverage]{coverage()}}.}
 
 \item{...}{Other arguments passed on to methods. Not currently used.}
 }
 \value{
-A \code{\link[ggplot2]{ggplot}} object.
+A \link[ggplot2:ggplot]{ggplot2::ggplot} object.
 }
 \description{
 Plot a coverage overview
 }
 \seealso{
-\code{\link[mpathsenser]{coverage}}
+\code{\link[=coverage]{coverage()}}
 }
 \keyword{internal}

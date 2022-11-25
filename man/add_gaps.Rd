@@ -4,10 +4,10 @@
 \alias{add_gaps}
 \title{Add gap periods to sensor data}
 \usage{
-add_gaps(data, gaps, by = NULL, fill = NULL)
+add_gaps(data, gaps, by = NULL, continue = FALSE, fill = NULL)
 }
 \arguments{
-\item{data}{A data frame containing the activity data. See \link[mpathsenser]{get_data} for
+\item{data}{A data frame containing the data. See \code{\link[=get_data]{get_data()}} for
 retrieving activity data from an mpathsenser database.}
 
 \item{gaps}{A data frame (extension) containing the gap data. See
@@ -19,6 +19,8 @@ well as any specified columns in \code{by}.}
 IDs. If NULL, the default, \code{*_join()} will perform a natural join, using all variables in
 common across \code{x} and \code{y}.}
 
+\item{continue}{Whether to continue the measurement(s) prior to the gap once the gap ends.}
+
 \item{fill}{A named list of the columns to fill with default values for the extra measurements
 that are added because of the gaps.}
 }
@@ -28,11 +30,11 @@ A tibble containing the data and the added gaps.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-Since there may be many gaps in mobile sensing data, it is pivotal to pay attention in the
-analysis to them. This function adds known gaps to data as "measurements", thereby allowing
-easier calculations for, for example, finding the duration. For instance, consider a participant
-spent 30 minutes walking. However, if it is known there is gap of 15 minutes in this interval,
-we should somehow account for it. \code{add_gaps} accounts for this by adding the gap data to
+Since there may be many gaps in mobile sensing data, it is pivotal to pay attention to them in
+the analysis. This function adds known gaps to data as "measurements", thereby allowing easier
+calculations for, for example, finding the duration. For instance, consider a participant spent
+30 minutes walking. However, if it is known there is gap of 15 minutes in this interval, we
+should somehow account for it. \code{add_gaps} accounts for this by adding the gap data to
 sensors data by splitting intervals where gaps occur.
 }
 \details{
@@ -40,9 +42,9 @@ In the example of 30 minutes walking where a 15 minute gap occurred (say after 5
 minutes), \code{add_gaps} adds two rows: one after 5 minutes of the start of the interval
 indicating the start of the gap(if needed containing values from \code{fill}), and one after 20
 minutes of the start of the interval signalling the walking activity. Then, when calculating
-time differences between subsequent measurements, the gap period is appropriately accounted for.
-Note that if multiple measurements occurred before the gap, they will both be continued after
-the gap.
+time differences between subsequent measurements, the gap period is appropriately accounted
+for. Note that if multiple measurements occurred before the gap, they will both be continued
+after the gap.
 }
 \section{Warning}{
  Depending on the sensor that is used to identify the gaps (though this is
@@ -73,7 +75,7 @@ dat <- data.frame(
 gaps <- data.frame(
   participant_id = "12345",
   from = as.POSIXct(c("2022-05-10 10:05:00", "2022-05-10 10:50:00")),
-  to = as.POSIXct(c("2022-05-10 10:20:00", "2022-05-10 10:10:00"))
+  to = as.POSIXct(c("2022-05-10 10:20:00", "2022-05-10 11:10:00"))
 )
 
 # Now add the gaps to the data
@@ -92,6 +94,6 @@ add_gaps(
 )
 }
 \seealso{
-\code{\link[mpathsenser]{identify_gaps}} for finding gaps in the sampling;
-\code{\link[mpathsenser]{link_gaps}} for finding which gaps occur in the data;
+\code{\link[=identify_gaps]{identify_gaps()}} for finding gaps in the sampling;
+\code{\link[=link_gaps]{link_gaps()}} for linking gaps to ESM data, analogous to \code{\link[=link]{link()}}.
 }

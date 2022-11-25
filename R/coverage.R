@@ -3,7 +3,7 @@
 #' A numeric vector containing (an example) of example measurement frequencies per sensor.
 #' Such input is needed for \link[mpathsenser]{coverage}.
 #'
-#' @return This vector contains the following
+#' @returns This vector contains the following
 #' information:
 #'
 #' Sensor | Frequency (per hour) | Full text
@@ -43,25 +43,25 @@ freq <- c(
 #' Only applicable to non-reactive sensors with 'continuous' sampling
 #'
 #' @param db A valid database connection. Schema must be that as it is created by
-#' \link[mpathsenser]{open_db}.
+#' [open_db].
 #' @param participant_id A character string of _one_ participant ID.
 #' @param sensor A character vector containing one or multiple sensors. See
-#' \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use \code{NULL} for all
+#' \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use `NULL` for all
 #' available sensors.
 #' @param frequency A named numeric vector with sensors as names and the number of expected samples
 #' per hour
 #' @param relative Show absolute number of measurements or relative to the expected number?
 #' Logical value.
 #' @param offset Currently not used.
-#' @param start_date A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
-#' the earliest date to show. Leave empty for all data. Must be used with \code{end_date}.
-#' @param end_date A date (or convertible to a date using \code{\link[base]{as.Date}}) indicating
-#' the latest date to show.Leave empty for all data. Must be used with \code{start_date}.
+#' @param start_date A date (or convertible to a date using [base::as.Date()]) indicating
+#' the earliest date to show. Leave empty for all data. Must be used with `end_date`.
+#' @param end_date A date (or convertible to a date using [base::as.Date()]) indicating
+#' the latest date to show.Leave empty for all data. Must be used with `start_date`.
 #' @param plot `r lifecycle::badge("deprecated")` Instead of built-in functionality, use
-#'  \code{\link[mpathsenser]{plot.coverage}} to plot the output.
+#'  [plot.coverage()] to plot the output.
 #'
 #'
-#' @return A ggplot of the coverage results if \code{plot} is \code{TRUE} or a tibble containg the
+#' @returns A ggplot of the coverage results if `plot` is `TRUE` or a tibble containing the
 #' hour, type of measure (i.e. sensor), and (relative) coverage.
 #' @export
 #'
@@ -185,11 +185,11 @@ coverage <- function(db,
 
 #' Plot a coverage overview
 #'
-#' @param x A tibble with the coverage data coming from \code{\link[mpathsenser]{coverage}}.
+#' @param x A tibble with the coverage data coming from [coverage()].
 #' @param ... Other arguments passed on to methods. Not currently used.
 #'
-#' @seealso \code{\link[mpathsenser]{coverage}}
-#' @return A \code{\link[ggplot2]{ggplot}} object.
+#' @seealso [coverage()]
+#' @returns A [ggplot2::ggplot] object.
 #' @export
 #' @keywords internal
 plot.coverage <- function(x, ...) {

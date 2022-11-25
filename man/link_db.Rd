@@ -29,14 +29,14 @@ available sensors.}
 \item{sensor_two}{The name of a secondary sensor. See \link[mpathsenser]{sensors} for a list of
 available sensors. Cannot be used together with \code{external}.}
 
-\item{external}{Optionally, specify an external data frame. Cannot be used at the same time as
-a second sensor. This data frame must have a column called \code{time}.}
+\item{external}{Optionally, specify an external data frame. Cannot be used at the same time as a
+second sensor. This data frame must have a column called \code{time}.}
 
-\item{offset_before}{The time before each measurement in \code{x} that denotes the period in
-which \code{y} is matched. Must be convertible to a period by \link[lubridate]{as.period}.}
+\item{offset_before}{The time before each measurement in \code{x} that denotes the period in which \code{y}
+is matched. Must be convertible to a period by \code{\link[lubridate:as.period]{lubridate::as.period()}}.}
 
-\item{offset_after}{The time after each measurement in \code{x} that denotes the period in which
-\code{y} is matched. Must be convertible to a period by \link[lubridate]{as.period}.}
+\item{offset_after}{The time after each measurement in \code{x} that denotes the period in which \code{y}
+is matched. Must be convertible to a period by \code{\link[lubridate:as.period]{lubridate::as.period()}}.}
 
 \item{add_before}{Logical value. Do you want to add the last measurement before the start of each
 interval?}
@@ -59,18 +59,19 @@ last entry for a participant.}
 \item{reverse}{Switch \code{sensor_one} with either \code{sensor_two} or \code{external}?
 Particularly useful in combination with \code{external}.}
 
-\item{ignore_large}{Safety override to prevent long wait times. Set to \code{TRUE} to do this
-function on lots of data.}
+\item{ignore_large}{Safety override to prevent long wait times. Set to \code{TRUE} to do this function
+on lots of data.}
 }
 \value{
-A tibble with the data of \code{sensor_one} with a new column \code{data} with the
-matched data of either \code{sensor_two} or \code{external} according to \code{offset}. The
-other way around when \code{reverse = TRUE}.
+A tibble with the data of \code{sensor_one} with a new column \code{data} with the matched
+data of either \code{sensor_two} or \code{external} according to \code{offset_before} or
+\code{offset_after}. The other way around when \code{reverse = TRUE}.
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
-This function is specific to mpathsenser databases. It is a wrapper around
-\link[mpathsenser]{link} but extracts data in the database for you.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}} This function is specific to mpathsenser
+databases. It is a wrapper around \link[mpathsenser]{link} but extracts data in the database
+for you. It is now soft deprecated as I feel this function's use is limited in comparison to
+\code{\link[=link]{link()}}.
 }
 \seealso{
 \code{\link[mpathsenser]{link}}

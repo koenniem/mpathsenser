@@ -9,7 +9,7 @@ moving_average(
   sensor,
   cols,
   n,
-  participant_id,
+  participant_id = NULL,
   start_date = NULL,
   end_date = NULL
 )
