@@ -1,9 +1,13 @@
-# mpathsenser (in development)
+# mpathsenser 1.1.2
 ## Major changes
 * Added `continue` argument to `add_gaps` that controls whether the last measurement(s) should be 
 continued after a gap.
 * `link_db()` is now soft deprecated as it provides only marginal added functionality compared to 
 `link()`.
+* `decrypt_gps()` now takes a vector of encrypted GPS coordinates instead of a whole data frame 
+with fixed variables names (`latitude` and `longitude`). This allows more flexibility in its use. 
+Also, parallelisation has been added similar to other functions in this package (i.e. by setting
+a [future plan](https://rdrr.io/cran/future/), e.g.`future::plan("multisession")`).
 
 ## Deprecations
 * `n_screen_on()` and `n_screen_unlocks()` are now (in addition to being internal) also defunct. 
@@ -14,6 +18,8 @@ replaced by new versions in mpathsenser 2.0.0.
 * `moving_average()` now allows a lazy tibble to allow further computations in-database after 
 having called `moving_average()`.
 * `identify_gaps()` is now slightly more efficient.
+* `get_data()` is now case insensitive. In a future update, all sensor names throughout all 
+functions will be made case insensitive.
 
 # Bugfixes
 * `link()` now correctly handles natural joins (when `by = NULL`) and cross joins (when 
