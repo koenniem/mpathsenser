@@ -6,15 +6,15 @@
 #' A list containing all available sensors in this package you can work with. This variable was
 #' created so it is easier to use in your own functions, e.g. to loop over sensors.
 #'
-#' @returns A character vector containing all sensor names supported by \code{mpathsenser}.
+#' @returns A character vector containing all sensor names supported by `mpathsenser`.
 #' @examples
 #' sensors
 #' @export sensors
 sensors <- c(
-  "Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "Bluetooth",
-  "Calendar", "Connectivity", "Device", "Error", "Geofence", "Gyroscope",
-  "InstalledApps", "Keyboard", "Light", "Location", "Memory", "Mobility", "Noise",
-  "Pedometer", "PhoneLog", "Screen", "TextMessage", "Weather", "Wifi"
+  "accelerometer", "airquality", "activity", "appusage", "battery", "bluetooth",
+  "calendar", "connectivity", "device", "error", "geofence", "gyroscope",
+  "installedapps", "keyboard", "light", "location", "memory", "mobility", "noise",
+  "pedometer", "phonelog", "screen", "textmessage", "weather", "wifi"
 )
 
 #' Create a new mpathsenser database
@@ -24,57 +24,64 @@ sensors <- c(
 #'
 #' @param path The path to the database.
 #' @param db_name The name of the database.
+#' @param backend The name of the backend to be used. Supports SQLite, MySQL, and Postgresql.
 #' @param overwrite In case a database with `db_name` already exists, indicate whether it should
 #' be overwritten or not. Otherwise, this option is ignored.
+#' @param ... Arguments passed on to [DBI::dbConnect()], such as `uid` and `pwd`, if necessary.
 #'
 #' @returns A database connection using prepared database schemas.
 #' @export
-create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
-  check_arg(path, "character", n = 1, allow_null = TRUE)
+create_db <- function(path = NULL,
+                      db_name = "mpathsenser",
+                      backend = "SQLite",
+                      host = NULL,
+                      port = NULL,
+                      user = NULL,
+                      password = NULL,
+                      overwrite = FALSE,
+                      ...) {
+
   check_arg(db_name, "character", n = 1)
   check_arg(overwrite, "logical", n = 1)
 
-  # Merge path and file name
-  if (!is.null(path)) {
-    db_name <- normalizePath(file.path(path, db_name), mustWork = FALSE)
+  if (any(grepl(c("sqlite"), tolower(backend), ignore.case = TRUE))) {
+    db <- create_db.sqlite(path = path,
+                           db_name = db_name,
+                           overwrite = overwrite,
+                           ...,
+                           caller_env = environment())
+  } else if (any(grep(c("mysql"), tolower(backend), ignore.case = TRUE))) {
+    db <- create_db.mysql(db_name = db_name,
+                          host = host,
+                          port = port,
+                          user = user,
+                          password = password,
+                          overwrite = overwrite,
+                          ...,
+                          caller_env = environment())
+  } else if (any(grep(c("postgres"), tolower(backend), ignore.case = TRUE))) {
+    db <- create_db.postgresql(db_name = db_name,
+                               host = host,
+                               port = port,
+                               user = user,
+                               password = password,
+                               overwrite = overwrite,
+                               ...,
+                               caller_env = environment())
+  } else {
+    abort(paste("Backend", backend, "is not supported."))
   }
-
-  # If db already exists, remove it or throw an error
-  if (file.exists(db_name)) {
-    if (overwrite) {
-      tryCatch(file.remove(db_name),
-        warning = function(e) abort(as.character(e)),
-        error = function(e) abort(as.character(e))
-      )
-    } else {
-      abort(c(
-        paste("Database", db_name, "already exists."),
-        i = " Use overwrite = TRUE to overwrite."
-      ))
-    }
-  }
-
-  # Check if path exists
-  if (!dir.exists(dirname(db_name))) {
-    abort(paste0("Directory ", dirname(db_name), " does not exist."))
-  }
-
-  # Create a new db instance
-  tryCatch(
-    {
-      db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
-    },
-    error = function(e) {
-      abort(paste0("Could not create a database in ", db_name)) # nocov
-    }
-  )
-
 
   # Populate the db with empty tables
   tryCatch(
     {
-      fn <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
-      script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
+      dbdef <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
+      script <- strsplit(paste0(readLines(dbdef, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
+
+      if (any(grep(c("mysql"), tolower(backend), ignore.case = TRUE))) {
+        script <- lapply(script, function(x) gsub('"', "`", x))
+      }
+
       for (statement in script) {
         dbExecute(db, statement)
       }
@@ -91,24 +98,182 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   return(db)
 }
 
+create_db.sqlite <- function(path, db_name, overwrite, ..., caller_env) {
+  ensure_suggested_package("RSQLite")
+  check_arg(path, "character", n = 1, allow_null = TRUE, call = caller_env)
+
+  # Merge path and file name
+  if (!is.null(path)) {
+    db_name <- normalizePath(file.path(path, db_name), mustWork = FALSE)
+  }
+
+  # If db already exists, remove it or throw an error
+  if (file.exists(db_name)) {
+    if (overwrite) {
+      tryCatch(file.remove(db_name),
+               warning = function(e) abort(as.character(e)),
+               error = function(e) abort(as.character(e))
+      )
+    } else {
+      abort(c(
+        paste("Database", db_name, "already exists."),
+        i = " Use overwrite = TRUE to overwrite."
+      ), call = caller_env)
+    }
+  }
+
+  # Check if path exists
+  if (!dir.exists(dirname(db_name))) {
+    abort(paste0("Directory ", dirname(db_name), " does not exist."))
+  }
+
+  # Create a new db instance
+  tryCatch(
+    {
+      db <- dbConnect(drv = RSQLite::SQLite(),
+                      dbname = db_name,
+                      cache_size = 8192,
+                      ...)
+    },
+    error = function(e) {
+      abort(paste0("Could not create a database in ", db_name)) # nocov
+    }
+  )
+
+  # Write some PRAGMAs
+  DBI::dbExecute(db, "PRAGMA foreign_keys = 1;")
+  DBI::dbExecute(db, "PRAGMA main.synchronous = 1;")
+  DBI::dbExecute(db, "PRAGMA busy_timeout = 3000;")
+  DBI::dbExecute(db, "PRAGMA page_size = 8192;")
+
+  db
+}
+
+create_db.mysql <- function(db_name, host, port, user, password, overwrite, ..., caller_env) {
+  ensure_suggested_package("RMySQL")
+  check_arg(host, "character", n = 1, call = caller_env)
+  check_arg(port, "integerish", n = 1, call = caller_env)
+  check_arg(user, "character", n = 1, call = caller_env)
+  check_arg(password, "character", n = 1, call = caller_env)
+
+  # Open a connection to the database
+  db <- dbConnect(drv = RMySQL::MySQL(),
+                  host = host,
+                  port = port,
+                  user = user,
+                  password = password,
+                  ...)
+
+  if (db_name %in% dbGetQuery(db, "SHOW DATABASES")[, 1]) {
+    if (overwrite) {
+      dbExecute(db, paste0("DROP DATABASE ", db_name, ";"))
+    } else {
+      abort(c(
+        paste0("Database '", db_name, "' already exists."),
+        i = " Use `overwrite = TRUE` to overwrite."
+      ), call = caller_env)
+    }
+  }
+
+  # Create and use a new schema
+  DBI::dbExecute(db, paste0("CREATE DATABASE ", db_name, ";"))
+  DBI::dbExecute(db, paste0("USE ", db_name, ";"))
+
+  db
+}
+
+create_db.postgresql <- function(db_name, host, port, user, password, overwrite, ..., caller_env) {
+  ensure_suggested_package("RPostgres")
+  check_arg(db_name, "character", n = 1, call = caller_env)
+  check_arg(host, "character", n = 1, call = caller_env)
+  check_arg(port, c("character", "integerish"), n = 1, call = caller_env)
+  check_arg(user, "character", n = 1, call = caller_env)
+  check_arg(password, "character", n = 1, call = caller_env)
+
+  # Create a new db instance
+  tryCatch(
+    {
+      db <- dbConnect(drv = RPostgres::Postgres(),
+                      dbname = db_name,
+                      host = host,
+                      port = port,
+                      user = user,
+                      password = password,
+                      ...)
+    },
+    error = function(e) {
+      abort(paste0("Could not create a database in ", db_name)) # nocov
+    }
+  )
+
+  # Create and use a new schema
+  # DBI::dbExecute(db, paste0("CREATE DATABASE ", db_name, ";"))
+  # DBI::dbExecute(db, paste0("USE ", db_name, ";"))
+
+  db
+}
+
 #' Open an mpathsenser database.
 #'
 #' @description
 #' `r lifecycle::badge("stable")`
 #'
-#' @param path The path to the database. Use NULL to use the full path name in db_name.
-#' @param db_name The name of the database.
+#' @inheritParams create_db
 #'
-#' @seealso \code{\link[mpathsenser]{close_db}} for closing a database;
-#' \code{\link[mpathsenser]{copy_db}} for copying (part of) a database;
-#' \code{\link[mpathsenser]{index_db}} for indexing a database;
-#' \code{\link[mpathsenser]{get_data}} for extracting data from a database.
+#' @seealso [close_db()] for closing a database;
+#' [copy_db()] for copying (part of) a database;
+#' [index_db()] for indexing a database;
+#' [get_data()] for extracting data from a database.
 #'
-#' @returns A connection to an mpathsenser database.
+#' @returns A connection to an `mpathsenser` database.
 #' @export
-open_db <- function(path = getwd(), db_name = "sense.db") {
-  check_arg(path, "character", n = 1, allow_null = TRUE)
+open_db <- function(path = NULL,
+                    db_name = "mpathsenser",
+                    backend = "SQLite",
+                    host = NULL,
+                    port = NULL,
+                    user = NULL,
+                    password = NULL,
+                    ...) {
+
   check_arg(db_name, c("character", "integerish"), n = 1)
+
+  if (any(grepl(c("sqlite"), tolower(backend), ignore.case = TRUE))) {
+    db <- open_db.sqlite(path = path,
+                           db_name = db_name,
+                           ...,
+                           caller_env = environment())
+  } else if (any(grep(c("mysql"), tolower(backend), ignore.case = TRUE))) {
+    db <- open_db.mysql(db_name = db_name,
+                          host = host,
+                          port = port,
+                          user = user,
+                          password = password,
+                          ...,
+                          caller_env = environment())
+  } else if (any(grep(c("postgres"), tolower(backend), ignore.case = TRUE))) {
+    db <- open_db.postgresql(db_name = db_name,
+                             host = host,
+                             port = port,
+                             user = user,
+                             password = password,
+                             ...,
+                             caller_env = environment())
+  } else {
+    abort(paste("Backend", backend, "is not supported."))
+  }
+
+  if (!("participant" %in% tolower(DBI::dbListTables(db)))) {
+    dbDisconnect(db)
+    abort("Sorry, this does not appear to be a valid mpathsenser database.")
+  }
+
+  return(db)
+}
+
+open_db.sqlite <- function(path, db_name, ..., caller_env) {
+  ensure_suggested_package("RSQLite")
+  check_arg(path, "character", n = 1, allow_null = TRUE)
 
   # Merge path and file name
   if (!is.null(path)) {
@@ -116,14 +281,68 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
   }
 
   if (!file.exists(db_name)) {
-    abort("There is no such file")
+    abort(paste0("Could not open a database connection to ", db_name, "."), call = caller_env)
   }
-  db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
-  if (!DBI::dbExistsTable(db, "Participant")) {
-    dbDisconnect(db)
-    abort("Sorry, this does not appear to be a mpathsenser database.")
+  db <- dbConnect(drv = RSQLite::SQLite(),
+                  dbname = db_name,
+                  cache_size = 8192,
+                  ...)
+
+  db
+}
+
+open_db.mysql <- function(db_name, host, port, user, password, ..., caller_env) {
+  ensure_suggested_package("RMySQL")
+  check_arg(host, "character", n = 1, call = caller_env)
+  check_arg(port, "integerish", n = 1, call = caller_env)
+  check_arg(user, "character", n = 1, call = caller_env)
+  check_arg(password, "character", n = 1, call = caller_env)
+
+  # Open a connection to the database
+  db <- dbConnect(drv = RMySQL::MySQL(),
+                  host = host,
+                  port = port,
+                  user = user,
+                  password = password,
+                  ...)
+
+  if (!(db_name %in% DBI::dbGetQuery(db, "SHOW DATABASES")[, 1])) {
+      abort(c(
+        paste("Database", db_name, "does not yet exist."),
+        i = "Please create a database first using `create_db()`."
+      ), call = call)
   }
-  return(db)
+
+  # Make this schema the default
+  DBI::dbExecute(db, paste0("USE ", db_name, ";"))
+
+  db
+}
+
+open_db.postgresql <- function(db_name, host, port, user, password, ..., caller_env) {
+  ensure_suggested_package("RPostgres")
+  check_arg(host, "character", n = 1, call = caller_env)
+  check_arg(port, "integerish", n = 1, call = caller_env)
+  check_arg(user, "character", n = 1, call = caller_env)
+  check_arg(password, "character", n = 1, call = caller_env)
+
+  # Open a connection to the database
+  db <- dbConnect(drv = RPostgres::Postgres(),
+                  dbname = db_name,
+                  host = host,
+                  port = port,
+                  user = user,
+                  password = password,
+                  ...)
+#
+#   if (!(db_name %in% DBI::dbGetQuery(db, "SHOW DATABASES")[, 1])) {
+#     abort(c(
+#       paste("Database", db_name, "does not yet exist."),
+#       i = "Please create a database first using `create_db()`."
+#     ), call = call)
+#   }
+
+  db
 }
 
 #' Close a database connection
@@ -137,16 +356,12 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 #'
 #' @seealso \code{\link[mpathsenser]{open_db}} for opening an mpathsenser database.
 #'
-#' @returns \code{close_db} returns invisibly regardless of whether the database is active, valid,
-#' or even exists.
+#' @returns \code{close_db} Returns a logical value invisible, indicating whether the connection has
+#' been closed.
 #' @export
 close_db <- function(db) {
-  exists <- try(db, silent = TRUE)
-  if (inherits(exists, "SQLiteConnection") && !is.null(db)) {
-    if (dbIsValid(db)) {
-      dbDisconnect(db)
-    }
-  }
+  out <- suppressWarnings(try(dbDisconnect(db), silent = TRUE))
+  return(invisible(!inherits(out, "try-error")))
 }
 
 #' Create indexes for a mpathsenser database
@@ -156,27 +371,48 @@ close_db <- function(db) {
 #'
 #' @inheritParams get_data
 #'
-#' @returns No return value, called for side effects.
+#' @returns Returns `TRUE`, invisibly.
 #' @export
 index_db <- function(db) {
   check_db(db)
 
-  tryCatch(
-    {
-      fn <- system.file("extdata", "indexes.sql", package = "mpathsenser")
-      script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
-      for (statement in script) {
-        dbExecute(db, statement)
-      }
-    },
-    error = function(e) {
-      abort(as.character(e))
-    }
-  )
+  fn <- system.file("extdata", "indexes.sql", package = "mpathsenser")
+  script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
+  for (statement in script) {
+    dbExecute(db, statement)
+  }
+  return(invisible(TRUE))
 }
 
-vacuum_db <- function(db) {
+#' Vacuum a database
+#'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
+#' The SQL `VACUUM` command reclaims storage occupied by dead rows. This is mostly useful for
+#' SQLite databases, as the `VACUUM` command rebuilds the database file, repacking it into a minimal
+#' amount of disk space. Note that MySQL databases need not (nor can) be vacuumed.
+#'
+#' @param db A database connection to an m-Path Sense database.
+#' @param ... Currently not used.
+#'
+#' @returns An integer indicating the number of rows that were vacuumed.
+#' @export
+vacuum_db <- function(db, ...) {
   check_db(db)
+  UseMethod("vacuum_db", db)
+}
+
+#' @export
+#' @keywords internal
+vacuum_db.MySQLConnection <- function(db, ...) {
+  warn("MySQL databases do not need to be vacuumed.")
+  return(0L)
+}
+
+#' @export
+#' @keywords internal
+vacuum_db.default <- function(db, ...) {
   dbExecute(db, "VACUUM")
 }
 
@@ -229,6 +465,12 @@ copy_db <- function(source_db,
   check_db(target_db, arg = "target_db")
   check_arg(sensor, "character")
 
+  if (!(inherits(source_db, "SQLiteConnection") && inherits(target_db, "SQLiteConnection"))) {
+    abort(c("Both `source_db` and `target_db` must be SQLite databases.",
+          i = "To copy to/from an SQLite database, use a database dump.",
+          i = "To copy other database types, use dedicated programs."))
+  }
+
   # Check sensors
   if (length(sensor) == 1 && sensor == "All") {
     sensor <- sensors
@@ -265,9 +507,12 @@ copy_db <- function(source_db,
   return(invisible(TRUE))
 }
 
-add_study <- function(db, study_id, data_format) {
+add_study <- function(db, study_id, data_format, ...) {
   check_db(db)
+  UseMethod("add_study", db)
+}
 
+add_study.SQLiteConnection <- function(db, study_id, data_format, ...) {
   dbExecute(
     db,
     paste(
@@ -278,9 +523,12 @@ add_study <- function(db, study_id, data_format) {
   )
 }
 
-add_participant <- function(db, participant_id, study_id) {
+add_participant <- function(db, participant_id, study_id, ...) {
   check_db(db)
+  UseMethod("add_participant", db)
+}
 
+add_participant.SQLiteConnection <- function(db, participant_id, study_id, ...) {
   dbExecute(
     db,
     paste(
@@ -293,7 +541,10 @@ add_participant <- function(db, participant_id, study_id) {
 
 add_processed_files <- function(db, file_name, study_id, participant_id) {
   check_db(db)
+  UseMethod("add_processed_files", db)
+}
 
+add_processed_files.SQLiteConnection <- function(db, file_name, study_id, participant_id) {
   dbExecute(
     db,
     paste(
@@ -410,7 +661,8 @@ get_nrows <- function(db,
 
   vapply(sensor, function(x) {
     get_data(db, x, participant_id, start_date, end_date) %>%
+      dplyr::select(1) %>%
       dplyr::count() %>%
       pull(n)
-  }, integer(1))
+  }, double(1))
 }
