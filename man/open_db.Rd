@@ -4,22 +4,35 @@
 \alias{open_db}
 \title{Open an mpathsenser database.}
 \usage{
-open_db(path = getwd(), db_name = "sense.db")
+open_db(
+  path = NULL,
+  db_name = "mpathsenser",
+  backend = "SQLite",
+  host = NULL,
+  port = NULL,
+  user = NULL,
+  password = NULL,
+  ...
+)
 }
 \arguments{
-\item{path}{The path to the database. Use NULL to use the full path name in db_name.}
+\item{path}{The path to the database.}
 
 \item{db_name}{The name of the database.}
+
+\item{backend}{The name of the backend to be used. Supports SQLite, MySQL, and Postgresql.}
+
+\item{...}{Arguments passed on to \code{\link[DBI:dbConnect]{DBI::dbConnect()}}, such as \code{uid} and \code{pwd}, if necessary.}
 }
 \value{
-A connection to an mpathsenser database.
+A connection to an \code{mpathsenser} database.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
 \seealso{
-\code{\link[mpathsenser]{close_db}} for closing a database;
-\code{\link[mpathsenser]{copy_db}} for copying (part of) a database;
-\code{\link[mpathsenser]{index_db}} for indexing a database;
-\code{\link[mpathsenser]{get_data}} for extracting data from a database.
+\code{\link[=close_db]{close_db()}} for closing a database;
+\code{\link[=copy_db]{copy_db()}} for copying (part of) a database;
+\code{\link[=index_db]{index_db()}} for indexing a database;
+\code{\link[=get_data]{get_data()}} for extracting data from a database.
 }

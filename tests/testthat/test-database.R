@@ -46,13 +46,15 @@ test_that("create_db", {
 
 test_that("open_db", {
   fake_db <- tempfile("foo", fileext = ".db")
-  expect_error(open_db(NULL, fake_db), "There is no such file")
+  expect_error(open_db(NULL, fake_db), "Could not open a database connection to .*?(?<=\\.db)\\.",
+               perl = TRUE)
 
   # Create a new (non-mpathsenser db)
   db <- dbConnect(RSQLite::SQLite(), fake_db)
   dbExecute(db, "CREATE TABLE foo(bar INTEGER, PRIMARY KEY(bar));")
   dbDisconnect(db)
-  expect_error(open_db(NULL, fake_db), "Sorry, this does not appear to be a mpathsenser database.")
+  expect_error(open_db(NULL, fake_db),
+               "Sorry, this does not appear to be a valid mpathsenser database.")
   file.remove(fake_db)
 
   path <- system.file("testdata", package = "mpathsenser")

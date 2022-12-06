@@ -21,7 +21,7 @@ Leave empty to get data for all participants.}
 \item{min_gap}{The minimum time (in seconds) passed between two subsequent measurements for it to
 be considered a gap.}
 
-\item{sensor}{The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
+\item{sensor}{One or multiple sensors. See \link[mpathsenser]{sensors} for a list of available
 sensors.}
 }
 \value{
