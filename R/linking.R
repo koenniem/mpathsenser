@@ -79,7 +79,8 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
   # Create an empty tibble (prototype) by retrieving rows with time before UNIX start (not possible)
   # This is needed to fill in the data entries where there would otherwise be nothing left
   # because nothing matched within the start_time and end_time
-  proto <- tibble::as_tibble(y[0, setdiff(colnames(y), {{ by }})])
+  proto <- tibble::as_tibble(y[0, ]) %>%
+    select(-{{ by }})
   if (add_before || add_after) {
     proto$original_time <- as.POSIXct(vector(mode = "double"))
 
@@ -291,7 +292,7 @@ link <- function(x,
   }
 
   # Temporarily override future global max size options
-  old <- options(future.globals.maxSize = .Machine$integer.max)
+  old <- options(future.globals.maxSize = .Machine$double.xmax)
   on.exit(options(old))
 
   x %>%
