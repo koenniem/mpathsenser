@@ -1,23 +1,63 @@
-#' Decrypt GPS data from a curve25519 public key
+#'Decrypt GPS data from a curve25519 public key
 #'
-#' @description `r lifecycle::badge("stable")`
+#'@description `r lifecycle::badge("stable")`
 #'
-#' By default, the latitude and longitude of the GPS data collected by m-Path Sense will be
-#' encrypted using an asymmetric curve25519 key to provide extra protection for these highly
-#' sensitive data. This function takes the entire location data set and decrypts its longitude and
-#' latitude columns using the provided \code{key}.
+#'  By default, the latitude and longitude of the GPS data collected by m-Path Sense are encrypted
+#'  using an asymmetric curve25519 key to provide extra protection for these highly sensitive data.
+#'  This function takes a character vector and decrypts its longitude and latitude columns using the
+#'  provided \code{key}.
 #'
-#' @param data A (lazy) tibble containing the GPS data
-#' @param key A curve25519 public key
+#'@inheritSection import Parallel
 #'
-#' @returns A tibble containing the non-lazy, decrypted GPS data
-#' @export
-decrypt_gps <- function(data, key) {
+#'@param data A character vector containing hexadecimal (i.e. encrypted) data.
+#'@param key A curve25519 private key.
+#'@param ignore A string with characters to ignore from `data`. See [sodium::hex2bin()].
+#'
+#'@returns A vector doubles of the decrypted GPS coordinates.
+#'@export
+#'
+#' @examples
+#'library(dplyr)
+#'library(sodium)
+#'# Create some GPS  coordinates.
+#'data <- data.frame(
+#'  participant_id = "12345",
+#'  time = as.POSIXct(c("2022-12-02 12:00:00",
+#'                      "2022-12-02 12:00:01",
+#'                      "2022-12-02 12:00:02")),
+#'  longitude = c("50.12345", "50.23456", "50.34567"),
+#'  latitude = c("4.12345", "4.23456", "4.345678")
+#')
+#'
+#'# Generate keypair
+#'key <- sodium::keygen()
+#'pub <- sodium::pubkey(key)
+#'
+#'# Encrypt coordinates with pubkey
+#'# You do not need to do this for m-Path Sense
+#'# as this is already encrypted
+#'encrypt <- function(data, pub) {
+#'  data <- lapply(data, charToRaw)
+#'  data <- lapply(data, function(x) sodium::simple_encrypt(x, pub))
+#'  data <- lapply(data, sodium::bin2hex)
+#'  data <- unlist(data)
+#'  data
+#'}
+#'data$longitude <- encrypt(data$longitude, pub)
+#'data$latitude <- encrypt(data$latitude, pub)
+#'
+#'# Once the data has been collected, decrypt it using decrypt_gps().
+#'data %>%
+#'  mutate(longitude = decrypt_gps(longitude, key)) %>%
+#'  mutate(latitude = decrypt_gps(latitude, key))
+decrypt_gps <- function(data, key, ignore = ":") {
   ensure_suggested_package("sodium")
+  check_arg(data, "character")
 
+  # Custom key check: Either raw and length 32, or a character vector
   if (!(is.raw(key) && length(key) == 32) && !is.character(key)) {
     abort(c(
-      "`key` must be either in a hex or bin format.",
+      "`key` must be either a hexadecimal string or a binary vector.",
       i = "Try to use `sodium::hex2bin(key)` or `sodium::bin2hex(key)`",
       x = "Steer clear of `charToRaw(key)`, as this delivers an incorrect key format."
     ))
@@ -27,25 +67,12 @@ decrypt_gps <- function(data, key) {
     key <- sodium::hex2bin(key)
   }
 
-  # Make some functions vectorised for neater syntax later on
-  vec_hex2bin <- Vectorize(sodium::hex2bin, SIMPLIFY = FALSE)
-  vec_simple_decrypt <- Vectorize(sodium::simple_decrypt, vectorize.args = "bin", SIMPLIFY = FALSE)
-  vec_raw_to_char <- Vectorize(rawToChar, SIMPLIFY = FALSE)
-
-  # Internal decryption process
-  internal_decrypt <- function(hex_vec) {
-    hex_vec <- hex_vec %>%
-      vec_hex2bin() %>%
-      vec_simple_decrypt(key) %>%
-      vec_raw_to_char() %>%
-      unlist()
-
-    hex_vec
-  }
-
   data <- data %>%
-    collect() %>%
-    mutate(across(c("latitude", "longitude"), internal_decrypt))
+    furrr::future_map(sodium::hex2bin, ignore = ignore) %>%
+    furrr::future_map(sodium::simple_decrypt, key = key) %>%
+    furrr::future_map(rawToChar) %>%
+    unlist(recursive = FALSE) %>%
+    as.double()
 
   data
 }
