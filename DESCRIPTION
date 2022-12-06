@@ -33,7 +33,6 @@ Imports:
     magrittr,
     purrr,
     rlang,
-    RSQLite,
     stats,
     tibble,
     tidyr
@@ -46,6 +45,9 @@ Suggests:
     lintr,
     progressr,
     rmarkdown,
+    RMySQL,
+    RPostgres,
+    RSQLite,
     rvest,
     sodium,
     testthat (>= 3.0.0),
