@@ -42,6 +42,7 @@ get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_d
   check_arg(start_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
   check_arg(end_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
 
+  sensor <- tolower(sensor)
   out <- dplyr::tbl(db, sensor)
 
   if (!is.null(participant_id)) {
@@ -652,15 +653,15 @@ moving_average <- function(db,
   check_arg(end_date, c("character", "POSIXt"), n = 1, allow_null = TRUE)
 
   # SELECT
-  query <- "SELECT participant_id, datetime, "
+  query <- "SELECT `participant_id`, `datetime`, "
 
   # Calculate moving average
   avgs <- lapply(cols, function(x) {
     paste0(
       "avg(`", x, "`) OVER (",
       "PARTITION BY `participant_id` ",
-      "ORDER BY UNIXEPOCH(datetime) ",
-      "RANGE BETWEEN ", n / 2, " PRECEDING ", "AND ", n / 2, " FOLLOWING", ") AS ", x
+      "ORDER BY UNIXEPOCH(`datetime`) ",
+      "RANGE BETWEEN ", n / 2, " PRECEDING ", "AND ", n / 2, " FOLLOWING", ") AS `", x, "`"
     )
   })
 
@@ -669,8 +670,8 @@ moving_average <- function(db,
 
   # FROM
   query <- paste0(
-    query, " FROM (SELECT participant_id, `date` || 'T' || `time` AS `datetime`, ",
-    paste0(cols, collapse = ", "), " FROM ", sensor
+    query, " FROM (SELECT `participant_id`, `date` || 'T' || `time` AS `datetime`, ",
+    paste0("`", cols, "`", collapse = ", "), " FROM `", sensor, "`"
   )
 
   # Where
@@ -730,6 +731,8 @@ moving_average <- function(db,
 #'   than you want and then afterwards increasing the start time of the gaps by 5 seconds.
 #'
 #' @inheritParams get_data
+#' @param sensor One or multiple sensors. See \link[mpathsenser]{sensors} for a list of available
+#'   sensors.
 #' @param min_gap The minimum time (in seconds) passed between two subsequent measurements for it to
 #'   be considered a gap.
 #'
