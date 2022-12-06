@@ -4,15 +4,29 @@
 \alias{create_db}
 \title{Create a new mpathsenser database}
 \usage{
-create_db(path = getwd(), db_name = "sense.db", overwrite = FALSE)
+create_db(
+  path = NULL,
+  db_name = "mpathsenser",
+  backend = "SQLite",
+  host = NULL,
+  port = NULL,
+  user = NULL,
+  password = NULL,
+  overwrite = FALSE,
+  ...
+)
 }
 \arguments{
 \item{path}{The path to the database.}
 
 \item{db_name}{The name of the database.}
 
+\item{backend}{The name of the backend to be used. Supports SQLite, MySQL, and Postgresql.}
+
 \item{overwrite}{In case a database with \code{db_name} already exists, indicate whether it should
 be overwritten or not. Otherwise, this option is ignored.}
+
+\item{...}{Arguments passed on to \code{\link[DBI:dbConnect]{DBI::dbConnect()}}, such as \code{uid} and \code{pwd}, if necessary.}
 }
 \value{
 A database connection using prepared database schemas.

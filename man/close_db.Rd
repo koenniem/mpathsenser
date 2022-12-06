@@ -10,8 +10,8 @@ close_db(db)
 \item{db}{A database connection to an m-Path Sense database.}
 }
 \value{
-Returns invisibly regardless of whether the database is active, valid,
-or even exists.
+\code{close_db} Returns a logical value invisible, indicating whether the connection has
+been closed.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}

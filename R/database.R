@@ -355,13 +355,8 @@ open_db.postgresql <- function(db_name, host, port, user, password, ..., caller_
 #'
 #' @seealso [open_db()] for opening an mpathsenser database.
 #'
-<<<<<<< HEAD
-#' @returns Returns invisibly regardless of whether the database is active, valid,
-#' or even exists.
-=======
 #' @returns \code{close_db} Returns a logical value invisible, indicating whether the connection has
 #' been closed.
->>>>>>> c5bcd06 (create_db, open_db, and vacuum_db for database extensions MySQL and PostgreSQL)
 #' @export
 close_db <- function(db) {
   out <- suppressWarnings(try(dbDisconnect(db), silent = TRUE))

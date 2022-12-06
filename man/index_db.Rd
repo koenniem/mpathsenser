@@ -10,7 +10,7 @@ index_db(db)
 \item{db}{A database connection to an m-Path Sense database.}
 }
 \value{
-No return value, called for side effects.
+Returns \code{TRUE}, invisibly.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
