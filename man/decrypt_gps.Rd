@@ -4,21 +4,64 @@
 \alias{decrypt_gps}
 \title{Decrypt GPS data from a curve25519 public key}
 \usage{
-decrypt_gps(data, key)
+decrypt_gps(data, key, ignore = ":")
 }
 \arguments{
-\item{data}{A (lazy) tibble containing the GPS data}
+\item{data}{A character vector containing hexadecimal (i.e. encrypted) data.}
 
-\item{key}{A curve25519 public key}
+\item{key}{A curve25519 private key.}
+
+\item{ignore}{A string with characters to ignore from \code{data}. See \code{\link[sodium:helpers]{sodium::hex2bin()}}.}
 }
 \value{
-A tibble containing the non-lazy, decrypted GPS data
+A vector doubles of the decrypted GPS coordinates.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-By default, the latitude and longitude of the GPS data collected by m-Path Sense will be
-encrypted using an asymmetric curve25519 key to provide extra protection for these highly
-sensitive data. This function takes the entire location data set and decrypts its longitude and
-latitude columns using the provided \code{key}.
+By default, the latitude and longitude of the GPS data collected by m-Path Sense are encrypted
+using an asymmetric curve25519 key to provide extra protection for these highly sensitive data.
+This function takes a character vector and decrypts its longitude and latitude columns using the
+provided \code{key}.
+}
+\section{Parallel}{
+ This function supports parallel processing in the sense that it is able to
+distribute it's computation load among multiple workers. To make use of this functionality, run
+\code{\link[future]{plan}("multisession")} before calling this function.
+}
+
+\examples{
+library(dplyr)
+library(sodium)
+# Create some GPS  coordinates.
+data <- data.frame(
+ participant_id = "12345",
+ time = as.POSIXct(c("2022-12-02 12:00:00",
+                     "2022-12-02 12:00:01",
+                     "2022-12-02 12:00:02")),
+ longitude = c("50.12345", "50.23456", "50.34567"),
+ latitude = c("4.12345", "4.23456", "4.345678")
+)
+
+# Generate keypair
+key <- sodium::keygen()
+pub <- sodium::pubkey(key)
+
+# Encrypt coordinates with pubkey
+# You do not need to do this for m-Path Sense
+# as this is already encrypted
+encrypt <- function(data, pub) {
+ data <- lapply(data, charToRaw)
+ data <- lapply(data, function(x) sodium::simple_encrypt(x, pub))
+ data <- lapply(data, sodium::bin2hex)
+ data <- unlist(data)
+ data
+}
+data$longitude <- encrypt(data$longitude, pub)
+data$latitude <- encrypt(data$latitude, pub)
+
+# Once the data has been collected, decrypt it using decrypt_gps().
+data \%>\%
+ mutate(longitude = decrypt_gps(longitude, key)) \%>\%
+ mutate(latitude = decrypt_gps(latitude, key))
 }
