@@ -13,7 +13,7 @@
 #'@param key A curve25519 private key.
 #'@param ignore A string with characters to ignore from `data`. See [sodium::hex2bin()].
 #'
-#'@returns A vector doubles of the decrypted GPS coordinates.
+#'@returns A vector of doubles of the decrypted GPS coordinates.
 #'@export
 #'
 #' @examples
