@@ -98,6 +98,10 @@ test_that("link", {
   expect_equal(res, true)
 
   # Test add_before and add_after
+  # Add one minute to dat2 time as otherwise a row would not added before
+  # This is due to new functionality where a row is not added if the first measurements in an
+  # interval is equal to the start time
+  dat2$time <- dat2$time + lubridate::minutes(1)
   res <- link(dat1, dat2, "participant_id",
     offset_before = 1800,
     add_before = TRUE, add_after = TRUE
@@ -113,47 +117,47 @@ test_that("link", {
       tibble::tibble(
         time = c(
           seq.POSIXt(
-            from = as.POSIXct("2021-11-14 12:50:00"),
-            length.out = 3, by = "5 min"
+            from = as.POSIXct("2021-11-14 12:51:00"),
+            length.out = 2, by = "5 min"
           ),
           as.POSIXct("2021-11-14 13:00:00")
         ),
-        x = c(1:3, 4),
+        x = c(1:3),
         original_time = c(
-          rep(lubridate::`NA_POSIXct_`, 3),
-          as.POSIXct("2021-11-14 13:05:00")
+          rep(lubridate::`NA_POSIXct_`, 2),
+          as.POSIXct("2021-11-14 13:01:00")
         )
       ),
       tibble::tibble(
         time = c(
           as.POSIXct("2021-11-14 13:30:00"),
           seq.POSIXt(
-            from = as.POSIXct("2021-11-14 13:30:00"),
-            length.out = 7, by = "5 min"
+            from = as.POSIXct("2021-11-14 13:31:00"),
+            length.out = 6, by = "5 min"
           ),
           as.POSIXct("2021-11-14 14:00:00")
         ),
-        x = c(8, 9:15, 16),
+        x = c(8, 9:14, 15),
         original_time = c(
-          as.POSIXct("2021-11-14 13:25:00"),
-          rep(lubridate::`NA_POSIXct_`, 7),
-          as.POSIXct("2021-11-14 14:05:00")
+          as.POSIXct("2021-11-14 13:26:00"),
+          rep(lubridate::`NA_POSIXct_`, 6),
+          as.POSIXct("2021-11-14 14:01:00")
         )
       ),
       tibble::tibble(
         time = c(
           as.POSIXct("2021-11-14 14:30:00"),
           seq.POSIXt(
-            from = as.POSIXct("2021-11-14 14:30:00"),
-            length.out = 7, by = "5 min"
+            from = as.POSIXct("2021-11-14 14:31:00"),
+            length.out = 6, by = "5 min"
           ),
           as.POSIXct("2021-11-14 15:00:00")
         ),
-        x = c(20, 21:27, 28),
+        x = c(20, 21:26, 27),
         original_time = c(
-          as.POSIXct("2021-11-14 14:25:00"),
-          rep(lubridate::`NA_POSIXct_`, 7),
-          as.POSIXct("2021-11-14 15:05:00")
+          as.POSIXct("2021-11-14 14:26:00"),
+          rep(lubridate::`NA_POSIXct_`, 6),
+          as.POSIXct("2021-11-14 15:01:00")
         )
       )
     ), 2)
@@ -264,6 +268,51 @@ test_that("link", {
   expect_equal(attr(res$time, "tz"), "Europe/Brussels")
   expect_equal(unique(map_chr(res$data, ~attr(.x$time, "tz"))), "UTC")
   expect_equal(unique(map_chr(res$data, ~attr(.x$original_time, "tz"))), "UTC")
+
+  # Make sure link does not add an extra row if first measurement equal start of the interval
+  dat1 <- data.frame(
+    time = as.POSIXct(c("2021-11-14 11:00:00", "2021-11-14 12:00:00")),
+    participant_id = "12345",
+    item_one = c(40, 50)
+  )
+
+  dat2 <- data.frame(
+    time = as.POSIXct(c("2021-11-14 10:20:00", "2021-11-14 10:30:00", "2021-11-14 10:40:00",
+                        "2021-11-14 11:00:00", "2021-11-14 11:10:00", "2021-11-14 11:30:01",
+                        "2021-11-14 11:40:00")),
+    participant_id = "12345",
+    x = 1:7
+  )
+
+  true <- tibble::tibble(
+    time = as.POSIXct(c("2021-11-14 11:00:00", "2021-11-14 12:00:00")),
+    participant_id = "12345",
+    item_one = c(40, 50),
+    data = list(
+      tibble::tibble(
+        time = as.POSIXct(c("2021-11-14 10:30:00", "2021-11-14 10:40:00", "2021-11-14 11:00:00",
+                            "2021-11-14 11:00:00")),
+        x = c(2, 3, 4, 5),
+        original_time = as.POSIXct(c(NA, NA, NA, "2021-11-14 11:10:00"))
+      ),
+      tibble::tibble(
+        time = as.POSIXct(c("2021-11-14 11:30:00", "2021-11-14 11:30:01", "2021-11-14 11:40:00")),
+        x = c(5, 6, 7),
+        original_time = as.POSIXct(c("2021-11-14 11:10:00", NA, NA))
+      )
+    )
+  )
+
+  res <- link(
+    x = dat1,
+    y = dat2,
+    by = "participant_id",
+    offset_before = 1800L,
+    add_before = TRUE,
+    add_after = TRUE
+  )
+
+  expect_equal(true, res)
 })
 
 ## link_db ===============

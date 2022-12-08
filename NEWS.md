@@ -20,6 +20,8 @@ having called `moving_average()`.
 * `identify_gaps()` is now slightly more efficient.
 * `get_data()` is now case insensitive. In a future update, all sensor names throughout all 
 functions will be made case insensitive.
+* When using `add_before = TRUE`, `link()` no longer adds an extra measurement if the first 
+measurement in the interval equals the start time of the interval exactly. 
 
 # Bugfixes
 * `link()` now correctly handles natural joins (when `by = NULL`) and cross joins (when 

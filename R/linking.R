@@ -35,9 +35,16 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
     dplyr::left_join(data_main, by = "row_id")
 
   # Add the last measurement before start_time
+  # TODO: do not add measurement before if first measurement equals start
   if (add_before) {
+    # Calculate in which groups there is a measurement that equals start_time
+    equal_to_start <- data %>%
+      filter(.data$time == .data$start_time) %>%
+      distinct(.data$row_id)
+
     tz <- attr(y$time, "tz")
     data_before <- data %>%
+      dplyr::anti_join(equal_to_start, by = "row_id") %>%
       filter(.data$y_time < .data$start_time) %>%
       group_by(.data$row_id) %>%
       dplyr::slice_max(.data$y_time, with_ties = TRUE) %>%
