@@ -37,7 +37,7 @@
 get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_date = NULL) {
   check_db(db)
   check_sensors(sensor, n = 1)
-  check_arg(participant_id, type = c("character", "integerish"), n = 1, allow_null = TRUE)
+  check_arg(participant_id, type = c("character", "integerish"), allow_null = TRUE)
   check_arg(sensor, "character", n = 1)
   check_arg(start_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
   check_arg(end_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
@@ -47,7 +47,7 @@ get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_d
 
   if (!is.null(participant_id)) {
     p_id <- as.character(participant_id)
-    out <- filter(out, participant_id == p_id)
+    out <- filter(out, .data$participant_id %in% p_id)
   }
 
   maybe_date <- function(x) {
@@ -55,11 +55,11 @@ get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_d
   }
 
   if (!is.null(start_date) && maybe_date(start_date)) {
-    out <- filter(out, date >= start_date)
+    out <- filter(out, .data$date >= start_date)
   }
 
   if (!is.null(end_date) && maybe_date(end_date)) {
-    out <- filter(out, date <= end_date)
+    out <- filter(out, .data$date <= end_date)
   }
 
   out
@@ -739,7 +739,7 @@ moving_average <- function(db,
 #' @returns A tibble containing the time period of the gaps. The structure of this tibble is as
 #'   follows:
 #'
-#'   \tabular{ll}{ participant_id \tab the \code{participant_id} of where the gap occurred \cr from
+#'   \tabular{ll}{ participant_id \tab the `participant_id` of where the gap occurred \cr from
 #'   \tab the time of the last measurement before the gap \cr to             \tab the time of the
 #'   first measurement after the gap \cr gap            \tab the time passed between from and to, in
 #'   seconds }

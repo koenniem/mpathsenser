@@ -31,6 +31,7 @@ having called `moving_average()`.
 functions will be made case insensitive.
 * When using `add_before = TRUE`, `link()` no longer adds an extra measurement if the first 
 measurement in the interval equals the start time of the interval exactly. 
+* `get_data()` now allows multiple `participant_id`s to be used.
 
 # Bugfixes
 * `link()` now correctly handles natural joins (when `by = NULL`) and cross joins (when 
