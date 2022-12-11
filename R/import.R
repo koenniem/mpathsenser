@@ -6,22 +6,23 @@
 #'   butter of this package, as it creates (or rather fills) the database that most of the other
 #'   functions in this package use.
 #'
-#' @details `import` allows you to specify which sensors to import (even though there may be
-#'   more in the files) and it also allows batching for a speedier writing process. If processing in
-#'   parallel is active, it is recommended that `batch_size` be a scalar multiple of the number
-#'   of CPU cores the parallel cluster can use. If a single JSON file in the batch causes and error,
+#' @details `import` allows you to specify which sensors to import (even though there may be more in
+#'   the files) and it also allows batching for a speedier writing process. If processing in
+#'   parallel is active, it is recommended that `batch_size` be a scalar multiple of the number of
+#'   CPU cores the parallel cluster can use. If a single JSON file in the batch causes and error,
 #'   the batch is terminated (but not the function) and it is up to the user to fix the file. This
-#'   means that if `batch_size` is large, many files will not be processed. Set
-#'   `batch_size` to 1 for sequential (one-by-one) file processing.
+#'   means that if `batch_size` is large, many files will not be processed. Set `batch_size` to 1
+#'   for sequential (one-by-one) file processing.
 #'
 #'   Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
 #'   `parallel` option is disabled. To get an indication of the progress so far, set one of the
-#'   [progressr::handlers()] using the `progressr` package, e.g.
-#'   `progressr::handlers(global = TRUE)` and `progressr::handlers('progress')`.
+#'   [progressr::handlers()] using the `progressr` package, e.g. `progressr::handlers(global =
+#'   TRUE)` and `progressr::handlers('progress')`.
 #'
 #' @section Parallel: This function supports parallel processing in the sense that it is able to
 #'   distribute it's computation load among multiple workers. To make use of this functionality, run
-#'   [future::plan()]`("multisession")` before calling this function.
+#'   \code{\href{https://rdrr.io/cran/future/man/plan.html}{future::plan("multisession")}} before
+#'   calling this function.
 #'
 #' @section Progress: You can be updated of the progress of this function by using the
 #'   [progressr::progress()] package. See `progressr`'s
@@ -46,8 +47,8 @@
 #'
 #'   `r lifecycle::badge("deprecated")`: As functions should not modify the user's workspace,
 #'   directly toggling parallel support has been deprecated. Please use
-#'   [future::plan()]`("multisession")` before calling this function to use multiple
-#'   workers.
+#'   \code{\href{https://rdrr.io/cran/future/man/plan.html}{future::plan("multisession")}} before
+#'   calling this function to use multiple workers.
 #'
 #' @returns A message indicating how many files were imported. Imported database can be reopened
 #'   using [open_db()].

@@ -43,8 +43,8 @@ this argument is a number, this indicates the number of workers that will be use
 
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: As functions should not modify the user's workspace,
 directly toggling parallel support has been deprecated. Please use
-\code{\link[future:plan]{future::plan()}}\code{("multisession")} before calling this function to use multiple
-workers.}
+\code{\href{https://rdrr.io/cran/future/man/plan.html}{future::plan("multisession")}} before
+calling this function to use multiple workers.}
 }
 \value{
 A message indicating how many files were imported. Imported database can be reopened
@@ -58,23 +58,23 @@ butter of this package, as it creates (or rather fills) the database that most o
 functions in this package use.
 }
 \details{
-\code{import} allows you to specify which sensors to import (even though there may be
-more in the files) and it also allows batching for a speedier writing process. If processing in
-parallel is active, it is recommended that \code{batch_size} be a scalar multiple of the number
-of CPU cores the parallel cluster can use. If a single JSON file in the batch causes and error,
+\code{import} allows you to specify which sensors to import (even though there may be more in
+the files) and it also allows batching for a speedier writing process. If processing in
+parallel is active, it is recommended that \code{batch_size} be a scalar multiple of the number of
+CPU cores the parallel cluster can use. If a single JSON file in the batch causes and error,
 the batch is terminated (but not the function) and it is up to the user to fix the file. This
-means that if \code{batch_size} is large, many files will not be processed. Set
-\code{batch_size} to 1 for sequential (one-by-one) file processing.
+means that if \code{batch_size} is large, many files will not be processed. Set \code{batch_size} to 1
+for sequential (one-by-one) file processing.
 
 Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
 \code{parallel} option is disabled. To get an indication of the progress so far, set one of the
-\code{\link[progressr:handlers]{progressr::handlers()}} using the \code{progressr} package, e.g.
-\code{progressr::handlers(global = TRUE)} and \code{progressr::handlers('progress')}.
+\code{\link[progressr:handlers]{progressr::handlers()}} using the \code{progressr} package, e.g. \code{progressr::handlers(global = TRUE)} and \code{progressr::handlers('progress')}.
 }
 \section{Parallel}{
  This function supports parallel processing in the sense that it is able to
 distribute it's computation load among multiple workers. To make use of this functionality, run
-\code{\link[future:plan]{future::plan()}}\code{("multisession")} before calling this function.
+\code{\href{https://rdrr.io/cran/future/man/plan.html}{future::plan("multisession")}} before
+calling this function.
 }
 
 \section{Progress}{
