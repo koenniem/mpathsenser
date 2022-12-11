@@ -1,6 +1,15 @@
 # mpathsenser 1.1.2
 ## Major changes
-* Added `continue` argument to `add_gaps` that controls whether the last measurement(s) should be 
+* `link()` gained 3 new arguments:
+  - `time`: The name of the column containing the timestamps in `x`.
+  - `end_time`: Optionally, the name of the column containing the end time in `x`. 
+  - `y_time`: The name of the column containing the timestamps in `y`.     
+Using `end_time`, it is now possible to specify custom time intervals instead of only fixed 
+intervals through `offset_before` or `offset_after`. Note that these two functionality cannot
+be specified at the same time.
+* `time` and `y_time` in `link()` must now be explicitly named, though for the time being default
+to 'time' with a warning.
+* Added `continue` argument to `add_gaps()` that controls whether the last measurement(s) should be 
 continued after a gap.
 * `link_db()` is now soft deprecated as it provides only marginal added functionality compared to 
 `link()`.
@@ -52,16 +61,16 @@ on the former. The following arguments are thereby rendered disabled:
 must now specify this beforehand using a [future plan](https://rdrr.io/cran/future/), e.g.
 `future::plan("multisession")`. As a consequence, the package `future` is no longer a dependency 
 (but `furrr` is).
-* Deprecated the `plot` argument in `coverage`. To plot a coverage chart, you can now use the 
-default `plot()` function with the output from `coverage`.
+* Deprecated the `plot` argument in `coverage()`. To plot a coverage chart, you can now use the 
+default `plot()` function with the output from `coverage()`.
 
 ## Minor changes
-* All functions gained basic argument checking, ensuring that at least the proper type has been 
-input.
+* All functions gained basic argument checking, ensuring that input arguments have at least the 
+proper type.
 * The package now provides more nicely formatted errors, warnings, and messages through 
 [`rlang::abort`, `rlang::warn`, and `rlang::inform`](https://rlang.r-lib.org/reference/abort.html).
 * Partially rewrote `import()` to be more manageable in code. As a consequence, the dependency on 
-`rjson` and `dbx` can be dropped in favour of jsonlite and native SQL. 
+`rjson` and `dbx` can be dropped in favour of `jsonlite` and native SQL. 
 * Added `lifecycle` as a dependency for deprecating arguments.
 * Added a warning section in `identify_gaps()` and friends to inform the user of a possible 
 inconsistency when identifying gaps. 
@@ -82,35 +91,35 @@ defaulting to the `n`th result (default 1).
 # mpathsenser 1.1.0
 ## Major changes
 * Added several functions:
-  - `link_gaps`: For linking gap data to other data, i.e. how many gaps occur within an interval.
-  - `add_gaps`: To interleave gaps with other data.
-  - `bin_data`: To subdivide data into bins, e.g. all measurements within an hour or day.
+  - `link_gaps()`: For linking gap data to other data, i.e. how many gaps occur within an interval.
+  - `add_gaps()`: To interleave gaps with other data.
+  - `bin_data()`: To subdivide data into bins, e.g. all measurements within an hour or day.
 * Added lifecycle badge to signal the state of functions.
-* `link` has been revised and expanded:
+* `link()` has been revised and expanded:
   - Replaced `offset` with `offset_before` and `offset_after`, allowing both to be specified at the 
   same time (#3).
   - Added new `add_before` and `add_after` argument to allow the last row before the measurement 
   and first row after the measurement respectively to be added to the data.
   - Added a new `split` argument, allowing computation to be split among many parts thereby
   lowering computational burden.
-* `app_category` is now case insensitive and gained the new argument "exact" to be able to match the
+* `app_category()` is now case insensitive and gained the new argument `exact` to be able to match the
 package name exactly based on a partial match.
 * Added a (start of a) vignette to further highlight the package use.
 
 ## Minor changes
-* Changed `get_activity` to `activity_duration`.
-* Changed `link2` to `link_db`.
+* Changed `get_activity()` to `activity_duration()`.
+* Changed `link2()` to `link_db()`.
 
 ## Bug fixes
-* Fixed issue where `link` runs out of memory when there are too many matches (#2). `link` is now 
-much more memory efficient and slightly faster.
-* Fixed issue in `get_data` which allowed multiple sensors to be requested from one function call, 
+* Fixed issue where `link()` runs out of memory when there are too many matches (#2). `link()` is 
+now much more memory efficient and slightly faster.
+* Fixed issue in `get_data()` which allowed multiple sensors to be requested from one function call, 
 sometimes leading to crashes (#4).
-* Fixed issue in `link` where column `original_time` is missing if no records before or after the 
+* Fixed issue in `link()` where column `original_time` is missing if no records before or after the 
 interval are found (#6).
-* Fixed a bug in import where sensor data not present in first file of the batch are dropped for the
-other files well.
-* Fixed app_category to work with the updated Google Play website.
+* Fixed a bug in `import()` where sensor data not present in first file of the batch are dropped 
+for the other files well.
+* Fixed `app_category()` to work with the updated Google Play website.
 
 # mpathsenser 1.0.3
 * Fix final tests not yet using TMPDIR
