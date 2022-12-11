@@ -1,10 +1,11 @@
 # mpathsenser 1.1.2
 ## Major changes
 * `link()` gained 3 new arguments:
-  - `time`: The name of the column containing the timestamps in `x`.
-  - `end_time`: Optionally, the name of the column containing the end time in `x`. 
-  - `y_time`: The name of the column containing the timestamps in `y`.     
-Using `end_time`, it is now possible to specify custom time intervals instead of only fixed 
+    - `time`: The name of the column containing the timestamps in `x`.
+    - `end_time`: Optionally, the name of the column containing the end time in `x`. 
+    - `y_time`: The name of the column containing the timestamps in `y`.
+    - `name`: The name of the nested `y` data, defaulting to `"data"`.      
+  Using `end_time`, it is now possible to specify custom time intervals instead of only fixed 
 intervals through `offset_before` or `offset_after`. Note that these two functionality cannot
 be specified at the same time.
 * `time` and `y_time` in `link()` must now be explicitly named, though for the time being default
@@ -33,6 +34,9 @@ by hour or day. These functions will be reimplemented (some with a different nam
 2.0.0.
 
 ## Minor changes
+* When `add_before` or `add_after` is `TRUE` in `link()`, no extra row is added if there already is 
+a row with a timestamp exactly equal to the start of the interval (for `add_before = TRUE`) or to 
+the end of the interval ⁠`(add_after = TRUE)`.
 * `moving_average()` now allows a lazy tibble to allow further computations in-database after 
 having called `moving_average()`.
 * `identify_gaps()` is now slightly more efficient.
@@ -41,13 +45,21 @@ functions will be made case insensitive.
 * When using `add_before = TRUE`, `link()` no longer adds an extra measurement if the first 
 measurement in the interval equals the start time of the interval exactly. 
 * `get_data()` now allows multiple `participant_id`s to be used.
+* `external_time` has been added as an argument to `link_db()`, to be able to specify the time 
+column in `external_data` in accordance with the change in `link()` above. 
 
-# Bugfixes
+## Bugfixes
 * `link()` now correctly handles natural joins (when `by = NULL`) and cross joins (when 
 `by = character()`).
+* The column `original_time` was not added for any other nested data row except the first one,
+if `add_before` or `add_after` was true.
 * `link()` no longer suffers from `future`'s max object restriction (500MB by default).
 * When `x` and `y` use different time zones in `link()` and `add_before = TRUE`, `link()` now 
 correctly leaves all time zones equal to the input. 
+* `link()` incorrectly assigned the time zone of `x` to the nested data of `y`, if `add_before` or
+`add_after` was true. This is now changed to the time zone of `y`, to ensure consistency. Note that
+if the time zones of `x` and `y` are different, matching will be correct but the nested data may
+seem off as it will keep `y`'s input time zone. 
 
 # mpathsenser 1.1.1
 ## Major changes
