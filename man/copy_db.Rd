@@ -16,19 +16,19 @@ copy_db(
 \item{source_db}{A mpathsenser database connection from where the data will be transferred.}
 
 \item{target_db}{A mpathsenser database connection where the data will be transferred to.
-\link[mpathsenser]{create_db} to create a new database.}
+\code{\link[=create_db]{create_db()}} to create a new database.}
 
 \item{sensor}{A character vector containing one or multiple sensors. See
 \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
 sensors.}
 
-\item{path}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: This argument was used when database
-creation in \code{copy_db} was still supported. As this functionality is deprecated,
-\code{overwrite_db} is now ignored and will be removed in future versions.}
+\item{path}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: This argument was used when database creation in
+\code{\link[=copy_db]{copy_db()}} was still supported. As this functionality is deprecated, \code{overwrite_db} is now
+ignored and will be removed in future versions.}
 
 \item{db_name}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: Creating new databases on the fly has been
 deprecated as it is better to separate the two functions. You must now create a new database
-using \code{\link[mpathsenser]{create_db}} or reuse an existing one.}
+using \code{\link[=create_db]{create_db()}} or reuse an existing one.}
 }
 \value{
 No return value, called for side effects.

@@ -27,7 +27,7 @@ provided \code{key}.
 \section{Parallel}{
  This function supports parallel processing in the sense that it is able to
 distribute it's computation load among multiple workers. To make use of this functionality, run
-\code{\link[future]{plan}("multisession")} before calling this function.
+\code{\link[future:plan]{future::plan()}}\code{("multisession")} before calling this function.
 }
 
 \examples{

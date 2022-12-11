@@ -1,7 +1,7 @@
 #' Measurement frequencies per sensor
 #'
 #' A numeric vector containing (an example) of example measurement frequencies per sensor.
-#' Such input is needed for \link[mpathsenser]{coverage}.
+#' Such input is needed for [coverage()].
 #'
 #' @returns This vector contains the following
 #' information:

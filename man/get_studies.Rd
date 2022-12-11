@@ -7,7 +7,7 @@
 get_studies(db, lazy = FALSE)
 }
 \arguments{
-\item{db}{db A database connection, as created by \link[mpathsenser]{create_db}.}
+\item{db}{db A database connection, as created by \code{\link[=create_db]{create_db()}}.}
 
 \item{lazy}{Whether to evaluate lazily using \link[dbplyr]{dbplyr}.}
 }

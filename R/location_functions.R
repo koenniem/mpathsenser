@@ -5,7 +5,7 @@
 #'  By default, the latitude and longitude of the GPS data collected by m-Path Sense are encrypted
 #'  using an asymmetric curve25519 key to provide extra protection for these highly sensitive data.
 #'  This function takes a character vector and decrypts its longitude and latitude columns using the
-#'  provided \code{key}.
+#'  provided `key`.
 #'
 #'@inheritSection import Parallel
 #'

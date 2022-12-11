@@ -32,10 +32,10 @@ NULL to extract all sensor data.}
 
 \item{dbname}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: Creating new databases on the fly has been
 deprecated as it is better to separate the two functions. You must now create a new database
-using \code{\link[mpathsenser]{create_db}} or reuse an existing one.}
+using \code{\link[=create_db]{create_db()}} or reuse an existing one.}
 
 \item{overwrite_db}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: This argument was used when database
-creation in \code{import} was still supported. As this functionality is deprecated,
+creation in \code{\link[=import]{import()}} was still supported. As this functionality is deprecated,
 \code{overwrite_db} is now ignored and will be removed in future versions.}
 
 \item{parallel}{A value that indicates whether to do reading in and processing in parallel. If
@@ -43,12 +43,12 @@ this argument is a number, this indicates the number of workers that will be use
 
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: As functions should not modify the user's workspace,
 directly toggling parallel support has been deprecated. Please use
-\code{\link[future]{plan}("multisession")} before calling this function to use multiple
+\code{\link[future:plan]{future::plan()}}\code{("multisession")} before calling this function to use multiple
 workers.}
 }
 \value{
 A message indicating how many files were imported. Imported database can be reopened
-using \link[mpathsenser]{open_db}.
+using \code{\link[=open_db]{open_db()}}.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
@@ -68,18 +68,18 @@ means that if \code{batch_size} is large, many files will not be processed. Set
 
 Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
 \code{parallel} option is disabled. To get an indication of the progress so far, set one of the
-\link[progressr]{handlers} using the \code{progressr} package, e.g.
+\code{\link[progressr:handlers]{progressr::handlers()}} using the \code{progressr} package, e.g.
 \code{progressr::handlers(global = TRUE)} and \code{progressr::handlers('progress')}.
 }
 \section{Parallel}{
  This function supports parallel processing in the sense that it is able to
 distribute it's computation load among multiple workers. To make use of this functionality, run
-\code{\link[future]{plan}("multisession")} before calling this function.
+\code{\link[future:plan]{future::plan()}}\code{("multisession")} before calling this function.
 }
 
 \section{Progress}{
  You can be updated of the progress of this function by using the
-\code{\link[progressr]{progress}} package. See \code{progressr}'s
+\code{\link[progressr:progress]{progressr::progress()}} package. See \code{progressr}'s
 \href{https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html}{vignette} on
 how to subscribe to these updates.
 }

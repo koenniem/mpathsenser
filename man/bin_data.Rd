@@ -111,5 +111,5 @@ out \%>\%
   dplyr::summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
 }
 \seealso{
-\code{\link[mpathsenser]{link_gaps}} for linking gaps to data.
+\code{\link[=link_gaps]{link_gaps()}} for linking gaps to data.
 }

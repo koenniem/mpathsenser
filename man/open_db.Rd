@@ -18,8 +18,6 @@ A connection to an mpathsenser database.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
 \seealso{
-\code{\link[mpathsenser]{close_db}} for closing a database;
-\code{\link[mpathsenser]{copy_db}} for copying (part of) a database;
-\code{\link[mpathsenser]{index_db}} for indexing a database;
-\code{\link[mpathsenser]{get_data}} for extracting data from a database.
+\code{\link[=close_db]{close_db()}} for closing a database; \code{\link[=copy_db]{copy_db()}} for copying (part of) a database;
+\code{\link[=index_db]{index_db()}} for indexing a database; \code{\link[=get_data]{get_data()}} for extracting data from a database.
 }

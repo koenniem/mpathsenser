@@ -10,14 +10,14 @@ close_db(db)
 \item{db}{A database connection to an m-Path Sense database.}
 }
 \value{
-\code{close_db} returns invisibly regardless of whether the database is active, valid,
+Returns invisibly regardless of whether the database is active, valid,
 or even exists.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
+This is a convenience function that is simply a wrapper around \code{\link[DBI:dbDisconnect]{DBI::dbDisconnect()}}.
 }
 \seealso{
-\code{\link[mpathsenser]{open_db}} for opening an mpathsenser database.
+\code{\link[=open_db]{open_db()}} for opening an mpathsenser database.
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/database.R
 \name{index_db}
 \alias{index_db}
-\title{Create indexes for a mpathsenser database}
+\title{Create indexes for an mpathsenser database}
 \usage{
 index_db(db)
 }

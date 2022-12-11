@@ -29,6 +29,6 @@ information:\tabular{lll}{
 }
 \description{
 A numeric vector containing (an example) of example measurement frequencies per sensor.
-Such input is needed for \link[mpathsenser]{coverage}.
+Such input is needed for \code{\link[=coverage]{coverage()}}.
 }
 \keyword{datasets}
