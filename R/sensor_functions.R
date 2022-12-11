@@ -301,11 +301,27 @@ app_category_impl <- function(name, num, exact) {
   list(package = gsub("^.+?(?<=\\?id=)", "", link, perl = TRUE), genre = genre)
 }
 
+#' Get the device info for one or more participants
+#'
+#' @description
+#' `r lifecycle::badge("stable")`
+#'
+#' @inheritParams get_data
+#'
+#' @returns A tibble containing device info for each participant
+#' @export
+device_info <- function(db, participant_id = NULL) {
+  get_data(db, "Device", participant_id = participant_id) %>%
+    select("participant_id", "device_id":"platform") %>%
+    distinct() %>%
+    collect()
+}
+
 # nocov start
 #' Get app usage per hour
 #'
 #' @description
-#' `r lifecycle::badge("experimental")`
+#' `r lifecycle::badge("deprecated")`
 #'
 #' This function extracts app usage per hour for either one or multiple participants. If multiple
 #' days are selected, the app usage time is averaged.
@@ -320,6 +336,15 @@ app_usage <- function(db,
                       start_date = NULL,
                       end_date = NULL,
                       by = c("Total", "Day", "Hour")) {
+
+  lifecycle::deprecate_stop(when = "1.1.2",
+                            what = "app_usage()",
+                            details = c(
+                              i = paste("`app_usage()` is defunctional for now, as it",
+                                        "is unclear how this function should behave."),
+                              i = "It will be reimplemented in mpathsenser 2.0.0."
+                            ))
+
   check_db(db)
   check_arg(by, "character", n = 1)
 
@@ -369,7 +394,7 @@ app_usage <- function(db,
 #' Get a summary of physical activity (recognition)
 #'
 #' @description
-#' `r lifecycle::badge("experimental")`
+#' `r lifecycle::badge("deprecated")`
 #'
 #' @inheritParams get_data
 #' @param data A data frame containing the activity data. See \link[mpathsenser]{get_data} for
@@ -391,6 +416,14 @@ activity_duration <- function(data = NULL,
                               start_date = NULL,
                               end_date = NULL,
                               by = c("Total", "Day", "Hour")) {
+  lifecycle::deprecate_stop(when = "1.1.2",
+                            what = "activity_duration()",
+                            details = c(
+                              i = paste("`activity_duration()` is defunctional for now, as it",
+                                        "is unclear how this function should behave."),
+                              i = "It will be reimplemented in mpathsenser 2.0.0."
+                            ))
+
   check_arg(data, "data.frame", allow_null = TRUE)
   check_db(db, allow_null = TRUE)
   check_arg(confidence, "numeric", n = 1)
@@ -441,25 +474,7 @@ activity_duration <- function(data = NULL,
     summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop") %>%
     collect()
 }
-# nocov end
 
-#' Get the device info for one or more participants
-#'
-#' @description
-#' `r lifecycle::badge("stable")`
-#'
-#' @inheritParams get_data
-#'
-#' @returns A tibble containing device info for each participant
-#' @export
-device_info <- function(db, participant_id = NULL) {
-  get_data(db, "Device", participant_id = participant_id) %>%
-    select("participant_id", "device_id":"platform") %>%
-    distinct() %>%
-    collect()
-}
-
-# nocov start
 compress_activity <- function(data, direction = "forward") {
   data %>%
     arrange("date", "time") %>%
@@ -469,7 +484,7 @@ compress_activity <- function(data, direction = "forward") {
 #' Screen duration by hour or day
 #'
 #' @description
-#' `r lifecycle::badge("experimental")`
+#' `r lifecycle::badge("deprecated")`
 #'
 #' Calculate the screen duration time where the screen was _unlocked_ (i.e. not just on).
 #'
@@ -486,7 +501,14 @@ screen_duration <- function(db,
                             start_date = NULL,
                             end_date = NULL,
                             by = c("Hour", "Day")) {
-  lifecycle::signal_stage("experimental", "screen_duration()")
+  lifecycle::deprecate_stop(when = "1.1.2",
+                            what = "screen_duration()",
+                            details = c(
+                              i = paste("`screen_duration()` is defunctional for now, as it",
+                                        "is unclear how this function should behave."),
+                              i = "It will be reimplemented in mpathsenser 2.0.0."
+                            ))
+
   check_db(db)
   check_arg(by, "character", n = 1, allow_null = TRUE)
 
@@ -545,12 +567,19 @@ n_screen_on <- function(db,
                         start_date = NULL,
                         end_date = NULL,
                         by = c("Total", "Hour", "Day")) {
+  # lifecycle::deprecate_stop(when = "1.1.2",
+  #                           what = "n_screen_on()",
+  #                           with = "screen_on()",
+  #                           details = c(
+  #                             i = paste("Note that the functionality of `screen_on()`",
+  #                                       "has changed significantly.")
+  #                           ))
   lifecycle::deprecate_stop(when = "1.1.2",
                             what = "n_screen_on()",
-                            with = "screen_on()",
                             details = c(
-                              i = paste("Note that the functionality of `screen_on()`",
-                                        "has changed significantly.")
+                              i = paste("`n_screen_on()` is defunctional for now, as it",
+                                        "is unclear how this function should behave."),
+                              i = "It will be reimplemented in mpathsenser 2.0.0."
                             ))
 }
 
@@ -572,12 +601,19 @@ n_screen_unlocks <- function(db,
                              start_date = NULL,
                              end_date = NULL,
                              by = c("Total", "Hour", "Day")) {
+  # lifecycle::deprecate_stop(when = "1.1.2",
+  #                           what = "n_screen_unlocks()",
+  #                           with = "screen_unlocks()",
+  #                           details = c(
+  #                             i = paste("Note that the functionality of `screen_unlocks()`",
+  #                                       "has changed significantly.")
+  #                           ))
   lifecycle::deprecate_stop(when = "1.1.2",
                             what = "n_screen_unlocks()",
-                            with = "screen_unlocks()",
                             details = c(
-                              i = paste("Note that the functionality of `screen_unlocks()`",
-                                        "has changed significantly.")
+                              i = paste("`n_screen_unlocks()` is defunctional for now, as it",
+                                        "is unclear how this function should behave."),
+                              i = "It will be reimplemented in mpathsenser 2.0.0."
                             ))
 }
 
@@ -594,7 +630,13 @@ n_screen_unlocks <- function(db,
 #' @returns A tibble with the 'date', 'hour', and the number of 'steps'.
 #' @keywords internal
 step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = NULL) {
-  lifecycle::signal_stage("experimental", "step_count()")
+  lifecycle::deprecate_stop(when = "1.1.2",
+                            what = "step_count()",
+                            details = c(
+                              i = paste("`step_count()` is defunctional for now, as it",
+                                        "is unclear how this function should behave."),
+                              i = "It will be reimplemented in mpathsenser 2.0.0."
+                            ))
   check_db(db)
 
   get_data(db, "Pedometer", participant_id, start_date, end_date) %>%

@@ -19,9 +19,18 @@ Also, parallelisation has been added similar to other functions in this package 
 a [future plan](https://rdrr.io/cran/future/), e.g.`future::plan("multisession")`).
 
 ## Deprecations
-* `n_screen_on()` and `n_screen_unlocks()` are now (in addition to being internal) also defunct. 
-Like `activity_duration()`, `screen_duration()`, and `step_count()`, their functionality will be 
-replaced by new versions in mpathsenser 2.0.0.
+The following functions are now made defunctional and internal:
+
+* `activity_duration()`
+* `app_usage()`
+* `n_screen_on()`
+* `n_screen_unlocks()`
+* `screen_duration()`, 
+* `step_count()` 
+
+These functions delivered incorrect output and only allowed summaries by a fixed time frame, e.g.
+by hour or day. These functions will be reimplemented (some with a different name) in mpathsenser 
+2.0.0.
 
 ## Minor changes
 * `moving_average()` now allows a lazy tibble to allow further computations in-database after 

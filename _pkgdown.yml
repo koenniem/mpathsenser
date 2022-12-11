@@ -48,8 +48,15 @@ reference:
       - get_processed_files
       - get_studies
       - get_nrows
+      - first_date
+      - last_date
 
-  - title: Analysis
+  - title: Coverage chart
+    contents:
+      - coverage
+      - plot.coverage
+
+  - title: Data transformation
     contents:
       - link
       - link_db
@@ -57,25 +64,16 @@ reference:
       - identify_gaps
       - add_gaps
       - bin_data
-      - coverage
       - moving_average
-      - first_date
-      - last_date
-      - haversine      
 
   - title: Sensor-specific functions
     contents:
       - device_info
       - app_category
-      - activity_duration
       - installed_apps
       - decrypt_gps
+      - haversine
       - geocode_rev
-      - app_usage
-      - n_screen_on
-      - n_screen_unlocks
-      - screen_duration
-      - step_count
 
   - title: Miscelaneous
     contents:
