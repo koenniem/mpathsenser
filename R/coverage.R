@@ -191,7 +191,6 @@ coverage <- function(db,
 #' @seealso [coverage()]
 #' @returns A [ggplot2::ggplot] object.
 #' @export
-#' @keywords internal
 plot.coverage <- function(x, ...) {
   ensure_suggested_package("ggplot2")
 
