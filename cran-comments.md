@@ -1,3 +1,6 @@
+## Resubmission
+This is a resubmission. The previous submission inadvertently used \href tags inside of \code blocks.
+
 ## Test environments
 * local Windows 10 install, R 4.2.2
 * Fedora Linux (on R-hub) R-devel
@@ -17,5 +20,5 @@ We checked 0 reverse dependencies, comparing R CMD check results across CRAN and
 
 Best wishes,
 
-Koen Niemeijer\
+Koen Niemeijer  
 Package Maintainer

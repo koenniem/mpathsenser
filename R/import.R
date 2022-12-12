@@ -21,7 +21,7 @@
 #'
 #' @section Parallel: This function supports parallel processing in the sense that it is able to
 #'   distribute it's computation load among multiple workers. To make use of this functionality, run
-#'   \code{\href{https://rdrr.io/cran/future/man/plan.html}{future::plan("multisession")}} before
+#'   \href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
 #'   calling this function.
 #'
 #' @section Progress: You can be updated of the progress of this function by using the
@@ -47,7 +47,7 @@
 #'
 #'   `r lifecycle::badge("deprecated")`: As functions should not modify the user's workspace,
 #'   directly toggling parallel support has been deprecated. Please use
-#'   \code{\href{https://rdrr.io/cran/future/man/plan.html}{future::plan("multisession")}} before
+#'   \href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
 #'   calling this function to use multiple workers.
 #'
 #' @returns A message indicating how many files were imported. Imported database can be reopened

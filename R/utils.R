@@ -362,7 +362,7 @@ test_jsons <- function(path = getwd(),
 #'   files will then be unzipped in their respective subdirectory.
 #' @param parallel A logical value whether you want to check in parallel. Useful when there are a
 #'   lot of files. If you have already used
-#'   \code{\href{https://rdrr.io/cran/future/man/plan.html}{future::plan("multisession")}}, you can
+#'   \href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}}, you can
 #'   leave this parameter to \code{FALSE}.
 #'
 #'   `r lifecycle::badge("deprecated")` As functions should not modify the user's workspace,

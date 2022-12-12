@@ -57,7 +57,7 @@ hand.
 \section{Parallel}{
  This function supports parallel processing in the sense that it is able to
 distribute it's computation load among multiple workers. To make use of this functionality, run
-\code{\href{https://rdrr.io/cran/future/man/plan.html}{future::plan("multisession")}} before
+\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
 calling this function.
 }
 

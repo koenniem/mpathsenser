@@ -43,7 +43,7 @@ this argument is a number, this indicates the number of workers that will be use
 
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: As functions should not modify the user's workspace,
 directly toggling parallel support has been deprecated. Please use
-\code{\href{https://rdrr.io/cran/future/man/plan.html}{future::plan("multisession")}} before
+\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
 calling this function to use multiple workers.}
 }
 \value{
@@ -73,7 +73,7 @@ Currently, only SQLite is supported as a backend. Due to its concurrency restric
 \section{Parallel}{
  This function supports parallel processing in the sense that it is able to
 distribute it's computation load among multiple workers. To make use of this functionality, run
-\code{\href{https://rdrr.io/cran/future/man/plan.html}{future::plan("multisession")}} before
+\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
 calling this function.
 }
 
