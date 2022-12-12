@@ -1,3 +1,22 @@
+# mpathsenser (in development)
+This is a release with breaking changes. Please review carefully before updating.
+
+## Major changes
+
+## Deprecations
+* Removed deprecated `parallel` argument in `fix_jsons()`, `test_jsons()`, `unzip_data()`, and
+`import()`.
+* Removed deprecated `overwrite_db` and `dbname` arguments from `import()`.`
+* Remove deprecated  `path` and `db_name` arguments from `copy_db()`.
+
+## Minor changes
+* Changed `link_db()` lifecycle status to deprecated as `link_db()` depends on `link()`. Eventually,
+`link()` might see changes in its functionality that will cause `link_db()` to break, so it's 
+better to deprecate it already to motivate users to stop using this function.
+
+## Bugfixes
+* Fix cross-reference to undeclared package ‘future’ in documentation.
+
 # mpathsenser 1.1.2
 ## Major changes
 * `link()` gained 3 new arguments:

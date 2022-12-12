@@ -187,39 +187,12 @@ vacuum_db <- function(db) {
 #' @param sensor A character vector containing one or multiple sensors. See
 #'   \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
 #'   sensors.
-#' @param path  `r lifecycle::badge("deprecated")`: This argument was used when database creation in
-#'   [copy_db()] was still supported. As this functionality is deprecated, `overwrite_db` is now
-#'   ignored and will be removed in future versions.
-#' @param db_name  `r lifecycle::badge("deprecated")`: Creating new databases on the fly has been
-#'   deprecated as it is better to separate the two functions. You must now create a new database
-#'   using [create_db()] or reuse an existing one.
 #'
 #' @returns No return value, called for side effects.
 #' @export
 copy_db <- function(source_db,
                     target_db,
-                    sensor = "All",
-                    path = deprecated(),
-                    db_name = deprecated()) {
-  # Handle old database creation functionality
-  if (lifecycle::is_present(path)) {
-    lifecycle::deprecate_warn(
-      when = "1.1.1",
-      what = "copy_db(path)",
-      details = c(
-        i = "Please create a database using `create_db()` first."
-      )
-    )
-  }
-  if (lifecycle::is_present(db_name)) {
-    lifecycle::deprecate_stop(
-      when = "1.1.1",
-      what = "copy_db(db_name)",
-      details = c(
-        i = "Please create a database using `create_db()` first."
-      )
-    )
-  }
+                    sensor = "All") {
 
   check_db(source_db, arg = "source_db")
   check_db(target_db, arg = "target_db")
@@ -261,6 +234,7 @@ copy_db <- function(source_db,
   return(invisible(TRUE))
 }
 
+#' @noRd
 add_study <- function(db, study_id, data_format) {
   check_db(db)
 
@@ -274,6 +248,7 @@ add_study <- function(db, study_id, data_format) {
   )
 }
 
+#' @noRd
 add_participant <- function(db, participant_id, study_id) {
   check_db(db)
 
@@ -287,6 +262,7 @@ add_participant <- function(db, participant_id, study_id) {
   )
 }
 
+#' @noRd
 add_processed_files <- function(db, file_name, study_id, participant_id) {
   check_db(db)
 
@@ -304,6 +280,7 @@ add_processed_files <- function(db, file_name, study_id, participant_id) {
   )
 }
 
+#' @noRd
 clear_sensors_db <- function(db) {
   check_db(db)
   res <- lapply(sensors, function(x) dbExecute(db, paste0("DELETE FROM ", x, " WHERE 1;")))

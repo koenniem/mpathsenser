@@ -4,13 +4,7 @@
 \alias{test_jsons}
 \title{Test JSON files for being in the correct format.}
 \usage{
-test_jsons(
-  path = getwd(),
-  files = NULL,
-  db = NULL,
-  recursive = TRUE,
-  parallel = deprecated()
-)
+test_jsons(path = getwd(), files = NULL, db = NULL, recursive = TRUE)
 }
 \arguments{
 \item{path}{The path name of the JSON files.}
@@ -21,20 +15,10 @@ test_jsons(
 files are already in the database and check only those JSON files which are not.}
 
 \item{recursive}{Should the listing recurse into directories?}
-
-\item{parallel}{A logical value whether you want to check in parallel. Useful when there are a
-lot of files. If you have already used \code{\link[future]{plan}}, you can leave this parameter
-to \code{FALSE}.
-
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} As functions should not modify the user's workspace,
-directly toggling parallel support has been deprecated. Please use
-\code{\link[future]{plan}("multisession")} before calling this function to use multiple
-workers.}
 }
 \value{
-A message indicating whether there were any issues and a character vector of
-the file names that need to be fixed. If there were no issues, an invisible empty string is
-returned.
+A message indicating whether there were any issues and a character vector of the file
+names that need to be fixed. If there were no issues, an invisible empty string is returned.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}

@@ -75,12 +75,6 @@ ccopy <- function(from,
 #' @param path The path name of the JSON files.
 #' @param files Alternatively, a character list of the input files
 #' @param recursive Should the listing recurse into directories?
-#' @param parallel A logical value whether you want to check in parallel. Useful for a lot of files.
-#'
-#'   `r lifecycle::badge("deprecated")` As functions should not modify the user's workspace,
-#'   directly toggling parallel support has been deprecated. Please use
-#'   \code{\link[future]{plan}("multisession")} before calling this function to use multiple
-#'   workers.
 #'
 #' @return A message indicating how many files were fixed.
 #' @export
@@ -92,8 +86,7 @@ ccopy <- function(from,
 #' }
 fix_jsons <- function(path = getwd(),
                       files = NULL,
-                      recursive = TRUE,
-                      parallel = deprecated()) {
+                      recursive = TRUE) {
   ensure_suggested_package("vroom")
 
   check_arg(path, "character", n = 1, allow_null = TRUE)
@@ -118,17 +111,6 @@ fix_jsons <- function(path = getwd(),
     jsonfiles <- normalizePath(file.path(path, files), mustWork = TRUE)
   } else {
     jsonfiles <- normalizePath(file.path(files), mustWork = TRUE)
-  }
-
-  # Old parallel argument
-  if (lifecycle::is_present(parallel)) {
-    lifecycle::deprecate_warn(
-      when = "1.1.1",
-      what = "fix_jsons(parallel)",
-      details = c(
-        i = "Use future::plan(\"multisession\") instead"
-      )
-    )
   }
 
   if (length(jsonfiles > 0)) {
@@ -259,24 +241,14 @@ fix_eof <- function(file, eof, lines) {
 #' @param db A mpathsenser database connection (optional). If provided, will be used to check which
 #'   files are already in the database and check only those JSON files which are not.
 #' @param recursive Should the listing recurse into directories?
-#' @param parallel A logical value whether you want to check in parallel. Useful when there are a
-#'   lot of files. If you have already used \code{\link[future]{plan}}, you can leave this parameter
-#'   to \code{FALSE}.
 #'
-#'   `r lifecycle::badge("deprecated")` As functions should not modify the user's workspace,
-#'   directly toggling parallel support has been deprecated. Please use
-#'   \code{\link[future]{plan}("multisession")} before calling this function to use multiple
-#'   workers.
-#'
-#' @return A message indicating whether there were any issues and a character vector of
-#'   the file names that need to be fixed. If there were no issues, an invisible empty string is
-#'   returned.
+#' @return A message indicating whether there were any issues and a character vector of the file
+#'   names that need to be fixed. If there were no issues, an invisible empty string is returned.
 #' @export
 test_jsons <- function(path = getwd(),
                        files = NULL,
                        db = NULL,
-                       recursive = TRUE,
-                       parallel = deprecated()) {
+                       recursive = TRUE) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
   check_arg(files, "character", allow_null = TRUE)
   check_arg(recursive, "logical", n = 1)
@@ -305,17 +277,6 @@ test_jsons <- function(path = getwd(),
   if (!is.null(db)) {
     processed_files <- get_processed_files(db)
     jsonfiles <- jsonfiles[!(jsonfiles %in% processed_files$file_name)]
-  }
-
-  # Old parallel argument
-  if (lifecycle::is_present(parallel)) {
-    lifecycle::deprecate_warn(
-      when = "1.1.1",
-      what = "test_jsons(parallel)",
-      details = c(
-        i = "Use future::plan(\"multisession\") instead."
-      )
-    )
   }
 
   if (requireNamespace("progressr", quietly = TRUE)) {
@@ -360,23 +321,13 @@ test_jsons <- function(path = getwd(),
 #' @param overwrite Logical value whether you want to overwrite already existing zip files.
 #' @param recursive Logical value indicating whether to unzip files in subdirectories as well. These
 #'   files will then be unzipped in their respective subdirectory.
-#' @param parallel A logical value whether you want to check in parallel. Useful when there are a
-#'   lot of files. If you have already used
-#'   \href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}}, you can
-#'   leave this parameter to \code{FALSE}.
-#'
-#'   `r lifecycle::badge("deprecated")` As functions should not modify the user's workspace,
-#'   directly toggling parallel support has been deprecated. Please use
-#'   \code{\link[future]{plan}("multisession")} before calling this function to use multiple
-#'   workers.
 #'
 #' @return A message indicating how many files were unzipped.
 #' @export
 unzip_data <- function(path = getwd(),
                        to = NULL,
                        overwrite = FALSE,
-                       recursive = TRUE,
-                       parallel = deprecated()) {
+                       recursive = TRUE) {
   check_arg(path, "character", n = 1)
   check_arg(to, "character", allow_null = TRUE, n = 1)
   check_arg(overwrite, "logical", n = 1)
@@ -384,17 +335,6 @@ unzip_data <- function(path = getwd(),
 
   if (is.null(to)) {
     to <- path
-  }
-
-  # Old parallel argument
-  if (lifecycle::is_present(parallel)) {
-    lifecycle::deprecate_warn(
-      when = "1.1.1",
-      what = "unzip_data(parallel)",
-      details = c(
-        i = "Use future::plan(\"multisession\") instead"
-      )
-    )
   }
 
   unzipped_files <- 0

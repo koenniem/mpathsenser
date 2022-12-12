@@ -4,12 +4,7 @@
 \alias{fix_jsons}
 \title{Fix the end of JSON files}
 \usage{
-fix_jsons(
-  path = getwd(),
-  files = NULL,
-  recursive = TRUE,
-  parallel = deprecated()
-)
+fix_jsons(path = getwd(), files = NULL, recursive = TRUE)
 }
 \arguments{
 \item{path}{The path name of the JSON files.}
@@ -17,13 +12,6 @@ fix_jsons(
 \item{files}{Alternatively, a character list of the input files}
 
 \item{recursive}{Should the listing recurse into directories?}
-
-\item{parallel}{A logical value whether you want to check in parallel. Useful for a lot of files.
-
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} As functions should not modify the user's workspace,
-directly toggling parallel support has been deprecated. Please use
-\code{\link[future]{plan}("multisession")} before calling this function to use multiple
-workers.}
 }
 \value{
 A message indicating how many files were fixed.

@@ -3,6 +3,10 @@
 
 # mpathsenser <a href='https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/index.html'><img src='man/figures/logo.png' align="right" height="139" /></a>
 
+[![Project Status: Active – The project has reached a stable, usable
+state and is being actively
+developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+
 ## Installing the package
 
 You can install the latest version of `mpathsenser` from CRAN:

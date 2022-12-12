@@ -36,19 +36,6 @@
 #' @param batch_size The number of files that are to be processed in a single batch.
 #' @param backend Name of the database backend that is used. Currently, only RSQLite is supported.
 #' @param recursive Should the listing recurse into directories?
-#' @param dbname `r lifecycle::badge("deprecated")`: Creating new databases on the fly has been
-#'   deprecated as it is better to separate the two functions. You must now create a new database
-#'   using [create_db()] or reuse an existing one.
-#' @param overwrite_db `r lifecycle::badge("deprecated")`: This argument was used when database
-#'   creation in [import()] was still supported. As this functionality is deprecated,
-#'   \code{overwrite_db} is now ignored and will be removed in future versions.
-#' @param parallel A value that indicates whether to do reading in and processing in parallel. If
-#'   this argument is a number, this indicates the number of workers that will be used.
-#'
-#'   `r lifecycle::badge("deprecated")`: As functions should not modify the user's workspace,
-#'   directly toggling parallel support has been deprecated. Please use
-#'   \href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
-#'   calling this function to use multiple workers.
 #'
 #' @returns A message indicating how many files were imported. Imported database can be reopened
 #'   using [open_db()].
@@ -58,43 +45,7 @@ import <- function(path = getwd(),
                    sensors = NULL,
                    batch_size = 24,
                    backend = "RSQLite",
-                   recursive = TRUE,
-                   dbname = deprecated(),
-                   overwrite_db = deprecated(),
-                   parallel = deprecated()) {
-  # Handle old dbname argument
-  if (lifecycle::is_present(dbname)) {
-    lifecycle::deprecate_stop(
-      when = "1.1.1",
-      what = "import(dbname)",
-      details = c(
-        i = "Please create a database using `create_db()` first."
-      )
-    )
-  }
-
-  # Handle old overwrite argument
-  if (lifecycle::is_present(overwrite_db)) {
-    lifecycle::deprecate_warn(
-      when = "1.1.1",
-      what = "import(overwrite_db)",
-      details = c(
-        "*" = "`import()` no longer supports the ability to create databases.",
-        i = "Argument `overwrite_db` is ignored."
-      )
-    )
-  }
-
-  # Handle old parallel argument
-  if (lifecycle::is_present(parallel)) {
-    lifecycle::deprecate_warn(
-      when = "1.1.1",
-      what = "import(parallel)",
-      details = c(
-        i = "Use future::plan(\"multisession\") instead"
-      )
-    )
-  }
+                   recursive = TRUE) {
 
   # Check arguments
   check_arg(path, type = "character", n = 1)

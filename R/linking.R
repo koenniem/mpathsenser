@@ -129,7 +129,7 @@ link_impl <- function(x,
     # proto not to be applied (since it's not null)
     if (nrow(data_main) > 0) {
       # Add column original_time in cases where it's missing
-      for (i in 1:nrow(data_main)) {
+      for (i in seq_len(nrow(data_main))) {
         if (!any("original_time" == colnames(pull(data_main, dplyr::all_of(name))[[i]]))) {
           data_main$data[[i]]$original_time <- as.POSIXct(NA, tz = tz)
         }
@@ -461,7 +461,7 @@ link <- function(x,
 
 #' Link two sensors OR one sensor and an external data frame using an mpathsenser database
 #'
-#' @description `r lifecycle::badge("superseded")`
+#' @description `r lifecycle::badge("deprecated")`
 #'
 #'   This function is specific to mpathsenser databases. It is a wrapper around [link()] but
 #'   extracts data in the database for you. It is now soft deprecated as I feel this function's use
@@ -502,7 +502,7 @@ link_db <- function(db,
                     reverse = FALSE,
                     ignore_large = FALSE) {
   # Soft deprecate warning
-  lifecycle::deprecate_soft("1.1.2", "link_db()", "link()")
+  lifecycle::deprecate_warn("1.1.2", "link_db()", "link()")
 
   check_db(db)
   check_arg(sensor_one, type = "character", n = 1)

@@ -337,58 +337,6 @@ app_usage <- function(db,
                       end_date = NULL,
                       by = c("Total", "Day", "Hour")) {
 
-  lifecycle::deprecate_stop(when = "1.1.2",
-                            what = "app_usage()",
-                            details = c(
-                              i = paste("`app_usage()` is defunctional for now, as it",
-                                        "is unclear how this function should behave."),
-                              i = "It will be reimplemented in mpathsenser 2.0.0."
-                            ))
-
-  check_db(db)
-  check_arg(by, "character", n = 1)
-
-  if (!is.null(start_date) && is.null(end_date)) {
-    end_date <- start_date
-  }
-  data <- get_data(db, "AppUsage", participant_id, start_date, end_date) %>%
-    mutate(time = paste(.data$date, .data$time)) %>%
-    select("time", "app", "usage") %>%
-    collect() %>%
-    drop_na("app", "usage")
-
-
-  if (is.null(by)) {
-    data <- data %>%
-      slice(n()) %>%
-      mutate(usage = .data$usage / 60 / 60)
-  } else if (by[1] == "Total" || by[1] == "total") {
-    data <- data %>%
-      slice(n()) %>%
-      mutate(usage = .data$usage / 60 / 60) %>%
-      group_by(.data$app) %>%
-      summarise(usage = round(mean(.data$usage), 2), .groups = "drop")
-  } else if (by[1] == "Hour" || by[1] == "hour") {
-    data <- data %>%
-      mutate(prev_usage = lag(.data$usage, default = 0)) %>%
-      mutate(hour = substr(.data$time, 1, 2)) %>%
-      group_by(.data$date, .data$app) %>%
-      mutate(duration = .data$usage - .data$prev_usage) %>%
-      group_by(.data$hour, .data$date, .data$app) %>%
-      summarise(usage = .data$usage / 60 / 60, .groups = "drop") %>%
-      mutate(hour = as.numeric(.data$hour)) %>%
-      complete(hour = 0:23, .data$app, fill = list(n = 0))
-  } else if (by[1] == "Day" || by[1] == "day") {
-    data <- data %>%
-      slice(n()) %>%
-      mutate(usage = round(.data$usage / 60 / 60, 2))
-  } else {
-    # Default case
-    data <- data %>%
-      slice(n()) %>%
-      mutate(usage = .data$usage / 60 / 60)
-  }
-  return(data)
 }
 
 #' Get a summary of physical activity (recognition)
@@ -416,65 +364,10 @@ activity_duration <- function(data = NULL,
                               start_date = NULL,
                               end_date = NULL,
                               by = c("Total", "Day", "Hour")) {
-  lifecycle::deprecate_stop(when = "1.1.2",
-                            what = "activity_duration()",
-                            details = c(
-                              i = paste("`activity_duration()` is defunctional for now, as it",
-                                        "is unclear how this function should behave."),
-                              i = "It will be reimplemented in mpathsenser 2.0.0."
-                            ))
 
-  check_arg(data, "data.frame", allow_null = TRUE)
-  check_db(db, allow_null = TRUE)
-  check_arg(confidence, "numeric", n = 1)
-  check_arg(direction, "character", n = 1)
-  check_arg(by, "character", n = 1, allow_null = TRUE)
-
-  if (is.null(data) && is.null(db)) {
-    abort("Either data or db must be specified")
-  }
-
-  if (!is.null(data) && !is.null(db)) {
-    abort("Either data or db must be specified, but not both")
-  }
-
-  if (!is.null(data)) {
-
-  } else {
-    data <- get_data(db, "Activity", participant_id, start_date, end_date) %>%
-      filter(.data$confidence >= .data$confidence) %>%
-      compress_activity() %>%
-      mutate(datetime = paste(.data$date, .data$time))
-  }
-
-  if (tolower(direction) == "forward" || tolower(direction) == "forwards") {
-    data <- data %>%
-      mutate(duration = strftime("%s", lead(.data$datetime)) - strftime("%s", .data$datetime))
-  } else if (tolower(direction) == "backward" || tolower(direction) == "backwards") {
-    data <- data %>%
-      mutate(duration = strftime("%s", .data$datetime) - strftime("%s", lag(.data$datetime)))
-  } else {
-    abort("Invalid direction")
-  }
-
-  if (is.null(by) || missing(by) || by[1] == "total" || by[1] == "Total") {
-    data <- group_by(data, .data$type)
-  } else if (by[1] == "Hour") {
-    data <- data %>%
-      mutate(hour = substr(.data$time, 1, 2)) %>%
-      group_by(.data$type, .data$date, .data$hour)
-  } else if (by[1] == "Day") {
-    data <- group_by(data, .data$type, .data$date)
-  } else {
-    # Default case
-    data <- group_by(data, .data$type)
-  }
-
-  data %>%
-    summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop") %>%
-    collect()
 }
 
+#' @noRd
 compress_activity <- function(data, direction = "forward") {
   data %>%
     arrange("date", "time") %>%
@@ -501,53 +394,7 @@ screen_duration <- function(db,
                             start_date = NULL,
                             end_date = NULL,
                             by = c("Hour", "Day")) {
-  lifecycle::deprecate_stop(when = "1.1.2",
-                            what = "screen_duration()",
-                            details = c(
-                              i = paste("`screen_duration()` is defunctional for now, as it",
-                                        "is unclear how this function should behave."),
-                              i = "It will be reimplemented in mpathsenser 2.0.0."
-                            ))
 
-  check_db(db)
-  check_arg(by, "character", n = 1, allow_null = TRUE)
-
-  out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
-    filter(.data$screen_event != "SCREEN_ON") %>%
-    mutate(datetime = paste(.data$date, .data$time)) %>%
-    arrange(.data$participant_id, .data$datetime) %>%
-    distinct(
-      .data$participant_id,
-      .data$date,
-      .data$time,
-      .data$datetime,
-      .data$screen_event
-    ) %>%
-    mutate(next_event = lead(.data$screen_event, n = 1)) %>%
-    mutate(next_time = lead(.data$datetime, n = 1)) %>%
-    filter(.data$screen_event == "SCREEN_UNLOCKED" & .data$next_event == "SCREEN_OFF") %>%
-    mutate(duration = strftime("%s", .data$next_time) - strftime("%s", .data$datetime))
-
-  if (is.null(by) || missing(by)) {
-    out <- select(out, "date", "time", "duration")
-  } else if (by[1] == "Hour") {
-    out <- out %>%
-      mutate(hour = strftime("%H", .data$time)) %>%
-      group_by(.data$hour) %>%
-      summarise(duration = mean(.data$duration, na.rm = TRUE) / 60) %>%
-      collect() %>%
-      mutate(hour = as.numeric(.data$hour)) %>%
-      complete(hour = 0:23, fill = list(duration = 0))
-  } else if (by[1] == "Day") {
-    out <- out %>%
-      group_by(.data$date) %>%
-      summarise(duration = sum(.data$duration, na.rm = TRUE) / 60 / 60) %>%
-      collect()
-  } else {
-    # Default case
-    out <- select(out, "date", "time", "duration")
-  }
-  return(out)
 }
 
 #' Get number of times screen turned on
@@ -567,13 +414,6 @@ n_screen_on <- function(db,
                         start_date = NULL,
                         end_date = NULL,
                         by = c("Total", "Hour", "Day")) {
-  # lifecycle::deprecate_stop(when = "1.1.2",
-  #                           what = "n_screen_on()",
-  #                           with = "screen_on()",
-  #                           details = c(
-  #                             i = paste("Note that the functionality of `screen_on()`",
-  #                                       "has changed significantly.")
-  #                           ))
   lifecycle::deprecate_stop(when = "1.1.2",
                             what = "n_screen_on()",
                             details = c(
@@ -601,13 +441,6 @@ n_screen_unlocks <- function(db,
                              start_date = NULL,
                              end_date = NULL,
                              by = c("Total", "Hour", "Day")) {
-  # lifecycle::deprecate_stop(when = "1.1.2",
-  #                           what = "n_screen_unlocks()",
-  #                           with = "screen_unlocks()",
-  #                           details = c(
-  #                             i = paste("Note that the functionality of `screen_unlocks()`",
-  #                                       "has changed significantly.")
-  #                           ))
   lifecycle::deprecate_stop(when = "1.1.2",
                             what = "n_screen_unlocks()",
                             details = c(
@@ -637,18 +470,6 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
                                         "is unclear how this function should behave."),
                               i = "It will be reimplemented in mpathsenser 2.0.0."
                             ))
-  check_db(db)
-
-  get_data(db, "Pedometer", participant_id, start_date, end_date) %>%
-    mutate(hour = strftime("%H", .data$time)) %>%
-    group_by(.data$participant_id, .data$date, .data$hour) %>%
-    window_order(.data$time, .data$step_count) %>%
-    mutate(next_count = lead(.data$step_count, default = NA)) %>%
-    mutate(step_count = ifelse(.data$step_count > .data$next_count, NA, .data$step_count)) %>%
-    mutate(steps = .data$next_count - .data$step_count) %>%
-    group_by(.data$participant_id, .data$date, .data$hour) %>%
-    summarise(steps = sum(.data$steps, na.rm = TRUE), .groups = "drop") %>%
-    collect()
 }
 # nocov end
 

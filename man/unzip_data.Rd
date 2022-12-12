@@ -4,13 +4,7 @@
 \alias{unzip_data}
 \title{Unzip m-Path Sense output}
 \usage{
-unzip_data(
-  path = getwd(),
-  to = NULL,
-  overwrite = FALSE,
-  recursive = TRUE,
-  parallel = deprecated()
-)
+unzip_data(path = getwd(), to = NULL, overwrite = FALSE, recursive = TRUE)
 }
 \arguments{
 \item{path}{The path to the directory containing the zip files.}
@@ -21,16 +15,6 @@ unzip_data(
 
 \item{recursive}{Logical value indicating whether to unzip files in subdirectories as well. These
 files will then be unzipped in their respective subdirectory.}
-
-\item{parallel}{A logical value whether you want to check in parallel. Useful when there are a
-lot of files. If you have already used
-\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}}, you can
-leave this parameter to \code{FALSE}.
-
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} As functions should not modify the user's workspace,
-directly toggling parallel support has been deprecated. Please use
-\code{\link[future]{plan}("multisession")} before calling this function to use multiple
-workers.}
 }
 \value{
 A message indicating how many files were unzipped.

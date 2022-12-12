@@ -10,10 +10,7 @@ import(
   sensors = NULL,
   batch_size = 24,
   backend = "RSQLite",
-  recursive = TRUE,
-  dbname = deprecated(),
-  overwrite_db = deprecated(),
-  parallel = deprecated()
+  recursive = TRUE
 )
 }
 \arguments{
@@ -29,22 +26,6 @@ NULL to extract all sensor data.}
 \item{backend}{Name of the database backend that is used. Currently, only RSQLite is supported.}
 
 \item{recursive}{Should the listing recurse into directories?}
-
-\item{dbname}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: Creating new databases on the fly has been
-deprecated as it is better to separate the two functions. You must now create a new database
-using \code{\link[=create_db]{create_db()}} or reuse an existing one.}
-
-\item{overwrite_db}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: This argument was used when database
-creation in \code{\link[=import]{import()}} was still supported. As this functionality is deprecated,
-\code{overwrite_db} is now ignored and will be removed in future versions.}
-
-\item{parallel}{A value that indicates whether to do reading in and processing in parallel. If
-this argument is a number, this indicates the number of workers that will be used.
-
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}: As functions should not modify the user's workspace,
-directly toggling parallel support has been deprecated. Please use
-\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
-calling this function to use multiple workers.}
 }
 \value{
 A message indicating how many files were imported. Imported database can be reopened
