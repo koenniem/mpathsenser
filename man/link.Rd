@@ -8,10 +8,14 @@ link(
   x,
   y,
   by = NULL,
+  time,
+  end_time = NULL,
+  y_time,
   offset_before = 0,
   offset_after = 0,
   add_before = FALSE,
   add_after = FALSE,
+  name = "data",
   split = by
 )
 }
@@ -35,6 +39,14 @@ to \code{y$d}.
 To perform a cross-join (when \code{x} and \code{y} have no variables in common), use \code{by = character()}.
 Note that the \code{split} argument will then be set to 1.}
 
+\item{time}{The name of the column containing the timestamps in \code{x}.}
+
+\item{end_time}{Optionally, the name of the column containing the end time in \code{x}. If specified,
+it means \code{time} defines the start time of the interval and \code{end_time} the end time. Note that
+this cannot be used at the same time as \code{offset_before} or \code{offset_after}.}
+
+\item{y_time}{The name of the column containing the timestamps in \code{y}.}
+
 \item{offset_before}{The time before each measurement in \code{x} that denotes the period in which \code{y}
 is matched. Must be convertible to a period by \code{\link[lubridate:as.period]{lubridate::as.period()}}.}
 
@@ -46,6 +58,8 @@ interval?}
 
 \item{add_after}{Logical value. Do you want to add the first measurement after the end of each
 interval?}
+
+\item{name}{The name of the column containing the nested \code{y} data.}
 
 \item{split}{An optional grouping variable to split the computation by. When working with large
 data sets, the computation can grow so large it no longer fits in your computer's working
@@ -69,10 +83,10 @@ based on a pre-specified offset before and/or after. This function assumes that 
 }
 \details{
 \code{y} is matched to the time scale of \code{x} by means of time windows. These time windows are
-defined as the period between \code{x - offset_before} and \code{x + offset_after}. Note that
-either \code{offset_before} or \code{offset_after} can be 0, but not both. The "interval" of the
-measurements is therefore the associated time window for each measurement of \code{x} and the data
-of \code{y} that also falls within this period. For example, an \code{offset_before}  of
+defined as the period between \code{x - offset_before} and \code{x + offset_after}. Note that either
+\code{offset_before} or \code{offset_after} can be 0, but not both. The "interval" of the measurements is
+therefore the associated time window for each measurement of \code{x} and the data of \code{y} that also
+falls within this period. For example, an \code{offset_before}  of
 \code{\link[lubridate]{minutes}(30)} means to match all data of \code{y} that occurred \emph{before} each
 measurement in \code{x}. An \code{offset_after} of 900 (i.e. 15 minutes) means to match all data of \code{y}
 that occurred \emph{after} each measurement in \code{x}. When both \code{offset_before} and \code{offset_after} are
@@ -90,18 +104,19 @@ set to \code{TRUE}, the last measurement of \code{y} occurring before the interv
 output data as the first row, having the \strong{\code{time} of \code{x - offset_before}} (i.e. the start
 of the interval). When \code{add_after} is set to \code{TRUE}, the first measurement of \code{y} occurring
 after the interval of \code{x} is added to the output data as the last row, having the \strong{\code{time} of
-\code{x + offset_after}} (i.e. the end of the interval). This way, it is easier to calculate
-the difference to other measurements of \code{y} later (within the same interval). Additionally, an
+\code{x + offset_after}} (i.e. the end of the interval). This way, it is easier to calculate the
+difference to other measurements of \code{y} later (within the same interval). Additionally, an
 extra column (\code{original_time}) is added in the nested \code{data} column, which is the original time
 of the \code{y} measurement and \code{NULL} for every other observation. This may be useful to check if
 the added measurement isn't too distant (in time) from the others. Note that multiple rows may
-be added if there were multiple measurements in \code{y} at exactly the same time.
+be added if there were multiple measurements in \code{y} at exactly the same time. Also, if there
+already is a row with a timestamp exactly equal to the start of the interval (for \code{add_before = TRUE}) or to the end of the interval \verb{(add_after = TRUE}), no extra row is added.
 }
 \section{Warning}{
  Note that setting \code{add_before} and \code{add_after} each add one row to each nested
 \code{tibble} of the \code{data} column. Thus, if you are only interested in the total count (e.g.
 the number of total screen changes), remember to set these arguments to FALSE or make sure to
-filter out rows that do \emph{note} have an \code{original_time}. Simply subtracting 1 or 2 does not work
+filter out rows that do \emph{not} have an \code{original_time}. Simply subtracting 1 or 2 does not work
 as not all measurements in \code{x} may have a measurement in \code{y} before or after (and thus no row
 is added).
 }
@@ -127,25 +142,36 @@ link(
   x = x,
   y = y,
   by = "participant_id",
+  time = time,
+  y_time = time,
   offset_before = "30 minutes"
 )
 
 # We can also link y to a period both before and after
-# each measurement in x:
+# each measurement in x.
+# Also note that time, end_time and y_time accept both
+# quoted names as well as character names.
 link(
   x = x,
   y = y,
   by = "participant_id",
+  time = "time",
+  y_time = "time",
   offset_before = "15 minutes",
   offset_after = "15 minutes"
 )
 
 # It can be important to also know the measurements
-# just preceding the interval or just after the interval:
+# just preceding the interval or just after the interval.
+# This adds an extra column called 'original_time' in the
+# nested data, containing the original time stamp. The
+# actual timestamp is set to the start time of the interval.
 link(
   x = x,
   y = y,
   by = "participant_id",
+  time = time,
+  y_time = time,
   offset_before = "15 minutes",
   offset_after = "15 minutes",
   add_before = TRUE,
@@ -163,6 +189,36 @@ link(
   x = x,
   y = y,
   by = character(),
+  time = time,
+  y_time = time,
   offset_before = "30 minutes"
+)
+
+# Alternatively, we can specify custom intervals.
+# That is, we can create variable intervals
+# without using fixed offsets.
+x <- data.frame(
+  start_time = rep(
+    x = as.POSIXct(c("2021-11-14 12:40:00",
+                     "2021-11-14 13:30:00",
+                     "2021-11-14 15:00:00")),
+    times = 2),
+  end_time = rep(
+    x = as.POSIXct(c("2021-11-14 13:20:00",
+                     "2021-11-14 14:10:00",
+                     "2021-11-14 15:30:00")),
+    times = 2),
+  participant_id = c(rep("12345", 3), rep("23456", 3)),
+  item_one = rep(c(40, 50, 60), 2)
+)
+link(
+  x = x,
+  y = y,
+  by = "participant_id",
+  time = start_time,
+  end_time = end_time,
+  y_time = time,
+  add_before = TRUE,
+  add_after = TRUE
 )
 }

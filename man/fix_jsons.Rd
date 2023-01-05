@@ -57,12 +57,13 @@ hand.
 \section{Parallel}{
  This function supports parallel processing in the sense that it is able to
 distribute it's computation load among multiple workers. To make use of this functionality, run
-\code{\link[future]{plan}("multisession")} before calling this function.
+\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
+calling this function.
 }
 
 \section{Progress}{
  You can be updated of the progress of this function by using the
-\code{\link[progressr]{progress}} package. See \code{progressr}'s
+\code{\link[progressr:progress]{progressr::progress()}} package. See \code{progressr}'s
 \href{https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html}{vignette} on
 how to subscribe to these updates.
 }

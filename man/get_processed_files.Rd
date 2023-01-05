@@ -7,11 +7,11 @@
 get_processed_files(db)
 }
 \arguments{
-\item{db}{A database connection, as created by \link[mpathsenser]{create_db}.}
+\item{db}{A database connection, as created by \code{\link[=create_db]{create_db()}}.}
 }
 \value{
-A data frame containing the \code{file_name}, \code{participant_id}, and \code{study_id}
-of the processed files.
+A data frame containing the \code{file_name}, \code{participant_id}, and \code{study_id} of the
+processed files.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}

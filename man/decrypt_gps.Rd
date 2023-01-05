@@ -14,7 +14,7 @@ decrypt_gps(data, key, ignore = ":")
 \item{ignore}{A string with characters to ignore from \code{data}. See \code{\link[sodium:helpers]{sodium::hex2bin()}}.}
 }
 \value{
-A vector doubles of the decrypted GPS coordinates.
+A vector of doubles of the decrypted GPS coordinates.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
@@ -27,7 +27,8 @@ provided \code{key}.
 \section{Parallel}{
  This function supports parallel processing in the sense that it is able to
 distribute it's computation load among multiple workers. To make use of this functionality, run
-\code{\link[future]{plan}("multisession")} before calling this function.
+\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
+calling this function.
 }
 
 \examples{

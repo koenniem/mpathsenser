@@ -215,8 +215,7 @@ create_db.postgresql <- function(db_name, host, port, user, password, overwrite,
 
 #' Open an mpathsenser database.
 #'
-#' @description
-#' `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
 #'
 #' @inheritParams create_db
 #'
@@ -350,11 +349,11 @@ open_db.postgresql <- function(db_name, host, port, user, password, ..., caller_
 #' @description
 #' `r lifecycle::badge("stable")`
 #'
-#' This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
+#' This is a convenience function that is simply a wrapper around [DBI::dbDisconnect()].
 #'
 #' @inheritParams get_data
 #'
-#' @seealso \code{\link[mpathsenser]{open_db}} for opening an mpathsenser database.
+#' @seealso [open_db()] for opening an mpathsenser database.
 #'
 #' @returns \code{close_db} Returns a logical value invisible, indicating whether the connection has
 #' been closed.
@@ -364,7 +363,7 @@ close_db <- function(db) {
   return(invisible(!inherits(out, "try-error")))
 }
 
-#' Create indexes for a mpathsenser database
+#' Create indexes for an mpathsenser database
 #'
 #' @description
 #' `r lifecycle::badge("stable")`
@@ -418,21 +417,20 @@ vacuum_db.default <- function(db, ...) {
 
 #' Copy (a subset of) a database to another database
 #'
-#' @description
-#' `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
 #'
 #' @param source_db A mpathsenser database connection from where the data will be transferred.
 #' @param target_db A mpathsenser database connection where the data will be transferred to.
-#' \link[mpathsenser]{create_db} to create a new database.
+#'   [create_db()] to create a new database.
 #' @param sensor A character vector containing one or multiple sensors. See
-#' \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
-#' sensors.
-#' @param path  `r lifecycle::badge("deprecated")`: This argument was used when database
-#'   creation in \code{copy_db} was still supported. As this functionality is deprecated,
-#'   \code{overwrite_db} is now ignored and will be removed in future versions.
+#'   \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
+#'   sensors.
+#' @param path  `r lifecycle::badge("deprecated")`: This argument was used when database creation in
+#'   [copy_db()] was still supported. As this functionality is deprecated, `overwrite_db` is now
+#'   ignored and will be removed in future versions.
 #' @param db_name  `r lifecycle::badge("deprecated")`: Creating new databases on the fly has been
 #'   deprecated as it is better to separate the two functions. You must now create a new database
-#'   using \code{\link[mpathsenser]{create_db}} or reuse an existing one.
+#'   using [create_db()] or reuse an existing one.
 #'
 #' @returns No return value, called for side effects.
 #' @export
@@ -571,13 +569,12 @@ clear_sensors_db <- function(db) {
 
 #' Get all processed files from a database
 #'
-#' @description
-#' `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
 #'
-#' @param db A database connection, as created by \link[mpathsenser]{create_db}.
+#' @param db A database connection, as created by [create_db()].
 #'
-#' @returns A data frame containing the \code{file_name}, \code{participant_id}, and \code{study_id}
-#' of the processed files.
+#' @returns A data frame containing the `file_name`, `participant_id`, and `study_id` of the
+#'   processed files.
 #' @export
 get_processed_files <- function(db) {
   check_db(db)
@@ -590,10 +587,10 @@ get_processed_files <- function(db) {
 #' @description
 #' `r lifecycle::badge("stable")`
 #'
-#' @param db db A database connection, as created by \link[mpathsenser]{create_db}.
+#' @param db db A database connection, as created by [create_db()].
 #' @param lazy Whether to evaluate lazily using \link[dbplyr]{dbplyr}.
 #'
-#' @returns A data frame containing all \code{participant_id} and \code{study_id}.
+#' @returns A data frame containing all `participant_id` and `study_id`.
 #' @export
 get_participants <- function(db, lazy = FALSE) {
   check_db(db)
@@ -611,7 +608,7 @@ get_participants <- function(db, lazy = FALSE) {
 #' @description
 #' `r lifecycle::badge("stable")`
 #'
-#' @param db db A database connection, as created by \link[mpathsenser]{create_db}.
+#' @param db db A database connection, as created by [create_db()].
 #' @param lazy Whether to evaluate lazily using \link[dbplyr]{dbplyr}.
 #'
 #' @returns A data frame containing all studies.
@@ -629,21 +626,20 @@ get_studies <- function(db, lazy = FALSE) {
 
 #' Get the number of rows per sensor in a mpathsenser database
 #'
-#' @description
-#' `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
 #'
-#' @param db db A database connection, as created by \link[mpathsenser]{create_db}.
-#' @param sensor A character vector of one or multiple vectors. Use "All" for all sensors. See
-#' \link[mpathsenser]{sensors} for a list of all available sensors.
+#' @param db db A database connection, as created by [create_db()].
+#' @param sensor A character vector of one or multiple vectors. Use `sensor = "All"` for all
+#'   sensors. See \link[mpathsenser]{sensors} for a list of all available sensors.
 #' @param participant_id A character string identifying a single participant. Use
-#' \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
-#' Leave empty to get data for all participants.
+#'   [get_participants()] to retrieve all participants from the database. Leave empty to get data
+#'   for all participants.
 #' @param start_date Optional search window specifying date where to begin search. Must be
-#' convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
-#' date of the first entry for a participant.
+#'   convertible to date using [base::as.Date()]. Use [first_date()] to find the date of the first
+#'   entry for a participant.
 #' @param end_date Optional search window specifying date where to end search. Must be convertible
-#' to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
-#' last entry for a participant.
+#'   to date using [base::as.Date()]. Use [last_date()] to find the date of the last entry for a
+#'   participant.
 #'
 #' @returns A named vector containing the number of rows for each sensor.
 #' @export

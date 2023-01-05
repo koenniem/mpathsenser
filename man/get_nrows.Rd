@@ -13,22 +13,22 @@ get_nrows(
 )
 }
 \arguments{
-\item{db}{db A database connection, as created by \link[mpathsenser]{create_db}.}
+\item{db}{db A database connection, as created by \code{\link[=create_db]{create_db()}}.}
 
-\item{sensor}{A character vector of one or multiple vectors. Use "All" for all sensors. See
-\link[mpathsenser]{sensors} for a list of all available sensors.}
+\item{sensor}{A character vector of one or multiple vectors. Use \code{sensor = "All"} for all
+sensors. See \link[mpathsenser]{sensors} for a list of all available sensors.}
 
 \item{participant_id}{A character string identifying a single participant. Use
-\code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
-Leave empty to get data for all participants.}
+\code{\link[=get_participants]{get_participants()}} to retrieve all participants from the database. Leave empty to get data
+for all participants.}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
-convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
-date of the first entry for a participant.}
+convertible to date using \code{\link[base:as.Date]{base::as.Date()}}. Use \code{\link[=first_date]{first_date()}} to find the date of the first
+entry for a participant.}
 
 \item{end_date}{Optional search window specifying date where to end search. Must be convertible
-to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
-last entry for a participant.}
+to date using \code{\link[base:as.Date]{base::as.Date()}}. Use \code{\link[=last_date]{last_date()}} to find the date of the last entry for a
+participant.}
 }
 \value{
 A named vector containing the number of rows for each sensor.

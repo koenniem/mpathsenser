@@ -7,17 +7,16 @@
 add_gaps(data, gaps, by = NULL, continue = FALSE, fill = NULL)
 }
 \arguments{
-\item{data}{A data frame containing the data. See \code{\link[=get_data]{get_data()}} for
-retrieving activity data from an mpathsenser database.}
+\item{data}{A data frame containing the data. See \code{\link[=get_data]{get_data()}} for retrieving data from an
+mpathsenser database.}
 
-\item{gaps}{A data frame (extension) containing the gap data. See
-\link[mpathsenser]{identify_gaps} for retrieving gap data from an mpathsenser database. It
-should at least contain the columns \code{from} and \code{to} (both in a date-time format), as
-well as any specified columns in \code{by}.}
+\item{gaps}{A data frame (extension) containing the gap data. See \code{\link[=identify_gaps]{identify_gaps()}} for
+retrieving gap data from an mpathsenser database. It should at least contain the columns \code{from}
+and \code{to} (both in a date-time format), as well as any specified columns in \code{by}.}
 
 \item{by}{A character vector indicating the variable(s) to match by, typically the participant
-IDs. If NULL, the default, \code{*_join()} will perform a natural join, using all variables in
-common across \code{x} and \code{y}.}
+IDs. If NULL, the default, \verb{*_join()} will perform a natural join, using all variables in
+common across \verb{x and }y`.}
 
 \item{continue}{Whether to continue the measurement(s) prior to the gap once the gap ends.}
 
@@ -39,7 +38,7 @@ sensors data by splitting intervals where gaps occur.
 }
 \details{
 In the example of 30 minutes walking where a 15 minute gap occurred (say after 5
-minutes), \code{add_gaps} adds two rows: one after 5 minutes of the start of the interval
+minutes), \code{add_gaps()} adds two rows: one after 5 minutes of the start of the interval
 indicating the start of the gap(if needed containing values from \code{fill}), and one after 20
 minutes of the start of the interval signalling the walking activity. Then, when calculating
 time differences between subsequent measurements, the gap period is appropriately accounted
@@ -94,6 +93,6 @@ add_gaps(
 )
 }
 \seealso{
-\code{\link[=identify_gaps]{identify_gaps()}} for finding gaps in the sampling;
-\code{\link[=link_gaps]{link_gaps()}} for linking gaps to ESM data, analogous to \code{\link[=link]{link()}}.
+\code{\link[=identify_gaps]{identify_gaps()}} for finding gaps in the sampling; \code{\link[=link_gaps]{link_gaps()}} for linking gaps to
+ESM data, analogous to \code{\link[=link]{link()}}.
 }

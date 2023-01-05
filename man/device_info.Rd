@@ -14,7 +14,7 @@ device_info(db, participant_id = NULL)
 Leave empty to get data for all participants.}
 }
 \value{
-A tibble containing device info for each participant.
+A tibble containing device info for each participant
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}

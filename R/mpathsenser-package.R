@@ -33,6 +33,7 @@
 #' @importFrom dplyr ungroup
 #' @importFrom lifecycle deprecated
 #' @importFrom purrr map
+#' @importFrom rlang .env
 #' @importFrom rlang :=
 #' @importFrom rlang abort
 #' @importFrom rlang inform

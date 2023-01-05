@@ -23,8 +23,9 @@ unzip_data(
 files will then be unzipped in their respective subdirectory.}
 
 \item{parallel}{A logical value whether you want to check in parallel. Useful when there are a
-lot of files. If you have already used \code{future::plan}, you can leave this parameter to
-\code{FALSE}.
+lot of files. If you have already used
+\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}}, you can
+leave this parameter to \code{FALSE}.
 
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} As functions should not modify the user's workspace,
 directly toggling parallel support has been deprecated. Please use
@@ -37,18 +38,19 @@ A message indicating how many files were unzipped.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-Similar to \link[utils]{unzip}, but makes it easier to unzip all files in a given path
-with one function call.
+Similar to \link[utils]{unzip}, but makes it easier to unzip all files in a given path with one
+function call.
 }
 \section{Parallel}{
  This function supports parallel processing in the sense that it is able to
 distribute it's computation load among multiple workers. To make use of this functionality, run
-\code{\link[future]{plan}("multisession")} before calling this function.
+\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
+calling this function.
 }
 
 \section{Progress}{
  You can be updated of the progress of this function by using the
-\code{\link[progressr]{progress}} package. See \code{progressr}'s
+\code{\link[progressr:progress]{progressr::progress()}} package. See \code{progressr}'s
 \href{https://cran.r-project.org/package=progressr/vignettes/progressr-intro.html}{vignette} on
 how to subscribe to these updates.
 }

@@ -1,6 +1,19 @@
-link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_after) {
+link_impl <- function(x,
+                      y,
+                      by,
+                      start_time,
+                      end_time,
+                      y_time,
+                      offset_before,
+                      offset_after,
+                      add_before,
+                      add_after,
+                      name) {
+
+  # Force variables to be evaluated, or somehow it cannot be found later on.
   force(add_before)
   force(add_after)
+  force(name)
 
   # Match sensing data with ESM using a left join
   # Set a start_time (beep time - offset) and an end_time (beep time)
@@ -14,68 +27,103 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
 
   # Filter y to keep only `by` instances that occur in x
   if (!rlang::is_null(by) && length(by) != 0) {
-    y <- dplyr::semi_join(y, data, by = by)
+    y <- dplyr::semi_join(y, x, by = by)
   }
 
+  # Prepare x
+  # Create a row_id or rematching later
+  x <- x %>%
+    tibble::as_tibble() %>%
+    mutate(.row_id = dplyr::row_number())
+
+  # If no end_time is specified, calculate the start and end time of the interval using offset
+  # Else, take the start time and end time as specified by the user
+  if (is.null(end_time) || length(end_time) == 0) {
+    data <- x %>%
+      mutate(across(.env$start_time, as.integer, .names = ".x_time")) %>%
+      mutate(.start_time = .data$.x_time - offset_before) %>%
+      mutate(.end_time = .data$.x_time + offset_after) %>%
+      select({{ by }}, ".start_time", ".end_time", ".row_id")
+  } else {
+    # Ensure column names for x and y do not clash
+    # also easier to work with
+    data <- x %>%
+      dplyr::rename(.start_time = .env$start_time) %>%
+      dplyr::rename(.end_time = .env$end_time) %>%
+      mutate(.start_time = as.integer(.data$.start_time)) %>%
+      mutate(.end_time = as.integer(.data$.end_time)) %>%
+      select({{ by }}, ".start_time", ".end_time", ".row_id")
+  }
+
+  # Match sensing data with ESM using a left join
   data <- data %>%
     dplyr::left_join(y, by = by) %>%
-    mutate(y_time = as.integer(.data$time))
+    mutate(across(dplyr::all_of(y_time), as.integer, .names = ".y_time"))
 
-  # The main data, i.e. data within the interval
+  # The main data, i.e. data exactly within the interval
   data_main <- data %>%
-    filter(.data$y_time >= .data$start_time & .data$y_time <= .data$end_time) %>%
-    arrange(across(c({{ by }}, "y_time"))) %>%
-    select(-"y_time") %>%
-    nest(data = !c({{ by }}, "start_time", "end_time", "row_id")) %>%
-    select("row_id", "data")
+    filter(.data$.y_time >= .data$.start_time & .data$.y_time <= .data$.end_time) %>%
+    arrange(across(c({{ by }}, ".y_time"))) %>%
+    select(-".y_time") %>%
+    nest({{ name }} := !c({{ by }}, ".start_time", ".end_time", ".row_id")) %>%
+    select(dplyr::all_of(c(".row_id", name)))
 
   # Merge back with original data
   # Bug: if this happens after merging data_before and data_after, they would be lost in the case
   # no data was retained in data_main as all the row_ids are deleted as well
   data_main <- x %>%
-    tibble::as_tibble() %>%
-    mutate(row_id = dplyr::row_number()) %>%
-    dplyr::left_join(data_main, by = "row_id")
+    dplyr::left_join(data_main, by = ".row_id")
 
   # Add the last measurement before start_time
+  tz <- attr(pull(y, {{ y_time }}), "tz")
   if (add_before) {
-    tz <- attr(y$time, "tz")
+    # Calculate in which groups there is a measurement that equals start_time
+    equal_to_start <- data %>%
+      filter(.data$.y_time == .data$.start_time) %>%
+      distinct(.data$.row_id)
+
     data_before <- data %>%
-      filter(.data$y_time < .data$start_time) %>%
-      group_by(.data$row_id) %>%
-      dplyr::slice_max(.data$y_time, with_ties = TRUE) %>%
+      dplyr::anti_join(equal_to_start, by = ".row_id") %>%
+      filter(.data$.y_time < .data$.start_time) %>%
+      group_by(.data$.row_id) %>%
+      dplyr::slice_max(order_by = .data$.y_time, n = 1, with_ties = TRUE) %>%
       ungroup() %>%
-      mutate(original_time = .data$time) %>%
-      mutate(time = lubridate::as_datetime(.data$start_time, tz = tz)) %>%
-      select(-"y_time") %>%
-      nest(data_before = !c({{ by }}, "start_time", "end_time", "row_id")) %>%
-      select("row_id", "data_before")
+      mutate(across(dplyr::all_of(y_time), .names = "original_time")) %>%
+      mutate({{ y_time }} := lubridate::as_datetime(.data$.start_time, tz = tz)) %>%
+      select(-".y_time") %>%
+      nest(data_before = !c({{ by }}, ".start_time", ".end_time", ".row_id")) %>%
+      select(".row_id", "data_before")
 
     # Add to the main result
     data_main <- data_main %>%
-      dplyr::left_join(data_before, by = "row_id") %>%
-      mutate(data = purrr::map2(.data$data_before, .data$data, bind_rows)) %>%
+      dplyr::left_join(data_before, by = ".row_id") %>%
+      mutate({{ name }} := purrr::map2(data_before, !!rlang::ensym(name), bind_rows)) %>%
       select(-"data_before")
   }
 
   # Add the first measurements after end_time
   if (add_after) {
-    tz <- attr(y$time, "tz")
+    # Calculate in which groups there is a measurement that equals start_time
+    equal_to_end <- data %>%
+      filter(.data$.y_time == .data$.end_time) %>%
+      distinct(.data$.row_id)
+
     data_after <- data %>%
-      filter(.data$y_time > .data$end_time) %>%
-      group_by(.data$row_id) %>%
-      dplyr::slice_min(.data$y_time, with_ties = TRUE) %>%
+      dplyr::anti_join(equal_to_start, by = ".row_id") %>%
+      filter(.data$.y_time > .data$.end_time) %>%
+      group_by(.data$.row_id) %>%
+      dplyr::slice_min(order_by =  .data$.y_time, n = 1, with_ties = TRUE) %>%
       ungroup() %>%
-      mutate(original_time = .data$time) %>%
-      mutate(time = lubridate::as_datetime(.data$end_time, tz = tz)) %>%
-      select(-"y_time") %>%
-      nest(data_after = -c({{ by }}, "start_time", "end_time", "row_id")) %>%
-      select("row_id", "data_after")
+      mutate(across(dplyr::all_of(y_time), .names = "original_time")) %>%
+      mutate({{ y_time }} := lubridate::as_datetime(.data$.end_time, tz = tz)) %>%
+      select(-".y_time") %>%
+      nest(data_after = !c({{ by }}, ".start_time", ".end_time", ".row_id")) %>%
+      select(".row_id", "data_after")
 
     # Add to the main result
     data_main <- data_main %>%
-      dplyr::left_join(data_after, by = "row_id") %>%
-      mutate(data = purrr::map2(.data$data, .data$data_after, bind_rows)) %>%
+      dplyr::left_join(data_after, by = ".row_id") %>%
+      mutate({{ name }} := purrr::map2(!!rlang::ensym(name), data_after, bind_rows)) %>%
       select(-"data_after")
   }
 
@@ -91,17 +139,19 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
     # proto not to be applied (since it's not null)
     if (nrow(data_main) > 0) {
       # Add column original_time in cases where it's missing
-      for (i in seq_along(data_main$data)) {
-        if (!any("original_time" == colnames(data_main$data[[i]]))) {
-          data_main$data[[i]]$original_time <- as.POSIXct(NA)
+      for (i in 1:nrow(data_main)) {
+        if (!any("original_time" == colnames(pull(data_main, dplyr::all_of(name))[[i]]))) {
+          data_main$data[[i]]$original_time <- as.POSIXct(NA, tz = tz)
         }
       }
     }
   }
 
   res <- data_main %>%
-    mutate(data = ifelse(lapply(.data$data, is.null), list(proto), .data$data)) %>%
-    select(-"row_id")
+    mutate({{ name }} := ifelse(test = lapply(!!rlang::ensym(name), is.null),
+                                yes = list(proto),
+                                no = !!rlang::ensym(name)))  %>%
+    select(-".row_id")
 
   res
 }
@@ -118,10 +168,10 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
 #'   `y` have a column called `time` containing \link[base]{DateTimeClasses}.
 #'
 #' @details `y` is matched to the time scale of `x` by means of time windows. These time windows are
-#'   defined as the period between `x - offset_before` and `x + offset_after`. Note that
-#'   either `offset_before` or `offset_after` can be 0, but not both. The "interval" of the
-#'   measurements is therefore the associated time window for each measurement of `x` and the data
-#'   of `y` that also falls within this period. For example, an `offset_before`  of
+#'   defined as the period between `x - offset_before` and `x + offset_after`. Note that either
+#'   `offset_before` or `offset_after` can be 0, but not both. The "interval" of the measurements is
+#'   therefore the associated time window for each measurement of `x` and the data of `y` that also
+#'   falls within this period. For example, an `offset_before`  of
 #'   \code{\link[lubridate]{minutes}(30)} means to match all data of `y` that occurred *before* each
 #'   measurement in `x`. An `offset_after` of 900 (i.e. 15 minutes) means to match all data of `y`
 #'   that occurred *after* each measurement in `x`. When both `offset_before` and `offset_after` are
@@ -139,17 +189,19 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
 #'   output data as the first row, having the **`time` of \code{x - offset_before}** (i.e. the start
 #'   of the interval). When `add_after` is set to `TRUE`, the first measurement of `y` occurring
 #'   after the interval of `x` is added to the output data as the last row, having the **`time` of
-#'   \code{x + offset_after}** (i.e. the end of the interval). This way, it is easier to calculate
-#'   the difference to other measurements of `y` later (within the same interval). Additionally, an
+#'   `x + offset_after`** (i.e. the end of the interval). This way, it is easier to calculate the
+#'   difference to other measurements of `y` later (within the same interval). Additionally, an
 #'   extra column (`original_time`) is added in the nested `data` column, which is the original time
 #'   of the `y` measurement and `NULL` for every other observation. This may be useful to check if
 #'   the added measurement isn't too distant (in time) from the others. Note that multiple rows may
-#'   be added if there were multiple measurements in `y` at exactly the same time.
+#'   be added if there were multiple measurements in `y` at exactly the same time. Also, if there
+#'   already is a row with a timestamp exactly equal to the start of the interval (for `add_before =
+#'   TRUE`) or to the end of the interval `(add_after = TRUE`), no extra row is added.
 #'
 #' @section Warning: Note that setting `add_before` and `add_after` each add one row to each nested
 #'   \code{tibble} of the `data` column. Thus, if you are only interested in the total count (e.g.
 #'   the number of total screen changes), remember to set these arguments to FALSE or make sure to
-#'   filter out rows that do _note_ have an `original_time`. Simply subtracting 1 or 2 does not work
+#'   filter out rows that do _not_ have an `original_time`. Simply subtracting 1 or 2 does not work
 #'   as not all measurements in `x` may have a measurement in `y` before or after (and thus no row
 #'   is added).
 #'
@@ -172,6 +224,11 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
 #'
 #'   To perform a cross-join (when `x` and `y` have no variables in common), use `by = character()`.
 #'   Note that the `split` argument will then be set to 1.
+#' @param time The name of the column containing the timestamps in `x`.
+#' @param end_time Optionally, the name of the column containing the end time in `x`. If specified,
+#'   it means `time` defines the start time of the interval and `end_time` the end time. Note that
+#'   this cannot be used at the same time as `offset_before` or `offset_after`.
+#' @param y_time The name of the column containing the timestamps in `y`.
 #' @param offset_before The time before each measurement in `x` that denotes the period in which `y`
 #'   is matched. Must be convertible to a period by [lubridate::as.period()].
 #' @param offset_after The time after each measurement in `x` that denotes the period in which `y`
@@ -180,6 +237,7 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
 #'   interval?
 #' @param add_after Logical value. Do you want to add the first measurement after the end of each
 #'   interval?
+#' @param name The name of the column containing the nested `y` data.
 #' @param split An optional grouping variable to split the computation by. When working with large
 #'   data sets, the computation can grow so large it no longer fits in your computer's working
 #'   memory (after which it will probably fall back on the swap file, which is very slow). Splitting
@@ -212,25 +270,36 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
 #'   x = x,
 #'   y = y,
 #'   by = "participant_id",
+#'   time = time,
+#'   y_time = time,
 #'   offset_before = "30 minutes"
 #' )
 #'
 #' # We can also link y to a period both before and after
-#' # each measurement in x:
+#' # each measurement in x.
+#' # Also note that time, end_time and y_time accept both
+#' # quoted names as well as character names.
 #' link(
 #'   x = x,
 #'   y = y,
 #'   by = "participant_id",
+#'   time = "time",
+#'   y_time = "time",
 #'   offset_before = "15 minutes",
 #'   offset_after = "15 minutes"
 #' )
 #'
 #' # It can be important to also know the measurements
-#' # just preceding the interval or just after the interval:
+#' # just preceding the interval or just after the interval.
+#' # This adds an extra column called 'original_time' in the
+#' # nested data, containing the original time stamp. The
+#' # actual timestamp is set to the start time of the interval.
 #' link(
 #'   x = x,
 #'   y = y,
 #'   by = "participant_id",
+#'   time = time,
+#'   y_time = time,
 #'   offset_before = "15 minutes",
 #'   offset_after = "15 minutes",
 #'   add_before = TRUE,
@@ -248,40 +317,124 @@ link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_aft
 #'   x = x,
 #'   y = y,
 #'   by = character(),
+#'   time = time,
+#'   y_time = time,
 #'   offset_before = "30 minutes"
+#' )
+#'
+#' # Alternatively, we can specify custom intervals.
+#' # That is, we can create variable intervals
+#' # without using fixed offsets.
+#' x <- data.frame(
+#'   start_time = rep(
+#'     x = as.POSIXct(c("2021-11-14 12:40:00",
+#'                      "2021-11-14 13:30:00",
+#'                      "2021-11-14 15:00:00")),
+#'     times = 2),
+#'   end_time = rep(
+#'     x = as.POSIXct(c("2021-11-14 13:20:00",
+#'                      "2021-11-14 14:10:00",
+#'                      "2021-11-14 15:30:00")),
+#'     times = 2),
+#'   participant_id = c(rep("12345", 3), rep("23456", 3)),
+#'   item_one = rep(c(40, 50, 60), 2)
+#' )
+#' link(
+#'   x = x,
+#'   y = y,
+#'   by = "participant_id",
+#'   time = start_time,
+#'   end_time = end_time,
+#'   y_time = time,
+#'   add_before = TRUE,
+#'   add_after = TRUE
 #' )
 link <- function(x,
                  y,
                  by = NULL,
+                 time,
+                 end_time = NULL,
+                 y_time,
                  offset_before = 0,
                  offset_after = 0,
                  add_before = FALSE,
                  add_after = FALSE,
+                 name = "data",
                  split = by) {
   check_arg(x, type = "data.frame")
   check_arg(y, type = "data.frame")
   check_arg(by, type = "character", allow_null = TRUE)
   check_arg(add_before, type = "logical")
   check_arg(add_after, type = "logical")
+  check_arg(name, type = "character")
 
-  offsets <- check_offset(offset_before, offset_after)
-  offset_before <- offsets$offset_before
-  offset_after <- offsets$offset_after
+  if (missing(time)) {
+    lifecycle::deprecate_warn(
+      when = "1.1.2",
+      what = "link(time = 'must not be missing')",
+      details = c(
+        i = paste("Due to backwards compatiblity, `time` defaults to",
+                  "'time' for now."),
+        i = paste("Please make this argument explicit to prevent your",
+                  "code from breaking in a future version.")
+      ))
+    time <- "time"
+  }
 
-  # Check for time column
-  if (!("time" %in% colnames(x) && "time" %in% colnames(y))) {
-    abort("column 'time' must be present in both x and y")
+  if (missing(y_time)) {
+    lifecycle::deprecate_warn(
+      when = "1.1.2",
+      what = "link(y_time = 'must not be missing')",
+      details = c(
+        i = paste("Due to backwards compatiblity, `y_time` defaults to",
+                  "'time' for now."),
+        i = paste("Please make this argument explicit to prevent your",
+                  "code from breaking in a future version.")
+      ))
+    y_time <- "time"
   }
-  if (!lubridate::is.POSIXct(x$time)) {
-    abort("column 'time' in x must be a POSIXct")
+
+  # Check that not end_time and any offset are used at the same time
+  if (!missing(end_time) && (!missing(offset_before) || !missing(offset_after))) {
+    abort("`end_time` and `offset_before` or `offset_after` cannot be used at the same time.")
   }
-  if (!lubridate::is.POSIXct(y$time)) {
-    abort("column 'time' in y must be a POSIXct")
+
+  # Check offsets if end_time is not missing
+  if (missing(end_time)) {
+    offsets <- check_offset(offset_before, offset_after)
+    offset_before <- offsets$offset_before
+    offset_after <- offsets$offset_after
   }
 
   # Do not perform matching when x and y are identical
   if (identical(x, y) || isTRUE(dplyr::all_equal(x, y))) {
-    abort("x and y are identical")
+    abort("`x` and `y` are identical.")
+  }
+
+  # Get the start_time, end_time, and y_time as characters and check their validity
+  x <- ungroup(x)
+  y <- ungroup(y)
+  start_time <- colnames(select(x, {{ time }}))
+  if (!missing(end_time)) {
+    end_time <- colnames(select(x, {{ end_time }}))
+  }
+  y_time <- colnames(select(y, {{ y_time }}))
+  by <- colnames(select(x, {{ by }}))
+
+  check_arg(start_time, "character", n = 1)
+  check_arg(end_time, "character", n = 1, allow_null = TRUE)
+  check_arg(y_time, "character", n = 1)
+
+  # Check the time columns
+  check_arg(pull(x, start_time), "POSIXt", arg = "time")
+  if (!is.null(end_time)) {
+    check_arg(pull(x, end_time), "POSIXt", arg = "end_time")
+  }
+  check_arg(pull(y, y_time), "POSIXt", arg = "y_time")
+
+  # Do not perform matching when x and y are identical
+  if (identical(x, y) || isTRUE(dplyr::all_equal(x, y))) {
+    abort("`x` and `y` are identical.")
   }
 
   if (!is.null(split)) {
@@ -302,22 +455,27 @@ link <- function(x,
     furrr::future_map(
       ~ link_impl(x = .x,
                   y = y,
-                  by = {{ by }},
+                  by = by,
+                  start_time = start_time,
+                  end_time = end_time,
+                  y_time = y_time,
                   offset_before = offset_before,
                   offset_after = offset_after,
                   add_before = add_before,
-                  add_after = add_after),
+                  add_after = add_after,
+                  name = name),
       .options = furrr::furrr_options(seed = TRUE)
     ) %>%
     bind_rows()
 }
 
-#' Link two sensors OR one sensor and an external data frame using an \code{mpathsenser} database
+#' Link two sensors OR one sensor and an external data frame using an mpathsenser database
 #'
-#' @description `r lifecycle::badge("superseded")` This function is specific to mpathsenser
-#'   databases. It is a wrapper around \link[mpathsenser]{link} but extracts data in the database
-#'   for you. It is now soft deprecated as I feel this function's use is limited in comparison to
-#'   [link()].
+#' @description `r lifecycle::badge("superseded")`
+#'
+#'   This function is specific to mpathsenser databases. It is a wrapper around [link()] but
+#'   extracts data in the database for you. It is now soft deprecated as I feel this function's use
+#'   is limited in comparison to [link()].
 #'
 #' @inheritParams get_data
 #' @inheritParams link
@@ -327,21 +485,23 @@ link <- function(x,
 #'   available sensors. Cannot be used together with `external`.
 #' @param external Optionally, specify an external data frame. Cannot be used at the same time as a
 #'   second sensor. This data frame must have a column called `time`.
-#' @param reverse Switch `sensor_one` with either `sensor_two` or `external`?
-#'   Particularly useful in combination with `external`.
+#' @param external_time The name of the column containing the timestamps in `external`.
+#' @param reverse Switch `sensor_one` with either `sensor_two` or `external`? Particularly useful in
+#'   combination with `external`.
 #' @param ignore_large Safety override to prevent long wait times. Set to `TRUE` to do this function
 #'   on lots of data.
 #'
-#' @seealso \code{\link[mpathsenser]{link}}
+#' @seealso [link()]
 #'
-#' @returns A tibble with the data of `sensor_one` with a new column `data` with the matched
-#'   data of either `sensor_two` or `external` according to `offset_before` or
-#'   `offset_after`. The other way around when `reverse = TRUE`.
+#' @returns A tibble with the data of `sensor_one` with a new column `data` with the matched data of
+#'   either `sensor_two` or `external` according to `offset_before` or `offset_after`. The other way
+#'   around when `reverse = TRUE`.
 #' @export
 link_db <- function(db,
                     sensor_one,
                     sensor_two = NULL,
                     external = NULL,
+                    external_time = "time",
                     offset_before = 0,
                     offset_after = 0,
                     add_before = FALSE,
@@ -358,6 +518,7 @@ link_db <- function(db,
   check_arg(sensor_one, type = "character", n = 1)
   check_arg(sensor_two, type = "character", n = 1, allow_null = TRUE)
   check_arg(external, type = "data.frame", allow_null = TRUE)
+  check_arg(external_time, type = "character", n = 1)
   check_arg(participant_id, type = "character", allow_null = TRUE)
   check_arg(reverse, type = "logical", n = 1)
   check_arg(ignore_large, type = "logical", n = 1)
@@ -383,15 +544,17 @@ link_db <- function(db,
       select(-"date") %>%
       collect() %>%
       mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", tz = "UTC"))
+    y_time <- "time"
   } else {
-    check_arg(external$time, "POSIXt")
-    if (any(format(external$time, "%Z") != "UTC")) {
+    check_arg(pull(external, external_time), "POSIXt")
+    if (any(format(pull(external, external_time), "%Z") != "UTC")) {
       warn(c(
         "`external` is not using UTC as a time zone, unlike the data in the database.",
         i = "Consider converting the time column to UTC."
       ))
     }
 
+    y_time <- external_time
     dat_two <- external
   }
 
@@ -404,7 +567,13 @@ link_db <- function(db,
     select(-"date") %>%
     collect() %>%
     mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", "UTC"))
+  time <- "time"
 
+  if (reverse) {
+    tmp_time <- time
+    time <- y_time
+    y_time <- tmp_time
+  }
 
   if (is.null(external) && reverse) {
     tmp <- dat_one
@@ -420,6 +589,8 @@ link_db <- function(db,
     x = dat_one,
     y = dat_two,
     by = "participant_id",
+    time = {{ time }},
+    y_time = {{ y_time }},
     offset_before = offset_before,
     offset_after = offset_after,
     add_before = add_before,
@@ -431,30 +602,28 @@ link_db <- function(db,
 #'
 #' @description `r lifecycle::badge("experimental")`
 #'
-#'  Gaps in mobile sensing data typically occur when the app is stopped by the operating system or
-#'  the user. While small gaps may not pose problems with analyses, greater gaps may cause bias or
-#'  skew your data. As a result, gap data should be considered in order to inspect and limit their
-#'  influence. This function, analogous to [link()], allows you to connect gaps to other
-#'  data (usually ESM/EMA data) within a user-specified time range.
+#'   Gaps in mobile sensing data typically occur when the app is stopped by the operating system or
+#'   the user. While small gaps may not pose problems with analyses, greater gaps may cause bias or
+#'   skew your data. As a result, gap data should be considered in order to inspect and limit their
+#'   influence. This function, analogous to [link()], allows you to connect gaps to other data
+#'   (usually ESM/EMA data) within a user-specified time range.
 #'
 #' @param data A data frame or an extension to a data frame (e.g. a tibble). While gap data can be
 #'   linked to any other type of data, ESM data is most commonly used.
-#' @param gaps A data frame (extension) containing the gap data. See
-#'   \link[mpathsenser]{identify_gaps} for retrieving gap data from an mpathsenser database. It
-#'   should at least contain the columns `from` and `to` (both in a date-time format), as
-#'   well as any specified columns in `by`.
+#' @param gaps A data frame (extension) containing the gap data. See [identify_gaps()] for
+#'   retrieving gap data from an mpathsenser database. It should at least contain the columns `from`
+#'   and `to` (both in a date-time format), as well as any specified columns in `by`.
 #' @inheritParams link
 #' @param raw_data Whether to include the raw data (i.e. the matched gap data) to the output as
 #'   gap_data.
 #'
-#' @seealso \code{\link[mpathsenser]{bin_data}} for linking two sets of intervals to each other;
-#' \code{\link[mpathsenser]{identify_gaps}} for finding gaps in the sampling;
-#' \code{\link[mpathsenser]{add_gaps}} for adding gaps to sensor data;
+#' @seealso [bin_data()] for linking two sets of intervals to each other; [identify_gaps()] for
+#'   finding gaps in the sampling; [add_gaps()] for adding gaps to sensor data;
 #'
-#' @returns The original `data` with an extra column `duration` indicating the gap during
-#'   within the interval in seconds (if `duration`  is `TRUE`), or an extra column called
-#'   `gap_data` containing the gaps within the interval. The function ensures all durations and
-#'   gap time stamps are within the range of the interval.
+#' @returns The original `data` with an extra column `duration` indicating the gap during within the
+#'   interval in seconds (if `duration`  is `TRUE`), or an extra column called `gap_data` containing
+#'   the gaps within the interval. The function ensures all durations and gap time stamps are within
+#'   the range of the interval.
 #' @export
 link_gaps <- function(data,
                       gaps,
@@ -572,8 +741,14 @@ link_intervals <- function(x, x_start, x_end,
                            y, y_start, y_end,
                            by = NULL,
                            name = "data") {
+  check_arg(x, "data.frame")
+  check_arg(y, "data.frame")
+  check_arg(by, "character", allow_null = TRUE)
+  check_arg(name, "character", n = 1)
+
   tz <- attr(pull(y, {{ y_start }}), "tz")
 
+  # Calculate which values in y are within x's bounds
   res <- x %>%
     dplyr::left_join(y, by = by) %>%
     mutate(across(c({{ y_start }}, {{ y_end }}), as.integer)) %>%
@@ -596,7 +771,13 @@ link_intervals <- function(x, x_start, x_end,
     mutate(across(c({{ y_start }}, {{ y_end }}), lubridate::as_datetime, tz = tz))
 
   out <- x %>%
-    dplyr::nest_join(res, by = c(by, "bin_start", "bin_end"), name = name)
+    dplyr::nest_join(res,
+                     by = c(
+                       by,
+                       colnames(select(ungroup(x), {{ x_start}})),
+                       colnames(select(ungroup(x), {{ x_end }}))
+                     ),
+                     name = name)
   out
 }
 
@@ -613,11 +794,11 @@ link_intervals <- function(x, x_start, x_end,
 #' @param end_time The column name of the end time of the interval, a POSIXt.
 #' @param by A binning specification.
 #' @param fixed Whether to create fixed bins. If `TRUE`, bins will be rounded to, for example,
-#' whole hours or days (depending on `by`). If \code{FALSE}, bins will be created based on the
+#' whole hours or days (depending on `by`). If `FALSE`, bins will be created based on the
 #' first timestamp.
 #'
-#' @seealso \code{\link[mpathsenser]{link_gaps}} for linking gaps to data.
-#' @returns A tibble containing the group columns (if any), date, hour (if \code{by = "hour"}), and
+#' @seealso [link_gaps()] for linking gaps to data.
+#' @returns A tibble containing the group columns (if any), date, hour (if `by = "hour"`), and
 #'   the duration in seconds.
 #' @export
 #'

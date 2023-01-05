@@ -20,4 +20,3 @@ Plot a coverage overview
 \seealso{
 \code{\link[=coverage]{coverage()}}
 }
-\keyword{internal}

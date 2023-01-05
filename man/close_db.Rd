@@ -16,8 +16,8 @@ been closed.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-This is a convenience function that is simply a wrapper around \link[DBI]{dbDisconnect}.
+This is a convenience function that is simply a wrapper around \code{\link[DBI:dbDisconnect]{DBI::dbDisconnect()}}.
 }
 \seealso{
-\code{\link[mpathsenser]{open_db}} for opening an mpathsenser database.
+\code{\link[=open_db]{open_db()}} for opening an mpathsenser database.
 }

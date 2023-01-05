@@ -12,7 +12,13 @@ test_that("link", {
     x = rep(1:30, 2)
   )
 
-  res <- link(dat1, dat2, "participant_id", offset_before = 1800, split = NULL)
+  res <- link(x = dat1,
+              y = dat2,
+              by = "participant_id",
+              time = "time",
+              y_time = "time",
+              offset_before = 1800,
+              split = NULL)
   true <- tibble(
     time = rep(c(
       as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
@@ -46,8 +52,77 @@ test_that("link", {
   )
   expect_equal(res, true)
 
+  # Test warning if time and y_time are not specified
+  lifecycle::expect_deprecated(
+    link(x = dat1,
+         y = dat2,
+         by = "participant_id",
+         y_time = "time",
+         offset_before = 1800,
+         split = NULL),
+    "The `time` argument of `link\\(\\)` must not be missing as of mpathsenser 1.1.2."
+  )
+
+  lifecycle::expect_deprecated(
+    link(x = dat1,
+         y = dat2,
+         by = "participant_id",
+         time = "time",
+         offset_before = 1800,
+         split = NULL),
+    "The `y_time` argument of `link\\(\\)` must not be missing as of mpathsenser 1.1.2."
+  )
+
+  # Test x and y identical
+  expect_error(
+    link(x = dat1,
+         y = dat1,
+         by = "participant_id",
+         time = "time",
+         y_time = "time",
+         offset_before = 1800,
+         split = NULL),
+    "`x` and `y` are identical."
+  )
+
+  # Test without offset bu using time and end_time
+  res2 <- dat1 %>%
+    dplyr::rename(end_time = time) %>%
+    mutate(start_time = end_time - 1800) %>%
+    link(x = .,
+         y = dat2,
+         by = "participant_id",
+         time = start_time,
+         end_time = end_time,
+         y_time = time)
+  true2 <- true
+  true2$start_time <- true2$time - 1800
+  true2 <- select(true2, end_time = time, participant_id, item_one, start_time, data)
+  expect_equal(res2, true2)
+
+  # Test that end_time and offset_before and offset_after cannot be used at the same time.
+  expect_error(
+    dat1 %>%
+      dplyr::rename(end_time = time) %>%
+      mutate(start_time = end_time - 1800) %>%
+      link(x = .,
+           y = dat2,
+           by = "participant_id",
+           time = start_time,
+           end_time = end_time,
+           y_time = time,
+           offset_before = 1800),
+    "`end_time` and `offset_before` or `offset_after` cannot be used at the same time."
+  )
+
   # Test split argument
-  res <- link(dat1, dat2, "participant_id", offset_before = 1800, split = 6)
+  res <- link(x = dat1,
+              y = dat2,
+              by = "participant_id",
+              time = time,
+              y_time = time,
+              offset_before = 1800,
+              split = 6)
   expect_equal(res, true)
 
   # Scrambled test
@@ -55,11 +130,21 @@ test_that("link", {
     idx <- sample(seq_along(data[, 1]), nrow(data))
     data[idx, ]
   }
-  res <- link(scramble(dat1), scramble(dat2), "participant_id", offset_before = 1800) %>%
+  res <- link(x = scramble(dat1),
+              y = scramble(dat2),
+              by = "participant_id",
+              time = time,
+              y_time = time,
+              offset_before = 1800) %>%
     arrange(participant_id, time)
   expect_equal(res, true)
 
-  res <- link(dat1, dat2, "participant_id", offset_after = 1800)
+  res <- link(x = dat1,
+              y = dat2,
+              by = "participant_id",
+              time = time,
+              y_time = time,
+              offset_after = 1800)
   true <- tibble(
     time = rep(c(
       as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
@@ -93,15 +178,28 @@ test_that("link", {
   )
   expect_equal(res, true)
 
-  res <- link(scramble(dat1), scramble(dat2), "participant_id", offset_after = 1800) %>%
+  res <- link(x = scramble(dat1),
+              y = scramble(dat2),
+              by = "participant_id",
+              time = time,
+              y_time = time,
+              offset_after = 1800) %>%
     arrange(participant_id, time)
   expect_equal(res, true)
 
   # Test add_before and add_after
-  res <- link(dat1, dat2, "participant_id",
-    offset_before = 1800,
-    add_before = TRUE, add_after = TRUE
-  )
+  # Add one minute to dat2 time as otherwise a row would not added before
+  # This is due to new functionality where a row is not added if the first measurements in an
+  # interval is equal to the start time
+  dat2$time <- dat2$time + lubridate::minutes(1)
+  res <- link(x = dat1,
+              y = dat2,
+              by = "participant_id",
+              time = time,
+              y_time = time,
+              offset_before = 1800,
+              add_before = TRUE,
+              add_after = TRUE)
   true <- tibble(
     time = rep(c(
       as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
@@ -113,70 +211,68 @@ test_that("link", {
       tibble(
         time = c(
           seq.POSIXt(
-            from = as.POSIXct("2021-11-14 12:50:00"),
-            length.out = 3, by = "5 min"
+            from = as.POSIXct("2021-11-14 12:51:00"),
+            length.out = 2, by = "5 min"
           ),
           as.POSIXct("2021-11-14 13:00:00")
         ),
-        x = c(1:3, 4),
+        x = c(1:3),
         original_time = c(
-          rep(lubridate::`NA_POSIXct_`, 3),
-          as.POSIXct("2021-11-14 13:05:00")
+          rep(as.POSIXct(NA), 2),
+          as.POSIXct("2021-11-14 13:01:00")
         )
       ),
       tibble(
         time = c(
           as.POSIXct("2021-11-14 13:30:00"),
           seq.POSIXt(
-            from = as.POSIXct("2021-11-14 13:30:00"),
-            length.out = 7, by = "5 min"
+            from = as.POSIXct("2021-11-14 13:31:00"),
+            length.out = 6, by = "5 min"
           ),
           as.POSIXct("2021-11-14 14:00:00")
         ),
-        x = c(8, 9:15, 16),
+        x = c(8, 9:14, 15),
         original_time = c(
-          as.POSIXct("2021-11-14 13:25:00"),
-          rep(lubridate::`NA_POSIXct_`, 7),
-          as.POSIXct("2021-11-14 14:05:00")
+          as.POSIXct("2021-11-14 13:26:00"),
+          rep(as.POSIXct(NA), 6),
+          as.POSIXct("2021-11-14 14:01:00")
         )
       ),
       tibble(
         time = c(
           as.POSIXct("2021-11-14 14:30:00"),
           seq.POSIXt(
-            from = as.POSIXct("2021-11-14 14:30:00"),
-            length.out = 7, by = "5 min"
+            from = as.POSIXct("2021-11-14 14:31:00"),
+            length.out = 6, by = "5 min"
           ),
           as.POSIXct("2021-11-14 15:00:00")
         ),
-        x = c(20, 21:27, 28),
+        x = c(20, 21:26, 27),
         original_time = c(
-          as.POSIXct("2021-11-14 14:25:00"),
-          rep(lubridate::`NA_POSIXct_`, 7),
-          as.POSIXct("2021-11-14 15:05:00")
+          as.POSIXct("2021-11-14 14:26:00"),
+          rep(lubridate::`NA_POSIXct_`, 6),
+          as.POSIXct("2021-11-14 15:01:00")
         )
       )
     ), 2)
   )
   expect_equal(res, true, ignore_attr = TRUE)
 
-  # Test arguments
-  expect_error(
-    link(mutate(dat1, time = as.character(time)), dat2, offset_before = 1800),
-    "column 'time' in x must be a POSIXct"
-  )
-  expect_error(
-    link(dat1, mutate(dat2, time = as.character(time)), offset_before = 1800),
-    "column 'time' in y must be a POSIXct"
-  )
-  expect_error(
-    link(dplyr::select(dat1, -time), dat2, offset_before = 1800),
-    "column 'time' must be present in both x and y"
-  )
-  expect_error(
-    link(dat1, dplyr::select(dat2, -time), offset_before = 1800),
-    "column 'time' must be present in both x and y"
-  )
+  # Without offset, using time, end_time, and y_time
+  res2 <- dat1 %>%
+    dplyr::rename(end_time = time) %>%
+    mutate(start_time = end_time - 1800) %>%
+    link(x = .,
+         y = dat2,
+         by = "participant_id",
+         time = start_time,
+         end_time = end_time,
+         y_time = time,
+         add_before = TRUE,
+         add_after = TRUE)
+  true$start_time <- true$time - 1800
+  true <- select(true, end_time = time, participant_id, item_one, start_time, data)
+  expect_equal(res2, true)
 
   # Bug #6: Test whether original_time is present in all nested data columns
   # Create some data to use
@@ -203,6 +299,8 @@ test_that("link", {
     x = dat1,
     y = dat2,
     by = "participant_id",
+    time = time,
+    y_time = time,
     offset_before = 1800,
     add_before = TRUE,
     add_after = TRUE
@@ -228,6 +326,8 @@ test_that("link", {
     x = dat1,
     y = dat2,
     by = "participant_id",
+    time = time,
+    y_time = time,
     offset_before = 1800L,
     add_before = TRUE,
     add_after = TRUE
@@ -257,6 +357,8 @@ test_that("link", {
     x = dat1,
     y = dat2,
     by = "participant_id",
+    time = time,
+    y_time = time,
     offset_before = 1800L,
     add_before = TRUE,
     add_after = TRUE
@@ -264,6 +366,54 @@ test_that("link", {
   expect_equal(attr(res$time, "tz"), "Europe/Brussels")
   expect_equal(unique(map_chr(res$data, ~attr(.x$time, "tz"))), "UTC")
   expect_equal(unique(map_chr(res$data, ~attr(.x$original_time, "tz"))), "UTC")
+
+  # Make sure link does not add an extra row if first measurement equal start of the interval or
+  # vice versa for the end of the interval.
+  dat1 <- data.frame(
+    time = as.POSIXct(c("2021-11-14 11:00:00", "2021-11-14 12:00:00")),
+    participant_id = "12345",
+    item_one = c(40, 50)
+  )
+
+  dat2 <- data.frame(
+    time = as.POSIXct(c("2021-11-14 10:20:00", "2021-11-14 10:30:00", "2021-11-14 10:40:00",
+                        "2021-11-14 11:00:00", "2021-11-14 11:10:00", "2021-11-14 11:30:01",
+                        "2021-11-14 11:40:00", "2021-11-14 12:10:00")),
+    participant_id = "12345",
+    x = 1:8
+  )
+
+  true <- tibble(
+    time = as.POSIXct(c("2021-11-14 11:00:00", "2021-11-14 12:00:00")),
+    participant_id = "12345",
+    item_one = c(40, 50),
+    data = list(
+      tibble(
+        time = as.POSIXct(c("2021-11-14 10:30:00", "2021-11-14 10:40:00", "2021-11-14 11:00:00")),
+        x = c(2, 3, 4),
+        original_time = as.POSIXct(c(NA, NA, NA))
+      ),
+      tibble(
+        time = as.POSIXct(c("2021-11-14 11:30:00", "2021-11-14 11:30:01", "2021-11-14 11:40:00",
+                            "2021-11-14 12:00:00")),
+        x = c(5, 6, 7, 8),
+        original_time = as.POSIXct(c("2021-11-14 11:10:00", NA, NA, "2021-11-14 12:10:00"))
+      )
+    )
+  )
+
+  res <- link(
+    x = dat1,
+    y = dat2,
+    by = "participant_id",
+    time = time,
+    y_time = time,
+    offset_before = 1800L,
+    add_before = TRUE,
+    add_after = TRUE
+  )
+
+  expect_equal(true, res)
 })
 
 ## link_db ===============
@@ -435,7 +585,7 @@ test_that("link_db", {
   )
   expect_error(
     link_db(db, "Accelerometer", "Gyroscope", offset_after = 30, ignore_large = TRUE),
-    "x and y are identical"
+    "`x` and `y` are identical"
   )
 
   # Cleanup

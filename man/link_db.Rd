@@ -2,13 +2,14 @@
 % Please edit documentation in R/linking.R
 \name{link_db}
 \alias{link_db}
-\title{Link two sensors OR one sensor and an external data frame using an \code{mpathsenser} database}
+\title{Link two sensors OR one sensor and an external data frame using an mpathsenser database}
 \usage{
 link_db(
   db,
   sensor_one,
   sensor_two = NULL,
   external = NULL,
+  external_time = "time",
   offset_before = 0,
   offset_after = 0,
   add_before = FALSE,
@@ -31,6 +32,8 @@ available sensors. Cannot be used together with \code{external}.}
 
 \item{external}{Optionally, specify an external data frame. Cannot be used at the same time as a
 second sensor. This data frame must have a column called \code{time}.}
+
+\item{external_time}{The name of the column containing the timestamps in \code{external}.}
 
 \item{offset_before}{The time before each measurement in \code{x} that denotes the period in which \code{y}
 is matched. Must be convertible to a period by \code{\link[lubridate:as.period]{lubridate::as.period()}}.}
@@ -56,23 +59,24 @@ date of the first entry for a participant.}
 to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
 last entry for a participant.}
 
-\item{reverse}{Switch \code{sensor_one} with either \code{sensor_two} or \code{external}?
-Particularly useful in combination with \code{external}.}
+\item{reverse}{Switch \code{sensor_one} with either \code{sensor_two} or \code{external}? Particularly useful in
+combination with \code{external}.}
 
 \item{ignore_large}{Safety override to prevent long wait times. Set to \code{TRUE} to do this function
 on lots of data.}
 }
 \value{
-A tibble with the data of \code{sensor_one} with a new column \code{data} with the matched
-data of either \code{sensor_two} or \code{external} according to \code{offset_before} or
-\code{offset_after}. The other way around when \code{reverse = TRUE}.
+A tibble with the data of \code{sensor_one} with a new column \code{data} with the matched data of
+either \code{sensor_two} or \code{external} according to \code{offset_before} or \code{offset_after}. The other way
+around when \code{reverse = TRUE}.
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}} This function is specific to mpathsenser
-databases. It is a wrapper around \link[mpathsenser]{link} but extracts data in the database
-for you. It is now soft deprecated as I feel this function's use is limited in comparison to
-\code{\link[=link]{link()}}.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#superseded}{\figure{lifecycle-superseded.svg}{options: alt='[Superseded]'}}}{\strong{[Superseded]}}
+
+This function is specific to mpathsenser databases. It is a wrapper around \code{\link[=link]{link()}} but
+extracts data in the database for you. It is now soft deprecated as I feel this function's use
+is limited in comparison to \code{\link[=link]{link()}}.
 }
 \seealso{
-\code{\link[mpathsenser]{link}}
+\code{\link[=link]{link()}}
 }

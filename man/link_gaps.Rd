@@ -17,10 +17,9 @@ link_gaps(
 \item{data}{A data frame or an extension to a data frame (e.g. a tibble). While gap data can be
 linked to any other type of data, ESM data is most commonly used.}
 
-\item{gaps}{A data frame (extension) containing the gap data. See
-\link[mpathsenser]{identify_gaps} for retrieving gap data from an mpathsenser database. It
-should at least contain the columns \code{from} and \code{to} (both in a date-time format), as
-well as any specified columns in \code{by}.}
+\item{gaps}{A data frame (extension) containing the gap data. See \code{\link[=identify_gaps]{identify_gaps()}} for
+retrieving gap data from an mpathsenser database. It should at least contain the columns \code{from}
+and \code{to} (both in a date-time format), as well as any specified columns in \code{by}.}
 
 \item{by}{A character vector indicating the variable(s) to match by, typically the participant
 IDs. If NULL, the default, \verb{*_join()} will perform a natural join, using all variables in
@@ -48,10 +47,10 @@ is matched. Must be convertible to a period by \code{\link[lubridate:as.period]{
 gap_data.}
 }
 \value{
-The original \code{data} with an extra column \code{duration} indicating the gap during
-within the interval in seconds (if \code{duration}  is \code{TRUE}), or an extra column called
-\code{gap_data} containing the gaps within the interval. The function ensures all durations and
-gap time stamps are within the range of the interval.
+The original \code{data} with an extra column \code{duration} indicating the gap during within the
+interval in seconds (if \code{duration}  is \code{TRUE}), or an extra column called \code{gap_data} containing
+the gaps within the interval. The function ensures all durations and gap time stamps are within
+the range of the interval.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
@@ -59,11 +58,10 @@ gap time stamps are within the range of the interval.
 Gaps in mobile sensing data typically occur when the app is stopped by the operating system or
 the user. While small gaps may not pose problems with analyses, greater gaps may cause bias or
 skew your data. As a result, gap data should be considered in order to inspect and limit their
-influence. This function, analogous to \code{\link[=link]{link()}}, allows you to connect gaps to other
-data (usually ESM/EMA data) within a user-specified time range.
+influence. This function, analogous to \code{\link[=link]{link()}}, allows you to connect gaps to other data
+(usually ESM/EMA data) within a user-specified time range.
 }
 \seealso{
-\code{\link[mpathsenser]{bin_data}} for linking two sets of intervals to each other;
-\code{\link[mpathsenser]{identify_gaps}} for finding gaps in the sampling;
-\code{\link[mpathsenser]{add_gaps}} for adding gaps to sensor data;
+\code{\link[=bin_data]{bin_data()}} for linking two sets of intervals to each other; \code{\link[=identify_gaps]{identify_gaps()}} for
+finding gaps in the sampling; \code{\link[=add_gaps]{add_gaps()}} for adding gaps to sensor data;
 }

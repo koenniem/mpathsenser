@@ -26,15 +26,26 @@ test_that("decrypt_gps", {
   data$latitude <- vapply(data$latitude, function(x) sodium::bin2hex(x), character(1))
 
   expect_equal(
-    decrypt_gps(data, key),
-    true,
+    decrypt_gps(data$longitude, key),
+    as.double(true$longitude),
+    ignore_attr = TRUE
+  )
+
+  expect_equal(
+    decrypt_gps(data$latitude, key),
+    as.double(true$latitude),
     ignore_attr = TRUE
   )
 
   # Test key format
   expect_error(
-    decrypt_gps(data, charToRaw(key)),
-    "`key` must be either in a hex or bin format."
+    decrypt_gps(data$longitude, charToRaw(key)),
+    "`key` must be either a hexadecimal string or a binary vector."
+  )
+
+  expect_error(
+    decrypt_gps(data$longitude, sodium::hex2bin(substr(key, 1, 20))),
+    "`key` must be either a hexadecimal string or a binary vector."
   )
 })
 
