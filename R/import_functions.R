@@ -188,7 +188,7 @@ app_usage_fun <- function(data) {
 apps_fun <- function(data) {
   data$body <- lapply(data$body, function(x) x$body)
   data$body <- lapply(data$body, function(x) {
-    tibble::tibble(
+    tibble(
       id = x$id,
       timestamp = x$timestamp,
       apps = list(x$installed_apps)

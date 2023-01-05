@@ -29,12 +29,13 @@
 #' @param bin Whether to bin the data. Only 1-minute bins are possible.
 #' @param moving_average The number of seconds to calculate a moving average over. Defaults to no
 #'   moving average.
+#' @param min_confidence Activity data only. The minimum confidence value needed to keep the measurement. See \href{https://developers.google.com/android/reference/com/google/android/gms/location/DetectedActivity#getConfidence()}{Android's documentation} for a more precise description of what the confidence value entails.
 #' @param key A decryption key string. Only applicable when extraction location data.
 #' @param tz The time zone used to convert the time column to. In the database this defaults to UTC
 #'   but this function uses the user's current time zone as this is likely the same time zone as the
 #'   data was collected in.
 #'
-#' @returns A [tibble::tibble] containing the columns `participant_id`, `time`, and other specified
+#' @returns A [tibble] containing the columns `participant_id`, `time`, and other specified
 #'   columns.
 #' @export
 feature_data <- function(db,
@@ -78,21 +79,21 @@ feature_data.default <- function(db,
                            sensor = sensor,
                            cols = cols,
                            n = moving_average) %>%
-      dplyr::rename(time = datetime)
+      dplyr::rename(time = .data$datetime)
   } else {
     data <- get_data(db = db, sensor = sensor) %>%
-      mutate(time = paste(date, time)) %>%
-      select(-c(measurement_id, date))
+      mutate(time = paste(.data$date, .data$time)) %>%
+      select(-c("measurement_id", "date"))
   }
 
   if (!is.null(cols)) {
-    data <- select(data, dplyr::any_of(c("participant_id", "time", cols)))
+    data <- select(data, any_of(c("participant_id", "time", cols)))
   }
 
   if (bin) {
     data <- data %>%
-      mutate(time = paste0(strftime('%Y-%m-%dT%H:%M', time), ":00")) %>%
-      group_by(participant_id, time) %>%
+      mutate(time = paste0(strftime('%Y-%m-%dT%H:%M', .data$time), ":00")) %>%
+      group_by(.data$participant_id, .data$time) %>%
       summarise(dplyr::across(.fns = mean, na.rm = TRUE), .groups = "drop")
   }
 
@@ -109,9 +110,9 @@ feature_data.default <- function(db,
   data <- data %>%
     distinct() %>%
     collect() %>%
-    mutate(time = lubridate::ymd_hms(time)) %>%
+    mutate(time = lubridate::ymd_hms(.data$time)) %>%
     mutate(across(where(lubridate::is.POSIXt), ~lubridate::with_tz(.x, tzone = tz))) %>%
-    arrange(participant_id, time)
+    arrange(.data$participant_id, .data$time)
 
   # class(data) <- c(sensor, class(data))
   data
@@ -147,11 +148,11 @@ feature_data.accelerometer <- function(db,
 
 #' @rdname feature_data.default
 #' @export
-#' @keywords internal
 feature_data.activity <- function(db,
                                   sensor = "Activity",
                                   cols = NULL,
                                   ...,
+                                  min_confidence = 50,
                                   tz = Sys.timezone()) {
 
   # # Leave out TILTING since it says nothing about the actual activities
@@ -162,7 +163,10 @@ feature_data.activity <- function(db,
                  rlang::expr(type != "TILTING")),
     rlang::call2(.fn = rlang::expr(mutate),
                  .data = rlang::expr(data),
-                 type = rlang::expr(if_else(type %in% c("UNKNOWN", "STILL"), type, "ACTIVE")))
+                 type = rlang::expr(if_else(type %in% c("UNKNOWN", "STILL"), type, "ACTIVE"))),
+    rlang::call2(.fn = rlang::expr(filter),
+                 .data = rlang::expr(data),
+                 rlang::expr(confidence >= !!min_confidence))
   )
 
   data <- feature_data.default(
@@ -314,6 +318,41 @@ feature_data.noise <- function(db,
       group_by(participant_id) %>%
       filter(!if_all(cols, ~lag(.x) == .x)) %>%
       ungroup()
+  }
+
+  data
+}
+
+feature_data.wifi <- function(db,
+                              sensor,
+                              cols = NULL,
+                              ...,
+                              add_home = TRUE,
+                              n_recurring = 10,
+                              tz = Sys.timezone()) {
+  check_arg(add_home, "logical", n = 1)
+  check_arg(n_recurring, "integerish", n = 1)
+
+  data <- feature_data.default(db = db,
+                               sensor = "Wifi",
+                               cols = cols,
+                               tz = tz)
+
+  if (add_home) {
+    ssid <- data %>%
+      group_by(participant_id) %>%
+      wifi_home_ssid() %>%
+      ungroup() %>%
+      dplyr::rename(home_ssid = ssid)
+    data <- left_join(data, ssid, by = "participant_id")
+  }
+
+  if (n_recurring > 0) {
+    ssid <- data %>%
+      group_by(participant_id) %>%
+      wifi_recurring_ssids() %>%
+      summarise(recurring_ssids = list(ssid), .groups = "drop")
+    data <- left_join(data, ssid, by = "participant_id")
   }
 
   data

@@ -262,8 +262,8 @@ app_category_impl <- function(name, num, exact) {
   # If so, select the num (usually first) link from this list
   if (exact) {
     name_detected <- vapply(links,
-      function(x) grepl(paste0("\\.", tolower(name), "$"), tolower(x)),
-      FUN.VALUE = logical(1)
+                            function(x) grepl(paste0("\\.", tolower(name), "$"), tolower(x)),
+                            FUN.VALUE = logical(1)
     )
     if (any(name_detected)) {
       links <- links[name_detected]
@@ -301,148 +301,6 @@ app_category_impl <- function(name, num, exact) {
   list(package = gsub("^.+?(?<=\\?id=)", "", link, perl = TRUE), genre = genre)
 }
 
-# nocov start
-#' Get app usage per hour
-#'
-#' @description
-#' `r lifecycle::badge("experimental")`
-#'
-#' This function extracts app usage per hour for either one or multiple participants. If multiple
-#' days are selected, the app usage time is averaged.
-#'
-#' @inheritParams get_data
-#' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results.
-#'
-#' @returns A data frame containing a column 'app' and a column 'usage' for the hourly app usage.
-#' @keywords internal
-app_usage <- function(db,
-                      participant_id = NULL,
-                      start_date = NULL,
-                      end_date = NULL,
-                      by = c("Total", "Day", "Hour")) {
-  check_db(db)
-  check_arg(by, "character", n = 1)
-
-  if (!is.null(start_date) && is.null(end_date)) {
-    end_date <- start_date
-  }
-  data <- get_data(db, "AppUsage", participant_id, start_date, end_date) %>%
-    mutate(time = paste(.data$date, .data$time)) %>%
-    select("time", "app", "usage") %>%
-    collect() %>%
-    drop_na("app", "usage")
-
-
-  if (is.null(by)) {
-    data <- data %>%
-      slice(n()) %>%
-      mutate(usage = .data$usage / 60 / 60)
-  } else if (by[1] == "Total" || by[1] == "total") {
-    data <- data %>%
-      slice(n()) %>%
-      mutate(usage = .data$usage / 60 / 60) %>%
-      group_by(.data$app) %>%
-      summarise(usage = round(mean(.data$usage), 2), .groups = "drop")
-  } else if (by[1] == "Hour" || by[1] == "hour") {
-    data <- data %>%
-      mutate(prev_usage = lag(.data$usage, default = 0)) %>%
-      mutate(hour = substr(.data$time, 1, 2)) %>%
-      group_by(.data$date, .data$app) %>%
-      mutate(duration = .data$usage - .data$prev_usage) %>%
-      group_by(.data$hour, .data$date, .data$app) %>%
-      summarise(usage = .data$usage / 60 / 60, .groups = "drop") %>%
-      mutate(hour = as.numeric(.data$hour)) %>%
-      complete(hour = 0:23, .data$app, fill = list(n = 0))
-  } else if (by[1] == "Day" || by[1] == "day") {
-    data <- data %>%
-      slice(n()) %>%
-      mutate(usage = round(.data$usage / 60 / 60, 2))
-  } else {
-    # Default case
-    data <- data %>%
-      slice(n()) %>%
-      mutate(usage = .data$usage / 60 / 60)
-  }
-  return(data)
-}
-
-#' Get a summary of physical activity (recognition)
-#'
-#' @description
-#' `r lifecycle::badge("experimental")`
-#'
-#' @inheritParams get_data
-#' @param data A data frame containing the activity data. See \link[mpathsenser]{get_data} for
-#' retrieving activity data from an mpathsenser database.
-#' @param confidence The minimum confidence (0-100) that should be assigned to an observation by
-#' Activity Recognition.
-#' @param direction The directionality of the duration calculation, i.e. \eqn{t - t_{t-1}} or
-#' \eqn{t_{t+1} - t}.
-#' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results.
-#'
-#' @returns A tibble containing a column 'activity' and a column 'duration' for the hourly
-#' activity duration.
-#' @keywords internal
-activity_duration <- function(data = NULL,
-                              db = NULL,
-                              participant_id = NULL,
-                              confidence = 70,
-                              direction = "forward",
-                              start_date = NULL,
-                              end_date = NULL,
-                              by = c("Total", "Day", "Hour")) {
-  check_arg(data, "data.frame", allow_null = TRUE)
-  check_db(db, allow_null = TRUE)
-  check_arg(confidence, "numeric", n = 1)
-  check_arg(direction, "character", n = 1)
-  check_arg(by, "character", n = 1, allow_null = TRUE)
-
-  if (is.null(data) && is.null(db)) {
-    abort("Either data or db must be specified")
-  }
-
-  if (!is.null(data) && !is.null(db)) {
-    abort("Either data or db must be specified, but not both")
-  }
-
-  if (!is.null(data)) {
-
-  } else {
-    data <- get_data(db, "Activity", participant_id, start_date, end_date) %>%
-      filter(.data$confidence >= .data$confidence) %>%
-      compress_activity() %>%
-      mutate(datetime = paste(.data$date, .data$time))
-  }
-
-  if (tolower(direction) == "forward" || tolower(direction) == "forwards") {
-    data <- data %>%
-      mutate(duration = strftime("%s", lead(.data$datetime)) - strftime("%s", .data$datetime))
-  } else if (tolower(direction) == "backward" || tolower(direction) == "backwards") {
-    data <- data %>%
-      mutate(duration = strftime("%s", .data$datetime) - strftime("%s", lag(.data$datetime)))
-  } else {
-    abort("Invalid direction")
-  }
-
-  if (is.null(by) || missing(by) || by[1] == "total" || by[1] == "Total") {
-    data <- group_by(data, .data$type)
-  } else if (by[1] == "Hour") {
-    data <- data %>%
-      mutate(hour = substr(.data$time, 1, 2)) %>%
-      group_by(.data$type, .data$date, .data$hour)
-  } else if (by[1] == "Day") {
-    data <- group_by(data, .data$type, .data$date)
-  } else {
-    # Default case
-    data <- group_by(data, .data$type)
-  }
-
-  data %>%
-    summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop") %>%
-    collect()
-}
-# nocov end
-
 #' Get the device info for one or more participants
 #'
 #' @description
@@ -450,7 +308,7 @@ activity_duration <- function(data = NULL,
 #'
 #' @inheritParams get_data
 #'
-#' @returns A tibble containing device info for each participant
+#' @returns A tibble containing device info for each participant.
 #' @export
 device_info <- function(db, participant_id = NULL) {
   get_data(db, "Device", participant_id = participant_id) %>%
@@ -459,156 +317,118 @@ device_info <- function(db, participant_id = NULL) {
     collect()
 }
 
-# nocov start
-compress_activity <- function(data, direction = "forward") {
-  data %>%
-    arrange("date", "time") %>%
-    filter(!(lead(.data$type) == .data$type & lag(.data$type) == .data$type))
-}
+#' Find the home network SSID
+#'
+#' @description `r lifecycle::badge("stable")`
+#'
+#'   One way of measuring time spent at home is to measure the time connected to the home Wi-Fi
+#'   network (see [wifi_time_home()]). To do this, you first need to which network the home Wi-Fi
+#'   network is. `wifi_home_ssid()` attempts to find the most likely candidate to be the home Wi-Fi
+#'   network.
+#'
+#' @details It is not an easy task to determine which SSID (service set ID) from a set of (hashed)
+#'   SSIDs is most likely someone's home network. One way to do this is by combining it with GPS
+#'   data, but there we face the same problem in that we do not know where someone's "home" is
+#'   (unless it is asked somehow). Thus, this function solves the problem in two steps:
+#'
+#'   1. Find the most often occurring (connected) network SSID between 12AM and 6AM, when people are
+#'   generally home the most.
+#'   2. If no result was found (e.g. because of airplane mode, phone turned
+#'   off, etcetera), take the most often occurring SSID throughout the entire day.
+#'
+#' @section SSID vs BSSID vs IP: You may have noticed that in the mpathsenser database there are
+#'   entries in the Wi-Fi table for SSIDs, BSSIDs, and IP addresses. However, this function focusses
+#'   solely on SSIDs.
+#'
+#'   The IP addresses refer to the interal IP address of the network the person is currently
+#'   connected to. Consequently, most values are actually empty as only Wi-Fi networks that the
+#'   person is currently connected to have an IP address. Moreover, these are internal IP addresses,
+#'   so they may be replicated throughout disparate networks and within the same network, the
+#'   internal IP address may change over time. Consequently, IP addresses are not used in this
+#'   function.
+#'
+#'   As for BSSIDs basic service set identifier (BSSID), the relationship between SSIDs and BSSIDs
+#'   is that one SSIDs may be associated with multiple BSSIDs, as there are unique to an access
+#'   point (e.g. a router).Thus, if a home contains multiple access points, it will have multiple
+#'   BSSIDs.
+#'
+#' @param data A data frame containing the Wi-Fi data with at least the columns `time` and `ssid`.
+#' @param exclude Optionally, a character vector of values to exclude from the SSID list. This is
+#'   particularly useful if gaps have already been added to the data using [add_gaps()].
+#'
+#' @family Wi-Fi functions
+#'
+#' @return A `tibble` of home network SSIDs, grouped according to `data`.
+#' @export
+wifi_home_ssid <- function(data, exclude = "GAP") {
+  check_arg(data, "data.frame")
+  check_arg(exclude, "character", allow_null = TRUE)
 
-#' Screen duration by hour or day
-#'
-#' @description
-#' `r lifecycle::badge("experimental")`
-#'
-#' Calculate the screen duration time where the screen was _unlocked_ (i.e. not just on).
-#'
-#' @inheritParams get_data
-#' @param by Either 'Hour' or 'Day' indicating how to summarise the results. Leave empty to get raw
-#' screen duration per measurement.
-#'
-#' @returns A tibble with either 'hour' and 'duration' columns or 'date' and 'duration' columns
-#' depending on the \code{by} argument. Alternatively, if no \code{by} is specified, a remote
-#' tibble is returned with the date, time, and duration since the previous measurement.
-#' @keywords internal
-screen_duration <- function(db,
-                            participant_id,
-                            start_date = NULL,
-                            end_date = NULL,
-                            by = c("Hour", "Day")) {
-  lifecycle::signal_stage("experimental", "screen_duration()")
-  check_db(db)
-  check_arg(by, "character", n = 1, allow_null = TRUE)
+  data <- data %>%
+    select(any_of("participant_id"), all_of(c("time", "ssid"))) %>%
+    filter(!(.data$ssid %in% exclude)) %>%
+    drop_na("ssid")
 
-  out <- get_data(db, "Screen", participant_id, start_date, end_date) %>%
-    filter(.data$screen_event != "SCREEN_ON") %>%
-    mutate(datetime = paste(.data$date, .data$time)) %>%
-    arrange(.data$participant_id, .data$datetime) %>%
-    distinct(
-      .data$participant_id,
-      .data$date,
-      .data$time,
-      .data$datetime,
-      .data$screen_event
-    ) %>%
-    mutate(next_event = lead(.data$screen_event, n = 1)) %>%
-    mutate(next_time = lead(.data$datetime, n = 1)) %>%
-    filter(.data$screen_event == "SCREEN_UNLOCKED" & .data$next_event == "SCREEN_OFF") %>%
-    mutate(duration = strftime("%s", .data$next_time) - strftime("%s", .data$datetime))
+  nightly_ssids <- data %>%
+    mutate(hour = lubridate::hour(.data$time)) %>%
+    filter(.data$hour >= 0L & .data$hour < 6L) %>%
+    dplyr::count(.data$ssid, sort = TRUE) %>%
+    slice(1) %>%
+    select(-"n")
 
-  if (is.null(by) || missing(by)) {
-    out <- select(out, "date", "time", "duration")
-  } else if (by[1] == "Hour") {
-    out <- out %>%
-      mutate(hour = strftime("%H", .data$time)) %>%
-      group_by(.data$hour) %>%
-      summarise(duration = mean(.data$duration, na.rm = TRUE) / 60) %>%
-      collect() %>%
-      mutate(hour = as.numeric(.data$hour)) %>%
-      complete(hour = 0:23, fill = list(duration = 0))
-  } else if (by[1] == "Day") {
-    out <- out %>%
-      group_by(.data$date) %>%
-      summarise(duration = sum(.data$duration, na.rm = TRUE) / 60 / 60) %>%
-      collect()
+  if (dplyr::is.grouped_df(data)) {
+    data %>%
+      dplyr::anti_join(nightly_ssids, by = dplyr::group_vars(data)) %>%
+      dplyr::count(ssid, sort = TRUE) %>%
+      slice(1) %>%
+      select(-"n") %>%
+      bind_rows(nightly_ssids) %>%
+      arrange(across(c(dplyr::group_vars(.)))) %>%
+      return()
+  } else if (nrow(nightly_ssids) > 0) {
+    return(nightly_ssids)
+  } else if (nrow(nightly_ssids) == 0) {
+    data %>%
+      dplyr::count(ssid, sort = TRUE) %>%
+      slice(1) %>%
+      select(ssid) %>%
+      return()
   } else {
-    # Default case
-    out <- select(out, "date", "time", "duration")
+    return(tibble(
+      ssid = NA
+    ))
   }
-  return(out)
 }
 
-#' Get number of times screen turned on
+#' Find recurring network SSIDs
 #'
-#' @description
-#' `r lifecycle::badge("deprecated")`
+#' To provide estimate of how often someone revisits places, you must first find out which
+#' "significant" places exist. In a similar vein as [location_unique_places()], this function
+#' extract the most often recurring "places" through the associated network SSIDs (assuming most
+#' places have Wi-Fi networks in the vicinity).
 #'
-#' @inheritParams get_data
-#' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results. Defaults to
-#' total.
+#' @inheritParams wifi_home_ssid
+#' @param n The number of recurring SSIDs to extract.
 #'
-#' @returns In case grouping is by the total amount, returns a single numeric value. For date and
-#' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen on's 'n'.
-#' @keywords internal
-n_screen_on <- function(db,
-                        participant_id,
-                        start_date = NULL,
-                        end_date = NULL,
-                        by = c("Total", "Hour", "Day")) {
-  lifecycle::deprecate_stop(when = "1.1.2",
-                            what = "n_screen_on()",
-                            with = "screen_on()",
-                            details = c(
-                              i = paste("Note that the functionality of `screen_on()`",
-                                        "has changed significantly.")
-                            ))
+#' @family Wi-Fi functions
+#'
+#' @return A `tibble` of recurring network SSIDs, grouped according to `data`.
+#' @export
+wifi_recurring_ssids <- function(data, n = 10, exclude = "GAP") {
+
+  check_arg(data, "data.frame")
+  check_arg(exclude, "character", allow_null = TRUE)
+
+  data <- data %>%
+    select(any_of("participant_id"), all_of(c("time", "ssid"))) %>%
+    filter(!(.data$ssid %in% exclude)) %>%
+    drop_na("ssid")
+
+  data %>%
+    count(.data$ssid, sort = TRUE) %>%
+    slice_head(n = n) %>%
+    select(-"n")
 }
-
-#' Get number of screen unlocks
-#'
-#' @description
-#' `r lifecycle::badge("deprecated")`
-#'
-#' @inheritParams get_data
-#' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results. Defaults to
-#' total.
-#'
-#' @returns In case grouping is by the total amount, returns a single numeric value. For date and
-#' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen unlocks
-#' 'n'.
-#' @keywords internal
-n_screen_unlocks <- function(db,
-                             participant_id,
-                             start_date = NULL,
-                             end_date = NULL,
-                             by = c("Total", "Hour", "Day")) {
-  lifecycle::deprecate_stop(when = "1.1.2",
-                            what = "n_screen_unlocks()",
-                            with = "screen_unlocks()",
-                            details = c(
-                              i = paste("Note that the functionality of `screen_unlocks()`",
-                                        "has changed significantly.")
-                            ))
-}
-
-
-#' Get step count
-#'
-#' @description
-#' `r lifecycle::badge("deprecated")`
-#'
-#' Extracts the number of steps per hour as sensed by the underlying operating system.
-#'
-#' @inheritParams get_data
-#'
-#' @returns A tibble with the 'date', 'hour', and the number of 'steps'.
-#' @keywords internal
-step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = NULL) {
-  lifecycle::signal_stage("experimental", "step_count()")
-  check_db(db)
-
-  get_data(db, "Pedometer", participant_id, start_date, end_date) %>%
-    mutate(hour = strftime("%H", .data$time)) %>%
-    group_by(.data$participant_id, .data$date, .data$hour) %>%
-    window_order(.data$time, .data$step_count) %>%
-    mutate(next_count = lead(.data$step_count, default = NA)) %>%
-    mutate(step_count = ifelse(.data$step_count > .data$next_count, NA, .data$step_count)) %>%
-    mutate(steps = .data$next_count - .data$step_count) %>%
-    group_by(.data$participant_id, .data$date, .data$hour) %>%
-    summarise(steps = sum(.data$steps, na.rm = TRUE), .groups = "drop") %>%
-    collect()
-}
-# nocov end
 
 #' Moving average for values in an mpathsenser database
 #'
@@ -876,8 +696,8 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
   if (!is.null(by)) {
     err <- try(
       {
-        select(data, dplyr::all_of({{ by }}))
-        select(gaps, dplyr::all_of({{ by }}))
+        select(data, all_of({{ by }}))
+        select(gaps, all_of({{ by }}))
       },
       silent = TRUE
     )

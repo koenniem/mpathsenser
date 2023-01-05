@@ -1,33 +1,3 @@
-# Features =================
-
-source(
-  file = file.path(path, "feature implementations.R"),
-  echo = FALSE, verbose = FALSE
-)
-
-# make_specifications <- function(...) {
-#   dots <- rlang::list2(...)
-#
-#   specs_internal <- function(prev_value, next_value, name) {
-#     next_value %>%
-#       purrr::transpose(.) %>%
-#       enframe(name = NULL, value = name) %>%
-#       bind_cols(prev_value, .)
-#   }
-#
-#   if (length(dots) >= 2) {
-#     out <- purrr::reduce2(dots, names(dots), specs_internal, .init = NULL)
-#   } else {
-#     out <- dots
-#   }
-#
-#   out <- out %>%
-#     purrr::transpose(.) %>%
-#     enframe(name = NULL, value = "specifications")
-#
-#   out
-# }
-
 #' Add features to ESM data
 #'
 #' @param esm
@@ -56,104 +26,92 @@ add_features <- function(esm, specifications, db) {
   mem_add_features_funs(env = environment())
 
   # The sensor specifications
-  sensor_specs <-  map(.x = specifications,
+  sensor_specs <- map(.x = specifications,
                        .f = ~keep(.x, names(.x) %in% tolower(sensors)))
 
-  # Extract gaps
-  # TODO: Check if any of the specifications use gaps
+  # 1. Identify gaps
+  # Is there at least one sensor in a specification where gaps are used? If not, we skip all steps
+  # with gaps
+  specs_with_gaps <- map_lgl(.x = sensor_specs,
+                             .f = \(spec){
+                               map_lgl(.x = spec,
+                                       .f = ~pluck(.x$gaps$gaps)) |>
+                                 some(.x = _, .p = isTRUE)
+                             })
+
   # TODO: Only extract gaps for specifications where gaps = TRUE
-  gaps <- map(.x = specifications,
-              .f = function(.x) {
-                mem_identify_gaps(db = db,
-                                  sensor = .x$gaps$gap_sensors,
-                                  min_gap = .x$gaps$min_gap) %>%
-                  mutate(dplyr::across(c(to, from), lubridate::ymd_hms)) %>%
-                  mutate(dplyr::across(c(to, from), lubridate::with_tz, tzone = .x$gaps$tz))
-              })
-  memoise::forget(mem_identify_gaps)
+  if (any(specs_with_gaps)) {
+    if (requireNamespace("cli", quietly = TRUE)) {
+      cli::cli_progress_step("Finding gaps", spinner = TRUE)
+    }
 
-  # Link gaps to ESM data
-  # TODO: Only link gaps for specifications where gaps = TRUE
-  esm <- pmap(.l = list(esm, gaps, specifications),
-              .f = ~mem_link_gaps(data = ..1,
-                                  gaps = ..2,
+    gaps <- map2(.x = specifications,
+                 .y = specs_with_gaps,
+                 .f = \(spec, has_gaps) {
+                   if (requireNamespace("cli", quietly = TRUE)) {
+                     cli::cli_progress_update()
+                   }
+
+                   if (!has_gaps) {
+                     return(NULL)
+                   }
+
+                   mem_identify_gaps(db = db,
+                                     sensor = spec$gaps$gap_sensors,
+                                     min_gap = spec$gaps$min_gap) |>
+                     mutate(dplyr::across(c(to, from), lubridate::ymd_hms)) |>
+                     mutate(dplyr::across(c(to, from), lubridate::with_tz, tzone = spec$gaps$tz))
+                 })
+    memoise::forget(mem_identify_gaps)
+
+    # 2. Link gaps to ESM data
+    if (requireNamespace("cli", quietly = TRUE)) {
+      cli::cli_progress_step("Linking gaps to ESM", spinner = TRUE)
+    }
+    esm <- pmap(.l = list(esm, gaps, specifications, specs_with_gaps),
+                .f = \(data, gap_data, specs, has_gaps) {
+                  if (requireNamespace("cli", quietly = TRUE)) {
+                    cli::cli_progress_update()
+                  }
+
+                  if (!has_gaps) {
+                    return(data)
+                  }
+
+                  data |>
+                    mem_link_gaps(gaps = gap_data,
                                   by = "participant_id",
-                                  offset_before = ..3$time_windows$time_window_before,
-                                  offset_after = ..3$time_windows$time_window_after,
-                                  raw_data = FALSE)
-  ) %>%
-    map2(.x = .,
-         .y = specifications,
-         ~mutate(.x, gap = gap / (.y$time_windows$time_window_before + .y$time_windows$time_window_after)))
-  memoise::forget(mem_link_gaps)
+                                  offset_before = specs$time_windows$time_window_before,
+                                  offset_after = specs$time_windows$time_window_after,
+                                  raw_data = FALSE) |>
+                    mutate(gap = gap / (specs$time_windows$time_window_before +
+                                          specs$time_windows$time_window_after))
+                })
+    # map2(.x = _,
+    #      .y = specifications,
+    #      ~mutate(.x, gap = gap / (.y$time_windows$time_window_before + .y$time_windows$time_window_after)))
+    memoise::forget(mem_link_gaps)
+  }
 
-  # Get the data
-  feature_data <- sensor_specs %>%
-    map(.f = ~imap(.x = .x,
-                   .f = ~mem_feature_data(
-                     db = db,
-                     sensor = .y,
-                     cols = NULL,
-                     .x$preprocess,
-                     cache = memoise::cache_memory()
-                   )))
+  # Step 3 to 6: Get the feature data, add the gaps, link to the ESM data, and calculate the feature
+  # Do this per sensor instead of per specification, as everything at once is often too large to fit
+  # in memory.
 
-  memoise::forget(mem_feature_data)
+  # The sensors across all specifications
+  snsrs <- map(sensor_specs, ~names(.x)) |>
+    unlist(recursive = FALSE, use.names = FALSE) |>
+    unique()
 
-  # Only retain participants that occur in the sensor data
-  # In the second part: Loop over both esm and feature data, then again loop over each sensor to
-  # replicate the ESM and apply a semi_join.
-  features <- esm %>%
-    map(.f = ~select(.x, all_of(c("participant_id", "time")), any_of("gap"))) %>%
-    map2(.y = feature_data,
-         .f = ~map(.x = .y,
-                   .f = ~semi_join(.y, .x, by = "participant_id"),
-                   .x))
-
-  # Add gaps, only if gaps$gaps is TRUE
-  feature_data <- pmap(.l = list(feature_data, sensor_specs, gaps),
-                       .f = ~map2(.x = ..1,
-                                  .y = ..2,
-                                  .f = function(data, spec, gaps) {
-                                    if (spec$gaps$gaps) {
-                                      mem_add_gaps(data = data,
-                                                   gaps = gaps,
-                                                   by = "participant_id",
-                                                   continue = spec$gaps$continue,
-                                                   fill = spec$gaps$fill)
-                                    } else data
-                                  }, ..3))
-
-  memoise::forget(mem_add_gaps)
-  rm(gaps)
-
-  # Link to ESM
-  features <- specifications %>%
-    map(.f = ~keep(.x, !(names(.x) %in% tolower(sensors)))) %>%
-    pmap(.l = list(features, feature_data, sensor_specs, .),
-         .f = ~pmap(.l = list(..1, ..2, ..3),
-                    .f = ~link(x = ..1,
-                               y = ..2,
-                               by = "participant_id",
-                               offset_before = ..4$time_windows$time_window_before,
-                               offset_after = ..4$time_windows$time_window_after,
-                               add_before = ..3$link$add_before,
-                               add_after = ..3$link$add_after),
-                    ..4))
-  memoise::forget(mem_link)
-  rm(feature_data)
-
-  # Calculate the features
-  features <- map(.x = features,
-                  .f = ~imap(.x = .x,
-                             .f = ~`class<-`(.x, c(tolower(.y), class(.x)))))
-  features <- map2(.x = features,
-                   .y = sensor_specs,
-                   .f = ~map2(.x = .x,
-                              .y = .y,
-                              .f = ~map_feature(.x, .y$feature)))
-
-  memoise::forget(mem_map_feature)
+  # Transpose the list so we can loop over the sensors
+  trans_sensor_specs <- purrr::list_transpose(sensor_specs, template = snsrs)
+  pmap(.l = list(names(trans_sensor_specs),
+                 trans_sensor_specs),
+       .f = ~add_features_by_sensor(sensor = ..1,
+                                    sensor_spec = ..2,
+                                    esm = esm,
+                                    specifications = specifications,
+                                    db = db,
+                                    gaps = gaps))
 
 
   # For discarding non-implemented functions
@@ -172,6 +130,90 @@ add_features <- function(esm, specifications, db) {
               .f = ~left_join(.x, .y, by = intersect(colnames(.x), colnames(.y))))
 
   esm
+}
+
+add_features_by_sensor <- function(sensor, sensor_spec, esm, specifications, db, gaps) {
+  if (requireNamespace("cli", quietly = TRUE)) {
+    cli::cli_progress_step("Calculating {tolower(sensor)} features")
+  }
+
+  # 3. Get the feature data
+  # browser()
+  feature_data <- map(.x = sensor_spec,
+                      .f = ~mem_feature_data(
+                        db = db,
+                        sensor = sensor,
+                        cols = NULL,
+                        .x$preprocess,
+                        cache = memoise::cache_memory()
+                      ))
+  memoise::forget(mem_feature_data)
+
+  # Only retain participants that occur in the sensor data
+  # In the second part: Loop over both esm and feature data, then again loop over each sensor to
+  # replicate the ESM and apply a semi_join.
+  features <- esm |>
+    map(.f = ~select(.x, all_of(c("participant_id", "time")), any_of("gap"))) |>
+    map2(.x = _,
+         .y = feature_data,
+         .f = ~semi_join(.x, .y, by = "participant_id"),
+         .x)
+
+  # 4. Add gaps to the sensor data, only if gaps$gaps is TRUE
+  feature_data <- pmap(.l = list(feature_data, sensor_spec, gaps),
+                       .f = function(data, spec, gaps) {
+                         if (!spec$gaps$gaps) {
+                           return(data)
+                         }
+                         mem_add_gaps(data = data,
+                                      gaps = gaps,
+                                      by = "participant_id",
+                                      continue = spec$gaps$continue,
+                                      fill = spec$gaps$fill)
+                       })
+
+  memoise::forget(mem_add_gaps)
+
+  # 5. Link sensor data to ESM
+  features <- specifications %>%
+    map(.f = ~keep(.x, !(names(.x) %in% tolower(sensors)))) %>%
+    pmap(.l = list(features, feature_data, sensor_spec, .),
+         .f = ~mem_link(x = ..1,
+                        y = ..2,
+                        by = "participant_id",
+                        offset_before = ..4$time_windows$time_window_before,
+                        offset_after = ..4$time_windows$time_window_after,
+                        add_before = ..3$link$add_before,
+                        add_after = ..3$link$add_after))
+  memoise::forget(mem_link)
+  rm(feature_data)
+
+  # 6. Calculate the features
+  features <- map(.x = features,
+                  .f = ~`class<-`(.x, c(tolower(sensor), class(.x))))
+  features <- pmap(.l = list(features, sensor_specs, specifications),
+                   .f = ~mem_map_feature(..1,
+                                         ..2,
+                                         start = ..3$time_windows$time_window_before,
+                                         end = ..3$time_windows$time_window_before))
+
+  # features2 <- features
+  # for(i in seq_along(features[[1]])) {
+  #   sensor <- names(features[[1]][i])
+  #   print(sensor)
+  #
+  #   for (j in seq_along(features)) {
+  #     print(j)
+  #     features2[[j]][[sensor]] <- map_feature(
+  #       features[[j]][[sensor]],
+  #       sensor_specs[[j]][[sensor]]$feature,
+  #       start = specifications[[j]]$time_windows$time_window_before,
+  #       end = specifications[[j]]$time_windows$time_window_after
+  #     )
+  #   }
+  # }
+
+  memoise::forget(mem_map_feature)
 }
 
 mem_add_features_funs <- function(env = rlang::caller_env()) {
@@ -198,133 +240,3 @@ mem_add_features_funs <- function(env = rlang::caller_env()) {
 
   return(invisible(TRUE))
 }
-
-## Activity
-add_activity_features <- function(specifications, gaps) {
-  # Get the data
-  activity_data <- get_activity_data()
-
-  # Add the gaps
-  activity_data <- add_gaps(data = activity_data,
-                            gaps = gaps,
-                            by = participant_id,
-                            fill = list(confidence = 100, type = "GAP"))
-
-  # Link to ESM
-  specifications <- specifications %>%
-    mutate(activity_duration = map(.x = .data$esm,
-                                   .f = ~select(.x, participant_id, time))) %>%
-    mutate(activity_duration = pmap(.l = list(activity_duration,
-                                              time_window_before,
-                                              time_window_after),
-                                    .f = ~link(x = ..1,
-                                               y = activity_data,
-                                               by = "participant_id",
-                                               offset_before = ..2,
-                                               offset_after = ..3,
-                                               add_before = TRUE,
-                                               add_after = TRUE)
-    ))
-
-  # Calculate which beeps have more than 50% UNKNOWN
-  # Always fill in 0 when activity$UNKNOWN is false
-  # Cull beeps with more than 50% UNKNNOWN
-  specifications <- specifications %>%
-    mutate(activity_duration = map2(.x = activity_duration,
-                                    .y = map_lgl(.x = specifications$activity,
-                                                 .f = ~pull(.x, UNKNOWN)),
-                                    .f = map_activity_over_unknown)) %>%
-    mutate(activity_duration = map(.x = activity_duration,
-                                   .f = ~filter(.x, activity_unknown <= 50)))
-
-  # Now, re-link without UNKNOWNs (if necessary)
-  activity_data <- activity_data %>%
-    filter(type != "UNKNOWN")
-
-  specifications <- specifications %>%
-    mutate(activity_duration = map(.x = activity_duration,
-                                   .f = ~select(.x, -c(data, activity_unknown)))) %>%
-    mutate(activity_duration = pmap(.l = list(activity_duration,
-                                              time_window_before,
-                                              time_window_after),
-                                    .f = ~link(x = ..1,
-                                               y = activity_data,
-                                               by = "participant_id",
-                                               offset_before = ..2,
-                                               offset_after = ..3,
-                                               add_before = TRUE,
-                                               add_after = TRUE)
-    ))
-
-  # And recalculate duration
-  specifications <- specifications %>%
-    mutate(activity_duration = map(.x = activity_duration,
-                                   .f = map_activity_duration))
-
-  # Finally, add the features to the full data set
-  specifications <- specifications %>%
-    mutate(data = map2(.x = data,
-                       .y = activity_duration,
-                       .f = ~left_join(.x, .y, by = c("participant_id", "time")))) %>%
-    select(-activity_duration)
-
-  # Clean-up
-  rm(activity_data)
-}
-
-## Screen ============
-# TODO: Normalise screen count with gaps duration
-add_screen_features <- function(specifications, gaps) {
-  # Get the data
-  screen_data <- get_screen_data()
-
-  # Add the gaps
-  screen_data <- add_gaps(data = screen_data,
-                          gaps = gaps,
-                          by = "participant_id",
-                          fill = list(screen_event = "GAP"))
-
-  # Only retain participants that occur in the screen data
-  specifications <- specifications %>%
-    mutate(screen_duration = map(.x = esm,
-                                 .f = ~select(.x, participant_id, time, gap))) %>%
-    mutate(screen_duration = map(.x = screen_duration,
-                                 .f = ~semi_join(.x, screen_data, by = "participant_id")))
-
-  # Link to ESM
-  specifications <- specifications %>%
-    mutate(screen_duration = pmap(.l = list(screen_duration,
-                                            time_window_before,
-                                            time_window_after),
-                                  .f = ~link(x = ..1,
-                                             y = screen_data,
-                                             by = "participant_id",
-                                             offset_before = ..2,
-                                             offset_after = ..3,
-                                             add_before = TRUE,
-                                             add_after = TRUE)
-    ))
-
-  # Screen unlocks and duration
-  specifications <- specifications %>%
-    mutate(screen_unlocks = map(.x = screen_duration,
-                                .y = time_window,
-                                .f = map_screen_unlocks)) %>%
-    mutate(screen_duration = map(.x = screen_duration,
-                                 .f = map_screen_duration))
-
-  # Finally, add the features to the full data set
-  specifications <- specifications %>%
-    mutate(data = map2(.x = data,
-                       .y = screen_unlocks,
-                       .f = ~left_join(.x, .y, by = c("participant_id", "time")))) %>%
-    mutate(data = map2(.x = data,
-                       .y = screen_duration,
-                       .f = ~left_join(.x, .y, by = c("participant_id", "time")))) %>%
-    select(-c(screen_unlocks, screen_duration))
-
-  # Clean-up
-  rm(screen_data)
-}
-
-

@@ -45,7 +45,7 @@ multilevel_cor <- function(x,
   if (all(sapply(rlang::enexprs(group), rlang::is_character))) {
     if (scale) {
       x <- x %>%
-        group_by(across(dplyr::all_of(group)))
+        group_by(across(all_of(group)))
     }
     group_names <- unlist(group)
   } else {
@@ -65,7 +65,7 @@ multilevel_cor <- function(x,
 
   if (!is.null(y)) {
     y <- y %>%
-      select(dplyr::all_of(colnames(x)))
+      select(all_of(colnames(x)))
 
     if (!dplyr::all_equal(select(x, {{ group }}), select(y, {{ group }}))) {
       abort("group is not equal in x and y")
@@ -85,10 +85,10 @@ multilevel_cor <- function(x,
   # Calculate a multilevel model for each combination
   model_cor <- function(var1, var2, group) {
     dat1 <- x %>%
-      select(dplyr::all_of(c(group, var1)))
+      select(all_of(c(group, var1)))
     # %>% rename("var1" = all_of(var1))
     dat2 <- y %>%
-      select(dplyr::all_of(c(var2)))
+      select(all_of(c(var2)))
     # %>% rename("var2" = all_of(var2))
     dat <- dplyr::bind_cols(dat1, dat2)
 
@@ -154,7 +154,7 @@ multilevel_autocor <- function(data,
   # group_by has problems with a mix of characters and bares
   if (all(sapply(rlang::enexprs(group), rlang::is_character))) {
     if (scale) {
-      data <- group_by(data, across(dplyr::all_of(group)))
+      data <- group_by(data, across(all_of(group)))
     }
     group_names <- unlist(group)
   } else {
@@ -174,9 +174,9 @@ multilevel_autocor <- function(data,
   # Calculate a multilevel model for each combination
   model_autocor <- function(data, var, lag_var, group) {
     dat <- data %>%
-      select(dplyr::all_of(c(group, var, lag_var))) %>%
+      select(all_of(c(group, var, lag_var))) %>%
       drop_na() %>%
-      group_by(across(dplyr::all_of(c(group, lag_var)))) %>%
+      group_by(across(all_of(c(group, lag_var)))) %>%
       mutate(!!paste0(var, "_lag") := lag(!!rlang::sym(var))) %>% # nolint
       ungroup()
 
@@ -188,7 +188,7 @@ multilevel_autocor <- function(data,
     lmerTest::lmer(formula = formula, data = dat, na.action = stats::na.omit, REML = TRUE)
   }
 
-  res <- tibble::tibble(var = var_names)
+  res <- tibble(var = var_names)
   res$autocor <- rep(NA_real_, nrow(res))
   res$p.value <- rep(NA_real_, nrow(res))
   res$lower <- rep(NA_real_, nrow(res))

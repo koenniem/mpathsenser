@@ -146,6 +146,47 @@ test_that("device_info", {
   dbDisconnect(db)
 })
 
+test_that("wifi_home_ssid", {
+  data <- tibble::tibble(
+    participant_id = c("12345", "12345", "12345", "12345",
+                       "23456", "23456", "23456", "23456"),
+    ssid = c("a", "b", "b", "c", "b", "c", "d", "d"),
+    time = as.POSIXct(c("2022-12-15 10:00:00", "2022-12-15 02:00:00", "2022-12-15 10:00:00",
+                        "2022-12-15 10:00:00", "2022-12-15 10:00:00", "2022-12-15 10:00:00",
+                        "2022-12-15 10:00:00", "2022-12-15 10:00:00"))
+  )
+
+  res <- data %>%
+    wifi_home_ssid()
+  expect_equal(res, tibble(
+    ssid = "b"
+  ))
+
+  res <- data %>%
+    filter(participant_id == "12345") %>%
+    select(-participant_id) %>%
+    wifi_home_ssid()
+  expect_equal(res, tibble(
+    ssid = "b"
+  ))
+
+  res <- data %>%
+    filter(participant_id == "23456") %>%
+    wifi_home_ssid()
+  expect_equal(res, tibble(
+    ssid = "d"
+  ))
+
+  res <- data %>%
+    group_by(participant_id) %>%
+    wifi_home_ssid() %>%
+    ungroup()
+  expect_equal(res, tibble(
+    participant_id = c("12345", "23456"),
+    ssid = c("b", "d")
+  ))
+})
+
 test_that("moving_average", {
   path <- system.file("testdata", "test.db", package = "mpathsenser")
   db <- open_db(NULL, path)

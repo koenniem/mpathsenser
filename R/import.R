@@ -346,7 +346,7 @@ safe_extract <- function(vec, var) {
 # The goal is to have a list of all the sensors
 .import_clean <- function(data) {
   # Clean-up and extract the header and body
-  data <- tibble::tibble(
+  data <- tibble(
     header = lapply(data, function(x) x[1]),
     body = lapply(data, function(x) x[2])
   )

@@ -51,7 +51,7 @@ db_test <- function(sensor, true_data) {
 
 ### Accelerometer ============
 test_that("Accelerometer", {
-  db_test("Accelerometer", true_data = tibble::tibble(
+  db_test("Accelerometer", true_data = tibble(
     measurement_id = c(
       "15d06c62-3b69-5a1d-21b1-bf82ddc573bf_1",
       paste0("268f6135-70ac-f96a-f800-0d8f6bb6ffa6_", 1:5)
@@ -79,7 +79,7 @@ test_that("Accelerometer", {
 
 ### Activity ============
 test_that("Activity", {
-  db_test("Activity", true_data = tibble::tibble(
+  db_test("Activity", true_data = tibble(
     measurement_id = c(
       "fbf85cd7-6d37-53a8-5c44-ad8fe13ef7ac",
       "ef96364c-d1f4-5f73-ce40-277f078e3d0f",
@@ -95,7 +95,7 @@ test_that("Activity", {
 
 ### AirQuality ============
 test_that("AirQuality", {
-  db_test("AirQuality", true_data = tibble::tibble(
+  db_test("AirQuality", true_data = tibble(
     measurement_id = c(
       "d8dc5bea-6184-bafb-d65c-0a180aa21eb0",
       "c68f94a8-1992-8ce5-0d29-8290c75679c7"
@@ -114,7 +114,7 @@ test_that("AirQuality", {
 
 ### InstalledApps ============
 test_that("InstalledApps", {
-  db_test("InstalledApps", true_data = tibble::tibble(
+  db_test("InstalledApps", true_data = tibble(
     measurement_id = c(
       "b7eacaef-a4ff-90c0-c5a2-7e293dee7721_1",
       paste0("c48c62ac-a738-0ee0-586d-29ab0acff25a_", 1:16)
@@ -133,7 +133,7 @@ test_that("InstalledApps", {
 
 ### AppUsage ============
 test_that("AppUsage", {
-  db_test("AppUsage", true_data = tibble::tibble(
+  db_test("AppUsage", true_data = tibble(
     measurement_id = c(
       "2c3de6bf-e63d-4c47-8d14-36b9505d8968_1",
       paste0("2e3f8f0a-9de1-f328-6a2e-29b168925179_", 1:7)
@@ -153,7 +153,7 @@ test_that("AppUsage", {
 
 ### Battery ============
 test_that("Battery", {
-  db_test("Battery", true_data = tibble::tibble(
+  db_test("Battery", true_data = tibble(
     measurement_id = c(
       "1cc3b19c-a56a-ebc0-cd55-d5faf928c6c8",
       "8a224e06-6587-6be6-b7e8-a85fea1d974f",
@@ -169,7 +169,7 @@ test_that("Battery", {
 
 ### Bluetooth ============
 test_that("Bluetooth", {
-  db_test("Bluetooth", true_data = tibble::tibble(
+  db_test("Bluetooth", true_data = tibble(
     measurement_id = c(
       paste0("fff452f8-f927-86ca-b853-5236f25ec7dd_", 1:2),
       "88cf67a2-16d0-e7cc-2be5-6296d7a0f0b3_1"
@@ -198,7 +198,7 @@ test_that("Bluetooth", {
 
 ### Calendar ============
 test_that("Calendar", {
-  db_test("Calendar", true_data = tibble::tibble(
+  db_test("Calendar", true_data = tibble(
     measurement_id = c(
       paste0("7b050885-ad2f-3cd3-9217-5eb876e3c5c1_", 1:2),
       "5bafebd2-3d01-2355-0ad4-5e1f697b690f_1"
@@ -226,7 +226,7 @@ test_that("Calendar", {
 
 ### Connectivity ============
 test_that("Connectivity", {
-  db_test("Connectivity", true_data = tibble::tibble(
+  db_test("Connectivity", true_data = tibble(
     measurement_id = c(
       "27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
       "2d430c2a-5b16-1dce-0e2f-c049c44e3729"
@@ -240,7 +240,7 @@ test_that("Connectivity", {
 
 ### Device ============
 test_that("Device", {
-  db_test("Device", true_data = tibble::tibble(
+  db_test("Device", true_data = tibble(
     measurement_id = c(
       "bce3c272-3e06-4c84-f533-5bbbeaaac049",
       "ac1230a8-ed5f-4ded-7fca-7693a5ab4124",
@@ -261,7 +261,7 @@ test_that("Device", {
 
 ### Error ============
 test_that("Error", {
-  db_test("Error", true_data = tibble::tibble(
+  db_test("Error", true_data = tibble(
     measurement_id = c(
       "df74ca23-3d0f-fcb1-70b9-12b2051c1115",
       "b1c326ff-e96b-059f-7f1b-72d3384b7222"
@@ -279,7 +279,7 @@ test_that("Error", {
 
 ### Gyroscope ============
 test_that("Gyroscope", {
-  db_test("Gyroscope", true_data = tibble::tibble(
+  db_test("Gyroscope", true_data = tibble(
     measurement_id = c(
       paste0("ce0cc1bf-f071-91b5-19c8-4b3b789e64a2_", 1:5),
       "06bce1d4-b4a9-d1f1-2f06-cc76d872a61d_1"
@@ -307,7 +307,7 @@ test_that("Gyroscope", {
 
 ### Light ============
 test_that("Light", {
-  db_test("Light", true_data = tibble::tibble(
+  db_test("Light", true_data = tibble(
     measurement_id = c(
       "23d93a4e-7ff8-f057-828d-c728c9466f8a",
       "9199095d-acc1-737d-3029-5089738c6079"
@@ -324,7 +324,7 @@ test_that("Light", {
 
 ### Location ============
 test_that("Location", {
-  db_test("Location", true_data = tibble::tibble(
+  db_test("Location", true_data = tibble(
     measurement_id = c(
       "24d0a408-a87c-2ea4-80c0-23a964a16675",
       "62db94d7-2155-f867-b7c4-f878681ec736"
@@ -350,7 +350,7 @@ test_that("Location", {
 
 ### Memory  ============
 test_that("Memory", {
-  db_test("Memory", true_data = tibble::tibble(
+  db_test("Memory", true_data = tibble(
     measurement_id = c(
       "7f2fbe8b-af33-0078-137e-ed21c0f97b10",
       "7e3eb79e-56b2-441d-c7ab-890ba478b923"
@@ -365,7 +365,7 @@ test_that("Memory", {
 
 ### Mobility ============
 test_that("Mobility", {
-  db_test("Mobility", true_data = tibble::tibble(
+  db_test("Mobility", true_data = tibble(
     measurement_id = c(
       "95d7c9e8-bf65-1d89-264a-6d43e9c98e25",
       "6b789772-18ae-ce5f-b522-a38793023e1d"
@@ -384,7 +384,7 @@ test_that("Mobility", {
 
 ### Noise ============
 test_that("Noise", {
-  db_test("Noise", true_data = tibble::tibble(
+  db_test("Noise", true_data = tibble(
     measurement_id = c(
       "5fc9ecdf-c62c-955c-e59d-d6c4a2ee9a2a",
       "6ab8de47-fdfd-b2bd-bba1-6b6641906835"
@@ -403,7 +403,7 @@ test_that("Noise", {
 
 ### Pedometer ============
 test_that("Pedometer", {
-  db_test("Pedometer", true_data = tibble::tibble(
+  db_test("Pedometer", true_data = tibble(
     measurement_id = c(
       "5ea89a50-777c-11eb-8c91-3f093a6e6e87",
       "50dc55c0-356c-11ec-b60d-ddab48d96f4a",
@@ -418,7 +418,7 @@ test_that("Pedometer", {
 
 ### Screen ============
 test_that("Screen", {
-  db_test("Screen", true_data = tibble::tibble(
+  db_test("Screen", true_data = tibble(
     measurement_id = c(
       "c40b2459-e598-8fdb-7925-e55ed3048baf",
       "28560428-b12d-e753-f5d4-61c1d51fcd58"
@@ -434,7 +434,7 @@ test_that("Screen", {
 
 ### Weather ============
 test_that("Weather", {
-  db_test("Weather", true_data = tibble::tibble(
+  db_test("Weather", true_data = tibble(
     measurement_id = c(
       "d42140e5-d91b-8ec5-87fd-f003e4fdcdf3",
       "84f92625-1c56-fdd8-18ed-5fffa8f69e6c"
@@ -467,7 +467,7 @@ test_that("Weather", {
 
 ### WifI ============
 test_that("Wifi", {
-  db_test("Wifi", true_data = tibble::tibble(
+  db_test("Wifi", true_data = tibble(
     measurement_id = c(
       "59ce179b-3a3c-42d8-6e5c-6a1030545e92",
       "0392ed98-a2d5-fcd1-2ec5-ac13dd865f9a"

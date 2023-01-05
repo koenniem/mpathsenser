@@ -1,4 +1,7 @@
 link_impl <- function(x, y, by, offset_before, offset_after, add_before, add_after) {
+  force(add_before)
+  force(add_after)
+
   # Match sensing data with ESM using a left join
   # Set a start_time (beep time - offset) and an end_time (beep time)
   data <- x %>%
@@ -297,10 +300,13 @@ link <- function(x,
 
   x %>%
     furrr::future_map(
-      ~ link_impl(
-        .x, y, {{ by }}, offset_before,
-        offset_after, add_before, add_after
-      ),
+      ~ link_impl(x = .x,
+                  y = y,
+                  by = {{ by }},
+                  offset_before = offset_before,
+                  offset_after = offset_after,
+                  add_before = add_before,
+                  add_after = add_after),
       .options = furrr::furrr_options(seed = TRUE)
     ) %>%
     bind_rows()
@@ -530,7 +536,7 @@ link_gaps <- function(data,
     )
 
     # Create empty data frame in case no results are found
-    proto <- tibble::tibble(
+    proto <- tibble(
       from = as.POSIXct(vector(mode = "double"),
         origin = "1970-01-01",
         tz = attr(gaps$from, "tzone")
@@ -616,7 +622,7 @@ link_intervals <- function(x, x_start, x_end,
 #' @export
 #'
 #' @examples
-#' data <- tibble::tibble(
+#' data <- tibble(
 #'   participant_id = 1,
 #'   datetime = c(
 #'     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
@@ -651,7 +657,7 @@ link_intervals <- function(x, x_start, x_end,
 #'   )
 #'
 #' # More complicated data for showcasing grouping:
-#' data <- tibble::tibble(
+#' data <- tibble(
 #'   participant_id = 1,
 #'   datetime = c(
 #'     "2022-06-21 15:00:00", "2022-06-21 15:55:00",

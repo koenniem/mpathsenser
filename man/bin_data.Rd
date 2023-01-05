@@ -37,7 +37,7 @@ spent (i.e. the duration) in fixed bins, for example per hour or day. However, t
 difficult when two subsequent measurements are in different bins or span over multiple bins.
 }
 \examples{
-data <- tibble::tibble(
+data <- tibble(
   participant_id = 1,
   datetime = c(
     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
@@ -72,7 +72,7 @@ data \%>\%
   )
 
 # More complicated data for showcasing grouping:
-data <- tibble::tibble(
+data <- tibble(
   participant_id = 1,
   datetime = c(
     "2022-06-21 15:00:00", "2022-06-21 15:55:00",

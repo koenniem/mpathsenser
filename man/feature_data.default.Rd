@@ -32,7 +32,14 @@
   tz = Sys.timezone()
 )
 
-\method{feature_data}{activity}(db, sensor = "Activity", cols = NULL, ..., tz = Sys.timezone())
+\method{feature_data}{activity}(
+  db,
+  sensor = "Activity",
+  cols = NULL,
+  ...,
+  min_confidence = 50,
+  tz = Sys.timezone()
+)
 
 \method{feature_data}{battery}(db, sensor = "Battery", cols = NULL, ..., tz = Sys.timezone())
 
@@ -89,10 +96,12 @@ data was collected in.}
 \item{call}{Internal use only. A call to execute before \link[dplyr:compute]{dplyr::collect} is called. Note that
 these columns must carry the symbol \code{data} as their target data frame.}
 
+\item{min_confidence}{Activity data only. The minimum confidence value needed to keep the measurement. See \href{https://developers.google.com/android/reference/com/google/android/gms/location/DetectedActivity#getConfidence()}{Android's documentation} for a more precise description of what the confidence value entails.}
+
 \item{key}{A decryption key string. Only applicable when extraction location data.}
 }
 \value{
-A \link[tibble:tibble]{tibble::tibble} containing the columns \code{participant_id}, \code{time}, and other specified
+A \link{tibble} containing the columns \code{participant_id}, \code{time}, and other specified
 columns.
 }
 \description{

@@ -24,10 +24,12 @@ data was collected in.}
 \item{moving_average}{The number of seconds to calculate a moving average over. Defaults to no
 moving average.}
 
+\item{min_confidence}{Activity data only. The minimum confidence value needed to keep the measurement. See \href{https://developers.google.com/android/reference/com/google/android/gms/location/DetectedActivity#getConfidence()}{Android's documentation} for a more precise description of what the confidence value entails.}
+
 \item{key}{A decryption key string. Only applicable when extraction location data.}
 }
 \value{
-A \link[tibble:tibble]{tibble::tibble} containing the columns \code{participant_id}, \code{time}, and other specified
+A \link{tibble} containing the columns \code{participant_id}, \code{time}, and other specified
 columns.
 }
 \description{

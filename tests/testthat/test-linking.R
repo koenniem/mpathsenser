@@ -13,7 +13,7 @@ test_that("link", {
   )
 
   res <- link(dat1, dat2, "participant_id", offset_before = 1800, split = NULL)
-  true <- tibble::tibble(
+  true <- tibble(
     time = rep(c(
       as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
       as.POSIXct("2021-11-14 15:00:00")
@@ -21,21 +21,21 @@ test_that("link", {
     participant_id = c(rep("12345", 3), rep("23456", 3)),
     item_one = rep(c(40, 50, 60), 2),
     data = rep(list(
-      tibble::tibble(
+      tibble(
         time = seq.POSIXt(
           from = as.POSIXct("2021-11-14 12:50:00"),
           length.out = 3, by = "5 min"
         ),
         x = 1:3
       ),
-      tibble::tibble(
+      tibble(
         time = seq.POSIXt(
           from = as.POSIXct("2021-11-14 13:30:00"),
           length.out = 7, by = "5 min"
         ),
         x = 9:15
       ),
-      tibble::tibble(
+      tibble(
         time = seq.POSIXt(
           from = as.POSIXct("2021-11-14 14:30:00"),
           length.out = 7, by = "5 min"
@@ -60,7 +60,7 @@ test_that("link", {
   expect_equal(res, true)
 
   res <- link(dat1, dat2, "participant_id", offset_after = 1800)
-  true <- tibble::tibble(
+  true <- tibble(
     time = rep(c(
       as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
       as.POSIXct("2021-11-14 15:00:00")
@@ -68,21 +68,21 @@ test_that("link", {
     participant_id = c(rep("12345", 3), rep("23456", 3)),
     item_one = rep(c(40, 50, 60), 2),
     data = rep(list(
-      tibble::tibble(
+      tibble(
         time = seq.POSIXt(
           from = as.POSIXct("2021-11-14 13:00:00"),
           length.out = 7, by = "5 min"
         ),
         x = 3:9
       ),
-      tibble::tibble(
+      tibble(
         time = seq.POSIXt(
           from = as.POSIXct("2021-11-14 14:00:00"),
           length.out = 7, by = "5 min"
         ),
         x = 15:21
       ),
-      tibble::tibble(
+      tibble(
         time = seq.POSIXt(
           from = as.POSIXct("2021-11-14 15:00:00"),
           length.out = 4, by = "5 min"
@@ -102,7 +102,7 @@ test_that("link", {
     offset_before = 1800,
     add_before = TRUE, add_after = TRUE
   )
-  true <- tibble::tibble(
+  true <- tibble(
     time = rep(c(
       as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
       as.POSIXct("2021-11-14 15:00:00")
@@ -110,7 +110,7 @@ test_that("link", {
     participant_id = c(rep("12345", 3), rep("23456", 3)),
     item_one = rep(c(40, 50, 60), 2),
     data = rep(list(
-      tibble::tibble(
+      tibble(
         time = c(
           seq.POSIXt(
             from = as.POSIXct("2021-11-14 12:50:00"),
@@ -124,7 +124,7 @@ test_that("link", {
           as.POSIXct("2021-11-14 13:05:00")
         )
       ),
-      tibble::tibble(
+      tibble(
         time = c(
           as.POSIXct("2021-11-14 13:30:00"),
           seq.POSIXt(
@@ -140,7 +140,7 @@ test_that("link", {
           as.POSIXct("2021-11-14 14:05:00")
         )
       ),
-      tibble::tibble(
+      tibble(
         time = c(
           as.POSIXct("2021-11-14 14:30:00"),
           seq.POSIXt(
@@ -286,7 +286,7 @@ test_that("link_db", {
 
   # Check basic functionality
   res <- link_db(db, "Activity", "Connectivity", offset_after = 1800)
-  true <- tibble::tibble(
+  true <- tibble(
     measurement_id = c(
       "fbf85cd7-6d37-53a8-5c44-ad8fe13ef7ac",
       "ef96364c-d1f4-5f73-ce40-277f078e3d0f",
@@ -299,7 +299,7 @@ test_that("link_db", {
     confidence = c(NA, 100L, 99L),
     type = c(NA, "WALKING", "STILL"),
     data = list(
-      tibble::tibble(
+      tibble(
         measurement_id = c(
           "27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
           "2d430c2a-5b16-1dce-0e2f-c049c44e3729"
@@ -307,7 +307,7 @@ test_that("link_db", {
         time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
         connectivity_status = c("wifi", NA)
       ),
-      tibble::tibble(
+      tibble(
         measurement_id = c(
           "27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
           "2d430c2a-5b16-1dce-0e2f-c049c44e3729"
@@ -315,7 +315,7 @@ test_that("link_db", {
         time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
         connectivity_status = c("wifi", NA)
       ),
-      tibble::tibble(
+      tibble(
         measurement_id = "2d430c2a-5b16-1dce-0e2f-c049c44e3729",
         time = as.POSIXct("2021-11-14 14:01:00", tz = "UTC"),
         connectivity_status = NA_character_
@@ -326,7 +326,7 @@ test_that("link_db", {
 
   # Check reverse
   res <- link_db(db, "Activity", "Connectivity", offset_after = 1800, reverse = TRUE)
-  true <- tibble::tibble(
+  true <- tibble(
     measurement_id = c(
       "27a5777a-ec41-80de-afa4-d2e7f6b02fcf",
       "2d430c2a-5b16-1dce-0e2f-c049c44e3729"
@@ -335,7 +335,7 @@ test_that("link_db", {
     time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
     connectivity_status = c("wifi", NA),
     data = list(
-      tibble::tibble(
+      tibble(
         measurement_id = c(
           "ef96364c-d1f4-5f73-ce40-277f078e3d0f",
           "5ba54e77-4bcf-c8d1-17ff-71b9ed908897"
@@ -344,7 +344,7 @@ test_that("link_db", {
         confidence = c(100L, 99L),
         type = c("WALKING", "STILL"),
       ),
-      tibble::tibble(
+      tibble(
         measurement_id = character(0),
         time = structure(numeric(0), tzone = "UTC", class = c("POSIXct", "POSIXt")),
         confidence = integer(0),
@@ -356,16 +356,16 @@ test_that("link_db", {
 
   # Check with external data
   res <- link_db(db, "Activity", external = dat1, offset_after = 1800)
-  true <- tibble::tibble(
+  true <- tibble(
     dat1,
     data = list(
-      tibble::tibble(
+      tibble(
         measurement_id = character(0),
         time = structure(numeric(0), tzone = "UTC", class = c("POSIXct", "POSIXt")),
         confidence = integer(0L),
         type = character(0)
       ),
-      tibble::tibble(
+      tibble(
         measurement_id = c(
           "ef96364c-d1f4-5f73-ce40-277f078e3d0f",
           "5ba54e77-4bcf-c8d1-17ff-71b9ed908897"
@@ -374,7 +374,7 @@ test_that("link_db", {
         confidence = c(100L, 99L),
         type = c("WALKING", "STILL")
       ),
-      tibble::tibble(
+      tibble(
         measurement_id = character(0),
         time = structure(numeric(0), tzone = "UTC", class = c("POSIXct", "POSIXt")),
         confidence = integer(0),
@@ -539,37 +539,37 @@ test_that("link_gaps", {
     offset_after = 0L,
     raw_data = TRUE
   )
-  true <- tibble::tibble(
+  true <- tibble(
     participant_id = c(rep("12345", 6), rep("23456", 6)),
     time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
     item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
     gap_data = rep(list(
-      tibble::tibble(
+      tibble(
         from = seq.POSIXt(as.POSIXct("2021-11-14 12:40:00"), by = "1 min", length.out = 20),
         to = seq.POSIXt(as.POSIXct("2021-11-14 12:41:00"), by = "1 min", length.out = 20),
         gap = rep(60, 20)
       ), # 1
-      tibble::tibble(
+      tibble(
         from = as.POSIXct("2021-11-14 13:55:00"),
         to = as.POSIXct("2021-11-14 14:00:00"),
         gap = 300
       ), # 3
-      tibble::tibble(
+      tibble(
         from = as.POSIXct("2021-11-14 14:30:00"),
         to = as.POSIXct("2021-11-14 14:40:00"),
         gap = 600
       ), # 3
-      tibble::tibble(
+      tibble(
         from = as.POSIXct("2021-11-14 15:30:00"),
         to = as.POSIXct("2021-11-14 16:00:00"),
         gap = 1800
       ), # 4
-      tibble::tibble(
+      tibble(
         from = as.POSIXct(double(0), tz = ""),
         to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
       ), # 5
-      tibble::tibble(
+      tibble(
         from = as.POSIXct(double(0), tz = ""),
         to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
@@ -636,7 +636,7 @@ test_that("link_gaps", {
     offset_before = 1800L,
     offset_after = 0L
   )
-  true <- tibble::tibble(
+  true <- tibble(
     participant_id = c(rep("12345", 6), rep("23456", 6)),
     time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
     item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
@@ -661,37 +661,37 @@ test_that("link_gaps", {
     offset_after = 1800L,
     raw_data = TRUE
   )
-  true <- tibble::tibble(
+  true <- tibble(
     participant_id = c(rep("12345", 6), rep("23456", 6)),
     time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
     item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
     gap_data = rep(list(
-      tibble::tibble(
+      tibble(
         from = seq.POSIXt(as.POSIXct("2021-11-14 13:10:00"), by = "1 min", length.out = 20),
         to = seq.POSIXt(as.POSIXct("2021-11-14 13:11:00"), by = "1 min", length.out = 20),
         gap = rep(60, 20)
       ), # 1
-      tibble::tibble(
+      tibble(
         from = c(as.POSIXct("2021-11-14 14:00:00"), as.POSIXct("2021-11-14 14:25:00")),
         to = c(as.POSIXct("2021-11-14 14:05:00"), as.POSIXct("2021-11-14 14:30:00")),
         gap = 300
       ), # 2
-      tibble::tibble(
+      tibble(
         from = as.POSIXct("2021-11-14 15:25:00"),
         to = as.POSIXct("2021-11-14 15:30:00"),
         gap = 300
       ), # 2
-      tibble::tibble(
+      tibble(
         from = as.POSIXct("2021-11-14 16:00:00"),
         to = as.POSIXct("2021-11-14 16:30:00"),
         gap = 1800
       ), # 4
-      tibble::tibble(
+      tibble(
         from = as.POSIXct(double(0), tz = ""),
         to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
       ), # 5
-      tibble::tibble(
+      tibble(
         from = as.POSIXct(double(0), tz = ""),
         to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
@@ -709,7 +709,7 @@ test_that("link_gaps", {
     offset_before = 0L,
     offset_after = 1800L
   )
-  true <- tibble::tibble(
+  true <- tibble(
     participant_id = c(rep("12345", 6), rep("23456", 6)),
     time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
     item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
@@ -734,12 +734,12 @@ test_that("link_gaps", {
     offset_after = 1800L,
     raw_data = TRUE
   )
-  true <- tibble::tibble(
+  true <- tibble(
     participant_id = c(rep("12345", 6), rep("23456", 6)),
     time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
     item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
     gap_data = rep(list(
-      tibble::tibble(
+      tibble(
         from = c(
           seq.POSIXt(as.POSIXct("2021-11-14 12:40:00"), by = "1 min", length.out = 20),
           seq.POSIXt(as.POSIXct("2021-11-14 13:10:00"), by = "1 min", length.out = 20)
@@ -750,27 +750,27 @@ test_that("link_gaps", {
         ),
         gap = rep(60, 40)
       ), # 1
-      tibble::tibble(
+      tibble(
         from = c(as.POSIXct("2021-11-14 13:55:00"), as.POSIXct("2021-11-14 14:25:00")),
         to = c(as.POSIXct("2021-11-14 14:05:00"), as.POSIXct("2021-11-14 14:30:00")),
         gap = c(600, 300)
       ), # 2
-      tibble::tibble(
+      tibble(
         from = c(as.POSIXct("2021-11-14 14:30:00"), as.POSIXct("2021-11-14 15:25:00")),
         to = c(as.POSIXct("2021-11-14 14:40:00"), as.POSIXct("2021-11-14 15:30:00")),
         gap = c(600, 300)
       ), # 2
-      tibble::tibble(
+      tibble(
         from = as.POSIXct("2021-11-14 15:30:00"),
         to = as.POSIXct("2021-11-14 16:30:00"),
         gap = 3600
       ), # 4
-      tibble::tibble(
+      tibble(
         from = as.POSIXct(double(0), tz = ""),
         to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
       ), # 5
-      tibble::tibble(
+      tibble(
         from = as.POSIXct(double(0), tz = ""),
         to = as.POSIXct(double(0), tz = ""),
         gap = integer(0)
@@ -788,7 +788,7 @@ test_that("link_gaps", {
     offset_before = 1800L,
     offset_after = 1800L
   )
-  true <- tibble::tibble(
+  true <- tibble(
     participant_id = c(rep("12345", 6), rep("23456", 6)),
     time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 6), 2),
     item_one = rep(seq.int(10, by = 10, length.out = 6), 2),
@@ -836,7 +836,7 @@ test_that("link_gaps", {
 
 ## bin_data =================
 test_that("bin_data", {
-  data <- tibble::tibble(
+  data <- tibble(
     participant_id = 1,
     datetime = c(
       "2022-06-21 15:00:00", "2022-06-21 15:55:00",
@@ -856,24 +856,24 @@ test_that("bin_data", {
       by = "hour"
     )
 
-  true <- tibble::tibble(
+  true <- tibble(
     bin = as.POSIXct(c("2022-06-21 15:00:00", "2022-06-21 16:00:00", "2022-06-21 17:00:00")),
     bin_data = list(
-      tibble::tibble(
+      tibble(
         participant_id = 1,
         datetime = as.POSIXct(c("2022-06-21 15:00:00", "2022-06-21 15:55:00")),
         confidence = 100,
         type = "WALKING",
         lead = as.POSIXct(c("2022-06-21 15:55:00", "2022-06-21 16:00:00"))
       ),
-      tibble::tibble(
+      tibble(
         participant_id = 1,
         datetime = as.POSIXct(c("2022-06-21 16:00:00")),
         confidence = 100,
         type = "WALKING",
         lead = as.POSIXct("2022-06-21 17:00:00")
       ),
-      tibble::tibble(
+      tibble(
         participant_id = 1,
         datetime = as.POSIXct(c(
           "2022-06-21 17:00:00", "2022-06-21 17:05:00",
@@ -900,41 +900,41 @@ test_that("bin_data", {
       by = 1800L,
       fixed = FALSE
     )
-  true <- tibble::tibble(
+  true <- tibble(
     bin = as.POSIXct(c(
       "2022-06-21 15:00:00", "2022-06-21 15:30:00", "2022-06-21 16:00:00",
       "2022-06-21 16:30:00", "2022-06-21 17:00:00"
     )),
     bin_data = list(
-      tibble::tibble(
+      tibble(
         participant_id = 1,
         datetime = as.POSIXct(c("2022-06-21 15:00:00")),
         confidence = 100,
         type = "WALKING",
         lead = as.POSIXct(c("2022-06-21 15:30:00"))
       ),
-      tibble::tibble(
+      tibble(
         participant_id = 1,
         datetime = as.POSIXct(c("2022-06-21 15:30:00", "2022-06-21 15:55:00")),
         confidence = 100,
         type = "WALKING",
         lead = as.POSIXct(c("2022-06-21 15:55:00", "2022-06-21 16:00:00"))
       ),
-      tibble::tibble(
+      tibble(
         participant_id = 1,
         datetime = as.POSIXct(c("2022-06-21 16:00:00")),
         confidence = 100,
         type = "WALKING",
         lead = as.POSIXct(c("2022-06-21 16:30:00"))
       ),
-      tibble::tibble(
+      tibble(
         participant_id = 1,
         datetime = as.POSIXct(c("2022-06-21 16:30:00")),
         confidence = 100,
         type = "WALKING",
         lead = as.POSIXct(c("2022-06-21 17:00:00"))
       ),
-      tibble::tibble(
+      tibble(
         participant_id = 1,
         datetime = as.POSIXct(c(
           "2022-06-21 17:00:00", "2022-06-21 17:05:00",
@@ -949,7 +949,7 @@ test_that("bin_data", {
   expect_equal(res, true)
 
   # More complicated data for showcasing grouping:
-  data <- tibble::tibble(
+  data <- tibble(
     participant_id = c(rep(1, 4), rep(2, 4)),
     datetime = rep(c(
       "2022-06-21 15:00:00", "2022-06-21 15:55:00",
@@ -970,7 +970,7 @@ test_that("bin_data", {
       end_time = lead,
       by = "hour"
     )
-  true <- tibble::tibble(
+  true <- tibble(
     participant_id = c(rep(1, 6), rep(2, 6)),
     type = rep(c("STILL", "STILL", "STILL", "WALKING", "WALKING", "WALKING"), 2),
     bin = rep(as.POSIXct(c(
@@ -979,33 +979,33 @@ test_that("bin_data", {
     )), 4),
     bin_data = rep(list(
       # STILL
-      tibble::tibble(
+      tibble(
         datetime = as.POSIXct(c("2022-06-21 15:00:00")),
         confidence = 100,
         lead = as.POSIXct(c("2022-06-21 15:55:00"))
       ),
-      tibble::tibble(
+      tibble(
         datetime = as.POSIXct(double(0)),
         confidence = double(0),
         lead = as.POSIXct(double(0))
       ),
-      tibble::tibble(
+      tibble(
         datetime = as.POSIXct(c("2022-06-21 17:05:00")),
         confidence = 100,
         lead = as.POSIXct(c("2022-06-21 17:10:00"))
       ),
       # WALKING
-      tibble::tibble(
+      tibble(
         datetime = as.POSIXct(c("2022-06-21 15:55:00")),
         confidence = 100,
         lead = as.POSIXct(c("2022-06-21 16:00:00"))
       ),
-      tibble::tibble(
+      tibble(
         datetime = as.POSIXct(c("2022-06-21 16:00:00")),
         confidence = 100,
         lead = as.POSIXct(c("2022-06-21 17:00:00"))
       ),
-      tibble::tibble(
+      tibble(
         datetime = as.POSIXct(c("2022-06-21 17:00:00", "2022-06-21 17:10:00")),
         confidence = 100,
         lead = as.POSIXct(c("2022-06-21 17:05:00", NA))

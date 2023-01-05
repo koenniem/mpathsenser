@@ -234,7 +234,7 @@ test_that(".import_is_duplicate", {
 })
 
 test_that(".import_extract_sensor_data", {
-  data <- tibble::tibble(
+  data <- tibble(
     body = list(
       list(
         body = list(
@@ -376,7 +376,7 @@ test_that(".import_write_to_db", {
   db <- create_db(NULL, tempfile())
 
   data <- list(
-    Accelerometer = tibble::tibble(
+    Accelerometer = tibble(
       measurement_id = "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_1",
       participant_id = "12345",
       date = "2021-02-25",

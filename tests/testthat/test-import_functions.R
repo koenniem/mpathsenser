@@ -2,7 +2,7 @@
 
 # common_test ===========
 common_test <- function(sensor, ...) {
-  tibble::tibble(
+  tibble(
     body = list(...),
     study_id = "test-study",
     participant_id = "12345",
@@ -30,7 +30,7 @@ unit_test <- function(sensor, ...) {
   # Check if there is a list column present since this must be unested first
   depth <- lapply(list(...), function(x) length(x))
   if (any(depth > 1)) {
-    true <- tibble::tibble(
+    true <- tibble(
       measurement_id = "12345a",
       participant_id = "12345",
       date = "2021-11-14",
@@ -162,11 +162,11 @@ test_that("safe_data_frame", {
 
 # safe_tibble ===========
 test_that("safe_tibble", {
-  dat <- tibble::tibble(a = 1, b = NA, c = vector("list", 1))
-  dat2 <- tibble::tibble(a = 1, b = NA, c = vector("list", 0))
+  dat <- tibble(a = 1, b = NA, c = vector("list", 1))
+  dat2 <- tibble(a = 1, b = NA, c = vector("list", 0))
   res <- safe_tibble(a = dat$a, b = dat$b, c = dat$c, d = dat$d)
   res2 <- safe_tibble(a = dat$a, b = dat$b, c = dat$c, d = dat$d)
-  true <- tibble::tibble(a = 1, b = NA, c = NA, d = NA)
+  true <- tibble(a = 1, b = NA, c = NA, d = NA)
   expect_equal(res, true)
   expect_equal(res2, true)
 })

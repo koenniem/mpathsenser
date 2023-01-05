@@ -118,7 +118,7 @@ default_specs <- function(sensors = NULL, tz = Sys.timezone()) {
       list(battery_level = NA, battery_status = "GAP"),
       NULL,
       NULL,
-      list(connectivity = "GAP"),
+      list(connectivity_status = "GAP"),
       NULL,
       NULL,
       list(latitude = NA, longitude = NA),
@@ -247,4 +247,3 @@ add_sensor_spec <- function(specifications,
 
   specifications
 }
-
