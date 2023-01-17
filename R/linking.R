@@ -99,7 +99,7 @@ link_impl <- function(x,
       distinct(.data$.row_id)
 
     data_after <- data %>%
-      dplyr::anti_join(equal_to_start, by = ".row_id") %>%
+      dplyr::anti_join(equal_to_end, by = ".row_id") %>%
       filter(.data$.y_time > .data$.end_time) %>%
       group_by(.data$.row_id) %>%
       dplyr::slice_min(order_by =  .data$.y_time, n = 1, with_ties = TRUE) %>%
