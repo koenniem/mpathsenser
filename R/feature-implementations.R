@@ -8,6 +8,13 @@ feature_duration <- function(data,
                               weight_by = NULL,
                               categories = NULL) {
 
+  check_arg(data, type = "data.frame")
+  check_arg(by, type = "character")
+  check_arg(gap_value, "character", n = 1)
+  check_arg(weight_by, "character", allow_null = TRUE)
+  check_arg(categories, "character", allow_null = TRUE)
+
+
   # If `data` is empty, contains only NA's, or only GAPs
   force(data)
   if (nrow(data) == 0 || all(is.na(data[[by]])) || all(data[[by]] == gap_value, na.rm = TRUE)) {
@@ -22,13 +29,17 @@ feature_duration <- function(data,
   # data <- data |>
   #   filter(!({{ by }} == lead({{ by }}, default = "foo") &
   #              {{ by }} == lag({{ by }}, default = "foo")))
-  data <- purge_redundant(data, {{ by }})
+  data <- purge_redundant(.data = data,
+                          .cols = {{ by }},
+                          .before = TRUE,
+                          .after = TRUE)
 
   # Convert time to integer for efficiency
   data <- mutate(data, time = as.integer(time))
 
   # If there are multiple measurements at the same time, retain them only as long as there is not a
   # gap
+  by <- rlang::ensym(by)
   data <- data |>
     group_by(time, .add = TRUE) |>
     mutate(.n = n()) |> # The number of measurements per timestamp
@@ -47,7 +58,7 @@ feature_duration <- function(data,
     mutate(next_time = lead(time))
 
   # Join with original data
-  data <- left_join(data, unique_time, by = intersect(names(data), names(unique_time)))
+  data <- dplyr::left_join(data, unique_time, by = intersect(names(data), names(unique_time)))
 
   # Calculate duration
   data <- mutate(data, duration = next_time - time)

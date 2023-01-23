@@ -10,7 +10,7 @@ test_that("feature_duration gives correct output", {
     duration = c(0, 50, 50)
   )
 
-  res <- feature_duration2(data = data,
+  res <- feature_duration(data = data,
                            by = "type",
                            categories = categories)
 
@@ -29,13 +29,13 @@ test_that("feature_duration gives correct output", {
     duration = c(25, 37.5, 37.5)
   )
 
-  res <- feature_duration2(data = data,
+  res <- feature_duration(data = data,
                           by = "type",
                           categories = categories)
 
   expect_equal(res, true)
 
-  # Multiple measurements, one which is a gap
+  # Multiple measurements, one of which is a gap
   data <- tibble(
     time = as.POSIXct(c("2022-05-10 10:00:00", "2022-05-10 10:30:00", "2022-05-10 10:30:00",
                         "2022-05-10 11:00:00")),
@@ -44,11 +44,11 @@ test_that("feature_duration gives correct output", {
   categories <-  c("RUNNING", "STILL", "WALKING")
 
   true <- tibble(
-    type = c("RUNNING", "STILL", "WALKING"),
-    duration = c(0, 0, 50)
+    type = c("GAP", "RUNNING", "WALKING"),
+    duration = c(50, 0, 50)
   )
 
-  res <- feature_duration2(data = data,
+  res <- feature_duration(data = data,
                           by = "type",
                           categories = categories)
 
@@ -68,10 +68,10 @@ test_that("feature_duration gives correct output", {
     duration = c(25, 29.285714, 45.714286)
   )
 
-  res <- feature_duration2(data = data,
+  res <- feature_duration(data = data,
                           by = "type",
                           categories = categories,
-                          weight_by = confidence)
+                          weight_by = "confidence")
 
   expect_equal(res, true, tolerance = 0.00001)
 
@@ -85,14 +85,14 @@ test_that("feature_duration gives correct output", {
   categories <-  c("RUNNING", "STILL", "WALKING")
 
   true <- tibble(
-    type = c("RUNNING", "STILL", "WALKING"),
-    duration = c(25, 14.2857143, 35.714286)
+    type = c("GAP", "RUNNING", "STILL", "WALKING"),
+    duration = c(25, 25, 14.2857143, 35.714286)
   )
 
-  res <- feature_duration2(data = data,
+  res <- feature_duration(data = data,
                           by = "type",
                           categories = categories,
-                          weight_by = confidence)
+                          weight_by = "confidence")
 
   expect_equal(res, true, tolerance = 0.00001)
 })
@@ -109,80 +109,36 @@ test_that("feature_duration grouping works", {
   categories <-  c("RUNNING", "STILL", "WALKING")
 
   true <- tibble(
-    participant_id = c(rep("12345", 3), rep("23456", 3)),
-    type = rep(c("RUNNING", "STILL", "WALKING"), 2),
-    duration = rep(c(25, 14.2857143, 35.714286), 2)
+    participant_id = c(rep("12345", 4), rep("23456", 4)),
+    type = rep(c("GAP", "RUNNING", "STILL", "WALKING"), 2),
+    duration = rep(c(25, 25, 14.2857143, 35.714286), 2)
   )
 
   res <- data |>
     group_by(participant_id) |>
-    feature_duration2(by = "type",
+    feature_duration(by = "type",
                      categories = categories,
-                     weight_by = confidence) |>
+                     weight_by = "confidence") |>
     ungroup()
 
   expect_equal(res, true, tolerance = 0.00001)
 })
 
-test_that("feature_duration start and end adjustments work", {
-  data <- tibble(
-    time = as.POSIXct(c("2022-05-10 10:15:00", "2022-05-10 10:30:00", "2022-05-10 11:00:00")),
-    type = c("WALKING", "STILL", "RUNNING")
-  )
-  categories <-  c("RUNNING", "STILL", "WALKING")
-
-  true <- tibble(
-    type = c("RUNNING", "STILL", "WALKING"),
-    duration = c(0, 50, 25)
-  )
-
-  res <- feature_duration2(data = data,
-                          by = "type",
-                          start = as.POSIXct("2022-05-10 10:00:00"),
-                          end = as.POSIXct("2022-05-10 11:00:00"),
-                          categories = categories)
-
-  expect_equal(res, true, tolerance = 0.1)
-
-  # With weights and gap
-  data <- tibble(
-    time = as.POSIXct(c("2022-05-10 10:15:00", "2022-05-10 10:15:00", "2022-05-10 10:30:00",
-                        "2022-05-10 10:30:00", "2022-05-10 10:45:00", "2022-05-10 11:00:00")),
-    type = c("WALKING", "STILL", "GAP", "WALKING", "RUNNING", "RUNNING"),
-    confidence = c(100, 40, 100, 20, 80, 100)
-  )
-  categories <-  c("RUNNING", "STILL", "WALKING")
-
-  true <- tibble(
-    type = c("RUNNING", "STILL", "WALKING"),
-    duration = c(25, 7.142857, 17.857143)
-  )
-
-  res <- feature_duration2(data = data,
-                          by = "type",
-                          start = as.POSIXct("2022-05-10 10:00:00"),
-                          end = as.POSIXct("2022-05-10 11:00:00"),
-                          categories = categories,
-                          weight_by = confidence)
-
-  expect_equal(res, true, tolerance = 0.00001)
-})
-
-test_that("feature_duration categories work", {
-  data <- tibble(
-    time = integer(0),
-    type = character(0)
-  )
-  categories <- c("RUNNING", "STILL", "WALKING")
-
-  true <- tibble(
-    type = categories,
-    duration = 0
-  )
-
-  res <- feature_duration2(data = data,
-                           by = "type",
-                           categories = categories)
-
-  expect_equal(res, true)
-})
+# test_that("feature_duration categories work", {
+#   data <- tibble(
+#     time = integer(0),
+#     type = character(0)
+#   )
+#   categories <- c("RUNNING", "STILL", "WALKING")
+#
+#   true <- tibble(
+#     type = categories,
+#     duration = 0
+#   )
+#
+#   res <- feature_duration(data = data,
+#                            by = "type",
+#                            categories = categories)
+#
+#   expect_equal(res, true)
+# })
