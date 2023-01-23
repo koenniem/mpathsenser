@@ -41,6 +41,7 @@
 #' @importFrom tibble tibble
 #' @importFrom tidyr complete
 #' @importFrom tidyr drop_na
+#' @importFrom tidyr everything
 #' @importFrom tidyr nest
 #' @importFrom tidyr unnest
 ## usethis namespace: end

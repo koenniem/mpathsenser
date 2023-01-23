@@ -7,3 +7,4 @@ docs
 public/
 inst/doc
 R/stats.R
+*.RDS
