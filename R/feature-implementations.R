@@ -18,6 +18,12 @@ feature_duration <- function(data,
     return(out)
   }
 
+  # Remove subsequent measurements of the same type to further compress the data
+  # data <- data |>
+  #   filter(!({{ by }} == lead({{ by }}, default = "foo") &
+  #              {{ by }} == lag({{ by }}, default = "foo")))
+  data <- purge_redundant(data, {{ by }})
+
   # Convert time to integer for efficiency
   data <- mutate(data, time = as.integer(time))
 
@@ -26,9 +32,9 @@ feature_duration <- function(data,
   data <- data |>
     group_by(time, .add = TRUE) |>
     mutate(.n = n()) |> # The number of measurements per timestamp
-    mutate(.any_gap = any(type == gap_value)) |> # Whether there is a gap present
+    mutate(.any_gap = any({{ by }} == gap_value)) |> # Whether there is a gap present
     filter(.n == 1 | # Only one measurement
-             (.n > 1 & .any_gap & type == gap_value) | # A gap, drop all non-gaps
+             (.n > 1 & .any_gap & {{ by }} == gap_value) | # A gap, drop all non-gaps
              (.n > 1 & !.any_gap)) |>  # No gap present, retain all
     select(-c(.n, .any_gap)) |>
     ungroup(time)
@@ -295,10 +301,6 @@ activity_duration <- function(data,
   data <- data |>
     select(dplyr::group_cols(), time, type, any_of(weight_by))
 
-  # Remove subsequent measurements of the same type to further compress the data
-  data <- data |>
-    filter(!(type == lead(type, default = "foo") & type == lag(type, default = "foo")))
-
   res <- feature_duration(data = data,
                           by = "type",
                           gap_value = gap_value,
@@ -314,7 +316,7 @@ app_usage <- function(data) {
 battery_charging_time <- function(data,
                                   gap_value = "GAP",
                                   categories = c("charging", "discharging")) {
-  # Select relevant column
+  # Select relevant columns
   data <- data |>
     select(dplyr::group_cols(), time, battery_status)
 
@@ -358,13 +360,17 @@ calendar_attendees <- function(data) {
   feature_count(data)
 }
 
-connectivity_duration <- function(data, start = NULL, end = NULL) {
-  data <- data[, c("time", "connectivity_status")]
+connectivity_duration <- function(data,
+                                  gap_value = "GAP",
+                                  categories = c("mobile", "none", "wifi")) {
+  # Select relevant columns
+  data <- data |>
+    select(dplyr::group_cols(), time, connectivity_status)
+
   res <- feature_duration(data = data,
                           by = "connectivity_status",
-                          start = start,
-                          end = end,
-                          categories = c("mobile", "none", "wifi"))
+                          gap_value = gap_value,
+                          categories = categories)
   res
 }
 
@@ -396,13 +402,17 @@ noise_intensity <- function(data, ...) {
   feature_average(data, ...)
 }
 
-screen_duration <- function(data, start = NULL, end = NULL) {
-  data <- data[, c("time", "screen_event")]
+screen_duration <- function(data,
+                            gap_value = "GAP",
+                            categories = c("SCREEN_OFF", "SCREEN_ON", "SCREEN_UNLOCKED")) {
+  # Select relevant columns
+  data <- data |>
+    select(dplyr::group_cols(), time, screen_event)
+
   res <- feature_duration(data = data,
                           by = "screen_event",
-                          start = start,
-                          end = end,
-                          categories = c("SCREEN_OFF", "SCREEN_ON", "SCREEN_UNLOCKED"))
+                          gap_value = gap_value,
+                          categories = categories)
   res
 }
 
@@ -435,29 +445,42 @@ wifi_duration <- function(data, start = NULL, end = NULL) {
   # res
 }
 
-wifi_time_recurring <- function(data, ssids, start = NULL, end = NULL) {
-  data <- data[, c("time", "ssid")]
+wifi_time_recurring <- function(data,
+                                ssids,
+                                gap_value = "GAP",
+                                categories = c("recurring", "not_recurring")) {
+  # Select relevant columns
+  data <- data |>
+    select(dplyr::group_cols(), time, ssid)
+  browser()
+
   data <- data[data$ssid %in% ssids, ]
   names(data)[names(data) == "ssid"] <- "wifi_recurring"
   data$wifi_recurring <- ifelse(data$wifi_recurring %in% ssids, "recurring", "not_recurring")
 
   res <- feature_duration(data = data,
                           by = "wifi_recurring",
-                          start = start,
-                          end = end,
-                          categories = c("recurring", "not_recurring"))
+                          gap_value = gap_value,
+                          categories = categories)
   res
 }
 
-wifi_time_home <- function(data, ssid, start = NULL, end = NULL) {
-  data <- data[, c("time", "ssid")]
-  names(data)[names(data) == "ssid"] <- "wifi_home"
-  data$wifi_home <- ifelse(data$wifi_home == ssid, "wifi_home", "wifi_not_home")
+wifi_time_home <- function(data,
+                           ssid,
+                           gap_value = "GAP",
+                           categories = c("wifi_home", "wifi_not_home")) {
+  # Select relevant columns
+  data <- data |>
+    select(dplyr::group_cols(), time, ssid) |>
+    dplyr::rename(wifi_home = ssid) |>
+    mutate(wifi_home = ifelse(wifi_home == ssid, "wifi_home", "wifi_not_home"))
+
+  # names(data)[names(data) == "ssid"] <- "wifi_home"
+  # data$wifi_home <- ifelse(data$wifi_home == ssid, "wifi_home", "wifi_not_home")
 
   res <- feature_duration(data = data,
                           by = "wifi_home",
-                          start = start,
-                          end = end,
-                          categories = c("wifi_home", "wifi_not_home"))
+                          gap_value = gap_value,
+                          categories = categories)
   res
 }

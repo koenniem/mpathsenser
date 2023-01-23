@@ -205,7 +205,7 @@ map_feature.screen <- function(data, ..., start = NULL, end = NULL) {
                          categories = "screen_event",
                          start = start,
                          end = end) %>%
-    select(-data)
+    select(-"data")
 }
 
 map_feature.weather <- function(data, ...) {
