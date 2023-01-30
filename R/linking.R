@@ -48,7 +48,8 @@ link_impl <- function(x,
   # Match sensing data with ESM using a left join
   data <- data %>%
     dplyr::left_join(y, by = by) %>%
-    mutate(across(dplyr::all_of(y_time), as.integer, .names = ".y_time"))
+    mutate(across(dplyr::all_of(y_time), as.integer, .names = ".y_time")) %>%
+    tidyr::drop_na(".start_time", ".end_time")
 
   # The main data, i.e. data exactly within the interval
   data_main <- data %>%
@@ -138,9 +139,9 @@ link_impl <- function(x,
   }
 
   res <- data_main %>%
-    mutate({{ name }} := ifelse(test = lapply(!!rlang::ensym(name), is.null),
+    mutate({{ name }} := ifelse(test = lapply(!!rlang::ensym(name), \(x) is.null(x) | nrow(x) == 0),
                                 yes = list(proto),
-                                no = !!rlang::ensym(name)))  %>%
+                                no = !!rlang::ensym(name))) %>%
     select(-".row_id")
 
   res
@@ -397,7 +398,7 @@ link <- function(x,
   }
 
   # Do not perform matching when x and y are identical
-  if (identical(x, y) || isTRUE(dplyr::all_equal(x, y))) {
+  if (identical(x, y) || isTRUE(all.equal(x, y))) {
     abort("`x` and `y` are identical.")
   }
 
@@ -422,11 +423,8 @@ link <- function(x,
   }
   check_arg(pull(y, y_time), "POSIXt", arg = "y_time")
 
-  # Do not perform matching when x and y are identical
-  if (identical(x, y) || isTRUE(dplyr::all_equal(x, y))) {
-    abort("`x` and `y` are identical.")
-  }
-
+  # Split up the data for computation efficiency, either based on a numeric value (fixed group size)
+  # or a variable
   if (!is.null(split)) {
     if (is.numeric(split)) {
       x <- split(x, rep(1:split, each = ceiling(nrow(x) / split), length.out = nrow(x)))
