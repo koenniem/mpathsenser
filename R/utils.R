@@ -367,9 +367,9 @@ unzip_data <- function(path = getwd(),
 unzip_impl <- function(path, to, overwrite) {
   # Get all json and zipfiles in the path
   jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE)
-  tag_json <- sapply(strsplit(jsonfiles, "carp-data-"), function(x) x[2])
+  tag_json <- sapply(strsplit(jsonfiles, "data-"), function(x) x[2])
   zipfiles <- dir(path = path, pattern = "*.zip$", all.files = TRUE)
-  tag_zip <- sapply(strsplit(zipfiles, "carp-data-"), function(x) x[2])
+  tag_zip <- sapply(strsplit(zipfiles, "data-"), function(x) x[2])
   tag_zip <- substr(tag_zip, 1, nchar(tag_zip) - 4)
 
   # Do not unzip files that already exist as JSON file
