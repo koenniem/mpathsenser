@@ -74,20 +74,6 @@ test_that("copy_db", {
   db <- open_db(NULL, test_db_name)
   new_db <- create_db(NULL, filename)
 
-  # Arguments
-  expect_warning(
-    copy_db(db, new_db, path = "foo"),
-    "The `path` argument of `copy_db\\(\\)` is deprecated as of mpathsenser 1.1.1."
-  )
-
-  expect_error(
-    copy_db(db, new_db, db_name = "foo"),
-    paste(
-      "The `db_name` argument of `copy_db\\(\\)` was deprecated in mpathsenser 1.1.1",
-      "and is now defunct."
-    )
-  )
-
   # Invalid sensor
   expect_error(
     copy_db(db, new_db, sensor = "foo"),

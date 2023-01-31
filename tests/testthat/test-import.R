@@ -4,15 +4,6 @@ test_that("import", {
   # Path to test files
   path <- system.file("testdata", package = "mpathsenser")
 
-  # Arguments
-  expect_error(
-    import(dbname = "foo"),
-    paste(
-      "The `dbname` argument of `import\\(\\)` was deprecated",
-      "in mpathsenser 1.1.1 and is now defunct."
-    )
-  )
-
   # Create db
   filename <- tempfile("test", fileext = ".db")
   db <- create_db(NULL, filename)

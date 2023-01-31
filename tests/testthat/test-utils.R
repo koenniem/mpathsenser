@@ -115,12 +115,6 @@ test_that("fix_jsons", {
     )
   ))
 
-  suppressMessages(
-    expect_warning(
-      fix_jsons(path = tempdir, parallel = TRUE),
-      "The `parallel` argument of `fix_jsons\\(\\)` is deprecated as of mpathsenser 1.1.1.",
-    )
-  )
   unlink(tempdir, recursive = TRUE)
 })
 
@@ -171,20 +165,14 @@ test_that("test_jsons", {
   )
 
   # Test with db
-  db <- create_db(NULL, tempfile())
+  temp_path <- tempfile()
+  db <- create_db(NULL, temp_path)
   expect_message(
     test_jsons(path, db = db, recursive = FALSE),
     "No issues found."
   )
   dbDisconnect(db)
-
-  # Arguments
-  suppressMessages(
-    expect_warning(
-      test_jsons(path, recursive = FALSE, parallel = TRUE),
-      "The `parallel` argument of `test_jsons\\(\\)` is deprecated as of mpathsenser 1.1.1.",
-    )
-  )
+  unlink(temp_path)
 })
 
 test_that("unzip_data", {
@@ -214,13 +202,6 @@ test_that("unzip_data", {
   expect_message(
     unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE),
     "Unzipped 1 files."
-  )
-
-  suppressMessages(
-    expect_warning(
-      unzip_data(zipfile, parallel = TRUE),
-      "The `parallel` argument of `unzip_data\\(\\)` is deprecated as of mpathsenser 1.1.1.",
-    )
   )
 
   # Get the correct file name in the temp directory and remove
