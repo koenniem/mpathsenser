@@ -1,7 +1,19 @@
-# mpathsenser (in development)
+# mpathsenser 1.1.3 (in development)
 This is a release with breaking changes. Please review carefully before updating.
 
+This release also supports changes from the new release of m-Path Sense (01/02/2023). Most notably,
+the accelerometer and gyroscope are no longer samples of a continuous stream, but rather summaries
+of these streams. Old versions are still supported by all functions.
+
 ## Major changes
+* Thanks to a new version of m-Path Sense, accelerometer and gyroscope have gained extra columns:
+    - `x_mean`: The average acceleration or gyroscopic value along the `x` axis within a sample;
+    - `y_mean`: The average acceleration or gyroscopic value along the `y` axis within a sample;
+    - `z_mean`: The average acceleration or gyroscopic value along the `z` axis within a sample;
+    - `x_mean_sq`: The square root of the `x` values within the sample;
+    - `y_mean_sq`: The square root of the `y` values within the sample;
+    - `z_mean_sq`: The square root of the `z` values within the sample;
+  From these values, one could calculate the `L1 norm` and `L2 norm` like before.
 
 ## Deprecations
 * Removed deprecated `parallel` argument in `fix_jsons()`, `test_jsons()`, `unzip_data()`, and
@@ -10,12 +22,16 @@ This is a release with breaking changes. Please review carefully before updating
 * Remove deprecated  `path` and `db_name` arguments from `copy_db()`.
 
 ## Minor changes
+* Provided support for dplyr 1.1.0.
 * Changed `link_db()` lifecycle status to deprecated as `link_db()` depends on `link()`. Eventually,
 `link()` might see changes in its functionality that will cause `link_db()` to break, so it's 
 better to deprecate it already to motivate users to stop using this function.
 
 ## Bugfixes
 * Fix cross-reference to undeclared package ‘future’ in documentation.
+* `link()` no longer adds an extra row before (if `add_before = TRUE`) or after (if 
+`add_after = TRUE`) if the first or last measurement equals the start or end time respectively.
+* Fixed bug #8 where `bin_data()` incorrectly handled days occurring after DST change.
 
 # mpathsenser 1.1.2
 ## Major changes

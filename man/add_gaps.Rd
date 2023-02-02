@@ -84,7 +84,7 @@ add_gaps(
   by = "participant_id"
 )
 
-# You can use fill if  you want to get rid of those pesky NA's
+# You can use fill if you want to get rid of those pesky NA's
 add_gaps(
   data = dat,
   gaps = gaps,

@@ -75,7 +75,7 @@ reference:
       - haversine
       - geocode_rev
 
-  - title: Miscelaneous
+  - title: Miscellaneous
     contents:
       - sensors
       - freq

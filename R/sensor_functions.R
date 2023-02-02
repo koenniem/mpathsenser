@@ -721,7 +721,7 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 #'   by = "participant_id"
 #' )
 #'
-#' # You can use fill if  you want to get rid of those pesky NA's
+#' # You can use fill if you want to get rid of those pesky NA's
 #' add_gaps(
 #'   data = dat,
 #'   gaps = gaps,

@@ -18,3 +18,5 @@
 ^CRAN-SUBMISSION$
 ^inst/CITATION$
 ^R/stats.R
+^inst/extdata/mpathsenser_db\.drawio$
+^codemeta\.json$
