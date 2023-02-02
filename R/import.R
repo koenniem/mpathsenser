@@ -119,8 +119,13 @@ import <- function(path = getwd(),
     # Save the empty files in data frame to add to the meta data later
     # Meta data is what is being registered
     if (length(batch_na) > 0) {
+      p_id <- strsplit(batch_na, "_") |> purrr::map_chr(\(x) x[3])
+      if (any(is.na(p_id))) {
+        p_id[is.na(p_id)] <- "N/A"
+      }
       batch_na <- data.frame(
-        participant_id = sub(".*?([0-9]{5}).*", "\\1", batch_na),
+        # participant_id = sub(".*?([0-9]{5}).*", "\\1", batch_na),
+        participant_id = p_id,
         study_id = "-1",
         data_format = NA,
         file_name = batch_na
@@ -158,7 +163,7 @@ import <- function(path = getwd(),
 
     # From the dataframes we can get the participant_id and study_id
     # Use this information to query the database to find out whether this file has already been
-    # processed. If already process, drop it.
+    # processed. If already processed, drop it.
     duplicates <- .import_is_duplicate(
       db_name = db@dbname,
       meta_data

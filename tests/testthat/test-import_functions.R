@@ -76,7 +76,14 @@ test_that("save2db", {
     time = "16:40:01.123",
     x = 0.123456789,
     y = 0.123456789,
-    z = 9.123456789
+    z = 9.123456789,
+    x_mean = 1.123456789,
+    y_mean = 2.123456789,
+    z_mean = 3.123456789,
+    x_mean_sq = 4.123456789,
+    y_mean_sq = 5.123456789,
+    z_mean_sq = 6.123456789,
+    n = 10
   )
 
   # Write to db
@@ -117,7 +124,14 @@ test_that("save2db", {
     time = "16:40:01.123",
     x = 0.123456789,
     y = 0.123456789,
-    z = 9.123456789
+    z = 9.123456789,
+    x_mean = 1.123456789,
+    y_mean = 2.123456789,
+    z_mean = 3.123456789,
+    x_mean_sq = 4.123456789,
+    y_mean_sq = 5.123456789,
+    z_mean_sq = 6.123456789,
+    n = 10
   ))
 
   expect_error(
@@ -133,7 +147,14 @@ test_that("save2db", {
           time = "16:40:01.123",
           x = 0.123456789,
           y = 0.123456789,
-          z = 9.123456789
+          z = 9.123456789,
+          x_mean = 1.123456789,
+          y_mean = 2.123456789,
+          z_mean = 3.123456789,
+          x_mean_sq = 4.123456789,
+          y_mean_sq = 5.123456789,
+          z_mean_sq = 6.123456789,
+          n = 10
         )
       )
     ),
@@ -181,7 +202,14 @@ test_that("accelerometer", {
         timestamp = "2021-11-14T16:40:01.123456Z",
         x = 0.123456789,
         y = 0.123456789,
-        z = 9.123456789
+        z = 9.123456789,
+        xm = 1.123456789,
+        ym = 2.123456789,
+        zm = 3.123456789,
+        xms = 4.123456789,
+        yms = 5.123456789,
+        zms = 6.123456789,
+        n = 10
       )
     ),
     list(
@@ -190,7 +218,14 @@ test_that("accelerometer", {
         timestamp = "2021-11-14T16:40:01.123456Z",
         x = NA,
         y = NA,
-        z = NA
+        z = NA,
+        x_mean = NA,
+        y_mean = NA,
+        z_mean = NA,
+        x_mean_sq = NA,
+        y_mean_sq = NA,
+        z_mean_sq = NA,
+        n = NA
       )
     )
   )
@@ -204,7 +239,14 @@ test_that("accelerometer", {
     time = "16:40:01.123",
     x = c(0.123456789, NA),
     y = c(0.123456789, NA),
-    z = c(9.123456789, NA)
+    z = c(9.123456789, NA),
+    x_mean = c(1.123456789, NA),
+    y_mean = c(2.123456789, NA),
+    z_mean = c(3.123456789, NA),
+    x_mean_sq = c(4.123456789, NA),
+    y_mean_sq = c(5.123456789, NA),
+    z_mean_sq = c(6.123456789, NA),
+    n = c(10, NA)
   )
 
   expect_equal(res, res_which)
@@ -222,7 +264,14 @@ test_that("gyroscope", {
         timestamp = "2021-11-14T16:40:01.123456Z",
         x = 0.123456789,
         y = 0.123456789,
-        z = 9.123456789
+        z = 9.123456789,
+        xm = 1.123456789,
+        ym = 2.123456789,
+        zm = 3.123456789,
+        xms = 4.123456789,
+        yms = 5.123456789,
+        zms = 6.123456789,
+        n = 10
       )
     ),
     list(
@@ -245,7 +294,14 @@ test_that("gyroscope", {
     time = "16:40:01.123",
     x = c(0.123456789, NA),
     y = c(0.123456789, NA),
-    z = c(9.123456789, NA)
+    z = c(9.123456789, NA),
+    x_mean = c(1.123456789, NA),
+    y_mean = c(2.123456789, NA),
+    z_mean = c(3.123456789, NA),
+    x_mean_sq = c(4.123456789, NA),
+    y_mean_sq = c(5.123456789, NA),
+    z_mean_sq = c(6.123456789, NA),
+    n = c(10, NA)
   )
 
   expect_equal(res, res_which)
@@ -340,7 +396,14 @@ test_that("periodic_accelerometer", {
     time = c(rep(c("16:40:01.223", "16:40:01.323"), 3), "16:40:01.223"),
     x = c(rep(1.12345, 4), NA, NA, NA),
     y = c(rep(-0.1234, 4), NA, NA, NA),
-    z = c(rep(0.123456, 4), NA, NA, NA)
+    z = c(rep(0.123456, 4), NA, NA, NA),
+    x_mean = rep(NA, 7),
+    y_mean = rep(NA, 7),
+    z_mean = rep(NA, 7),
+    x_mean_sq = rep(NA, 7),
+    y_mean_sq = rep(NA, 7),
+    z_mean_sq = rep(NA, 7),
+    n = rep(NA, 7)
   )
   expect_equal(res, true)
 })
@@ -418,7 +481,14 @@ test_that("periodic_gyroscope", {
     time = rep(c("16:40:01.223", "16:40:01.323"), 3),
     x = c(rep(1.12345, 4), NA, NA),
     y = c(rep(-0.1234, 4), NA, NA),
-    z = c(rep(0.123456, 4), NA, NA)
+    z = c(rep(0.123456, 4), NA, NA),
+    x_mean = rep(NA, 6),
+    y_mean = rep(NA, 6),
+    z_mean = rep(NA, 6),
+    x_mean_sq = rep(NA, 6),
+    y_mean_sq = rep(NA, 6),
+    z_mean_sq = rep(NA, 6),
+    n = rep(NA, 6)
   )
   expect_equal(res, true)
 })

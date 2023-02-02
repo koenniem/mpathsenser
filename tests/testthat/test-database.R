@@ -88,7 +88,7 @@ test_that("copy_db", {
   # Create new db and copy to it
   new_db <- create_db(NULL, filename)
   copy_db(db, new_db, sensor = "Accelerometer")
-  true <- c(6L, rep(0L, 24))
+  true <- c(9L, rep(0L, 24))
   names(true) <- sensors
   expect_equal(get_nrows(new_db), true)
 
@@ -218,9 +218,9 @@ test_that("get_processed_files", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
   res <- get_processed_files(db)
   true <- data.frame(
-    file_name = c("empty.json", "test.json"),
-    participant_id = c("empty.json", "12345"),
-    study_id = c("-1", "test-study")
+    file_name = c("old_tests.json", "test.json", "empty.json"),
+    participant_id = c("12345", "12345", "N/A"),
+    study_id = c("test-study", "test-study", "-1")
   )
   expect_equal(res, true)
   dbDisconnect(db)
@@ -231,8 +231,8 @@ test_that("get_participants", {
   res <- get_participants(db)
   res_lazy <- get_participants(db, lazy = TRUE)
   true <- data.frame(
-    participant_id = c("empty.json", "12345"),
-    study_id = c("-1", "test-study")
+    participant_id = c("12345", "N/A"),
+    study_id = c("test-study", "-1")
   )
   expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_SQLiteConnection")
@@ -244,8 +244,8 @@ test_that("get_study", {
   res <- get_studies(db)
   res_lazy <- get_studies(db, lazy = TRUE)
   true <- data.frame(
-    study_id = c("-1", "test-study"),
-    data_format = c(NA, "carp")
+    study_id = c("test-study", "-1"),
+    data_format = c("carp", NA)
   )
   expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_SQLiteConnection")

@@ -88,10 +88,10 @@ default_fun <- function(data) {
 
 accelerometer_fun <- function(data) {
   # Determine whether this is a continuous accelerometer or periodic
-  if (length(data$body[[1]]$body) == 5) {
-    data <- default_fun(data)
-  } else {
+  if (!is.null(data$body[[1]]$body$data)) {
     data <- periodic_accelerometer_fun(data)
+  } else {
+    data <- default_fun(data)
   }
 
   # Put into right data format
@@ -102,10 +102,18 @@ accelerometer_fun <- function(data) {
     time = substr(data$timestamp, 12, 23),
     x = data$x,
     y = data$y,
-    z = data$z
+    z = data$z,
+    x_mean = data$xm,
+    y_mean = data$ym,
+    z_mean = data$zm,
+    x_mean_sq = data$xms,
+    y_mean_sq = data$yms,
+    z_mean_sq = data$zms,
+    n = data$n
   )
 }
 
+# Periodic accelerometer is archived with the introduction of on-phone accelerometer binning
 periodic_accelerometer_fun <- function(data) {
   data$id <- vapply(data$body, function(x) x$body$id, character(1), USE.NAMES = FALSE)
   data$body <- lapply(data$body, function(x) x$body$data)

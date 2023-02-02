@@ -43,20 +43,10 @@ test_that("import", {
   warnings_log <- capture_warnings(import(
     path = path,
     db = db2,
-    overwrite_db = TRUE,
-    parallel = TRUE,
     recursive = TRUE # Includes broken files
   ))
   expect_match(warnings_log, "Invalid JSON format in file broken\\/broken\\d\\.json", all = FALSE)
   expect_match(warnings_log, "Some files could not be written to the database.", all = FALSE)
-  expect_match(warnings_log, paste(
-    "The `overwrite_db` argument of `import\\(\\)`",
-    "is deprecated as of mpathsenser 1.1.1."
-  ), all = FALSE)
-  expect_match(warnings_log, paste(
-    "The `parallel` argument of `import\\(\\)`",
-    "is deprecated as of mpathsenser 1.1.1."
-  ), all = FALSE)
   dbDisconnect(db2)
   file.remove(filename)
 })
@@ -236,13 +226,27 @@ test_that(".import_extract_sensor_data", {
               timestamp = "2021-02-25T15:15:58.557282Z",
               x = 1.123456,
               y = 1.123456,
-              z = 1.123456
+              z = 1.123456,
+              x_mean = NA,
+              y_mean = NA,
+              z_mean = NA,
+              x_mean_sq = NA,
+              y_mean_sq = NA,
+              z_mean_sq = NA,
+              n = NA
             ),
             list(
               timestamp = "2021-02-25T15:15:58.557282Z",
               x = 1.123456,
               y = 1.123456,
-              z = 1.123456
+              z = 1.123456,
+              x_mean = NA,
+              y_mean = NA,
+              z_mean = NA,
+              x_mean_sq = NA,
+              y_mean_sq = NA,
+              z_mean_sq = NA,
+              n = NA
             )
           )
         )
@@ -256,13 +260,27 @@ test_that(".import_extract_sensor_data", {
               timestamp = "2021-02-25T15:15:58.557282Z",
               x = 1.123456,
               y = 1.123456,
-              z = 1.123456
+              z = 1.123456,
+              x_mean = NA,
+              y_mean = NA,
+              z_mean = NA,
+              x_mean_sq = NA,
+              y_mean_sq = NA,
+              z_mean_sq = NA,
+              n = 10
             ),
             list(
               timestamp = "2021-02-25T15:15:58.557282Z",
               x = 1.123456,
               y = 1.123456,
-              z = 1.123456
+              z = 1.123456,
+              x_mean = NA,
+              y_mean = NA,
+              z_mean = NA,
+              x_mean_sq = NA,
+              y_mean_sq = NA,
+              z_mean_sq = NA,
+              n = NA
             )
           )
         )
@@ -305,7 +323,14 @@ test_that(".import_extract_sensor_data", {
         time = "15:15:58.557",
         x = 1.123456,
         y = 1.123456,
-        z = 1.123456
+        z = 1.123456,
+        x_mean = NA,
+        y_mean = NA,
+        z_mean = NA,
+        x_mean_sq = NA,
+        y_mean_sq = NA,
+        z_mean_sq = NA,
+        n = NA
       ),
       Keyboard = NULL
     )
@@ -374,7 +399,14 @@ test_that(".import_write_to_db", {
       time = "15:15:58.557",
       x = 1.123456,
       y = 1.123456,
-      z = 1.123456
+      z = 1.123456,
+      x_mean = 1.123456,
+      y_mean = 1.123456,
+      z_mean = 1.123456,
+      x_mean_sq = 1.123456,
+      y_mean_sq = 1.123456,
+      z_mean_sq = 1.123456,
+      n = 10
     )
   )
   meta_data <- data.frame(
