@@ -1247,4 +1247,25 @@ test_that("bin_data", {
       ),
     NA
   )
+
+  # Test bug #8: bin_data() incorrectly rounded off days after DST change
+  data <- tibble::tibble(
+    participant_id = 1,
+    datetime = as.POSIXct(c("2022-10-30 15:00:00", "2022-10-30 15:55:00",
+                            "2022-10-31 17:05:00", "2022-10-31 17:10:00"),
+                          tz = "Europe/Brussels"),
+    confidence = 100,
+    type = "WALKING"
+  )
+
+  res <- data %>%
+    mutate(datetime = as.POSIXct(datetime)) %>%
+    mutate(lead = lead(datetime)) %>%
+    bin_data(
+      start_time = datetime,
+      end_time = lead,
+      by = "day"
+    )
+
+  expect_equal(lubridate::hour(res$bin), c(0, 0))
 })
