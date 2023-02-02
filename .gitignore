@@ -1,5 +1,6 @@
 .Rproj.user
 .Rhistory
+.Renviron
 docs
 .Rdata
 .httr-oauth
@@ -7,3 +8,4 @@ docs
 public/
 inst/doc
 R/stats.R
+inst/extdata/mpathsenser_db.drawio
