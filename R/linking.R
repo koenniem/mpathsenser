@@ -922,7 +922,7 @@ bin_data <- function(data,
     distinct() %>%
     drop_na("bin_start")
 
-  if (utils::packageVersion("dplyr") >= "1.1.0") {
+  if (utils::packageVersion("dplyr") >= "1.1.0") {# nocov start
     groups <- dplyr::group_vars(out)
     out <- out %>%
       dplyr::reframe(bin_start = seq.POSIXt(
@@ -935,12 +935,13 @@ bin_data <- function(data,
     if (length(groups) > 0) {
       out <- group_by(out, dplyr::pick(dplyr::all_of(groups)))
     }
-  } else { # nocov start
-    summarise(bin_start = seq.POSIXt(
-      from = min(.data$bin_start, na.rm = TRUE),
-      to = max(.data$bin_start, na.rm = TRUE) + by_duration,
-      by = by_duration
-    ))
+  } else {
+    out <- out %>%
+      summarise(bin_start = seq.POSIXt(
+        from = min(.data$bin_start, na.rm = TRUE),
+        to = max(.data$bin_start, na.rm = TRUE) + by_duration,
+        by = by_duration
+      ))
   } #nocov end
 
   if (by == "day") {
