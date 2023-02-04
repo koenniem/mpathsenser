@@ -15,6 +15,7 @@ test_that("get_data", {
       participant_id = "12345",
       date = "2021-11-14",
       time = c("13:59:59", "14:00:00", "14:00:01"),
+      timezone = c(NA, "CET", "CET"),
       confidence = c(NA, 100L, 99L),
       type = c(NA, "WALKING", "STILL")
     )
@@ -33,6 +34,7 @@ test_that("get_data", {
       participant_id = "12345",
       date = "2021-11-14",
       time = c("13:00:00", "14:01:00"),
+      timezone = c("CET", NA),
       device_id = c("QKQ1.200628.002", NA),
       hardware = c("qcom", NA),
       device_name = c("gauguin", NA),
@@ -53,6 +55,7 @@ test_that("get_data", {
       participant_id = "12345",
       date = "2021-11-13",
       time = "13:00:00",
+      timezone = "CET",
       device_id = "QKQ1.200628.002",
       hardware = "qcom",
       device_name = "gauguin",

@@ -67,6 +67,7 @@ test_that("Accelerometer", {
       "14:00:00.400", "14:00:00.600", "14:00:00.800",
       "13:59:59.000", "14:00:00.000", "14:00:01.000"
     ),
+    timezone = c(rep(NA, 7), "CET", "CET"),
     x = c(
       NA, -0.45947299565606, -0.31261359042355, -0.92950401127219,
       -0.57727191720589, -0.29951507561905, NA, -0.45947299565606,
@@ -103,6 +104,7 @@ test_that("Activity", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("13:59:59", "14:00:00", "14:00:01"),
+    timezone = c(NA, "CET", "CET"),
     confidence = c(NA, 100L, 99L),
     type = c(NA, "WALKING", "STILL")
   ))
@@ -118,6 +120,7 @@ test_that("AirQuality", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("13:59:59", "14:00:00"),
+    timezone = c(NA, "CET"),
     air_quality_index = c(NA, 31L),
     air_quality_level = c(NA, "MODERATE"),
     source = c(NA, "IRCEL-CELINE - Belgian Interregional Environment Agency"),
@@ -137,6 +140,7 @@ test_that("InstalledApps", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("13:59:59", rep("14:00:00", 16)),
+    timezone = c(NA, rep("CET", 16)),
     app = c(
       NA, "WhatsApp", "Google Play Services for AR", "BBC News", "Clock", "Google Play Music",
       "Mobile Device Information Provider", "Calculator", "Google Play Movies & TV",
@@ -156,6 +160,7 @@ test_that("AppUsage", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("13:59:59", rep("14:00:00", 7)),
+    timezone = c(NA, rep("CET", 7)),
     start = c(NA, rep("2021-11-14T14:00:00.000000Z", 7)),
     end = c(NA, rep("2021-11-14T14:30:00.000000Z", 7)),
     usage = c(NA, 525L, 18L, 230L, 3L, 10L, 2L, 33L),
@@ -177,6 +182,7 @@ test_that("Battery", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00", "14:02:00"),
+    timezone = c("CET", "CET", NA),
     battery_level = c(100L, 99L, NA),
     battery_status = c("charging", "discharging", NA)
   ))
@@ -192,6 +198,7 @@ test_that("Bluetooth", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:00:00", "14:01:00"),
+    timezone = c("CET", "CET", NA),
     advertisement_name = c(
       "ace4ec2999d033ac6b76def024d53507dc6eafbb",
       "3dbd32cf6327dd01fd0fab96d4e202686d5e0e96", NA
@@ -221,6 +228,7 @@ test_that("Calendar", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:00:00", "14:01:00"),
+    timezone = c("CET", "CET", NA),
     event_id = c("279", "262", NA),
     calendar_id = c("3", "8", NA),
     title = c(
@@ -249,6 +257,7 @@ test_that("Connectivity", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
+    timezone = c("CET", NA),
     connectivity_status = c("wifi", NA)
   ))
 })
@@ -264,6 +273,7 @@ test_that("Device", {
     participant_id = "12345",
     date = c("2021-11-13", "2021-11-14", "2021-11-14"),
     time = c(rep("13:00:00", 2), "14:01:00"),
+    timezone = c("CET", "CET", NA),
     device_id = c(rep("QKQ1.200628.002", 2), NA),
     hardware = c(rep("qcom", 2), NA),
     device_name = c(rep("gauguin", 2), NA),
@@ -284,6 +294,7 @@ test_that("Error", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
+    timezone = c("CET", NA),
     message = c(paste(
       "AirQuality Probe Exception: SocketException: Failed host lookup:",
       "'api.waqi.info' (OS Error: nodename nor servname provided, or not known,",
@@ -309,6 +320,7 @@ test_that("Gyroscope", {
       "14:00:00.600", "14:00:00.800", "14:00:00.000", "14:00:01.000",
       "14:00:02.000"
     ),
+    timezone = c(rep(NA, 6), "CET", NA, "CET"),
     x = c(
       NA, -0.0003741947002708912, -0.000054615666158497336, 0.0001584370620548725,
       0.0001584370620548725, 0.0001584370620548725, -0.0003741947002708912,
@@ -344,6 +356,7 @@ test_that("Light", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:00:10"),
+    timezone = c("CET", NA),
     mean_lux = c(353, NA),
     std_lux = c(80.2, NA),
     min_lux = c(20.1, NA),
@@ -361,6 +374,7 @@ test_that("Location", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
+    timezone = c("CET", NA),
     latitude = c(paste0(
       "beb3005c45cb250b9841b9aae0637fa5610c45ce206ca38494f7f74a6cbdf8566cdf0d8967e",
       "9422bb857a4d87c2e6c08d85f162525a8f9d6a72a8"
@@ -387,6 +401,7 @@ test_that("Memory", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
+    timezone = c("CET", NA),
     free_physical_memory = c(2027336609L, NA),
     free_virtual_memory = c(233377575L, NA)
   ))
@@ -402,6 +417,7 @@ test_that("Mobility", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
+    timezone = c("CET", NA),
     number_of_places = c(6L, NA),
     location_variance = c(0.232154350507205752, NA),
     entropy = c(1.6472347857577631, NA),
@@ -421,6 +437,7 @@ test_that("Noise", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
+    timezone = c("CET", NA),
     mean_decibel = c(42.96355291627242, NA),
     std_decibel = c(4.971839655603458, NA),
     min_decibel = c(34.289534207582256, NA),
@@ -441,6 +458,7 @@ test_that("Pedometer", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:00:01", "14:00:02"),
+    timezone = c("CET", "CET", NA),
     step_count = c(1000L, 1001L, NA)
   ))
 })
@@ -455,6 +473,7 @@ test_that("Screen", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:00:01"),
+    timezone = c(NA, "CET"),
     screen_event = c(NA, "SCREEN_ON")
   ))
 })
@@ -471,6 +490,7 @@ test_that("Weather", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
+    timezone = c("CET", NA),
     country = c("BE", NA),
     area_name = c("Arrondissement Leuven", NA),
     weather_main = c("Clouds", NA),
@@ -504,6 +524,7 @@ test_that("Wifi", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
+    timezone = c(NA, "CET"),
     ssid = c(NA, "878779215c977eefd2c434d71a0e172aa19b66e1"),
     bssid = c(NA, "2f054f4cbb48bb589f40e82ac0433912d1db3931"),
     ip = c(NA, "10.415.918.389")

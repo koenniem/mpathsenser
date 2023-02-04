@@ -1,5 +1,6 @@
 # mpathsenser 1.1.3 (in development)
-This is a release with breaking changes. Please review carefully before updating.
+This is a release with breaking changes due to removal of deprecated arguments. Please review 
+carefully before updating.
 
 This release also supports changes from the new release of m-Path Sense (01/02/2023). Most notably,
 the accelerometer and gyroscope are no longer samples of a continuous stream, but rather summaries
@@ -14,23 +15,26 @@ of these streams. Old versions are still supported by all functions.
     - `y_mean_sq`: The square root of the `y` values within the sample;
     - `z_mean_sq`: The square root of the `z` values within the sample;
   From these values, one could calculate the `L1 norm` and `L2 norm` like before.
+* Added a new value `timezone` to all sensor data. Confusingly, this is _not_ the timezone of the 
+data itself (as this is always in UTC), but rather the timezone the participant was in at the time
+of the measurement.
 
 ## Deprecations
 * Removed deprecated `parallel` argument in `fix_jsons()`, `test_jsons()`, `unzip_data()`, and
 `import()`.
-* Removed deprecated `overwrite_db` and `dbname` arguments from `import()`.`
-* Remove deprecated  `path` and `db_name` arguments from `copy_db()`.
+* Removed deprecated `overwrite_db` and `dbname` arguments from `import()`.
+* Removed deprecated  `path` and `db_name` arguments from `copy_db()`.
 
 ## Minor changes
 * Provided support for dplyr 1.1.0.
+* `link()` no longer adds an extra row before (if `add_before = TRUE`) or after (if 
+`add_after = TRUE`) if the first or last measurement equals the start or end time respectively.
 * Changed `link_db()` lifecycle status to deprecated as `link_db()` depends on `link()`. Eventually,
-`link()` might see changes in its functionality that will cause `link_db()` to break, so it's 
+`link()` might see changes in its functionality that will cause `link_db()` to break, so it is 
 better to deprecate it already to motivate users to stop using this function.
 
 ## Bugfixes
 * Fix cross-reference to undeclared package ‘future’ in documentation.
-* `link()` no longer adds an extra row before (if `add_before = TRUE`) or after (if 
-`add_after = TRUE`) if the first or last measurement equals the start or end time respectively.
 * Fixed bug #8 where `bin_data()` incorrectly handled days occurring after DST change.
 
 # mpathsenser 1.1.2

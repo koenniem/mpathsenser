@@ -484,6 +484,7 @@ test_that("link_db", {
     time = as.POSIXct(c("2021-11-14 13:59:59", "2021-11-14 14:00:00", "2021-11-14 14:00:01"),
                       tz = "UTC"
     ),
+    timezone = c(NA, "CET", "CET"),
     confidence = c(NA, 100L, 99L),
     type = c(NA, "WALKING", "STILL"),
     data = list(
@@ -493,6 +494,7 @@ test_that("link_db", {
           "2d430c2a-5b16-1dce-0e2f-c049c44e3729"
         ),
         time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
+        timezone = c("CET", NA),
         connectivity_status = c("wifi", NA)
       ),
       tibble::tibble(
@@ -501,11 +503,13 @@ test_that("link_db", {
           "2d430c2a-5b16-1dce-0e2f-c049c44e3729"
         ),
         time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
+        timezone = c("CET", NA),
         connectivity_status = c("wifi", NA)
       ),
       tibble::tibble(
         measurement_id = "2d430c2a-5b16-1dce-0e2f-c049c44e3729",
         time = as.POSIXct("2021-11-14 14:01:00", tz = "UTC"),
+        timezone = NA_character_,
         connectivity_status = NA_character_
       )
     )
@@ -521,6 +525,7 @@ test_that("link_db", {
     ),
     participant_id = "12345",
     time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
+    timezone = c("CET", NA),
     connectivity_status = c("wifi", NA),
     data = list(
       tibble::tibble(
@@ -529,12 +534,14 @@ test_that("link_db", {
           "5ba54e77-4bcf-c8d1-17ff-71b9ed908897"
         ),
         time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:00:01"), tz = "UTC"),
+        timezone = c("CET", "CET"),
         confidence = c(100L, 99L),
         type = c("WALKING", "STILL"),
       ),
       tibble::tibble(
         measurement_id = character(0),
         time = structure(numeric(0), tzone = "UTC", class = c("POSIXct", "POSIXt")),
+        timezone = character(0),
         confidence = integer(0),
         type = character(0)
       )
@@ -550,6 +557,7 @@ test_that("link_db", {
       tibble::tibble(
         measurement_id = character(0),
         time = structure(numeric(0), tzone = "UTC", class = c("POSIXct", "POSIXt")),
+        timezone = character(0),
         confidence = integer(0L),
         type = character(0)
       ),
@@ -559,12 +567,14 @@ test_that("link_db", {
           "5ba54e77-4bcf-c8d1-17ff-71b9ed908897"
         ),
         time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:00:01"), tz = "UTC"),
+        timezone = c("CET", "CET"),
         confidence = c(100L, 99L),
         type = c("WALKING", "STILL")
       ),
       tibble::tibble(
         measurement_id = character(0),
         time = structure(numeric(0), tzone = "UTC", class = c("POSIXct", "POSIXt")),
+        timezone = character(0),
         confidence = integer(0),
         type = character(0)
       )
@@ -609,6 +619,7 @@ test_that("link_db", {
     participant_id = "12345",
     date = "2021-11-14",
     time = strftime(time_value, format = "%H:%M:%OS3"),
+    timezone = "CET",
     x = sens_value,
     y = sens_value,
     z = sens_value

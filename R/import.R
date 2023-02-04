@@ -119,7 +119,7 @@ import <- function(path = getwd(),
     # Save the empty files in data frame to add to the meta data later
     # Meta data is what is being registered
     if (length(batch_na) > 0) {
-      p_id <- strsplit(batch_na, "_") |> purrr::map_chr(\(x) x[3])
+      p_id <- purrr::map_chr(strsplit(batch_na, "_"), ~.x[3])
       if (any(is.na(p_id))) {
         p_id[is.na(p_id)] <- "N/A"
       }
@@ -315,6 +315,7 @@ safe_extract <- function(vec, var) {
   data$trigger_id <- NULL
   data$participant_id <- safe_extract(data$header, "user_id")
   data$start_time <- safe_extract(data$header, "start_time")
+  data$timezone <- safe_extract(data$header, "time_zone_name")
   data$data_format <- lapply(data$header, function(x) x[[1]]["data_format"])
   data$sensor <- safe_extract(data$data_format, "name")
   data$data_format <- safe_extract(data$data_format, "namespace")

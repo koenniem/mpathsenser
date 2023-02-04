@@ -8,4 +8,4 @@ docs
 public/
 inst/doc
 R/stats.R
-inst/extdata/mpathsenser_db.drawio
+^inst/extdata/.*drawio.*$

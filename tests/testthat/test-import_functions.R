@@ -7,6 +7,7 @@ common_test <- function(sensor, ...) {
     study_id = "test-study",
     participant_id = "12345",
     start_time = "2021-11-14T16:40:00.123456Z",
+    timezone = "CET",
     data_format = "carp",
     sensor = sensor
   )
@@ -35,6 +36,7 @@ unit_test <- function(sensor, ...) {
       participant_id = "12345",
       date = "2021-11-14",
       time = "16:40:00",
+      timezone = "CET",
       ...
     )
     true$measurement_id <- paste0(true$measurement_id, "_", seq_len(true))
@@ -47,6 +49,7 @@ unit_test <- function(sensor, ...) {
       participant_id = "12345",
       date = "2021-11-14",
       time = "16:40:00",
+      timezone = "CET",
       list(...)
     )
   }
@@ -74,6 +77,7 @@ test_that("save2db", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:01.123",
+    timezone = "CET",
     x = 0.123456789,
     y = 0.123456789,
     z = 9.123456789,
@@ -122,6 +126,7 @@ test_that("save2db", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:01.123",
+    timezone = "CET",
     x = 0.123456789,
     y = 0.123456789,
     z = 9.123456789,
@@ -145,6 +150,7 @@ test_that("save2db", {
           participant_id = "12345",
           date = "2021-11-14",
           time = "16:40:01.123",
+          timezone = "CET",
           x = 0.123456789,
           y = 0.123456789,
           z = 9.123456789,
@@ -237,6 +243,7 @@ test_that("accelerometer", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:01.123",
+    timezone = "CET",
     x = c(0.123456789, NA),
     y = c(0.123456789, NA),
     z = c(9.123456789, NA),
@@ -292,6 +299,7 @@ test_that("gyroscope", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:01.123",
+    timezone = "CET",
     x = c(0.123456789, NA),
     y = c(0.123456789, NA),
     z = c(9.123456789, NA),
@@ -394,6 +402,7 @@ test_that("periodic_accelerometer", {
     participant_id = rep("12345", 7),
     date = "2021-11-14",
     time = c(rep(c("16:40:01.223", "16:40:01.323"), 3), "16:40:01.223"),
+    timezone = "CET",
     x = c(rep(1.12345, 4), NA, NA, NA),
     y = c(rep(-0.1234, 4), NA, NA, NA),
     z = c(rep(0.123456, 4), NA, NA, NA),
@@ -479,6 +488,7 @@ test_that("periodic_gyroscope", {
     participant_id = rep("12345", 3),
     date = "2021-11-14",
     time = rep(c("16:40:01.223", "16:40:01.323"), 3),
+    timezone = "CET",
     x = c(rep(1.12345, 4), NA, NA),
     y = c(rep(-0.1234, 4), NA, NA),
     z = c(rep(0.123456, 4), NA, NA),
@@ -551,6 +561,7 @@ test_that("installed_apps", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
+    timezone = "CET",
     app = c("a", "b", "c", NA)
   )
 
@@ -618,6 +629,7 @@ test_that("app_usage", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
+    timezone = "CET",
     start = c(rep("2021-11-15T14:05:00.123456Z", 6), NA, NA),
     end = c(rep("2021-11-15T14:35.00.123456Z", 6), NA, NA),
     usage = c(rep(c(10, 5, 7), 2), NA, NA),
@@ -647,6 +659,7 @@ test_that("app_usage", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
+    timezone = "CET",
     start = "2021-11-15T14:05:00.123456Z",
     end = "2021-11-15T14:35.00.123456Z",
     usage = NA,
@@ -732,6 +745,7 @@ test_that("bluetooth", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
+    timezone = "CET",
     advertisement_name = c("123abc", "123abc", NA, NA),
     bluetooth_device_id = c("def456", "def456", NA, NA),
     bluetooth_device_name = c("789abc", "789abc", NA, NA),
@@ -814,6 +828,7 @@ test_that("calendar", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
+    timezone = "CET",
     event_id = c(rep("8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9", 3), NA, NA),
     calendar_id = c(rep("45ED76B4-87A1-D7E0-FA93-A7A1F64CF3E7", 3), NA, NA),
     title = c(rep("96475fc78435bef84354fc05dd185ac944c5c3c1", 3), NA, NA),
@@ -1067,6 +1082,7 @@ test_that("phone_log", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
+    timezone = "CET",
     call_type = c("incoming", "outgoing", "incoming", NA),
     datetime = c("2021-05-10 10:00:00", "2021-05-10 10:01:00", "2021-05-10 10:00:00", NA),
     duration = c(60, 120.50, 60, NA),
@@ -1138,6 +1154,7 @@ test_that("text_message", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
+    timezone = "CET",
     address = c("123", "456", NA),
     body = c("abc", "def", NA),
     text_date = c("2021-11-13", "2021-11-12", NA),

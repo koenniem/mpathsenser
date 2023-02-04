@@ -127,6 +127,7 @@ test_that(".import_clean", {
         trigger_id = "1",
         user_id = "12345",
         start_time = "2021-11-14T14:01:00.000000Z",
+        time_zone_name = "CET",
         data_format = list(
           namespace = "dk.cachet.carp",
           name = "accelerometer"
@@ -141,6 +142,7 @@ test_that(".import_clean", {
         trigger_id = "1",
         user_id = "12345",
         start_time = "2021-11-14T14:01:00.000000Z",
+        time_zone_name = "CET",
         data_format = list(
           namespace = "dk.cachet.carp",
           name = "accelerometer"
@@ -289,6 +291,7 @@ test_that(".import_extract_sensor_data", {
     study_id = "test-study",
     participant_id = "12345",
     start_time = "2021-02-25T15:15:58.557282Z",
+    timezone = "CET",
     data_format = "carp",
     sensor = "accelerometer"
   )
@@ -321,6 +324,7 @@ test_that(".import_extract_sensor_data", {
         participant_id = "12345",
         date = "2021-02-25",
         time = "15:15:58.557",
+        timezone = "CET",
         x = 1.123456,
         y = 1.123456,
         z = 1.123456,
@@ -397,6 +401,7 @@ test_that(".import_write_to_db", {
       participant_id = "12345",
       date = "2021-02-25",
       time = "15:15:58.557",
+      timezone = "CET",
       x = 1.123456,
       y = 1.123456,
       z = 1.123456,
