@@ -1,4 +1,4 @@
-# mpathsenser 1.1.3 (in development)
+# mpathsenser 1.1.3
 This is a release with breaking changes due to removal of deprecated arguments. Please review 
 carefully before updating.
 

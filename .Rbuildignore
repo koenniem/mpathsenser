@@ -21,3 +21,4 @@
 ^inst/extdata/mpathsenser_db\.drawio$
 ^codemeta\.json$
 ^inst/extdata/.*drawio.*$
+^revdep/*$
