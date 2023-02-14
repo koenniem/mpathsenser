@@ -139,11 +139,13 @@ fix_jsons_impl <- function(jsonfiles) {
       p()
     }
 
-    lines <- readLines(.x, warn = FALSE, skipNul = TRUE)
+    # Read the file in binary mode, so it doesn't stop reading when encountering illegal ASCIIs
+    con <- file(.x, open = "rb", blocking = TRUE)
+    lines <- readLines(con, warn = FALSE, skipNul = TRUE)
+    close(con)
     res <- 0L
 
-    # Are there any illegal characters in the file? If so, these prevent readLines from reading
-    # further and also need to be removed before parsing
+    # Are there any illegal characters in the file? If so, remove these before parsing.
     illegal_ascii <- any(grepl("[^ -~]", lines))
     if (illegal_ascii) {
       lines <- fix_illegal_ascii(.x, lines)
@@ -177,7 +179,9 @@ fix_illegal_ascii <- function(file, lines) {
   lines <- lines[-corrupt]
 
   # Write it to file
-  vroom::vroom_write_lines(lines, file, num_threads = 1)
+  con <- file(file, open = "wb", blocking = TRUE)
+  write(lines, file, append = FALSE)
+  close(con)
   lines
 }
 
