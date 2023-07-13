@@ -1,6 +1,23 @@
 .navbar-nav .nav-item>.nav-link {
     color: rgba(23,36,49,0.55); 
 }
+
+.navbar-nav .active .nav-item>.nav-link {
+   color: inherit;
+}
+
 .navbar-light .navbar-brand {
     color: rgba(23,36,49,0.55);
+}
+
+nav.navbar {
+    background-color: "#0084ff"
+}
+
+input[type="search"] {
+    color: rgba(23,36,49,0.50); 
+}
+
+.text-muted {
+    color: rgba(255, 255, 255,0.75) !important;
 }

@@ -93,15 +93,17 @@ freq <- c(
 #'   end_date = "2021-05-01"
 #' )
 #' }
-coverage <- function(db,
-                     participant_id,
-                     sensor = NULL,
-                     frequency = mpathsenser::freq,
-                     relative = TRUE,
-                     offset = "None",
-                     start_date = NULL,
-                     end_date = NULL,
-                     plot = deprecated()) {
+coverage <- function(
+    db,
+    participant_id,
+    sensor = NULL,
+    frequency = mpathsenser::freq,
+    relative = TRUE,
+    offset = "None",
+    start_date = NULL,
+    end_date = NULL,
+    plot = deprecated()) {
+
   check_db(db)
   check_arg(participant_id, type = c("character"), n = 1)
   check_sensors(sensor, allow_null = TRUE)

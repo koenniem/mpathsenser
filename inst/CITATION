@@ -1,0 +1,11 @@
+bibentry(
+  "Article",
+  title = "Combining Experience Sampling and Mobile Sensing for Digital Phenotyping With m-Path Sense: Performance Study",
+  author = "Koen Niemeijer, Merijn Mestdagh, Stijn Verdonck, Kristof Meers, Peter Kuppens",
+  year = 2023,
+  journal = "JMIR Formative Review",
+  volume = 7,
+  number = 1,
+  pages = "e43296",
+  doi = "10.2196/43296",
+)

@@ -124,7 +124,6 @@ import <- function(path = getwd(),
         p_id[is.na(p_id)] <- "N/A"
       }
       batch_na <- data.frame(
-        # participant_id = sub(".*?([0-9]{5}).*", "\\1", batch_na),
         participant_id = p_id,
         study_id = "-1",
         data_format = NA,
@@ -205,7 +204,7 @@ import <- function(path = getwd(),
 
     # Update progress bar
     if (requireNamespace("progressr", quietly = TRUE)) {
-      p(sprintf("Added %g out of %g", i * batch_size, length(batches) * batch_size))
+      p(sprintf("Added %g out of %g", i * batch_size, length(files)))
     }
   }
 

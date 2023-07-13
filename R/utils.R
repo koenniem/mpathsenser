@@ -181,6 +181,7 @@ fix_illegal_ascii <- function(file, lines) {
   # Write it to file
   con <- file(file, open = "wb", blocking = TRUE)
   write(lines, file, append = FALSE)
+  flush(con)
   close(con)
   lines
 }
@@ -337,10 +338,6 @@ unzip_data <- function(path = getwd(),
   check_arg(overwrite, "logical", n = 1)
   check_arg(recursive, "logical", n = 1)
 
-  if (is.null(to)) {
-    to <- path
-  }
-
   unzipped_files <- 0
   if (recursive) {
     # Find all dirs
@@ -354,10 +351,19 @@ unzip_data <- function(path = getwd(),
       if (requireNamespace("progressr", quietly = TRUE)) {
         p()
       }
+
+      if (is.null(to)) {
+        to <- .x
+      }
+
       unzip_impl(.x, to, overwrite)
     })
     unzipped_files <- sum(unzipped_files)
   } else {
+    if (is.null(to)) {
+      to <- path
+    }
+
     unzipped_files <- unzip_impl(path, to, overwrite)
   }
 
@@ -382,7 +388,6 @@ unzip_impl <- function(path, to, overwrite) {
   }
 
   if (length(zipfiles) > 0) {
-    # TODO: implement error handling in case unzipping fails (e.g. unexpected end of data)
     lapply(zipfiles, function(x) {
       tryCatch(
         {

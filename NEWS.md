@@ -1,3 +1,11 @@
+# mpathsenser (in development)
+* Fixed an issue in `fix_jsons()` where files with illegal ASCII characters could be not fixed 
+because the file was still locked from reading.
+* If `recursive = TRUE` in `unzip_data()` and `to = NULL`, the output path of the JSON files will 
+be the local directories through which the recursive path is traversed rather than the main 
+directory.
+* Added the correct citation for this package.
+
 # mpathsenser 1.1.3
 This is a release with breaking changes due to removal of deprecated arguments. Please review 
 carefully before updating.

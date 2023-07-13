@@ -1,9 +1,18 @@
-url: https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/
+url: https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser
 
 template:
   package: tidytemplate
   bootstrap: 5
   bootswatch: materia
+  bslib:
+    primary: "#0a6ab6"
+  trailing_slash_redirect: true
+
+authors:
+  Koen Niemeijer:
+    href: https://ppw.kuleuven.be/okp/team/Koen_Niemeijer/
+  Kristof Meers:
+    href: https://ppw.kuleuven.be/okp/team/Kristof_Meers/
 
 navbar:
   structure:
@@ -19,7 +28,7 @@ repo:
   url:
     home: https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/
     source: https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/blob/master/
-    issue: https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/issues
+    issue: https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/issues/
     branch: master
 
 # home:

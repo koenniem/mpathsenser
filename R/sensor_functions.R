@@ -735,6 +735,7 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
   check_arg(continue, "logical")
   check_arg(fill, "list", allow_null = TRUE)
 
+  # Check if `by` is present in both `data` and `gaps`
   if (!is.null(by)) {
     err <- try(
       {
@@ -829,7 +830,7 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
   # previous measurement, solving the multiple-gap-problem.
   data <- tidyr::fill(data, "row_id", .direction = "down")
 
-  # Then, nest confidence and type by time to calculate the "lag - 2" for the end of gaps "to".
+  # Then, nest confidence and type by `time` to calculate the "lag - 2" for the end of gaps "to".
   # This is necessary because if two measurements at the same time were present just before the
   # gap, they should also both continue after the gap.
   #
