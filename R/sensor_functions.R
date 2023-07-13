@@ -42,7 +42,7 @@ get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_d
   check_arg(start_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
   check_arg(end_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
 
-  sensor <- tolower(sensor)
+  # sensor <- tolower(sensor)
   out <- dplyr::tbl(db, sensor)
 
   if (!is.null(participant_id)) {
