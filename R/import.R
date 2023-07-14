@@ -248,6 +248,10 @@ import <- function(path = getwd(),
   # If it's not valid, just return an empty result
   # We don't want to make a record of having tried to process this file (but we do give a warning),
   # as we want to make sure users fix and retry the file.
+  if (!jsonlite::validate(file)) {
+    warn(paste0("Invalid JSON format in file ", filename[1]))
+    return(NULL)
+  }
 
   # Note: Previously, jsonlite::validate was called before parsing the JSON file. The reason was
   # that a rare errors could cause rjson::fromJSON (the previously used JSON parser) to terminate
@@ -257,7 +261,8 @@ import <- function(path = getwd(),
   # occur.
   possible_error <- try(
     {
-      data <- jsonlite::fromJSON(file, simplifyVector = FALSE)
+      # data <- jsonlite::fromJSON(file, simplifyVector = FALSE)
+      data <- rjson::fromJSON(file, simplify = FALSE)
     },
     silent = TRUE
   )
