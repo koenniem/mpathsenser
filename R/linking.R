@@ -47,7 +47,7 @@ link_impl <- function(x,
 
   # Match sensing data with ESM using a left join
   data <- data %>%
-    dplyr::left_join(y, by = by, multiple = "all") %>%
+    dplyr::left_join(y, by = by, multiple = "all", relationship = "many-to-many") %>%
     mutate(across(dplyr::all_of(y_time), as.integer, .names = ".y_time")) %>%
     tidyr::drop_na(".start_time", ".end_time")
 
@@ -63,7 +63,7 @@ link_impl <- function(x,
   # Bug: if this happens after merging data_before and data_after, they would be lost in the case
   # no data was retained in data_main as all the row_ids are deleted as well
   data_main <- x %>%
-    dplyr::left_join(data_main, by = ".row_id", multiple = "all")
+    dplyr::left_join(data_main, by = ".row_id", multiple = "all", relationship = "many-to-many")
 
   # Add the last measurement before start_time
   tz <- attr(pull(y, {{ y_time }}), "tz")
@@ -87,7 +87,7 @@ link_impl <- function(x,
 
     # Add to the main result
     data_main <- data_main %>%
-      dplyr::left_join(data_before, by = ".row_id", multiple = "all") %>%
+      dplyr::left_join(data_before, by = ".row_id", multiple = "all", relationship = "many-to-many") %>%
       mutate({{ name }} := purrr::map2(data_before, !!rlang::ensym(name), bind_rows)) %>%
       select(-"data_before")
   }
@@ -113,7 +113,7 @@ link_impl <- function(x,
 
     # Add to the main result
     data_main <- data_main %>%
-      dplyr::left_join(data_after, by = ".row_id", multiple = "all") %>%
+      dplyr::left_join(data_after, by = ".row_id", multiple = "all", relationship = "many-to-many") %>%
       mutate({{ name }} := purrr::map2(!!rlang::ensym(name), data_after, bind_rows)) %>%
       select(-"data_after")
   }
@@ -661,7 +661,7 @@ link_gaps <- function(data,
     mutate(end_interval = .data$time_int + offset_after)
 
   data_gaps <- data_gaps %>%
-    dplyr::left_join(gaps, by = by, multiple = "all") %>%
+    dplyr::left_join(gaps, by = by, multiple = "all", relationship = "many-to-many") %>%
     mutate(across(c("from", "to"), as.integer)) %>%
     filter(.data$from < .data$end_interval & .data$to > .data$start_interval)
 
@@ -716,7 +716,7 @@ link_gaps <- function(data,
   # Merge with ESM data
   data <- data %>%
     tibble::as_tibble() %>%
-    dplyr::left_join(data_gaps, by = c(by, "time"), multiple = "all") %>%
+    dplyr::left_join(data_gaps, by = c(by, "time"), multiple = "all", relationship = "many-to-many") %>%
     mutate(gap = ifelse(is.na(.data$gap), 0, .data$gap))
 
   if (raw_data) {
@@ -741,16 +741,23 @@ link_intervals <- function(x, x_start, x_end,
 
   # Calculate which values in y are within x's bounds
   if (length(by) == 0 && utils::packageVersion("dplyr") >= "1.1.0") {
+
     res <- dplyr::cross_join(x, y)
   } else {
-    res <- dplyr::left_join(x, y, by = by, multiple = "all")
+    join_by <- dplyr::join_by(
+      !!!by
+    )
+
+    res <- dplyr::left_join(x, y, by = join_by, multiple = "all", relationship = "many-to-many")
   }
 
   res <- res %>%
     mutate(across(c({{ y_start }}, {{ y_end }}), as.integer)) %>%
     filter(
-      ((is.na({{ y_end }} & {{ y_start }} >= {{ x_start }} & {{ y_start }} < {{ x_end }})) &
-        (is.na({{ y_start }} & {{ y_end }} >= {{ x_start }} & {{ y_end }} < {{ x_end }}))) |
+      (
+        (is.na({{ y_end }} & {{ y_start }} >= {{ x_start }} & {{ y_start }} < {{ x_end }})) &
+        (is.na({{ y_start }} & {{ y_end }} >= {{ x_start }} & {{ y_end }} < {{ x_end }}))
+      ) |
         ({{ y_start }} < {{ x_end }} & {{ y_end }} > {{ x_start }})
     )
 
