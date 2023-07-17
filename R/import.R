@@ -138,6 +138,10 @@ import <- function(path = getwd(),
       .options = furrr::furrr_options(seed = TRUE)
     )
 
+    # Remove NULLs, as we want to keep these files unmarked
+    # (something went wrong when reading in the data)
+    batch_data <- purrr::compact(batch_data)
+
     # Generate the meta data, i.e. the participant_id, study_id, and file name to be written to the
     # database later.
     # Note: If a file contains multiple participant_ids, study_ids, or file names (which shouldn't
@@ -240,7 +244,7 @@ import <- function(path = getwd(),
   file <- paste0(file, collapse = "")
 
   # If it's an empty file, ...
-  if (file == "") {
+  if (file == "" || (length(file) == 1 && nchar(trimws(file)) == 0)) {
     return(NA)
   }
 
@@ -261,8 +265,7 @@ import <- function(path = getwd(),
   # occur.
   possible_error <- try(
     {
-      # data <- jsonlite::fromJSON(file, simplifyVector = FALSE)
-      data <- rjson::fromJSON(file, simplify = FALSE)
+      data <- jsonlite::fromJSON(file, simplifyVector = FALSE)
     },
     silent = TRUE
   )
@@ -282,7 +285,8 @@ import <- function(path = getwd(),
   if (length(data) == 0 ||
     identical(data, list()) ||
     identical(data, list(list())) ||
-    identical(data, list(structure(list(), names = character(0))))) {
+    identical(data, list(structure(list(), names = character(0)))) ||
+    is.null(unlist(data, use.names = FALSE))) {
     return(NA)
   }
 
@@ -306,6 +310,11 @@ safe_extract <- function(vec, var) {
 # Function for cleaning the raw data
 # The goal is to have a list of all the sensors
 .import_clean <- function(data) {
+  # Sanity check if it is an mpathsenser file
+  if (!any(grepl("header", names(data[[1]])))) {
+    return(NULL)
+  }
+
   # Clean-up and extract the header and body
   data <- tibble::tibble(
     header = lapply(data, function(x) x[1]),
