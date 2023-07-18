@@ -10,3 +10,5 @@ inst/doc
 R/stats.R
 ^inst/extdata/.*drawio.*$
 revdep/
+/doc/
+/Meta/

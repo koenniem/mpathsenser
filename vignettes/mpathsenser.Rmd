@@ -34,6 +34,8 @@ The data for this vignette is contained in the `extdata` folder. However, on som
 ```{r copy data, results="hide"}
 # Get the temp folder
 tempdir <- tempdir()
+tempdir <- file.path(tempdir, "vignette")
+dir.create(tempdir)
 
 # Get a handle to the data files
 path <- system.file("extdata", "example", package = "mpathsenser")
