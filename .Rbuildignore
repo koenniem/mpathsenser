@@ -22,3 +22,6 @@
 ^codemeta\.json$
 ^inst/extdata/.*drawio.*$
 ^revdep/*$
+^doc$
+^Meta$
+^Dockerfile$
