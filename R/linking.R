@@ -22,106 +22,106 @@ link_impl <- function(x,
 
   # Prepare x
   # Create a row_id or rematching later
-  x <- x %>%
-    tibble::as_tibble() %>%
+  x <- x |>
+    tibble::as_tibble() |>
     mutate(.row_id = dplyr::row_number())
 
   # If no end_time is specified, calculate the start and end time of the interval using offset
   # Else, take the start time and end time as specified by the user
   if (is.null(end_time) || length(end_time) == 0) {
-    data <- x %>%
-      mutate(across(.env$start_time, as.integer, .names = ".x_time")) %>%
-      mutate(.start_time = .data$.x_time - offset_before) %>%
-      mutate(.end_time = .data$.x_time + offset_after) %>%
+    data <- x |>
+      mutate(across(.env$start_time, as.integer, .names = ".x_time")) |>
+      mutate(.start_time = .data$.x_time - offset_before) |>
+      mutate(.end_time = .data$.x_time + offset_after) |>
       select({{ by }}, ".start_time", ".end_time", ".row_id")
   } else {
     # Ensure column names for x and y do not clash
     # also easier to work with
-    data <- x %>%
-      dplyr::rename(.start_time = .env$start_time) %>%
-      dplyr::rename(.end_time = .env$end_time) %>%
-      mutate(.start_time = as.integer(.data$.start_time)) %>%
-      mutate(.end_time = as.integer(.data$.end_time)) %>%
+    data <- x |>
+      dplyr::rename(.start_time = .env$start_time) |>
+      dplyr::rename(.end_time = .env$end_time) |>
+      mutate(.start_time = as.integer(.data$.start_time)) |>
+      mutate(.end_time = as.integer(.data$.end_time)) |>
       select({{ by }}, ".start_time", ".end_time", ".row_id")
   }
 
   # Match sensing data with ESM using a left join
-  data <- data %>%
-    dplyr::left_join(y, by = by, multiple = "all", relationship = "many-to-many") %>%
-    mutate(across(dplyr::all_of(y_time), as.integer, .names = ".y_time")) %>%
+  data <- data |>
+    dplyr::left_join(y, by = by, multiple = "all", relationship = "many-to-many") |>
+    mutate(across(dplyr::all_of(y_time), as.integer, .names = ".y_time")) |>
     tidyr::drop_na(".start_time", ".end_time")
 
   # The main data, i.e. data exactly within the interval
-  data_main <- data %>%
-    filter(.data$.y_time >= .data$.start_time & .data$.y_time <= .data$.end_time) %>%
-    arrange(across(c({{ by }}, ".y_time"))) %>%
-    select(-".y_time") %>%
-    nest({{ name }} := !c({{ by }}, ".start_time", ".end_time", ".row_id")) %>%
+  data_main <- data |>
+    filter(.data$.y_time >= .data$.start_time & .data$.y_time <= .data$.end_time) |>
+    arrange(across(c({{ by }}, ".y_time"))) |>
+    select(-".y_time") |>
+    nest({{ name }} := !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
     select(dplyr::all_of(c(".row_id", name)))
 
   # Merge back with original data
   # Bug: if this happens after merging data_before and data_after, they would be lost in the case
   # no data was retained in data_main as all the row_ids are deleted as well
-  data_main <- x %>%
+  data_main <- x |>
     dplyr::left_join(data_main, by = ".row_id", multiple = "all", relationship = "many-to-many")
 
   # Add the last measurement before start_time
   tz <- attr(pull(y, {{ y_time }}), "tz")
   if (add_before) {
     # Calculate in which groups there is a measurement that equals start_time
-    equal_to_start <- data %>%
-      filter(.data$.y_time == .data$.start_time) %>%
+    equal_to_start <- data |>
+      filter(.data$.y_time == .data$.start_time) |>
       distinct(.data$.row_id)
 
-    data_before <- data %>%
-      dplyr::anti_join(equal_to_start, by = ".row_id") %>%
-      filter(.data$.y_time < .data$.start_time) %>%
-      group_by(.data$.row_id) %>%
-      dplyr::slice_max(order_by = .data$.y_time, n = 1, with_ties = TRUE) %>%
-      ungroup() %>%
-      mutate(across(dplyr::all_of(y_time), .names = "original_time")) %>%
-      mutate({{ y_time }} := lubridate::as_datetime(.data$.start_time, tz = tz)) %>%
-      select(-".y_time") %>%
-      nest(data_before = !c({{ by }}, ".start_time", ".end_time", ".row_id")) %>%
+    data_before <- data |>
+      dplyr::anti_join(equal_to_start, by = ".row_id") |>
+      filter(.data$.y_time < .data$.start_time) |>
+      group_by(.data$.row_id) |>
+      dplyr::slice_max(order_by = .data$.y_time, n = 1, with_ties = TRUE) |>
+      ungroup() |>
+      mutate(across(dplyr::all_of(y_time), .names = "original_time")) |>
+      mutate({{ y_time }} := lubridate::as_datetime(.data$.start_time, tz = tz)) |>
+      select(-".y_time") |>
+      nest(data_before = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
       select(".row_id", "data_before")
 
     # Add to the main result
-    data_main <- data_main %>%
-      dplyr::left_join(data_before, by = ".row_id", multiple = "all", relationship = "many-to-many") %>%
-      mutate({{ name }} := purrr::map2(data_before, !!rlang::ensym(name), bind_rows)) %>%
+    data_main <- data_main |>
+      dplyr::left_join(data_before, by = ".row_id", multiple = "all", relationship = "many-to-many") |>
+      mutate({{ name }} := purrr::map2(data_before, !!rlang::ensym(name), bind_rows)) |>
       select(-"data_before")
   }
 
   # Add the first measurements after end_time
   if (add_after) {
     # Calculate in which groups there is a measurement that equals start_time
-    equal_to_end <- data %>%
-      filter(.data$.y_time == .data$.end_time) %>%
+    equal_to_end <- data |>
+      filter(.data$.y_time == .data$.end_time) |>
       distinct(.data$.row_id)
 
-    data_after <- data %>%
-      dplyr::anti_join(equal_to_end, by = ".row_id") %>%
-      filter(.data$.y_time > .data$.end_time) %>%
-      group_by(.data$.row_id) %>%
-      dplyr::slice_min(order_by =  .data$.y_time, n = 1, with_ties = TRUE) %>%
-      ungroup() %>%
-      mutate(across(dplyr::all_of(y_time), .names = "original_time")) %>%
-      mutate({{ y_time }} := lubridate::as_datetime(.data$.end_time, tz = tz)) %>%
-      select(-".y_time") %>%
-      nest(data_after = !c({{ by }}, ".start_time", ".end_time", ".row_id")) %>%
+    data_after <- data |>
+      dplyr::anti_join(equal_to_end, by = ".row_id") |>
+      filter(.data$.y_time > .data$.end_time) |>
+      group_by(.data$.row_id) |>
+      dplyr::slice_min(order_by =  .data$.y_time, n = 1, with_ties = TRUE) |>
+      ungroup() |>
+      mutate(across(dplyr::all_of(y_time), .names = "original_time")) |>
+      mutate({{ y_time }} := lubridate::as_datetime(.data$.end_time, tz = tz)) |>
+      select(-".y_time") |>
+      nest(data_after = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
       select(".row_id", "data_after")
 
     # Add to the main result
-    data_main <- data_main %>%
-      dplyr::left_join(data_after, by = ".row_id", multiple = "all", relationship = "many-to-many") %>%
-      mutate({{ name }} := purrr::map2(!!rlang::ensym(name), data_after, bind_rows)) %>%
+    data_main <- data_main |>
+      dplyr::left_join(data_after, by = ".row_id", multiple = "all", relationship = "many-to-many") |>
+      mutate({{ name }} := purrr::map2(!!rlang::ensym(name), data_after, bind_rows)) |>
       select(-"data_after")
   }
 
   # Create an empty tibble (prototype) by retrieving rows with time before UNIX start (not possible)
   # This is needed to fill in the data entries where there would otherwise be nothing left
   # because nothing matched within the start_time and end_time
-  proto <- tibble::as_tibble(y[0, ]) %>%
+  proto <- tibble::as_tibble(y[0, ]) |>
     select(-{{ by }})
   if (add_before || add_after) {
     proto$original_time <- as.POSIXct(vector(mode = "double"))
@@ -138,13 +138,13 @@ link_impl <- function(x,
     }
   }
 
-  res <- data_main %>%
+  res <- data_main |>
     mutate({{ name }} := ifelse(test = lapply(X = !!rlang::ensym(name),
                                               FUN = \(x) {
                                                 is.null(x) || identical(x, NA) || nrow(x) == 0
                                               }),
                                 yes = list(proto),
-                                no = !!rlang::ensym(name))) %>%
+                                no = !!rlang::ensym(name))) |>
     select(-".row_id")
 
   res
@@ -442,7 +442,7 @@ link <- function(x,
   old <- options(future.globals.maxSize = .Machine$double.xmax)
   on.exit(options(old))
 
-  x %>%
+  x |>
     furrr::future_map(
       ~ link_impl(x = .x,
                   y = y,
@@ -456,7 +456,7 @@ link <- function(x,
                   add_after = add_after,
                   name = name),
       .options = furrr::furrr_options(seed = TRUE)
-    ) %>%
+    ) |>
     bind_rows()
 }
 
@@ -530,10 +530,10 @@ link_db <- function(db,
   }
 
   if (!is.null(sensor_two)) {
-    dat_two <- get_data(db, sensor_two, participant_id, start_date, end_date) %>%
-      mutate(time = paste(.data$date, .data$time)) %>%
-      select(-"date") %>%
-      collect() %>%
+    dat_two <- get_data(db, sensor_two, participant_id, start_date, end_date) |>
+      mutate(time = paste(.data$date, .data$time)) |>
+      select(-"date") |>
+      collect() |>
       mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", tz = "UTC"))
     y_time <- "time"
   } else {
@@ -552,11 +552,11 @@ link_db <- function(db,
   # Get dates of dat_two to shrink dat_one as much as possible
   dates <- unique(as.Date(dat_two$time))
 
-  dat_one <- get_data(db, sensor_one, participant_id, start_date, end_date) %>%
-    filter(.data$date %in% dates) %>%
-    mutate(time = paste(.data$date, .data$time)) %>%
-    select(-"date") %>%
-    collect() %>%
+  dat_one <- get_data(db, sensor_one, participant_id, start_date, end_date) |>
+    filter(.data$date %in% dates) |>
+    mutate(time = paste(.data$date, .data$time)) |>
+    select(-"date") |>
+    collect() |>
     mutate(time = as.POSIXct(.data$time, format = "%F %H:%M:%OS", "UTC"))
   time <- "time"
 
@@ -654,40 +654,40 @@ link_gaps <- function(data,
 
   # Calculate the start and end time of the interval (in seconds) of each row in data
   # Only retain gaps that are (partially) within or span over the interval
-  data_gaps <- data %>%
-    select({{ by }}, "time") %>%
-    mutate(time_int = as.integer(.data$time)) %>%
-    mutate(start_interval = .data$time_int - offset_before) %>%
+  data_gaps <- data |>
+    select({{ by }}, "time") |>
+    mutate(time_int = as.integer(.data$time)) |>
+    mutate(start_interval = .data$time_int - offset_before) |>
     mutate(end_interval = .data$time_int + offset_after)
 
-  data_gaps <- data_gaps %>%
-    dplyr::left_join(gaps, by = by, multiple = "all", relationship = "many-to-many") %>%
-    mutate(across(c("from", "to"), as.integer)) %>%
+  data_gaps <- data_gaps |>
+    dplyr::left_join(gaps, by = by, multiple = "all", relationship = "many-to-many") |>
+    mutate(across(c("from", "to"), as.integer)) |>
     filter(.data$from < .data$end_interval & .data$to > .data$start_interval)
 
   # Set gaps time stamps out of the interval to the interval's bounds
-  data_gaps <- data_gaps %>%
+  data_gaps <- data_gaps |>
     mutate(from = ifelse(.data$from < .data$start_interval,
       .data$start_interval,
       .data$from
-    )) %>%
-    mutate(to = ifelse(.data$to > .data$end_interval, .data$end_interval, .data$to)) %>%
+    )) |>
+    mutate(to = ifelse(.data$to > .data$end_interval, .data$end_interval, .data$to)) |>
     mutate(gap = .data$to - .data$from)
 
   if (raw_data) {
     # Transform from and to back to POSIXct and nest the data
-    data_gaps <- data_gaps %>%
-      select({{ by }}, "time", "from", "to", "gap") %>%
+    data_gaps <- data_gaps |>
+      select({{ by }}, "time", "from", "to", "gap") |>
       mutate(from = as.POSIXct(.data$from,
         origin = "1970-01-01",
         tz = attr(gaps$from, "tzone")
-      )) %>%
+      )) |>
       mutate(to = as.POSIXct(.data$to,
         origin = "1970-01-01",
         tz = attr(gaps$to, "tzone")
-      )) %>%
-      group_by(across(c({{ by }}, "time"))) %>%
-      nest(gap_data = c("from", "to", "gap")) %>%
+      )) |>
+      group_by(across(c({{ by }}, "time"))) |>
+      nest(gap_data = c("from", "to", "gap")) |>
       ungroup()
 
     # Add gaps at beep level
@@ -708,19 +708,19 @@ link_gaps <- function(data,
       gap = integer(0)
     )
   } else {
-    data_gaps <- data_gaps %>%
-      group_by(across(c({{ by }}, "time"))) %>%
+    data_gaps <- data_gaps |>
+      group_by(across(c({{ by }}, "time"))) |>
       summarise(gap = sum(.data$gap), .groups = "drop")
   }
 
   # Merge with ESM data
-  data <- data %>%
-    tibble::as_tibble() %>%
-    dplyr::left_join(data_gaps, by = c(by, "time"), multiple = "all", relationship = "many-to-many") %>%
+  data <- data |>
+    tibble::as_tibble() |>
+    dplyr::left_join(data_gaps, by = c(by, "time"), multiple = "all", relationship = "many-to-many") |>
     mutate(gap = ifelse(is.na(.data$gap), 0, .data$gap))
 
   if (raw_data) {
-    data <- data %>%
+    data <- data |>
       mutate(gap_data = ifelse(lapply(.data$gap_data, is.null), list(proto), .data$gap_data))
   }
 
@@ -751,8 +751,8 @@ link_intervals <- function(x, x_start, x_end,
     res <- dplyr::left_join(x, y, by = join_by, multiple = "all", relationship = "many-to-many")
   }
 
-  res <- res %>%
-    mutate(across(c({{ y_start }}, {{ y_end }}), as.integer)) %>%
+  res <- res |>
+    mutate(across(c({{ y_start }}, {{ y_end }}), as.integer)) |>
     filter(
       (
         (is.na({{ y_end }} & {{ y_start }} >= {{ x_start }} & {{ y_start }} < {{ x_end }})) &
@@ -762,18 +762,18 @@ link_intervals <- function(x, x_start, x_end,
     )
 
   # Set gaps time stamps out of the interval to the interval's bounds
-  res <- res %>%
+  res <- res |>
     mutate({{ y_start }} := ifelse({{ y_start }} < {{ x_start }},
       {{ x_start }},
       {{ y_start }}
-    )) %>%
+    )) |>
     mutate({{ y_end }} := ifelse({{ y_end }} > {{ x_end }},
       {{ x_end }},
       {{ y_end }}
-    )) %>%
+    )) |>
     mutate(across(c({{ y_start }}, {{ y_end }}), \(.x) lubridate::as_datetime(.x, tz = tz)))
 
-  out <- x %>%
+  out <- x |>
     dplyr::nest_join(res,
                      by = c(
                        by,
@@ -817,9 +817,9 @@ link_intervals <- function(x, x_start, x_end,
 #' )
 #'
 #' # get bins per hour, even if the interval is longer than one hour
-#' data %>%
-#'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-#'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+#' data |>
+#'   dplyr::mutate(datetime = as.POSIXct(datetime)) |>
+#'   dplyr::mutate(lead = dplyr::lead(datetime)) |>
 #'   bin_data(
 #'     start_time = datetime,
 #'     end_time = lead,
@@ -830,9 +830,9 @@ link_intervals <- function(x, x_start, x_end,
 #' # bins, but only if fixed = FALSE. Not that these bins are not rounded to,
 #' # as in this example 30 minutes, but rather depends on the earliest time
 #' # in the group.
-#' data %>%
-#'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-#'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
+#' data |>
+#'   dplyr::mutate(datetime = as.POSIXct(datetime)) |>
+#'   dplyr::mutate(lead = dplyr::lead(datetime)) |>
 #'   bin_data(
 #'     start_time = datetime,
 #'     end_time = lead,
@@ -852,11 +852,11 @@ link_intervals <- function(x, x_start, x_end,
 #' )
 #'
 #' # binned_intervals also takes into account the prior grouping structure
-#' out <- data %>%
-#'   dplyr::mutate(datetime = as.POSIXct(datetime)) %>%
-#'   dplyr::group_by(participant_id) %>%
-#'   dplyr::mutate(lead = dplyr::lead(datetime)) %>%
-#'   dplyr::group_by(participant_id, type) %>%
+#' out <- data |>
+#'   dplyr::mutate(datetime = as.POSIXct(datetime)) |>
+#'   dplyr::group_by(participant_id) |>
+#'   dplyr::mutate(lead = dplyr::lead(datetime)) |>
+#'   dplyr::group_by(participant_id, type) |>
 #'   bin_data(
 #'     start_time = datetime,
 #'     end_time = lead,
@@ -873,10 +873,10 @@ link_intervals <- function(x, x_start, x_end,
 #' )
 #'
 #' # Or:
-#' out %>%
-#'   tidyr::unnest(bin_data, keep_empty = TRUE) %>%
-#'   dplyr::mutate(duration = .data$lead - .data$datetime) %>%
-#'   dplyr::group_by(bin, .add = TRUE) %>%
+#' out |>
+#'   tidyr::unnest(bin_data, keep_empty = TRUE) |>
+#'   dplyr::mutate(duration = .data$lead - .data$datetime) |>
+#'   dplyr::group_by(bin, .add = TRUE) |>
 #'   dplyr::summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
 bin_data <- function(data,
                      start_time,
@@ -906,13 +906,13 @@ bin_data <- function(data,
   # check that start_time and end_time are a datetime, or try to convert
   if (!lubridate::is.POSIXt(pull(data, {{ start_time }})) ||
     !lubridate::is.POSIXt(pull(data, {{ end_time }}))) {
-    data <- data %>%
-      mutate({{ start_time }} := as.POSIXct({{ start_time }}, origin = "1970-01-01")) %>%
+    data <- data |>
+      mutate({{ start_time }} := as.POSIXct({{ start_time }}, origin = "1970-01-01")) |>
       mutate({{ end_time }} := as.POSIXct({{ end_time }}, origin = "1970-01-01"))
   }
 
   # Generate output structure with unique hours per day, keeping the grouping structure
-  out <- data %>%
+  out <- data |>
     tidyr::pivot_longer(
       cols = c({{ start_time }}, {{ end_time }}),
       names_to = NULL,
@@ -920,18 +920,18 @@ bin_data <- function(data,
     )
 
   if (fixed) {
-    out <- out %>%
+    out <- out |>
       mutate(bin_start = trunc(.data$bin_start, by))
       # mutate(bin_start = lubridate::floor_date(.data$bin_start, by))
   }
 
-  out <- out %>%
-    distinct() %>%
+  out <- out |>
+    distinct() |>
     drop_na("bin_start")
 
   if (utils::packageVersion("dplyr") >= "1.1.0") {# nocov start
     groups <- dplyr::group_vars(out)
-    out <- out %>%
+    out <- out |>
       dplyr::reframe(bin_start = seq.POSIXt(
         from = min(.data$bin_start, na.rm = TRUE),
         to = max(.data$bin_start, na.rm = TRUE) + by_duration,
@@ -943,7 +943,7 @@ bin_data <- function(data,
       out <- group_by(out, dplyr::pick(dplyr::all_of(groups)))
     }
   } else {
-    out <- out %>%
+    out <- out |>
       summarise(bin_start = seq.POSIXt(
         from = min(.data$bin_start, na.rm = TRUE),
         to = max(.data$bin_start, na.rm = TRUE) + by_duration,
@@ -952,16 +952,16 @@ bin_data <- function(data,
   } #nocov end
 
   if (by == "day") {
-    out <- out %>%
+    out <- out |>
       mutate(bin_start = round.POSIXt(.data$bin_start, units = by))
   }
 
-  out <- out %>%
+  out <- out |>
     mutate(bin_start = as.integer(as.POSIXct(.data$bin_start)))
 
 
-  out <- out %>%
-    mutate(bin_end = lead(.data$bin_start)) %>%
+  out <- out |>
+    mutate(bin_end = lead(.data$bin_start)) |>
     drop_na("bin_end")
 
   out <- link_intervals(
@@ -971,9 +971,9 @@ bin_data <- function(data,
     name = "bin_data"
   )
 
-  out <- out %>%
-    mutate(bin_start = lubridate::as_datetime(.data$bin_start, tz = tz)) %>%
-    dplyr::rename(bin = "bin_start") %>%
+  out <- out |>
+    mutate(bin_start = lubridate::as_datetime(.data$bin_start, tz = tz)) |>
+    dplyr::rename(bin = "bin_start") |>
     select(-"bin_end")
 
   out

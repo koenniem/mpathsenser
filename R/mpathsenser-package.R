@@ -5,7 +5,6 @@
 #' therefore to read "m-Path Sense" JSON files into a database and provide several
 #' convenience functions to aid in data processing.
 #' @keywords internal
-#' @importFrom magrittr '%>%'
 #' @importFrom rlang .data
 ## usethis namespace: start
 #' @importFrom DBI dbConnect

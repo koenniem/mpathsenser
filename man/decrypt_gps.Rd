@@ -62,7 +62,7 @@ data$longitude <- encrypt(data$longitude, pub)
 data$latitude <- encrypt(data$latitude, pub)
 
 # Once the data has been collected, decrypt it using decrypt_gps().
-data \%>\%
- mutate(longitude = decrypt_gps(longitude, key)) \%>\%
+data |>
+ mutate(longitude = decrypt_gps(longitude, key)) |>
  mutate(latitude = decrypt_gps(latitude, key))
 }

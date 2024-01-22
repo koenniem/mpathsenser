@@ -47,8 +47,8 @@
 #'data$latitude <- encrypt(data$latitude, pub)
 #'
 #'# Once the data has been collected, decrypt it using decrypt_gps().
-#'data %>%
-#'  mutate(longitude = decrypt_gps(longitude, key)) %>%
+#'data |>
+#'  mutate(longitude = decrypt_gps(longitude, key)) |>
 #'  mutate(latitude = decrypt_gps(latitude, key))
 decrypt_gps <- function(data, key, ignore = ":") {
   ensure_suggested_package("sodium")
@@ -67,11 +67,11 @@ decrypt_gps <- function(data, key, ignore = ":") {
     key <- sodium::hex2bin(key)
   }
 
-  data <- data %>%
-    furrr::future_map(sodium::hex2bin, ignore = ignore) %>%
-    furrr::future_map(sodium::simple_decrypt, key = key) %>%
-    furrr::future_map(rawToChar) %>%
-    unlist(recursive = FALSE) %>%
+  data <- data |>
+    furrr::future_map(sodium::hex2bin, ignore = ignore) |>
+    furrr::future_map(sodium::simple_decrypt, key = key) |>
+    furrr::future_map(rawToChar) |>
+    unlist(recursive = FALSE) |>
     as.double()
 
   data

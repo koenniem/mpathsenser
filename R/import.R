@@ -40,12 +40,13 @@
 #' @returns A message indicating how many files were imported. Imported database can be reopened
 #'   using [open_db()].
 #' @export
-import <- function(path = getwd(),
-                   db,
-                   sensors = NULL,
-                   batch_size = 24,
-                   backend = "RSQLite",
-                   recursive = TRUE) {
+import <- function(
+    path = getwd(),
+    db,
+    sensors = NULL,
+    batch_size = 24,
+    backend = "RSQLite",
+    recursive = TRUE) {
 
   # Check arguments
   check_arg(path, type = "character", n = 1)

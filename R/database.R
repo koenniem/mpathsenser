@@ -380,8 +380,8 @@ get_nrows <- function(db,
   }
 
   vapply(sensor, function(x) {
-    get_data(db, x, participant_id, start_date, end_date) %>%
-      dplyr::count() %>%
+    get_data(db, x, participant_id, start_date, end_date) |>
+      dplyr::count() |>
       pull(n)
   }, integer(1))
 }

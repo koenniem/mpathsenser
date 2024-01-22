@@ -48,9 +48,9 @@ data <- tibble::tibble(
 )
 
 # get bins per hour, even if the interval is longer than one hour
-data \%>\%
-  dplyr::mutate(datetime = as.POSIXct(datetime)) \%>\%
-  dplyr::mutate(lead = dplyr::lead(datetime)) \%>\%
+data |>
+  dplyr::mutate(datetime = as.POSIXct(datetime)) |>
+  dplyr::mutate(lead = dplyr::lead(datetime)) |>
   bin_data(
     start_time = datetime,
     end_time = lead,
@@ -61,9 +61,9 @@ data \%>\%
 # bins, but only if fixed = FALSE. Not that these bins are not rounded to,
 # as in this example 30 minutes, but rather depends on the earliest time
 # in the group.
-data \%>\%
-  dplyr::mutate(datetime = as.POSIXct(datetime)) \%>\%
-  dplyr::mutate(lead = dplyr::lead(datetime)) \%>\%
+data |>
+  dplyr::mutate(datetime = as.POSIXct(datetime)) |>
+  dplyr::mutate(lead = dplyr::lead(datetime)) |>
   bin_data(
     start_time = datetime,
     end_time = lead,
@@ -83,11 +83,11 @@ data <- tibble::tibble(
 )
 
 # binned_intervals also takes into account the prior grouping structure
-out <- data \%>\%
-  dplyr::mutate(datetime = as.POSIXct(datetime)) \%>\%
-  dplyr::group_by(participant_id) \%>\%
-  dplyr::mutate(lead = dplyr::lead(datetime)) \%>\%
-  dplyr::group_by(participant_id, type) \%>\%
+out <- data |>
+  dplyr::mutate(datetime = as.POSIXct(datetime)) |>
+  dplyr::group_by(participant_id) |>
+  dplyr::mutate(lead = dplyr::lead(datetime)) |>
+  dplyr::group_by(participant_id, type) |>
   bin_data(
     start_time = datetime,
     end_time = lead,
@@ -104,10 +104,10 @@ purrr::map_dbl(
 )
 
 # Or:
-out \%>\%
-  tidyr::unnest(bin_data, keep_empty = TRUE) \%>\%
-  dplyr::mutate(duration = .data$lead - .data$datetime) \%>\%
-  dplyr::group_by(bin, .add = TRUE) \%>\%
+out |>
+  tidyr::unnest(bin_data, keep_empty = TRUE) |>
+  dplyr::mutate(duration = .data$lead - .data$datetime) |>
+  dplyr::group_by(bin, .add = TRUE) |>
   dplyr::summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
 }
 \seealso{

@@ -230,14 +230,14 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
     tmp_db <- open_db(NULL, db@dbname)
 
     # Extract the data for this participant and sensor
-    tmp <- dplyr::tbl(tmp_db, .x) %>%
-      filter(participant_id == p_id) %>%
+    tmp <- dplyr::tbl(tmp_db, .x) |>
+      filter(participant_id == p_id) |>
       select("measurement_id", "time", "date")
 
     # Filter by date if needed
     if (!is.null(start_date) && !is.null(end_date)) {
-      tmp <- tmp %>%
-        filter(date >= start_date) %>%
+      tmp <- tmp |>
+        filter(date >= start_date) |>
         filter(date <= end_date)
     }
 
@@ -247,23 +247,23 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
       "AppUsage", "Bluetooth",
       "Calendar", "InstalledApps", "TextMessage"
     )) {
-      tmp <- tmp %>%
-        mutate(measurement_id = substr(.data$measurement_id, 1, 36)) %>%
+      tmp <- tmp |>
+        mutate(measurement_id = substr(.data$measurement_id, 1, 36)) |>
         distinct()
     }
 
     # Calculate the number of average measurements per hour i.e. the sum of all measurements in
     # that hour divided by n
-    tmp <- tmp %>%
-      mutate(hour = strftime("%H", .data$time)) %>%
-      # mutate(Date = date(time)) %>%
-      dplyr::count(.data$date, .data$hour) %>%
-      group_by(.data$hour) %>%
+    tmp <- tmp |>
+      mutate(hour = strftime("%H", .data$time)) |>
+      # mutate(Date = date(time)) |>
+      dplyr::count(.data$date, .data$hour) |>
+      group_by(.data$hour) |>
       summarise(coverage = sum(.data$n, na.rm = TRUE) / n())
 
     # Transfer the result to R's memory and ensure it's numeric
-    tmp <- tmp %>%
-      collect() %>%
+    tmp <- tmp |>
+      collect() |>
       mutate(hour = as.numeric(.data$hour), coverage = as.numeric(.data$coverage))
 
     # Disconnect from the temporary database connection
@@ -272,13 +272,13 @@ coverage_impl <- function(db, participant_id, sensor, frequency, relative, start
     # Calculate the relative target frequency ratio by dividing the average number of measurements
     # per hour by the expected number of measurements
     if (relative) {
-      tmp <- tmp %>%
+      tmp <- tmp |>
         mutate(coverage = round(.data$coverage / frequency[.x], 2))
     }
 
-    tmp %>%
+    tmp |>
       # Pour into ggplot format
-      mutate(measure = .x) %>%
+      mutate(measure = .x) |>
       # Fill in missing hours with 0
       complete(hour = 0:23, measure = .x, fill = list(coverage = 0))
   }, .options = furrr::furrr_options(seed = TRUE))
