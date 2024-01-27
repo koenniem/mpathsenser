@@ -182,6 +182,7 @@ coverage <- function(
 
   class(data) <- c("coverage", class(data))
   attr(data, "participant_id") <- participant_id
+  attr(data, "relative") <- relative
   return(data)
 }
 
@@ -196,28 +197,63 @@ coverage <- function(
 plot.coverage <- function(x, ...) {
   ensure_suggested_package("ggplot2")
 
-  ggplot2::ggplot(
-    data = x,
-    mapping = ggplot2::aes(x = .data$hour, y = .data$measure, fill = .data$coverage)
-  ) +
+  is_relative <- attr(x, "relative")
+  is_relative <- if (is.null(is_relative)) TRUE else is_relative
+  participant_id <- attr(x, "participant_id")
+  if (!is_relative) {
+    x <- x |>
+      group_by(.data$measure) |>
+      mutate(max_coverage = max(.data$coverage)) |>
+      mutate(max_coverage = ifelse(.data$max_coverage == 0, 1, .data$max_coverage)) |>
+      mutate(scaled_coverage = .data$coverage /  max(.data$max_coverage)) |>
+      ungroup("measure")
+
+    plot <- ggplot2::ggplot(
+      data = x,
+      mapping = ggplot2::aes(x = .data$hour, y = .data$measure, fill = .data$scaled_coverage)
+    )
+  } else {
+    plot <- ggplot2::ggplot(
+      data = x,
+      mapping = ggplot2::aes(x = .data$hour, y = .data$measure, fill = .data$coverage)
+    )
+  }
+
+  plot <- plot +
     ggplot2::geom_tile() +
     ggplot2::geom_text(
       mapping = ggplot2::aes(label = coverage),
       colour = "white"
     ) +
     ggplot2::scale_x_continuous(breaks = 0:23) +
+    ggplot2::theme_minimal() +
+    ggplot2::labs(
+      title = paste0("Coverage for participant ", participant_id),
+      x = "Hour",
+      y = "Sensor"
+    )
+
+  if (is_relative) {
+    plot <- plot +
     ggplot2::scale_fill_gradientn(
       colours = c("#d70525", "#645a6c", "#3F7F93"),
       breaks = c(0, 0.5, 1),
       labels = c(0, 0.5, 1),
-      limits = c(0, 1)
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::labs(
-      title = paste0("Coverage for participant ", attr(x, "participant_id")),
-      x = "Hour",
-      y = "Sensor"
+      limits = c(0, 1),
+      name = "coverage"
     )
+  } else {
+    plot <- plot +
+    ggplot2::scale_fill_gradientn(
+      colours = c("#d70525", "#645a6c", "#3F7F93"),
+      breaks = c(0, 0.5, 1),
+      labels = c("low", "medium", "high"),
+      limits = c(0, 1),
+      name = "coverage"
+    )
+  }
+
+  plot
 }
 
 coverage_impl <- function(db, participant_id, sensor, frequency, relative, start_date, end_date) {
