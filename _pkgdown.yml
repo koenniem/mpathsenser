@@ -49,6 +49,7 @@ reference:
       - close_db
       - index_db
       - copy_db
+      - vacuum_db
 
   - title: Data retrieval
     contents:
