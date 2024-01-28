@@ -14,4 +14,8 @@ No return value, called for side effects.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+
+Create indexes for an mpathsenser database on the \code{participant_id}, \code{date}, and a combination
+of these variable for all the tables in the database. This will speed up queries that use these
+variables in the \code{WHERE} clause.
 }

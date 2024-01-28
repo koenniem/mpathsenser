@@ -53,43 +53,56 @@ db_test <- function(sensor, true_data) {
 test_that("Accelerometer", {
   db_test("Accelerometer", true_data = tibble::tibble(
     measurement_id = c(
-      "15d06c62-3b69-5a1d-21b1-bf82ddc573bf_1",
-      paste0("268f6135-70ac-f96a-f800-0d8f6bb6ffa6_", 1:5),
       "15d06c62-3b69-5a1d-21b1-bf82ddc573bg",
-      "268f6135-70ac-f96a-f800-0d8f6bb6ffa6",
       "9da62087-feb7-cd4d-2964-f33c96587863"
 
     ),
     participant_id = "12345",
     date = "2021-11-14",
-    time = c(
-      "13:59:59.000", "14:00:00.000", "14:00:00.200",
-      "14:00:00.400", "14:00:00.600", "14:00:00.800",
-      "13:59:59.000", "14:00:00.000", "14:00:01.000"
-    ),
-    timezone = c(rep(NA, 7), "CET", "CET"),
-    x = c(
-      NA, -0.45947299565606, -0.31261359042355, -0.92950401127219,
-      -0.57727191720589, -0.29951507561905, NA, -0.45947299565606,
-      NA
-    ),
-    y = c(
-      NA, 0.66402153964424, 0.37969748447006, 0.40856299984702,
-      0.91639749921748, 0.362559743517898, NA, 0.66402153964424,
-      NA
-    ),
-    z = c(
-      NA, 9.34531187528098, 9.19530456721872, 9.55071386678994,
-      9.861390738568486, 9.38065402300287, NA, 9.34531187528098,
-      NA
-    ),
-    x_mean = c(rep(NA, 8), -0.0022081288080),
-    y_mean = c(rep(NA, 8), -0.0004500896919),
-    z_mean = c(rep(NA, 8), -0.023477349265),
-    x_mean_sq = c(rep(NA, 8), 0.00002054091549),
-    y_mean_sq = c(rep(NA, 8), 0.00001809346463),
-    z_mean_sq = c(rep(NA, 8), 0.000582901524),
-    n = c(rep(NA, 8), 298)
+    time = c("13:59:59.000", "14:00:01.000"),
+    end_time = c(NA_character_, NA_character_),
+    n = c(NA, 298L),
+    x_mean = c(NA_real_, -0.0022081288080),
+    y_mean = c(NA_real_, -0.0004500896919),
+    z_mean = c(NA_real_, -0.023477349265),
+    x_median = c(NA_real_, NA_real_),
+    y_median = c(NA_real_, NA_real_),
+    z_median = c(NA_real_, NA_real_),
+    x_std = c(NA_real_, NA_real_),
+    y_std = c(NA_real_, NA_real_),
+    z_std = c(NA_real_, NA_real_),
+    x_aad = c(NA_real_, NA_real_),
+    y_aad = c(NA_real_, NA_real_),
+    z_aad = c(NA_real_, NA_real_),
+    x_min = c(NA_real_, NA_real_),
+    y_min = c(NA_real_, NA_real_),
+    z_min = c(NA_real_, NA_real_),
+    x_max = c(NA_real_, NA_real_),
+    y_max = c(NA_real_, NA_real_),
+    z_max = c(NA_real_, NA_real_),
+    x_max_min_diff = c(NA_real_, NA_real_),
+    y_max_min_diff = c(NA_real_, NA_real_),
+    z_max_min_diff = c(NA_real_, NA_real_),
+    x_mad = c(NA_real_, NA_real_),
+    y_mad = c(NA_real_, NA_real_),
+    z_mad = c(NA_real_, NA_real_),
+    x_iqr = c(NA_real_, NA_real_),
+    y_iqr = c(NA_real_, NA_real_),
+    z_iqr = c(NA_real_, NA_real_),
+    x_neg_n = c(NA_real_, NA_real_),
+    y_neg_n = c(NA_real_, NA_real_),
+    z_neg_n = c(NA_real_, NA_real_),
+    x_pos_n = c(NA_real_, NA_real_),
+    y_pos_n = c(NA_real_, NA_real_),
+    z_pos_n = c(NA_real_, NA_real_),
+    x_above_mean = c(NA_real_, NA_real_),
+    y_above_mean = c(NA_real_, NA_real_),
+    z_above_mean = c(NA_real_, NA_real_),
+    x_energy = c(NA_real_, 0.00002054091549),
+    y_energy = c(NA_real_, 0.00001809346463),
+    z_energy = c(NA_real_, 0.000582901524),
+    avg_res_acc = c(NA_real_, NA_real_),
+    sma = c(NA_real_, NA_real_)
   ))
 })
 
@@ -104,7 +117,6 @@ test_that("Activity", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("13:59:59", "14:00:00", "14:00:01"),
-    timezone = c(NA, "CET", "CET"),
     confidence = c(NA, 100L, 99L),
     type = c(NA, "WALKING", "STILL")
   ))
@@ -120,7 +132,6 @@ test_that("AirQuality", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("13:59:59", "14:00:00"),
-    timezone = c(NA, "CET"),
     air_quality_index = c(NA, 31L),
     air_quality_level = c(NA, "MODERATE"),
     source = c(NA, "IRCEL-CELINE - Belgian Interregional Environment Agency"),
@@ -140,7 +151,6 @@ test_that("InstalledApps", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("13:59:59", rep("14:00:00", 16)),
-    timezone = c(NA, rep("CET", 16)),
     app = c(
       NA, "WhatsApp", "Google Play Services for AR", "BBC News", "Clock", "Google Play Music",
       "Mobile Device Information Provider", "Calculator", "Google Play Movies & TV",
@@ -160,14 +170,15 @@ test_that("AppUsage", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("13:59:59", rep("14:00:00", 7)),
-    timezone = c(NA, rep("CET", 7)),
     start = c(NA, rep("2021-11-14T14:00:00.000000Z", 7)),
     end = c(NA, rep("2021-11-14T14:30:00.000000Z", 7)),
     usage = c(NA, 525L, 18L, 230L, 3L, 10L, 2L, 33L),
     app = c(
       "", "kuleuven", "securitycenter", "home", "systemui",
       "permissioncontroller", "powerkeeper", "settings"
-    )
+    ),
+    package_name = rep(NA_character_, 8),
+    last_foreground = rep(NA_character_, 8)
   ))
 })
 
@@ -182,7 +193,6 @@ test_that("Battery", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00", "14:02:00"),
-    timezone = c("CET", "CET", NA),
     battery_level = c(100L, 99L, NA),
     battery_status = c("charging", "discharging", NA)
   ))
@@ -198,7 +208,8 @@ test_that("Bluetooth", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:00:00", "14:01:00"),
-    timezone = c("CET", "CET", NA),
+    start_scan = c(NA_character_, NA_character_, NA_character_),
+    end_scan = c(NA_character_, NA_character_, NA_character_),
     advertisement_name = c(
       "ace4ec2999d033ac6b76def024d53507dc6eafbb",
       "3dbd32cf6327dd01fd0fab96d4e202686d5e0e96", NA
@@ -228,7 +239,6 @@ test_that("Calendar", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:00:00", "14:01:00"),
-    timezone = c("CET", "CET", NA),
     event_id = c("279", "262", NA),
     calendar_id = c("3", "8", NA),
     title = c(
@@ -257,7 +267,6 @@ test_that("Connectivity", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
-    timezone = c("CET", NA),
     connectivity_status = c("wifi", NA)
   ))
 })
@@ -273,14 +282,15 @@ test_that("Device", {
     participant_id = "12345",
     date = c("2021-11-13", "2021-11-14", "2021-11-14"),
     time = c(rep("13:00:00", 2), "14:01:00"),
-    timezone = c("CET", "CET", NA),
     device_id = c(rep("QKQ1.200628.002", 2), NA),
     hardware = c(rep("qcom", 2), NA),
     device_name = c(rep("gauguin", 2), NA),
     device_manufacturer = c(rep("Xiaomi", 2), NA),
     device_model = c(rep("M2007J17G", 2), NA),
     operating_system = c(rep("REL", 2), NA),
-    platform = c(rep("Android", 2), NA)
+    platform = c(rep("Android", 2), NA),
+    operating_system_version = rep(NA_character_, 3),
+    sdk = rep(NA_character_, 3)
   ))
 })
 
@@ -294,7 +304,6 @@ test_that("Error", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
-    timezone = c("CET", NA),
     message = c(paste(
       "AirQuality Probe Exception: SocketException: Failed host lookup:",
       "'api.waqi.info' (OS Error: nodename nor servname provided, or not known,",
@@ -307,42 +316,15 @@ test_that("Error", {
 test_that("Gyroscope", {
   db_test("Gyroscope", true_data = tibble::tibble(
     measurement_id = c(
-      "06bce1d4-b4a9-d1f1-2f06-cc76d872a61d_1",
-      paste0("ce0cc1bf-f071-91b5-19c8-4b3b789e64a2_", 1:5),
-      "ce0cc1bf-f071-91b5-19c8-4b3b789e64a3",
       "06bce1d4-b4a9-d1f1-2f06-cc76d872a61g",
       "6d8aa5b8-cd1b-c482-f678-5267c85b393b"
     ),
     participant_id = "12345",
     date = "2021-11-14",
-    time = c(
-      "14:00:01.000", "14:00:00.000", "14:00:00.200", "14:00:00.400",
-      "14:00:00.600", "14:00:00.800", "14:00:00.000", "14:00:01.000",
-      "14:00:02.000"
-    ),
-    timezone = c(rep(NA, 6), "CET", NA, "CET"),
-    x = c(
-      NA, -0.0003741947002708912, -0.000054615666158497336, 0.0001584370620548725,
-      0.0001584370620548725, 0.0001584370620548725, -0.0003741947002708912,
-      NA, NA
-    ),
-    y = c(
-      NA, -0.003209952265024185, -0.0006000570137985051, -0.0001739516155794263,
-      -0.00038700434379279613, -0.00038700434379279613, -0.003209952265024185,
-      NA, NA
-    ),
-    z = c(
-      NA, 0.021946871653199197, 0.00010896776802837849, 0.00010896776802837849,
-      0.00010896776802837849, 0.00010896776802837849,  0.021946871653199197,
-      NA, NA
-    ),
-    x_mean = c(rep(NA, 8), -1.0022081288080912509),
-    y_mean = c(rep(NA, 8), -2.0004500896919943741),
-    z_mean = c(rep(NA, 8), -3.02347734926530979),
-    x_mean_sq = c(rep(NA, 8), 4.000020540915494408226),
-    y_mean_sq = c(rep(NA, 8), 5.000018093464634687579),
-    z_mean_sq = c(rep(NA, 8), 6.0005829015244919054),
-    n = c(rep(NA, 8), 299)
+    time = c("14:00:01.000","14:00:02.000"),
+    x = c(NA, -1.0022081288080912509),
+    y = c(NA, -2.0004500896919943741),
+    z = c(NA, -3.02347734926530979)
   ))
 })
 
@@ -356,7 +338,7 @@ test_that("Light", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:00:10"),
-    timezone = c("CET", NA),
+    end_time = c(NA_character_, NA_character_),
     mean_lux = c(353, NA),
     std_lux = c(80.2, NA),
     min_lux = c(20.1, NA),
@@ -374,7 +356,6 @@ test_that("Location", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
-    timezone = c("CET", NA),
     latitude = c(paste0(
       "beb3005c45cb250b9841b9aae0637fa5610c45ce206ca38494f7f74a6cbdf8566cdf0d8967e",
       "9422bb857a4d87c2e6c08d85f162525a8f9d6a72a8"
@@ -385,9 +366,12 @@ test_that("Location", {
     ), NA),
     altitude = c(71.7784264646543, NA),
     accuracy = c(22.1168141708386, NA),
+    vertical_accuracy = rep(NA_real_, 2),
     speed = c(0.467787307347347, NA),
     speed_accuracy = c(1.9150350848860985, NA),
-    heading = c(35.5130489970395, NA)
+    heading = c(35.5130489970395, NA),
+    heading_accuracy = rep(NA_real_, 2),
+    is_mock = rep(NA_real_, 2) # SQLite doesn't have a boolean type
   ))
 })
 
@@ -401,7 +385,6 @@ test_that("Memory", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
-    timezone = c("CET", NA),
     free_physical_memory = c(2027336609L, NA),
     free_virtual_memory = c(233377575L, NA)
   ))
@@ -417,7 +400,6 @@ test_that("Mobility", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
-    timezone = c("CET", NA),
     number_of_places = c(6L, NA),
     location_variance = c(0.232154350507205752, NA),
     entropy = c(1.6472347857577631, NA),
@@ -437,7 +419,6 @@ test_that("Noise", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
-    timezone = c("CET", NA),
     mean_decibel = c(42.96355291627242, NA),
     std_decibel = c(4.971839655603458, NA),
     min_decibel = c(34.289534207582256, NA),
@@ -458,7 +439,6 @@ test_that("Pedometer", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:00:01", "14:00:02"),
-    timezone = c("CET", "CET", NA),
     step_count = c(1000L, 1001L, NA)
   ))
 })
@@ -473,7 +453,6 @@ test_that("Screen", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:00:01"),
-    timezone = c(NA, "CET"),
     screen_event = c(NA, "SCREEN_ON")
   ))
 })
@@ -490,7 +469,6 @@ test_that("Weather", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
-    timezone = c("CET", NA),
     country = c("BE", NA),
     area_name = c("Arrondissement Leuven", NA),
     weather_main = c("Clouds", NA),
@@ -524,7 +502,6 @@ test_that("Wifi", {
     participant_id = "12345",
     date = "2021-11-14",
     time = c("14:00:00", "14:01:00"),
-    timezone = c(NA, "CET"),
     ssid = c(NA, "878779215c977eefd2c434d71a0e172aa19b66e1"),
     bssid = c(NA, "2f054f4cbb48bb589f40e82ac0433912d1db3931"),
     ip = c(NA, "10.415.918.389")

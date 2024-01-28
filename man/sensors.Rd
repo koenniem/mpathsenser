@@ -5,7 +5,7 @@
 \alias{sensors}
 \title{Available Sensors}
 \format{
-An object of class \code{character} of length 25.
+An object of class \code{character} of length 27.
 }
 \usage{
 sensors

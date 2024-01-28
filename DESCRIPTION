@@ -30,7 +30,6 @@ Imports:
     jsonlite,
     lifecycle,
     lubridate,
-    magrittr,
     purrr,
     rlang,
     RSQLite,

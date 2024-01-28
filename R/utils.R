@@ -84,9 +84,11 @@ ccopy <- function(from,
 #' files <- test_jsons()
 #' fix_jsons(files = files)
 #' }
-fix_jsons <- function(path = getwd(),
-                      files = NULL,
-                      recursive = TRUE) {
+fix_jsons <- function(
+    path = getwd(),
+    files = NULL,
+    recursive = TRUE) {
+
   ensure_suggested_package("vroom")
 
   check_arg(path, "character", n = 1, allow_null = TRUE)
@@ -223,6 +225,17 @@ fix_eof <- function(file, eof, lines) {
     # 8: Is the last line long (>3) and are the last two characters "}}"? Then somehow all
     # we are missing is a closing bracket.
     write("]", file, append = TRUE)
+  } else if (nchar(eof[2]) > 10 & substr(eof[2], nchar(eof[2]) - 2, nchar(eof[2])) == "}}," & last == "]"){
+    # 9: The second to last line is a full line (i.e. of a certain length, let's say 10), has a
+    # starting and end curly bracket, and a trailing comma before the last character of the file,
+    # the trailing square bracket. This can be fixed by removing the comman from the second to last
+    # line.
+    lines[length(lines) - 1] <- substr(
+      x = lines[length(lines) - 1],
+      start = 1,
+      stop = nchar(lines[length(lines) - 1]) - 1
+    )
+    write(lines, file)
   } else {
     # If no known pattern is detected, return without counting it as a fixed file
     return(0L)

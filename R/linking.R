@@ -696,7 +696,7 @@ link_gaps <- function(data,
     )
 
     # Create empty data frame in case no results are found
-    proto <- tibble::tibble(
+    proto <- tibble(
       from = as.POSIXct(vector(mode = "double"),
         origin = "1970-01-01",
         tz = attr(gaps$from, "tzone")
@@ -806,7 +806,8 @@ link_intervals <- function(x, x_start, x_end,
 #' @export
 #'
 #' @examples
-#' data <- tibble::tibble(
+#' library(dplyr)
+#' data <- tibble(
 #'   participant_id = 1,
 #'   datetime = c(
 #'     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
@@ -818,8 +819,8 @@ link_intervals <- function(x, x_start, x_end,
 #'
 #' # get bins per hour, even if the interval is longer than one hour
 #' data |>
-#'   dplyr::mutate(datetime = as.POSIXct(datetime)) |>
-#'   dplyr::mutate(lead = dplyr::lead(datetime)) |>
+#'   mutate(datetime = as.POSIXct(datetime)) |>
+#'   mutate(lead = lead(datetime)) |>
 #'   bin_data(
 #'     start_time = datetime,
 #'     end_time = lead,
@@ -831,8 +832,8 @@ link_intervals <- function(x, x_start, x_end,
 #' # as in this example 30 minutes, but rather depends on the earliest time
 #' # in the group.
 #' data |>
-#'   dplyr::mutate(datetime = as.POSIXct(datetime)) |>
-#'   dplyr::mutate(lead = dplyr::lead(datetime)) |>
+#'   mutate(datetime = as.POSIXct(datetime)) |>
+#'   mutate(lead = lead(datetime)) |>
 #'   bin_data(
 #'     start_time = datetime,
 #'     end_time = lead,
@@ -841,7 +842,7 @@ link_intervals <- function(x, x_start, x_end,
 #'   )
 #'
 #' # More complicated data for showcasing grouping:
-#' data <- tibble::tibble(
+#' data <- tibble(
 #'   participant_id = 1,
 #'   datetime = c(
 #'     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
@@ -853,10 +854,10 @@ link_intervals <- function(x, x_start, x_end,
 #'
 #' # binned_intervals also takes into account the prior grouping structure
 #' out <- data |>
-#'   dplyr::mutate(datetime = as.POSIXct(datetime)) |>
-#'   dplyr::group_by(participant_id) |>
-#'   dplyr::mutate(lead = dplyr::lead(datetime)) |>
-#'   dplyr::group_by(participant_id, type) |>
+#'   mutate(datetime = as.POSIXct(datetime)) |>
+#'   group_by(participant_id) |>
+#'   mutate(lead = lead(datetime)) |>
+#'   group_by(participant_id, type) |>
 #'   bin_data(
 #'     start_time = datetime,
 #'     end_time = lead,
@@ -875,9 +876,9 @@ link_intervals <- function(x, x_start, x_end,
 #' # Or:
 #' out |>
 #'   tidyr::unnest(bin_data, keep_empty = TRUE) |>
-#'   dplyr::mutate(duration = .data$lead - .data$datetime) |>
-#'   dplyr::group_by(bin, .add = TRUE) |>
-#'   dplyr::summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
+#'   mutate(duration = .data$lead - .data$datetime) |>
+#'   group_by(bin, .add = TRUE) |>
+#'   summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
 bin_data <- function(data,
                      start_time,
                      end_time,

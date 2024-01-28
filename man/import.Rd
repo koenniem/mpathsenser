@@ -16,7 +16,7 @@ import(
 \arguments{
 \item{path}{The path to the file directory}
 
-\item{db}{Valid database connection.}
+\item{db}{Valid database connection, typically created by \code{\link[=create_db]{create_db()}}.}
 
 \item{sensors}{Select one or multiple sensors as in \code{\link[mpathsenser]{sensors}}. Leave
 NULL to extract all sensor data.}
@@ -28,15 +28,17 @@ NULL to extract all sensor data.}
 \item{recursive}{Should the listing recurse into directories?}
 }
 \value{
-A message indicating how many files were imported. Imported database can be reopened
-using \code{\link[=open_db]{open_db()}}.
+A message indicating how many files were imported. If all files were imported
+successfully, this functions returns an empty string invisibly. Otherwise the file names of the
+files that were not imported are returned visibly.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
 Import JSON files from m-Path Sense into a structured database. This function is the bread and
-butter of this package, as it creates (or rather fills) the database that most of the other
-functions in this package use.
+butter of this package, as it populates the database with data that most of the other functions
+in this package use. It is recommend to first run \code{\link[=test_jsons]{test_jsons()}} and, if necessary,
+\code{\link[=fix_jsons]{fix_jsons()}} to repair JSON files with problematic syntax.
 }
 \details{
 \code{import} allows you to specify which sensors to import (even though there may be more in
@@ -47,9 +49,14 @@ the batch is terminated (but not the function) and it is up to the user to fix t
 means that if \code{batch_size} is large, many files will not be processed. Set \code{batch_size} to 1
 for sequential (one-by-one) file processing.
 
-Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
-\code{parallel} option is disabled. To get an indication of the progress so far, set one of the
-\code{\link[progressr:handlers]{progressr::handlers()}} using the \code{progressr} package, e.g. \code{progressr::handlers(global = TRUE)} and \code{progressr::handlers('progress')}.
+Currently, only SQLite is supported as a backend. Due to its concurrency restriction, parallel
+processing works for cleaning the raw data, but not for importing it into the database. This is
+because SQLite does not allow multiple processes to write to the same database at the same
+time. This is a limitation of SQLite and not of this package. However, while files are
+processing individually (and in parallel if specified), writing to the database happens for the
+entire batch specified by \code{batch_size} at once. This means that if a single file in the batch
+causes an error, the entire batch is skipped. This is to ensure that the database is not left
+in an inconsistent state.
 }
 \section{Parallel}{
  This function supports parallel processing in the sense that it is able to
@@ -65,3 +72,8 @@ calling this function.
 how to subscribe to these updates.
 }
 
+\seealso{
+\code{\link[=create_db]{create_db()}} for creating a database for \code{import()} to use, \code{\link[=close_db]{close_db()}} for closing
+this database; \code{\link[=index_db]{index_db()}} to create indices on the database for faster future processing, and
+\code{\link[=vacuum_db]{vacuum_db()}} to shrink the database to its minimal size.
+}

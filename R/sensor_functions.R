@@ -312,7 +312,7 @@ app_category_impl <- function(name, num, exact) {
 #' @export
 device_info <- function(db, participant_id = NULL) {
   get_data(db, "Device", participant_id = participant_id) |>
-    select("participant_id", "device_id":"platform") |>
+    select(-any_of(c("measurement_id", "date", "time"))) |>
     distinct() |>
     collect()
 }

@@ -22,6 +22,8 @@ CREATE INDEX idx_geofence ON Geofence(participant_id);
 
 CREATE INDEX idx_gyroscope ON Gyroscope(participant_id);
 
+CREATE INDEX idx_heartbeat ON Heartbeat(participant_id);
+
 CREATE INDEX idx_installedapps ON InstalledApps(participant_id);
 
 CREATE INDEX idx_keyboard ON Keyboard(participant_id);
@@ -43,6 +45,8 @@ CREATE INDEX idx_phonelog ON PhoneLog(participant_id);
 CREATE INDEX idx_screen ON Screen(participant_id);
 
 CREATE INDEX idx_textmessage ON TextMessage(participant_id);
+
+CREATE INDEX idx_timezone ON Timezone(participant_id);
 
 CREATE INDEX idx_weather ON Weather(participant_id);
 
@@ -72,6 +76,8 @@ CREATE INDEX date_geofence ON Geofence(date)
 
 CREATE INDEX date_gyroscope ON Gyroscope(date)
 
+CREATE INDEX date_heartbeat ON Heartbeat(date)
+
 CREATE INDEX date_installedapps ON InstalledApps(date)
 
 CREATE INDEX date_keyboard ON Keyboard(date)
@@ -93,6 +99,8 @@ CREATE INDEX date_phonelog ON PhoneLog(date)
 CREATE INDEX date_screen ON Screen(date)
 
 CREATE INDEX date_textmessage ON TextMessage(date)
+
+CREATE INDEX date_timezone ON Timezone(date)
 
 CREATE INDEX date_weather ON Weather(date)
 
@@ -122,6 +130,8 @@ CREATE INDEX date_idx_geofence ON Geofence(participant_id, date)
 
 CREATE INDEX date_idx_gyroscope ON Gyroscope(participant_id, date)
 
+CREATE INDEX date_idx_heartbeat ON Heartbeat(participant_id, date)
+
 CREATE INDEX date_idx_installedapps ON InstalledApps(participant_id, date)
 
 CREATE INDEX date_idx_keyboard ON Keyboard(participant_id, date)
@@ -143,6 +153,8 @@ CREATE INDEX date_idx_phonelog ON PhoneLog(participant_id, date)
 CREATE INDEX date_idx_screen ON Screen(participant_id, date)
 
 CREATE INDEX date_idx_textmessage ON TextMessage(participant_id, date)
+
+CREATE INDEX date_idx_timezone ON Timezone(participant_id, date)
 
 CREATE INDEX date_idx_weather ON Weather(participant_id, date)
 

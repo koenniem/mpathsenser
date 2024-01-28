@@ -7,7 +7,6 @@ common_test <- function(sensor, ...) {
     study_id = "test-study",
     participant_id = "12345",
     start_time = "2021-11-14T16:40:00.123456Z",
-    timezone = "CET",
     data_format = "carp",
     sensor = sensor
   )
@@ -36,7 +35,6 @@ unit_test <- function(sensor, ...) {
       participant_id = "12345",
       date = "2021-11-14",
       time = "16:40:00",
-      timezone = "CET",
       ...
     )
     true$measurement_id <- paste0(true$measurement_id, "_", seq_len(true))
@@ -77,22 +75,12 @@ test_that("save2db", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:01.123",
-    timezone = "CET",
-    x = 0.123456789,
-    y = 0.123456789,
-    z = 9.123456789,
-    x_mean = 1.123456789,
-    y_mean = 2.123456789,
-    z_mean = 3.123456789,
-    x_mean_sq = 4.123456789,
-    y_mean_sq = 5.123456789,
-    z_mean_sq = 6.123456789,
-    n = 10
+    step_count = 1
   )
 
   # Write to db
   expect_error(
-    DBI::dbWithTransaction(db, save2db(db, "Accelerometer", data)),
+    DBI::dbWithTransaction(db, save2db(db, "Pedometer", data)),
     NA
   )
 
@@ -102,21 +90,21 @@ test_that("save2db", {
 
   # Check the data output
   expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
+    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
     data
   )
 
   # Entry with the same ID should simply be skipped and give no error
   expect_error(
-    DBI::dbWithTransaction(db, save2db(db = db, name = "Accelerometer", data = data)),
+    DBI::dbWithTransaction(db, save2db(db = db, name = "Pedometer", data = data)),
     NA
   )
   DBI::dbExecute(db, "VACUUM") # A vacuum to clear the tiny increase by replacement :)
   db_size3 <- file.size(filename)
   expect_equal(db_size2, db_size3)
-  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1000L)
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]], 1000L)
   expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
+    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
     data
   )
 
@@ -126,17 +114,7 @@ test_that("save2db", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:01.123",
-    timezone = "CET",
-    x = 0.123456789,
-    y = 0.123456789,
-    z = 9.123456789,
-    x_mean = 1.123456789,
-    y_mean = 2.123456789,
-    z_mean = 3.123456789,
-    x_mean_sq = 4.123456789,
-    y_mean_sq = 5.123456789,
-    z_mean_sq = 6.123456789,
-    n = 10
+    step_count = 1
   ))
 
   expect_error(
@@ -144,23 +122,13 @@ test_that("save2db", {
       db,
       save2db(
         db = db,
-        name = "Accelerometer",
+        name = "Pedometer",
         data = data.frame(
           measurement_id = paste0("12345_", 500:1500),
           participant_id = "12345",
           date = "2021-11-14",
           time = "16:40:01.123",
-          timezone = "CET",
-          x = 0.123456789,
-          y = 0.123456789,
-          z = 9.123456789,
-          x_mean = 1.123456789,
-          y_mean = 2.123456789,
-          z_mean = 3.123456789,
-          x_mean_sq = 4.123456789,
-          y_mean_sq = 5.123456789,
-          z_mean_sq = 6.123456789,
-          n = 10
+          step_count = 1
         )
       )
     ),
@@ -168,9 +136,9 @@ test_that("save2db", {
   )
   db_size4 <- file.size(filename)
   expect_gt(db_size4, db_size3)
-  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Accelerometer")[[1]], 1500L)
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]], 1500L)
   expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Accelerometer"),
+    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
     distinct(data)
   )
 
@@ -206,9 +174,6 @@ test_that("accelerometer", {
       body = list(
         id = "12345a",
         timestamp = "2021-11-14T16:40:01.123456Z",
-        x = 0.123456789,
-        y = 0.123456789,
-        z = 9.123456789,
         xm = 1.123456789,
         ym = 2.123456789,
         zm = 3.123456789,
@@ -222,15 +187,12 @@ test_that("accelerometer", {
       body = list(
         id = "12345b",
         timestamp = "2021-11-14T16:40:01.123456Z",
-        x = NA,
-        y = NA,
-        z = NA,
-        x_mean = NA,
-        y_mean = NA,
-        z_mean = NA,
-        x_mean_sq = NA,
-        y_mean_sq = NA,
-        z_mean_sq = NA,
+        xm = NA,
+        ym = NA,
+        zm = NA,
+        xms = NA,
+        yms = NA,
+        zms = NA,
         n = NA
       )
     )
@@ -243,17 +205,13 @@ test_that("accelerometer", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:01.123",
-    timezone = "CET",
-    x = c(0.123456789, NA),
-    y = c(0.123456789, NA),
-    z = c(9.123456789, NA),
+    n = c(10, NA),
     x_mean = c(1.123456789, NA),
     y_mean = c(2.123456789, NA),
     z_mean = c(3.123456789, NA),
-    x_mean_sq = c(4.123456789, NA),
-    y_mean_sq = c(5.123456789, NA),
-    z_mean_sq = c(6.123456789, NA),
-    n = c(10, NA)
+    x_energy = c(4.123456789, NA),
+    y_energy = c(5.123456789, NA),
+    z_energy = c(6.123456789, NA)
   )
 
   expect_equal(res, res_which)
@@ -271,14 +229,7 @@ test_that("gyroscope", {
         timestamp = "2021-11-14T16:40:01.123456Z",
         x = 0.123456789,
         y = 0.123456789,
-        z = 9.123456789,
-        xm = 1.123456789,
-        ym = 2.123456789,
-        zm = 3.123456789,
-        xms = 4.123456789,
-        yms = 5.123456789,
-        zms = 6.123456789,
-        n = 10
+        z = 9.123456789
       )
     ),
     list(
@@ -299,17 +250,9 @@ test_that("gyroscope", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:01.123",
-    timezone = "CET",
     x = c(0.123456789, NA),
     y = c(0.123456789, NA),
-    z = c(9.123456789, NA),
-    x_mean = c(1.123456789, NA),
-    y_mean = c(2.123456789, NA),
-    z_mean = c(3.123456789, NA),
-    x_mean_sq = c(4.123456789, NA),
-    y_mean_sq = c(5.123456789, NA),
-    z_mean_sq = c(6.123456789, NA),
-    n = c(10, NA)
+    z = c(9.123456789, NA)
   )
 
   expect_equal(res, res_which)
@@ -318,104 +261,105 @@ test_that("gyroscope", {
 })
 
 # Periodic accelerometer ===========
-test_that("periodic_accelerometer", {
-  dat <- common_test(
-    "accelerometer",
-    list(
-      body = list(
-        id = "12345a",
-        timestamp = "2021-11-14T16:40:01.123456Z",
-        data = list(
-          list(
-            timestamp = "2021-11-14T16:40:01.223456Z",
-            x = 1.12345,
-            y = -0.1234,
-            z = 0.123456
-          ),
-          list(
-            timestamp = "2021-11-14T16:40:01.323456Z",
-            x = 1.12345,
-            y = -0.1234,
-            z = 0.123456
-          )
-        )
-      )
-    ),
-    list(
-      body = list(
-        id = "12345b",
-        timestamp = "2021-11-14T16:40:01.123456Z",
-        data = list(
-          list(
-            timestamp = "2021-11-14T16:40:01.223456Z",
-            x = 1.12345,
-            y = -0.1234,
-            z = 0.123456
-          ),
-          list(
-            timestamp = "2021-11-14T16:40:01.323456Z",
-            x = 1.12345,
-            y = -0.1234,
-            z = 0.123456
-          )
-        )
-      )
-    ),
-    list(
-      body = list(
-        id = "12345c",
-        timestamp = "2021-11-14T16:40:01.123456Z",
-        data = list(
-          list(
-            timestamp = "2021-11-14T16:40:01.223456Z",
-            x = NA,
-            y = NA,
-            z = NA
-          ),
-          list(
-            timestamp = "2021-11-14T16:40:01.323456Z",
-            x = NA,
-            y = NA,
-            z = NA
-          )
-        )
-      )
-    ),
-    list(
-      body = list(
-        id = "12345d",
-        timestamp = "2021-11-14T16:40:01.123456Z",
-        data = list(
-          list(
-            timestamp = "2021-11-14T16:40:01.223456Z"
-          )
-        )
-      )
-    )
-  )
-  res <- accelerometer_fun(dat)
-  true <- data.frame(
-    measurement_id = c(
-      "12345a_1", "12345a_2", "12345b_1",
-      "12345b_2", "12345c_1", "12345c_2", "12345d_1"
-    ),
-    participant_id = rep("12345", 7),
-    date = "2021-11-14",
-    time = c(rep(c("16:40:01.223", "16:40:01.323"), 3), "16:40:01.223"),
-    timezone = "CET",
-    x = c(rep(1.12345, 4), NA, NA, NA),
-    y = c(rep(-0.1234, 4), NA, NA, NA),
-    z = c(rep(0.123456, 4), NA, NA, NA),
-    x_mean = rep(NA, 7),
-    y_mean = rep(NA, 7),
-    z_mean = rep(NA, 7),
-    x_mean_sq = rep(NA, 7),
-    y_mean_sq = rep(NA, 7),
-    z_mean_sq = rep(NA, 7),
-    n = rep(NA, 7)
-  )
-  expect_equal(res, true)
-})
+# Should no longer be used
+# test_that("periodic_accelerometer", {
+#   dat <- common_test(
+#     "accelerometer",
+#     list(
+#       body = list(
+#         id = "12345a",
+#         timestamp = "2021-11-14T16:40:01.123456Z",
+#         data = list(
+#           list(
+#             timestamp = "2021-11-14T16:40:01.223456Z",
+#             x = 1.12345,
+#             y = -0.1234,
+#             z = 0.123456
+#           ),
+#           list(
+#             timestamp = "2021-11-14T16:40:01.323456Z",
+#             x = 1.12345,
+#             y = -0.1234,
+#             z = 0.123456
+#           )
+#         )
+#       )
+#     ),
+#     list(
+#       body = list(
+#         id = "12345b",
+#         timestamp = "2021-11-14T16:40:01.123456Z",
+#         data = list(
+#           list(
+#             timestamp = "2021-11-14T16:40:01.223456Z",
+#             x = 1.12345,
+#             y = -0.1234,
+#             z = 0.123456
+#           ),
+#           list(
+#             timestamp = "2021-11-14T16:40:01.323456Z",
+#             x = 1.12345,
+#             y = -0.1234,
+#             z = 0.123456
+#           )
+#         )
+#       )
+#     ),
+#     list(
+#       body = list(
+#         id = "12345c",
+#         timestamp = "2021-11-14T16:40:01.123456Z",
+#         data = list(
+#           list(
+#             timestamp = "2021-11-14T16:40:01.223456Z",
+#             x = NA,
+#             y = NA,
+#             z = NA
+#           ),
+#           list(
+#             timestamp = "2021-11-14T16:40:01.323456Z",
+#             x = NA,
+#             y = NA,
+#             z = NA
+#           )
+#         )
+#       )
+#     ),
+#     list(
+#       body = list(
+#         id = "12345d",
+#         timestamp = "2021-11-14T16:40:01.123456Z",
+#         data = list(
+#           list(
+#             timestamp = "2021-11-14T16:40:01.223456Z"
+#           )
+#         )
+#       )
+#     )
+#   )
+#   res <- accelerometer_fun(dat)
+#   true <- data.frame(
+#     measurement_id = c(
+#       "12345a_1", "12345a_2", "12345b_1",
+#       "12345b_2", "12345c_1", "12345c_2", "12345d_1"
+#     ),
+#     participant_id = rep("12345", 7),
+#     date = "2021-11-14",
+#     time = c(rep(c("16:40:01.223", "16:40:01.323"), 3), "16:40:01.223"),
+#     timezone = "CET",
+#     x = c(rep(1.12345, 4), NA, NA, NA),
+#     y = c(rep(-0.1234, 4), NA, NA, NA),
+#     z = c(rep(0.123456, 4), NA, NA, NA),
+#     x_mean = rep(NA, 7),
+#     y_mean = rep(NA, 7),
+#     z_mean = rep(NA, 7),
+#     x_mean_sq = rep(NA, 7),
+#     y_mean_sq = rep(NA, 7),
+#     z_mean_sq = rep(NA, 7),
+#     n = rep(NA, 7)
+#   )
+#   expect_equal(res, true)
+# })
 
 # Periodic gyroscope ===========
 test_that("periodic_gyroscope", {
@@ -488,17 +432,9 @@ test_that("periodic_gyroscope", {
     participant_id = rep("12345", 3),
     date = "2021-11-14",
     time = rep(c("16:40:01.223", "16:40:01.323"), 3),
-    timezone = "CET",
     x = c(rep(1.12345, 4), NA, NA),
     y = c(rep(-0.1234, 4), NA, NA),
-    z = c(rep(0.123456, 4), NA, NA),
-    x_mean = rep(NA, 6),
-    y_mean = rep(NA, 6),
-    z_mean = rep(NA, 6),
-    x_mean_sq = rep(NA, 6),
-    y_mean_sq = rep(NA, 6),
-    z_mean_sq = rep(NA, 6),
-    n = rep(NA, 6)
+    z = c(rep(0.123456, 4), NA, NA)
   )
   expect_equal(res, true)
 })
@@ -517,7 +453,7 @@ test_that("activity", {
 
 # Air Quality ===========
 test_that("air_quality", {
-  unit_test("air_quality",
+  unit_test("airquality",
     air_quality_index = 30,
     air_quality_level = "GOOD",
     source = "IRCEL-CELINE - Belgian Interregional Environment Agency",
@@ -525,7 +461,7 @@ test_that("air_quality", {
     latitude = 50.12345678901234,
     longitude = 4.12345678901234
   )
-  unit_test("air_quality",
+  unit_test("airquality",
     air_quality_index = NA,
     air_quality_level = NA,
     source = NA,
@@ -538,7 +474,7 @@ test_that("air_quality", {
 # Installed Apps ===========
 test_that("installed_apps", {
   dat <- common_test(
-    "apps",
+    "installedapps",
     list(
       body = list(
         id = "12345a",
@@ -554,14 +490,13 @@ test_that("installed_apps", {
       )
     )
   )
-  res <- apps_fun(dat)
-  res_which <- which_sensor(dat, "apps")
+  res <- installedapps_fun(dat)
+  res_which <- which_sensor(dat, "installedapps")
   true <- data.frame(
     measurement_id = c("12345a_1", "12345a_2", "12345a_3", "12345a_4"),
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
-    timezone = "CET",
     app = c("a", "b", "c", NA)
   )
 
@@ -573,7 +508,7 @@ test_that("installed_apps", {
 # App usage ===========
 test_that("app_usage", {
   dat <- common_test(
-    "app_usage",
+    "appusage",
     list(
       body = list(
         id = "12345a",
@@ -620,7 +555,7 @@ test_that("app_usage", {
   )
 
   res <- app_usage_fun(dat)
-  res_which <- which_sensor(dat, "app_usage")
+  res_which <- which_sensor(dat, "appusage")
   true <- data.frame(
     measurement_id = c(
       "12345a_1", "12345a_2", "12345a_3", "12345b_1",
@@ -629,7 +564,6 @@ test_that("app_usage", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
-    timezone = "CET",
     start = c(rep("2021-11-15T14:05:00.123456Z", 6), NA, NA),
     end = c(rep("2021-11-15T14:35.00.123456Z", 6), NA, NA),
     usage = c(rep(c(10, 5, 7), 2), NA, NA),
@@ -653,13 +587,12 @@ test_that("app_usage", {
     )
   )
   res <- app_usage_fun(dat)
-  res_which <- which_sensor(dat, "app_usage")
+  res_which <- which_sensor(dat, "appusage")
   true <- data.frame(
     measurement_id = "12345a_1",
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
-    timezone = "CET",
     start = "2021-11-15T14:05:00.123456Z",
     end = "2021-11-15T14:35.00.123456Z",
     usage = NA,
@@ -745,7 +678,6 @@ test_that("bluetooth", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
-    timezone = "CET",
     advertisement_name = c("123abc", "123abc", NA, NA),
     bluetooth_device_id = c("def456", "def456", NA, NA),
     bluetooth_device_name = c("789abc", "789abc", NA, NA),
@@ -828,7 +760,6 @@ test_that("calendar", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
-    timezone = "CET",
     event_id = c(rep("8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9", 3), NA, NA),
     calendar_id = c(rep("45ED76B4-87A1-D7E0-FA93-A7A1F64CF3E7", 3), NA, NA),
     title = c(rep("96475fc78435bef84354fc05dd185ac944c5c3c1", 3), NA, NA),
@@ -1082,7 +1013,6 @@ test_that("phone_log", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
-    timezone = "CET",
     call_type = c("incoming", "outgoing", "incoming", NA),
     datetime = c("2021-05-10 10:00:00", "2021-05-10 10:01:00", "2021-05-10 10:00:00", NA),
     duration = c(60, 120.50, 60, NA),
@@ -1154,7 +1084,6 @@ test_that("text_message", {
     participant_id = "12345",
     date = "2021-11-14",
     time = "16:40:00",
-    timezone = "CET",
     address = c("123", "456", NA),
     body = c("abc", "def", NA),
     text_date = c("2021-11-13", "2021-11-12", NA),

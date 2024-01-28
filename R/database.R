@@ -11,10 +11,10 @@
 #' sensors
 #' @export sensors
 sensors <- c(
-  "Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "Bluetooth",
-  "Calendar", "Connectivity", "Device", "Error", "Geofence", "Gyroscope",
-  "InstalledApps", "Keyboard", "Light", "Location", "Memory", "Mobility", "Noise",
-  "Pedometer", "PhoneLog", "Screen", "TextMessage", "Weather", "Wifi"
+  "Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "Bluetooth", "Calendar",
+  "Connectivity", "Device", "Error", "Geofence", "Gyroscope", "Heartbeat", "InstalledApps",
+  "Keyboard", "Light", "Location", "Memory", "Mobility", "Noise", "Pedometer", "PhoneLog",
+  "Screen", "TextMessage", "Timezone", "Weather", "Wifi"
 )
 
 #' Create a new mpathsenser database
@@ -148,8 +148,11 @@ close_db <- function(db) {
 
 #' Create indexes for an mpathsenser database
 #'
-#' @description
-#' `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
+#'
+#'   Create indexes for an mpathsenser database on the `participant_id`, `date`, and a combination
+#'   of these variable for all the tables in the database. This will speed up queries that use these
+#'   variables in the `WHERE` clause.
 #'
 #' @inheritParams get_data
 #'
@@ -172,6 +175,16 @@ index_db <- function(db) {
   )
 }
 
+#' Vacuum a database
+#'
+#' @description `r lifecycle::badge("stable")`
+#'
+#' This is a convenience function that calls the `VACUUM` command on a database. This command will
+#' rebuild the database file, repacking it into a minimal amount of disk space.
+#'
+#' @inheritParams get_data
+#'
+#' @return  a scalar numeric that specifies the number of rows affected by the vacuum.
 vacuum_db <- function(db) {
   check_db(db)
   dbExecute(db, "VACUUM")

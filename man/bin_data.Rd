@@ -37,7 +37,8 @@ spent (i.e. the duration) in fixed bins, for example per hour or day. However, t
 difficult when two subsequent measurements are in different bins or span over multiple bins.
 }
 \examples{
-data <- tibble::tibble(
+library(dplyr)
+data <- tibble(
   participant_id = 1,
   datetime = c(
     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
@@ -49,8 +50,8 @@ data <- tibble::tibble(
 
 # get bins per hour, even if the interval is longer than one hour
 data |>
-  dplyr::mutate(datetime = as.POSIXct(datetime)) |>
-  dplyr::mutate(lead = dplyr::lead(datetime)) |>
+  mutate(datetime = as.POSIXct(datetime)) |>
+  mutate(lead = lead(datetime)) |>
   bin_data(
     start_time = datetime,
     end_time = lead,
@@ -62,8 +63,8 @@ data |>
 # as in this example 30 minutes, but rather depends on the earliest time
 # in the group.
 data |>
-  dplyr::mutate(datetime = as.POSIXct(datetime)) |>
-  dplyr::mutate(lead = dplyr::lead(datetime)) |>
+  mutate(datetime = as.POSIXct(datetime)) |>
+  mutate(lead = lead(datetime)) |>
   bin_data(
     start_time = datetime,
     end_time = lead,
@@ -72,7 +73,7 @@ data |>
   )
 
 # More complicated data for showcasing grouping:
-data <- tibble::tibble(
+data <- tibble(
   participant_id = 1,
   datetime = c(
     "2022-06-21 15:00:00", "2022-06-21 15:55:00",
@@ -84,10 +85,10 @@ data <- tibble::tibble(
 
 # binned_intervals also takes into account the prior grouping structure
 out <- data |>
-  dplyr::mutate(datetime = as.POSIXct(datetime)) |>
-  dplyr::group_by(participant_id) |>
-  dplyr::mutate(lead = dplyr::lead(datetime)) |>
-  dplyr::group_by(participant_id, type) |>
+  mutate(datetime = as.POSIXct(datetime)) |>
+  group_by(participant_id) |>
+  mutate(lead = lead(datetime)) |>
+  group_by(participant_id, type) |>
   bin_data(
     start_time = datetime,
     end_time = lead,
@@ -106,9 +107,9 @@ purrr::map_dbl(
 # Or:
 out |>
   tidyr::unnest(bin_data, keep_empty = TRUE) |>
-  dplyr::mutate(duration = .data$lead - .data$datetime) |>
-  dplyr::group_by(bin, .add = TRUE) |>
-  dplyr::summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
+  mutate(duration = .data$lead - .data$datetime) |>
+  group_by(bin, .add = TRUE) |>
+  summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
 }
 \seealso{
 \code{\link[=link_gaps]{link_gaps()}} for linking gaps to data.

@@ -53,7 +53,7 @@ test_that("fix_jsons", {
   # With path argument
   expect_message(
     fix_jsons(path = tempdir, recursive = FALSE),
-    "Fixed 12 files"
+    "Fixed 13 files"
   )
 
   # copy again after fixing
@@ -74,7 +74,7 @@ test_that("fix_jsons", {
       files = file.path(tempdir, files),
       recursive = FALSE
     ),
-    "Fixed 12 files"
+    "Fixed 13 files"
   )
 
   # copy again after fixing
@@ -95,7 +95,7 @@ test_that("fix_jsons", {
       files = files,
       recursive = FALSE
     ),
-    "Fixed 12 files"
+    "Fixed 13 files"
   )
 
   file.remove(file.path(tempdir, files))

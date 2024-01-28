@@ -15,7 +15,6 @@ test_that("get_data", {
       participant_id = "12345",
       date = "2021-11-14",
       time = c("13:59:59", "14:00:00", "14:00:01"),
-      timezone = c(NA, "CET", "CET"),
       confidence = c(NA, 100L, 99L),
       type = c(NA, "WALKING", "STILL")
     )
@@ -34,14 +33,15 @@ test_that("get_data", {
       participant_id = "12345",
       date = "2021-11-14",
       time = c("13:00:00", "14:01:00"),
-      timezone = c("CET", NA),
       device_id = c("QKQ1.200628.002", NA),
       hardware = c("qcom", NA),
       device_name = c("gauguin", NA),
       device_manufacturer = c("Xiaomi", NA),
       device_model = c("M2007J17G", NA),
       operating_system = c("REL", NA),
-      platform = c("Android", NA)
+      platform = c("Android", NA),
+      operating_system_version = rep(NA_character_, 2),
+      sdk = rep(NA_character_, 2)
     )
   )
 
@@ -55,14 +55,15 @@ test_that("get_data", {
       participant_id = "12345",
       date = "2021-11-13",
       time = "13:00:00",
-      timezone = "CET",
       device_id = "QKQ1.200628.002",
       hardware = "qcom",
       device_name = "gauguin",
       device_manufacturer = "Xiaomi",
       device_model = "M2007J17G",
       operating_system = "REL",
-      platform = "Android"
+      platform = "Android",
+      operating_system_version = NA_character_,
+      sdk = NA_character_
     )
   )
 
@@ -143,7 +144,7 @@ test_that("device_info", {
   expect_equal(colnames(res), c(
     "participant_id", "device_id", "hardware", "device_name",
     "device_manufacturer", "device_model", "operating_system",
-    "platform"
+    "platform", "operating_system_version", "sdk"
   ))
   expect_true(nrow(res) > 0)
   dbDisconnect(db)
@@ -154,13 +155,13 @@ test_that("moving_average", {
   db <- open_db(NULL, path)
 
   expect_error(
-    moving_average(db, "Accelerometer", cols = "x", participant_id = "12345", n = 2),
+    moving_average(db, "Accelerometer", cols = "x_mean", participant_id = "12345", n = 2),
     NA
   )
   res <- moving_average(
     db = db,
     sensor = "Accelerometer",
-    cols = "x",
+    cols = "x_mean",
     participant_id = "12345",
     n = 2,
     start_date = "2021-11-14",

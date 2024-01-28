@@ -152,27 +152,27 @@ test_that(".import_clean", {
     )
   )
 
-  expect_error(.import_clean(data), NA)
-  expect_equal(nrow(.import_clean(data)), 2)
+  expect_error(.import_clean(data, "accelerometer"), NA)
+  expect_equal(nrow(.import_clean(data, "accelerometer")), 2)
 
   # Set the first instance of study_id to NULL
   data[[1]][[1]]$study_id <- NULL
-  expect_error(.import_clean(data), NA)
-  expect_equal(nrow(.import_clean(data)), 2)
+  expect_error(.import_clean(data, "accelerometer"), NA)
+  expect_equal(nrow(.import_clean(data, "accelerometer")), 2)
   # Interesting bug when using unlist in safe_extract: NULLs are implicitly dropped, so if only one
   # value is left, it is recycled in the rest of the data frame. Hence doing this test in two steps.
-  expect_equal(.import_clean(data)$study_id, c(NA, "test-study"))
+  expect_equal(.import_clean(data, "accelerometer")$study_id, c(NA, "test-study"))
   data[[2]][[1]]$study_id <- NULL
-  expect_error(.import_clean(data), NA)
-  expect_equal(nrow(.import_clean(data)), 2)
-  expect_equal(.import_clean(data)$study_id, c(NA, NA))
+  expect_error(.import_clean(data, "accelerometer"), NA)
+  expect_equal(nrow(.import_clean(data, "accelerometer")), 2)
+  expect_equal(.import_clean(data, "accelerometer")$study_id, c(NA, NA))
 
   data[[1]][[1]]$user_id <- NULL
-  expect_error(.import_clean(data), NA)
-  expect_equal(nrow(.import_clean(data)), 1)
+  expect_error(.import_clean(data, "accelerometer"), NA)
+  expect_equal(nrow(.import_clean(data, "accelerometer")), 1)
   data[[2]][[1]]$user_id <- NULL
-  expect_error(.import_clean(data), NA)
-  expect_equal(nrow(.import_clean(data)), 0)
+  expect_error(.import_clean(data, "accelerometer"), NA)
+  expect_equal(nrow(.import_clean(data, "accelerometer")), 0)
 })
 
 test_that(".import_is_duplicate", {
@@ -226,28 +226,22 @@ test_that(".import_extract_sensor_data", {
           data = list(
             list(
               timestamp = "2021-02-25T15:15:58.557282Z",
-              x = 1.123456,
-              y = 1.123456,
-              z = 1.123456,
-              x_mean = NA,
-              y_mean = NA,
-              z_mean = NA,
-              x_mean_sq = NA,
-              y_mean_sq = NA,
-              z_mean_sq = NA,
+              xm = NA,
+              ym = NA,
+              zm = NA,
+              xms = NA,
+              yms = NA,
+              zms = NA,
               n = NA
             ),
             list(
               timestamp = "2021-02-25T15:15:58.557282Z",
-              x = 1.123456,
-              y = 1.123456,
-              z = 1.123456,
-              x_mean = NA,
-              y_mean = NA,
-              z_mean = NA,
-              x_mean_sq = NA,
-              y_mean_sq = NA,
-              z_mean_sq = NA,
+              xm = NA,
+              ym = NA,
+              zm = NA,
+              xms = NA,
+              yms = NA,
+              zms = NA,
               n = NA
             )
           )
@@ -260,28 +254,22 @@ test_that(".import_extract_sensor_data", {
           data = list(
             list(
               timestamp = "2021-02-25T15:15:58.557282Z",
-              x = 1.123456,
-              y = 1.123456,
-              z = 1.123456,
-              x_mean = NA,
-              y_mean = NA,
-              z_mean = NA,
-              x_mean_sq = NA,
-              y_mean_sq = NA,
-              z_mean_sq = NA,
+              xm = NA,
+              ym = NA,
+              zm = NA,
+              xms = NA,
+              yms = NA,
+              zms = NA,
               n = 10
             ),
             list(
               timestamp = "2021-02-25T15:15:58.557282Z",
-              x = 1.123456,
-              y = 1.123456,
-              z = 1.123456,
-              x_mean = NA,
-              y_mean = NA,
-              z_mean = NA,
-              x_mean_sq = NA,
-              y_mean_sq = NA,
-              z_mean_sq = NA,
+              xm = NA,
+              ym = NA,
+              zm = NA,
+              xms = NA,
+              yms = NA,
+              zms = NA,
               n = NA
             )
           )
@@ -291,7 +279,6 @@ test_that(".import_extract_sensor_data", {
     study_id = "test-study",
     participant_id = "12345",
     start_time = "2021-02-25T15:15:58.557282Z",
-    timezone = "CET",
     data_format = "carp",
     sensor = "accelerometer"
   )
@@ -324,17 +311,13 @@ test_that(".import_extract_sensor_data", {
         participant_id = "12345",
         date = "2021-02-25",
         time = "15:15:58.557",
-        timezone = "CET",
-        x = 1.123456,
-        y = 1.123456,
-        z = 1.123456,
+        n = NA,
         x_mean = NA,
         y_mean = NA,
         z_mean = NA,
-        x_mean_sq = NA,
-        y_mean_sq = NA,
-        z_mean_sq = NA,
-        n = NA
+        x_energy = NA,
+        y_energy = NA,
+        z_energy = NA
       ),
       Keyboard = NULL
     )
@@ -358,7 +341,7 @@ test_that(".import_extract_sensor_data", {
     )
   )
 
-  data$sensor[1] <- "foo"
+  data$sensor[1] <- "Foo"
   expect_warning(
     .import_extract_sensor_data(data),
     "Sensor 'Foo' is not supported by this package."
@@ -396,22 +379,12 @@ test_that(".import_write_to_db", {
   db <- create_db(NULL, tempfile())
 
   data <- list(
-    Accelerometer = tibble::tibble(
+    Pedometer = tibble::tibble(
       measurement_id = "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_1",
       participant_id = "12345",
       date = "2021-02-25",
       time = "15:15:58.557",
-      timezone = "CET",
-      x = 1.123456,
-      y = 1.123456,
-      z = 1.123456,
-      x_mean = 1.123456,
-      y_mean = 1.123456,
-      z_mean = 1.123456,
-      x_mean_sq = 1.123456,
-      y_mean_sq = 1.123456,
-      z_mean_sq = 1.123456,
-      n = 10
+      step_count = 1
     )
   )
   meta_data <- data.frame(
@@ -424,19 +397,20 @@ test_that(".import_write_to_db", {
   expect_equal(.import_write_to_db(db, meta_data, data), 1)
   expect_equal(.import_write_to_db(db, meta_data, data), 0)
 
-  data <- c(data, data)
-  names(data) <- c("Accelerometer", "Gyroscope")
-  data$Accelerometer$measurement_id <- "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2"
-  data$Gyroscope$measurement_id <- NULL
+  # Test that transactions are rolled back if an error occurs
+  data$Pedometer <- rbind(data$Pedometer, data$Pedometer)
+  data$Pedometer$measurement_id[[1]] <- "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2"
+  data$Pedometer$measurement_id[[2]] <- NA
   expect_error(
     .import_write_to_db(db, meta_data, data),
-    "NOT NULL constraint failed: Gyroscope.measurement_id"
+    "NOT NULL constraint failed: Pedometer.measurement_id"
   )
-  expect_equal(nrow(DBI::dbGetQuery(db, "SELECT * FROM  Gyroscope")), 0)
   expect_false(
     "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2" %in%
       DBI::dbGetQuery(db, "SELECT measurement_id FROM Accelerometer")[[1]]
   )
+  expect_equal(nrow(DBI::dbGetQuery(db, "SELECT * FROM  Pedometer")), 1)
+
 
   # Clean up
   dbDisconnect(db)

@@ -3,8 +3,9 @@
 #' @description `r lifecycle::badge("stable")`
 #'
 #'   Import JSON files from m-Path Sense into a structured database. This function is the bread and
-#'   butter of this package, as it creates (or rather fills) the database that most of the other
-#'   functions in this package use.
+#'   butter of this package, as it populates the database with data that most of the other functions
+#'   in this package use. It is recommend to first run [test_jsons()] and, if necessary,
+#'   [fix_jsons()] to repair JSON files with problematic syntax.
 #'
 #' @details `import` allows you to specify which sensors to import (even though there may be more in
 #'   the files) and it also allows batching for a speedier writing process. If processing in
@@ -14,10 +15,14 @@
 #'   means that if `batch_size` is large, many files will not be processed. Set `batch_size` to 1
 #'   for sequential (one-by-one) file processing.
 #'
-#'   Currently, only SQLite is supported as a backend. Due to its concurrency restriction, the
-#'   `parallel` option is disabled. To get an indication of the progress so far, set one of the
-#'   [progressr::handlers()] using the `progressr` package, e.g. `progressr::handlers(global =
-#'   TRUE)` and `progressr::handlers('progress')`.
+#'   Currently, only SQLite is supported as a backend. Due to its concurrency restriction, parallel
+#'   processing works for cleaning the raw data, but not for importing it into the database. This is
+#'   because SQLite does not allow multiple processes to write to the same database at the same
+#'   time. This is a limitation of SQLite and not of this package. However, while files are
+#'   processing individually (and in parallel if specified), writing to the database happens for the
+#'   entire batch specified by `batch_size` at once. This means that if a single file in the batch
+#'   causes an error, the entire batch is skipped. This is to ensure that the database is not left
+#'   in an inconsistent state.
 #'
 #' @section Parallel: This function supports parallel processing in the sense that it is able to
 #'   distribute it's computation load among multiple workers. To make use of this functionality, run
@@ -30,15 +35,22 @@
 #'   how to subscribe to these updates.
 #'
 #' @param path The path to the file directory
-#' @param db Valid database connection.
+#' @param db Valid database connection, typically created by [create_db()].
 #' @param sensors Select one or multiple sensors as in \code{\link[mpathsenser]{sensors}}. Leave
 #'   NULL to extract all sensor data.
 #' @param batch_size The number of files that are to be processed in a single batch.
 #' @param backend Name of the database backend that is used. Currently, only RSQLite is supported.
 #' @param recursive Should the listing recurse into directories?
 #'
-#' @returns A message indicating how many files were imported. Imported database can be reopened
-#'   using [open_db()].
+#' @seealso [create_db()] for creating a database for `import()` to use, [close_db()] for closing
+#'   this database; [index_db()] to create indices on the database for faster future processing, and
+#'   [vacuum_db()] to shrink the database to its minimal size.
+#'
+#'
+#' @returns A message indicating how many files were imported. If all files were imported
+#'   successfully, this functions returns an empty string invisibly. Otherwise the file names of the
+#'   files that were not imported are returned visibly.
+#'
 #' @export
 import <- function(
     path = getwd(),
@@ -120,21 +132,28 @@ import <- function(
     # Save the empty files in data frame to add to the meta data later
     # Meta data is what is being registered
     if (length(batch_na) > 0) {
-      p_id <- purrr::map_chr(strsplit(batch_na, "_"), ~.x[3])
+      split_file_name <- strsplit(batch_na, "_")
+      p_id <- purrr::map_chr(split_file_name, \(x) x[3])
+      study_id <- purrr::map_chr(split_file_name, \(x) x[2])
+
       if (any(is.na(p_id))) {
         p_id[is.na(p_id)] <- "N/A"
       }
+      if (any(is.na(study_id))) {
+        study_id[is.na(study_id)] <- "-1"
+      }
       batch_na <- data.frame(
         participant_id = p_id,
-        study_id = "-1",
+        study_id = study_id,
         data_format = NA,
         file_name = batch_na
       )
     }
 
     # Clean the lists to be in a dataframe format
-    batch_data <- furrr::future_map(
+    batch_data <- furrr::future_map2(
       .x = batch_data,
+      .y = names(batch_data),
       .f = .import_clean,
       .options = furrr::furrr_options(seed = TRUE)
     )
@@ -155,7 +174,8 @@ import <- function(
         names(batch_data),
         seq_along(batch_data)
       ),
-      .f = ~ distinct(..1,
+      .f = ~ distinct(
+        ..1,
         participant_id,
         study_id,
         data_format,
@@ -310,14 +330,23 @@ safe_extract <- function(vec, var) {
 
 # Function for cleaning the raw data
 # The goal is to have a list of all the sensors
-.import_clean <- function(data) {
+.import_clean <- function(data, file_name) {
+  # Detect new file format
+  header_names <- data |>
+    lapply(names) |>
+    unlist(use.names = FALSE) |>
+    unique()
+  if (all(c("data", "sensorStartTime", "sensorEndTime") %in% header_names)) {
+    return(.import_clean_new(data, file_name))
+  }
+
   # Sanity check if it is an mpathsenser file
   if (!any(grepl("header", names(data[[1]])))) {
     return(NULL)
   }
 
   # Clean-up and extract the header and body
-  data <- tibble::tibble(
+  data <- tibble(
     header = lapply(data, function(x) x[1]),
     body = lapply(data, function(x) x[2])
   )
@@ -329,7 +358,6 @@ safe_extract <- function(vec, var) {
   data$trigger_id <- NULL
   data$participant_id <- safe_extract(data$header, "user_id")
   data$start_time <- safe_extract(data$header, "start_time")
-  data$timezone <- safe_extract(data$header, "time_zone_name")
   data$data_format <- lapply(data$header, function(x) x[[1]]["data_format"])
   data$sensor <- safe_extract(data$data_format, "name")
   data$data_format <- safe_extract(data$data_format, "namespace")
@@ -338,6 +366,34 @@ safe_extract <- function(vec, var) {
   # Due to the hacky solution above, filter out rows where the participant_id is missing,
   # usually in the last entry of a file
   data <- data[!is.na(data$participant_id), ]
+  data
+}
+
+# New clean function for the new file format as of CARP 1.0.0
+.import_clean_new <- function(data, file_name) {
+  # Get meta data
+  split_file_name <- strsplit(file_name, "_")
+  study_id <- purrr::map_chr(split_file_name, \(x) x[2])
+  p_id <- purrr::map_chr(split_file_name, \(x) x[3])
+
+  data <- tibble(
+    study_id = study_id,
+    participant_id = p_id,
+    data_format = "cams 1.0.0",
+    start_time = purrr::map_dbl(data, \(x) purrr::pluck(x, "sensorStartTime", .default = NA)),
+    end_time = purrr::map_dbl(data, \(x) purrr::pluck(x, "sensorEndTime", .default = NA)),
+    data = purrr::map(data, \(x) purrr::pluck(x, "data", .default = NA)),
+  )
+
+  # Change the timestamps from UNIX timestamp to ISO 8601, as this is how it will be saved later
+  data$start_time <- as.character(as.POSIXct(data$start_time / 1e6, tz = "UTC"))
+  data$end_time <- as.character(as.POSIXct(data$end_time / 1e6, tz = "UTC"))
+
+  # Extract the sensor
+  data <- data |>
+    tidyr::hoist(data, sensor = "__type") |>
+    mutate(sensor = gsub("dk\\.cachet\\.carp\\.", "", .data$sensor))
+
   data
 }
 
@@ -375,27 +431,68 @@ safe_extract <- function(vec, var) {
   return(matches[, 1] > 0)
 }
 
+# Function to map the sensor names to the ones used in the database
+.import_map_sensor_names <- function(names) {
+  names <- trimws(names)
+  lower_names <- tolower(names)
+  dplyr::case_match(
+    lower_names,
+    c("accelerometer", "accelerationfeatures", "averageaccelerometer")  ~ "Accelerometer",
+    "activity"                                                          ~ "Activity",
+    c("airquality", "air_quality")                                      ~ "AirQuality",
+    c("app_usage", "appusage")                                          ~ "AppUsage",
+    c("battery", "batterystate")                                        ~ "Battery",
+    "bluetooth"                                                         ~ "Bluetooth",
+    "calendar"                                                          ~ "Calendar",
+    "connectivity"                                                      ~ "Connectivity",
+    c("device", "deviceinformation")                                    ~ "Device",
+    "error"                                                             ~ "Error",
+    "geofence"                                                          ~ "Geofence",
+    "gyroscope"                                                         ~ "Gyroscope",
+    "heartbeat"                                                         ~ "Heartbeat",
+    c("apps", "installed_apps")                                         ~ "InstalledApps",
+    "keyboard"                                                          ~ "Keyboard",
+    c("light", "ambientlight")                                          ~ "Light",
+    "location"                                                          ~ "Location",
+    c("memory", "freememory")                                           ~ "Memory",
+    "mobility"                                                          ~ "Mobility",
+    "noise"                                                             ~ "Noise",
+    c("pedometer", "stepcount")                                         ~ "Pedometer",
+    c("phone_log", "phonelog")                                          ~ "PhoneLog",
+    c("screen", "screenevent")                                          ~ "Screen",
+    c("text_message", "textmessage")                                    ~ "TextMessage",
+    "timezone"                                                          ~ "Timezone",
+    "weather"                                                           ~ "Weather",
+    "wifi"                                                              ~ "Wifi",
+    .default = names
+  )
+}
+
 .import_extract_sensor_data <- function(data, sensors = NULL) {
-  # Make sure top-level of data$body is called body and not carp_body as in the new version
-  data$body <- lapply(data$body, function(x) rlang::set_names(x, "body"))
+  # Detect if this is a file in a legacy format
+  is_legacy <- "body" %in% colnames(data)
+
+  # Make sure top-level of data$body is called body and not carp_body as in the new version (pre
+  # 1.0.0)
+  if (is_legacy) {
+    data$body <- lapply(data$body, function(x) rlang::set_names(x, "body"))
+  }
 
   # Divide et impera
   data <- split(data, as.factor(data$sensor), drop = TRUE)
 
   # Drop useless data
   data[["unknown"]] <- NULL
+  data[["triggeredtask"]] <- NULL
 
   # Set names to capitals in accordance with the table names
-  names <- strsplit(names(data), "_")
-  names <- lapply(names, function(x) {
-    paste0(toupper(substring(x, 1, 1)), substring(x, 2), collapse = "")
-  })
-  names[names == "Apps"] <- "InstalledApps" # Except InstalledApps...
+  names(data) <- .import_map_sensor_names(names(data))
+  names <- names(data)
 
   # Select sensors, if not NULL
   if (!is.null(sensors)) {
-    data <- data[names %in% sensors]
-    names <- names[names %in% sensors]
+    data <- data[tolower(names) %in% tolower(sensors)]
+    names <- names[tolower(names) %in% tolower(sensors)]
   }
 
   # Check if all sensors exist and are supported
@@ -413,7 +510,16 @@ safe_extract <- function(vec, var) {
   # Return result or NA
   tryCatch(
     {
-      out <- purrr::imap(data, which_sensor)
+      if (is_legacy) {
+        out <- purrr::imap(data, which_sensor)
+      } else {
+        data <- mapply(
+          \(x, name) `class<-`(x, c(name, class(x))),
+          data, tolower(names(data)), SIMPLIFY = FALSE
+        )
+        out <- lapply(data, unpack_sensor_data)
+      }
+
       names(out) <- names
       return(out)
     },
@@ -454,4 +560,17 @@ safe_extract <- function(vec, var) {
       participant_id = meta_data$participant_id
     )
   })
+}
+
+# First, try to simply add the data to the table If the measurement already exists,
+# skip that measurement
+save2db <- function(db, name, data) {
+  insert_cols <- paste0("`", colnames(data), "`", collapse = ", ")
+  cols <- paste0(":", colnames(data), collapse = ", ")
+  res <- DBI::dbSendStatement(
+    conn = db,
+    statement = paste0("INSERT OR REPLACE INTO ", name, " (", insert_cols, ") VALUES (", cols, ")"),
+    params = as.list(data)
+  )
+  DBI::dbClearResult(res)
 }

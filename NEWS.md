@@ -1,10 +1,108 @@
-# mpathsenser (in development)
+# mpathsenser 1.2.0
+
+## Major changes
+`mpathsenser` now supports the new data format as of m-Path Sense 4.2.6. This comes with a large 
+number of changes. Most importantly, this means that `import()` had to be updated to handle the new
+data format. Both the old and new data format are now supported by this package. With the new data
+format there are some changes to the database.
+
+First, some fields have been removed:
+
+* The `x`, `y`, and `z` fields from `Accelerometer` have been removed from `import()` and all subsequent
+functions. These fields were only used when m-Path Sense still collected continuous data, and for 
+some time now only summary data is collected. No continuous data has ever been collected outside of
+pilot testing, and hence these fields have been removed.
+* The `x_mean`, `y_mean`, `z_mean`, `x_mean_sq`, `y_mean_sq`, `z_mean_sq`, and `n` fields from
+`Gyroscope` have been removed as m-Path Sense will currently collect continuous data. These fields
+were implemented in anticipation of this change but instead, for now, gyroscopic information has 
+been removed from the app altogether. Thus, these fields are removed from simplicity and clarity.
+* The `timezone` field has been removed from all sensor tables. This field was once added in 
+m-Path Sense but this never made it to the final version. It has been removed from the database
+and all subsequent functions.
+
+Second, some fields have been added:
+
+* The `Accelerometer` has gained many new data fields:
+    - `end_time` is the time at which the sample of the data ended, where `time` denotes the start 
+    time.
+    - `n`, the number of samples, was already present but has been moved in the ordering of the 
+    fields.
+    - `x_mean`, `y_mean`, and `z_mean` are the mean values of the accelerometer data. These were 
+    already present in the data and remain unchanged.
+    - `x_median`, `y_median`, and `z_median` are the median values of the accelerometer data.
+    - `x_std`, `y_std`, and `z_std` are the standard deviations of the accelerometer data.
+    - `x_aad`, `y_aad`, and `z_aad` are the average absolute deviations of the accelerometer data.
+    - `x_min`, `y_min`, and `z_min` are the minimum values of the accelerometer data.
+    - `x_max`, `y_max`, and `z_max` are the maximum values of the accelerometer data.
+    - `x_max_min_diff`, `y_max_min_diff`, and `z_max_min_diff` are the differences between the
+    maximum and minimum values of the accelerometer data.
+    - `x_mad`, `y_mad`, and `z_mad` are the median absolute deviations of the accelerometer data.
+    - `x_iqr`, `y_iqr`, and `z_iqr` are the interquartile ranges of the accelerometer data.
+    - `x_neg_n`, `y_neg_n`, and `z_neg_n` are the number of negative values of the accelerometer 
+    data.
+    - `x_pos_n`, `y_pos_n`, and `z_pos_n` are the number of positive values of the accelerometer 
+    data.
+    - `x_above_mean`, `y_above_mean`, and `z_above_mean` are the number of values above the mean of
+    the accelerometer data.
+    - `x_energy`, `y_energy`, and `z_energy` are similar to `x_mean_sq`, `y_mean_sq`, and
+    `z_mean_sq`, being the average sum of squares.
+    - `avg_res_acc` is the average resultant acceleration, being average of the square roots of the 
+    values in each of the three axis squared and added together.
+    - `sma` is the signal magnitude area, being the sum of absolute values of the three axis 
+    averaged over a window.
+* The `AppUsage` table has gained 2 new fields:
+    - `package_name` is the full application package name.
+    - `last_foreground` is the time at which the application was last in the foreground. If the app
+    had not yet been in the foreground, this is `NA`.
+* The `Bluetooth` table has gained 2 new fields:
+    - `start_scan` is the time at which the scan started.
+    - `end_scan` is the time at which the scan ended.
+* The `Device` table has gained 2 new fields:
+    - `operating_system_version` is the version of the operating system.
+    - `sdk` is the version of the Android SDK or the iOS kernel.
+* A new sensor `Heartbeat` has been added to the data. This table has the following fields:
+    - `measurement_id`, `participant_id`, `date`, and `time` like every other sensor.
+    - `period` denotes the time period over which the a heartbeat should be registered, in minutes.
+    - `device_type` denotes the type of device of this heartbeat.
+    - `device_role_name` is the role name of the device in the protocol.
+* The `Light` table has gained 1 new field:
+    - `end_time` is the time at which the sample of the data ended, where `time` denotes the start
+    time.
+* `Location` has gained 3 new fields:
+    - `vertical_accuracy` is the estimated vertical accuracy of this location, in meters.
+    - `heading_accuracy` is the estimated bearing accuracy of this location, in degrees. Only 
+    available on Android. 
+    - `is_mock` is a boolean indicating whether this location was mocked or not. Always `FALSE` on
+    iOS. Moreover, because SQLite does not support booleans, this is stored as an integer.
+* `Timezone` has been added a separate sensor. This table has the following fields:
+    - `measurement_id`, `participant_id`, `date`, and `time` like every other sensor.
+    - `timezone` is the time zone of the device at the time of the measurement.
+    
+Data collected with previous version of m-Path Sense (henceforth referred to as legacy data) can 
+still be read by `import()` and subsequent functions, but all new fields will have missing values.
+
+## Minor changes
+* `mpathsenser::sensors` now holds 27 sensors, being updated with `Heartbeat` and `Timezone`
+* Added the correct citation for this package.
+* Coverage plots with absolute numbers `coverage(relative = FALSE)` now show correct colours. The 
+colours are now based on the relative values within each sensor, such that the highest sample is
+fully red and zero being fully blue. 
+* `vacuum_db()` is a newly exported function within this package. Once called upon a database, it
+shrinks the database to its minimal size by cleaning up remnants from `import()`.
+* The `maggrittr` package has been dropped as a dependency, favouring `R`'s native pipe `|>` over 
+the `maggrittr` pipe `%>%`.
+
+## Deprecations
+
+
+## Bugfixes
 * Fixed an issue in `fix_jsons()` where files with illegal ASCII characters could be not fixed 
 because the file was still locked from reading.
+* A new case has been added where files could end with `}},` followed by a closing
+bracket `]` on a new line. This trailing comma is now removed by `fix_jsons()`.
 * If `recursive = TRUE` in `unzip_data()` and `to = NULL`, the output path of the JSON files will 
 be the local directories through which the recursive path is traversed rather than the main 
 directory.
-* Added the correct citation for this package.
 
 # mpathsenser 1.1.3
 This is a release with breaking changes due to removal of deprecated arguments. Please review 
@@ -19,9 +117,9 @@ of these streams. Old versions are still supported by all functions.
     - `x_mean`: The average acceleration or gyroscopic value along the `x` axis within a sample;
     - `y_mean`: The average acceleration or gyroscopic value along the `y` axis within a sample;
     - `z_mean`: The average acceleration or gyroscopic value along the `z` axis within a sample;
-    - `x_mean_sq`: The square root of the `x` values within the sample;
-    - `y_mean_sq`: The square root of the `y` values within the sample;
-    - `z_mean_sq`: The square root of the `z` values within the sample;
+    - `x_mean_sq`: The mean of the squared `x` values within the sample;
+    - `y_mean_sq`: The mean of the squared `y` values within the sample;
+    - `z_mean_sq`: The mean of the squared `z` values within the sample;
   From these values, one could calculate the `L1 norm` and `L2 norm` like before.
 * Added a new value `timezone` to all sensor data. Confusingly, this is _not_ the timezone of the 
 data itself (as this is always in UTC), but rather the timezone the participant was in at the time
