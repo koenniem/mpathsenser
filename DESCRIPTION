@@ -41,6 +41,7 @@ Suggests:
     curl,
     ggplot2,
     httr,
+    kableExtra,
     knitr,
     lintr,
     progressr,
