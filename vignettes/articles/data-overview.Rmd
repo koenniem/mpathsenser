@@ -53,7 +53,7 @@ pop <- spec_popover(
 This vignette provides an overview of the data stored in an `mpathsenser` database by `import()`. The database scheme is shown below.
 
 ```{r database scheme, echo=FALSE, fig.cap="Figure 1: `mpathsenser` database scheme.", out.width = '100%'}
-knitr::include_graphics(system.file("extdata", "mpathsenser_db.png", package = "mpathsenser"))
+knitr::include_graphics("https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/raw/master/inst/extdata/mpathsenser_db.png")
 ```
 
 As can be seen in the scheme, the database can be divided into roughly two parts: meta-data and sensor-specific data. Meta-data stores data about the study itself, the participants, and the processed files. On the other hand, sensor-specific tables store the values from the sensors, which are linked to the meta-data. 
@@ -70,7 +70,7 @@ tribble(
   "study_id", "character", "ID of the study.",
   "data_format", "character", "Name indicating which data format is used."
 ) |> 
-  kable(booktabs = TRUE, table.attr = 'style="display:table;"') |> 
+  kbl(booktabs = TRUE, table.attr = 'style="display:table;"') |> 
   table_style()
 ```
 
@@ -82,7 +82,7 @@ tribble(
   "participant_id", "character", "Unique ID of the participant.",
   "study_id", "character", "ID of the study."
 ) |> 
-  kable(booktabs = TRUE, table.attr = 'style="display:table;"') |> 
+  kbl(booktabs = TRUE, table.attr = 'style="display:table;"') |> 
   table_style()
 ```
 
