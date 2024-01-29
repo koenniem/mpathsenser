@@ -64,7 +64,7 @@ unzip_data(path = tempdir)
 
 In m-Path Sense, data is written to JSON files as it comes in. In the JSON file format, every file starts with `[` and ends with `]`. If the app is killed, JSON files are not properly closed and hence cannot be read by JSON parsers. So, we must first test if all files are in a valid JSON format and fix those that are not.
 
-While you can also call `fix_jsons` directly, it is generally safer (and faster) to first run `test_jsons` to get an idea of how many files need fixing.
+While you can also call `fix_jsons()` directly, it is generally safer (and faster) to first run `test_jsons()` to get an idea of how many files need fixing.
 
 ```{r fix and test JSONS}
 # Note that test_jsons returns the full path names

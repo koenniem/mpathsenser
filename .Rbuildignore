@@ -26,3 +26,4 @@
 ^Meta$
 ^Dockerfile$
 ^\.gitlab$
+^vignettes/articles$

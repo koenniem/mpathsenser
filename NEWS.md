@@ -91,6 +91,8 @@ fully red and zero being fully blue.
 shrinks the database to its minimal size by cleaning up remnants from `import()`.
 * The `maggrittr` package has been dropped as a dependency, favouring `R`'s native pipe `|>` over 
 the `maggrittr` pipe `%>%`.
+* Added a vignette 'Data overview' to clarify which fields are available in the database and what 
+they mean.
 
 ## Deprecations
 
@@ -98,8 +100,9 @@ the `maggrittr` pipe `%>%`.
 ## Bugfixes
 * Fixed an issue in `fix_jsons()` where files with illegal ASCII characters could be not fixed 
 because the file was still locked from reading.
-* A new case has been added where files could end with `}},` followed by a closing
-bracket `]` on a new line. This trailing comma is now removed by `fix_jsons()`.
+* A new case has been added to `fix_jsons()` where JSON files could incorrectly end with `}},` 
+followed by a closing bracket `]` on a new line. This trailing comma is now removed by 
+`fix_jsons()`.
 * If `recursive = TRUE` in `unzip_data()` and `to = NULL`, the output path of the JSON files will 
 be the local directories through which the recursive path is traversed rather than the main 
 directory.

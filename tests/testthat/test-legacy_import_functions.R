@@ -47,7 +47,6 @@ unit_test <- function(sensor, ...) {
       participant_id = "12345",
       date = "2021-11-14",
       time = "16:40:00",
-      timezone = "CET",
       list(...)
     )
   }
@@ -59,93 +58,6 @@ unit_test <- function(sensor, ...) {
   testthat::expect_equal(res, true)
   testthat::expect_equal(res_which, true)
 }
-
-test_that("save2db", {
-  # Create db
-  filename <- tempfile("foo", fileext = ".db")
-  db <- create_db(NULL, filename)
-
-  dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
-  dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
-  db_size <- file.size(filename)
-
-  # Define the data
-  data <- data.frame(
-    measurement_id = paste0("12345_", 1:1000),
-    participant_id = "12345",
-    date = "2021-11-14",
-    time = "16:40:01.123",
-    step_count = 1
-  )
-
-  # Write to db
-  expect_error(
-    DBI::dbWithTransaction(db, save2db(db, "Pedometer", data)),
-    NA
-  )
-
-  # Check if the file size increased
-  db_size2 <- file.size(filename)
-  expect_gt(db_size2, db_size)
-
-  # Check the data output
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
-    data
-  )
-
-  # Entry with the same ID should simply be skipped and give no error
-  expect_error(
-    DBI::dbWithTransaction(db, save2db(db = db, name = "Pedometer", data = data)),
-    NA
-  )
-  DBI::dbExecute(db, "VACUUM") # A vacuum to clear the tiny increase by replacement :)
-  db_size3 <- file.size(filename)
-  expect_equal(db_size2, db_size3)
-  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]], 1000L)
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
-    data
-  )
-
-  # Now try with part of the data being replicated
-  data <- rbind(data, data.frame(
-    measurement_id = paste0("12345_", 500:1500),
-    participant_id = "12345",
-    date = "2021-11-14",
-    time = "16:40:01.123",
-    step_count = 1
-  ))
-
-  expect_error(
-    DBI::dbWithTransaction(
-      db,
-      save2db(
-        db = db,
-        name = "Pedometer",
-        data = data.frame(
-          measurement_id = paste0("12345_", 500:1500),
-          participant_id = "12345",
-          date = "2021-11-14",
-          time = "16:40:01.123",
-          step_count = 1
-        )
-      )
-    ),
-    NA
-  )
-  db_size4 <- file.size(filename)
-  expect_gt(db_size4, db_size3)
-  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]], 1500L)
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
-    distinct(data)
-  )
-
-  # Cleanup
-  dbDisconnect(db)
-  file.remove(filename)
-})
 
 # safe_data_frame  ===========
 test_that("safe_data_frame", {

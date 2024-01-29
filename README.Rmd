@@ -42,7 +42,7 @@ path <- "~/Mobile Sensing Study/Data"
 If you haven't done so, unzip all files.
 
 ```{r, eval = FALSE}
-unzip_data(path = path, parallel = TRUE)
+unzip_data(path = path)
 ```
 
 In m-Path Sense, data is written to JSON files as it comes in. In the JSON file format, every file starts with [ and ends with ]. If the app is killed, JSON files are not properly closed and hence cannot be read by JSON readers. So, we must first test if all files are in a valid JSON format and fix those that are not.
@@ -52,7 +52,7 @@ to_fix <- test_jsons(path = path)
 
 # Fix JSON files if there are any
 if (to_fix != "") {
-  fix_jsons(path = path, files = to_fix, parallel = TRUE)
+  fix_jsons(path = path, files = to_fix)
 }
 ```
 
