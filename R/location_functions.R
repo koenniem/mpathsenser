@@ -132,8 +132,8 @@ location_variance <- function(lat, lon) {
 #'
 #' @description `r lifecycle::badge("experimental")`
 #'
-#' This functions allows you to extract information about a place based on the latitude and
-#' longitude from the OpenStreetMaps nominatim API.
+#'   This functions allows you to extract information about a place based on the latitude and
+#'   longitude from the OpenStreetMaps nominatim API.
 #'
 #' @param lat The latitude of the location (in degrees)
 #' @param lon The longitude of the location (in degrees)
@@ -142,37 +142,48 @@ location_variance <- function(lat, lon) {
 #'   address to identify your requests. See Nominatim's Usage Policy for more details.
 #' @param rate_limit The time interval to keep between queries, in seconds. If the rate limit is too
 #'   low, OpenStreetMaps may reject further requests or even ban your entirely.
+#' @param format The format of the response. Either "jsonv2", "geojson", or"geocodejson". See
+#'   Nomatims documentation for more details.
 #'
 #' @section Warning: Do not abuse this function or you will be banned by OpenStreetMap. The maximum
 #'   number of requests is around 1 per second. Also make sure not to do too many batch lookups, as
 #'   many subsequent requests will get you blocked as well.
 #'
 #' @returns A list of information about the location. See [Nominatim's
-#' documentation](https://nominatim.org/release-docs/develop/api/Reverse/#example-with-formatjsonv2)
-#'    for more details.
+#'   documentation](https://nominatim.org/release-docs/develop/api/Reverse/#example-with-formatjsonv2)
+#'   for more details. The response may also be an error message in case of API errors, or `NA` if
+#'   the client or API is offline.
 #' @export
 #'
 #' @examples
 #' # Frankfurt Airport
 #' geocode_rev(50.037936, 8.5599631)
-geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1) {
+geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1, format = "jsonv2") {
   check_arg(email, "character", n = 1, allow_null = TRUE)
   check_arg(rate_limit, "double", n = 1)
+  check_arg(format, "character", n = 1)
 
-  base_query <- "https://nominatim.openstreetmap.org/reverse.php?"
+  format <- match.arg(format, c("jsonv2", "geojson", "geocodejson"))
+
+  base_query <- "https://nominatim.openstreetmap.org/reverse?"
   args <- list(
     lat = lat,
     lon = lon,
     email = rep(email, length(lat)),
     zoom = rep(zoom, length(lat)),
-    format = rep("jsonv2", length(lat))
+    format = rep(format, length(lat))
   )
 
   args <- purrr::transpose(args)
   args <- lapply(args, function(x) paste0(names(x), "=", x, collapse = "&"))
   query <- lapply(args, function(x) paste0(base_query, x))
   lapply(query, function(x) {
-    res <- jsonlite::fromJSON(x)
+
+    res <- tryCatch({
+      jsonlite::fromJSON(x)
+    }, error = \(e) {
+      NA
+    })
 
     if (length(args) > 1) {
       Sys.sleep(rate_limit)

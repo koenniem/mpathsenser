@@ -110,6 +110,7 @@ test_that("installed_apps", {
 })
 
 test_that("app_category", {
+  skip_if_offline("play.google.com")
 
   res <- app_category("whatsapp")
   expect_equal(

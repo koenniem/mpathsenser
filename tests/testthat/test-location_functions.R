@@ -92,7 +92,7 @@ test_that("location_variance", {
 })
 
 test_that("geocode_rev", {
-  testthat::skip_on_cran()
+  testthat::skip_if_offline("nominatim.openstreetmap.org")
   data <- tibble::tibble(
     lat = c(50.03333, 41.97861),
     lon = c(8.570556, -87.90472)

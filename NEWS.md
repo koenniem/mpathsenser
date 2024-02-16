@@ -93,6 +93,9 @@ shrinks the database to its minimal size by cleaning up remnants from `import()`
 the `maggrittr` pipe `%>%`.
 * Added a vignette 'Data overview' to clarify which fields are available in the database and what 
 they mean.
+* Added a `format` argument to `geocode_rev()` to allow for different output formats from 
+Nominatim's API.
+* `geocode_rev()` now returns `NA` if the client or API is offline, as per CRAN guidelines.
 
 ## Deprecations
 
