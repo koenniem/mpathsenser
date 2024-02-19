@@ -12,9 +12,6 @@ test_that("coverage", {
     "tbl_df"
   )
 
-  # Test plot
-  expect_s3_class(plot(coverage(db, "12345")), "ggplot")
-
   # Sensors
   expect_error(coverage(db, "12345", sensor = "foo"),
                "Sensor\\(s\\) \"foo\" could not be found.")
@@ -63,6 +60,18 @@ test_that("coverage", {
     coverage(db, "12345", offset = "foo"),
     "Argument offset must be either \\'None\\', 1 day, or 2, 3, 4, \\.\\.\\. days\\."
   )
+
+  # Cleanup
+  dbDisconnect(db)
+})
+
+test_that("plot.mpathsenser_coverage", {
+  path <- system.file("testdata", package = "mpathsenser")
+  db <- open_db(path, db_name = "test.db")
+
+  # Working cases
+  expect_s3_class(plot(coverage(db, "12345")), "ggplot")
+  expect_s3_class(plot(coverage(db, "12345", relative = FALSE)), "ggplot")
 
   # Cleanup
   dbDisconnect(db)

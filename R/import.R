@@ -478,6 +478,9 @@ safe_extract <- function(vec, var) {
     data$body <- lapply(data$body, function(x) rlang::set_names(x, "body"))
   }
 
+  # Set names in accordance with the table names
+  data$sensor <- .import_map_sensor_names(data$sensor)
+
   # Divide et impera
   data <- split(data, as.factor(data$sensor), drop = TRUE)
 
@@ -485,8 +488,7 @@ safe_extract <- function(vec, var) {
   data[["unknown"]] <- NULL
   data[["triggeredtask"]] <- NULL
 
-  # Set names to capitals in accordance with the table names
-  names(data) <- .import_map_sensor_names(names(data))
+  # the unique sensors in this data file
   names <- names(data)
 
   # Select sensors, if not NULL

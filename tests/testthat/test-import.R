@@ -152,27 +152,85 @@ test_that(".import_clean", {
     )
   )
 
-  expect_error(.import_clean(data, "accelerometer"), NA)
+  expect_no_error(.import_clean(data, "accelerometer"))
   expect_equal(nrow(.import_clean(data, "accelerometer")), 2)
 
   # Set the first instance of study_id to NULL
   data[[1]][[1]]$study_id <- NULL
-  expect_error(.import_clean(data, "accelerometer"), NA)
+  expect_no_error(.import_clean(data, "accelerometer"))
   expect_equal(nrow(.import_clean(data, "accelerometer")), 2)
   # Interesting bug when using unlist in safe_extract: NULLs are implicitly dropped, so if only one
   # value is left, it is recycled in the rest of the data frame. Hence doing this test in two steps.
   expect_equal(.import_clean(data, "accelerometer")$study_id, c(NA, "test-study"))
   data[[2]][[1]]$study_id <- NULL
-  expect_error(.import_clean(data, "accelerometer"), NA)
+  expect_no_error(.import_clean(data, "accelerometer"))
   expect_equal(nrow(.import_clean(data, "accelerometer")), 2)
   expect_equal(.import_clean(data, "accelerometer")$study_id, c(NA, NA))
 
   data[[1]][[1]]$user_id <- NULL
-  expect_error(.import_clean(data, "accelerometer"), NA)
+  expect_no_error(.import_clean(data, "accelerometer"))
   expect_equal(nrow(.import_clean(data, "accelerometer")), 1)
   data[[2]][[1]]$user_id <- NULL
   expect_error(.import_clean(data, "accelerometer"), NA)
   expect_equal(nrow(.import_clean(data, "accelerometer")), 0)
+})
+
+test_that(".import_clean_new", {
+  data <- list(
+    list(
+      sensorStartTime = 1708293365,
+      data = list(
+        `__type` = "dk.cachet.carp.wifi",
+        ip = "192.168.1"
+      )
+    ),
+    list(
+      sensorStartTime = 1.705945e+15,
+      sensorEndTime = 1.705945e+15,
+      data = list(
+        `__type` = "dk.cachet.carp.ambientLight",
+        meanLux = 123
+      )
+    )
+  )
+
+  file_name <- "123_study_456_m_Path_sense_2021-11-14T14:01:00.000000.json"
+
+  true <- tibble(
+    study_id = "study",
+    participant_id = "456",
+    data_format = "cams 1.0.0",
+    start_time = as.character(as.POSIXct(c(1708293365, 1.705945e+15) / 1e6, tz = "UTC")),
+    end_time = as.character(as.POSIXct(c(NA, 1.705945e+15) / 1e6, tz = "UTC")),
+    sensor = c("wifi", "ambientLight"),
+    data = list(
+      list(
+        ip = "192.168.1"
+      ),
+      list(
+        meanLux = 123
+      )
+    )
+  )
+
+  expect_equal(.import_clean_new(data, file_name), true)
+
+  # If the file name is incorrect, NA is returned for the study and participant_id
+  res <- .import_clean_new(data, "foo")
+  expect_true(all(is.na(select(res, "study_id", "participant_id"))))
+})
+
+test_that(".import_map_sensor_names", {
+  expect_equal(
+    .import_map_sensor_names("accelerationfeatures"),
+    "Accelerometer"
+  )
+
+  # Non-existing sensor names are unchanged
+  expect_equal(
+    .import_map_sensor_names("Foo"),
+    "Foo"
+  )
 })
 
 test_that(".import_is_duplicate", {

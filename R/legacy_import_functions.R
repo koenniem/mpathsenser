@@ -33,39 +33,7 @@ which_sensor <- function(data, sensor) {
   )
 }
 
-# Make a data frame, handling missing columns, filling with NA
-safe_data_frame <- function(...) {
-  x <- suppressWarnings(list(...))
-  x <- lapply(x, function(x) {
-    if (is.null(x)) {
-      NA
-    } else {
-      x
-    }
-  })
-  x <- as.data.frame(x)
-  x
-}
-
-safe_tibble <- function(...) {
-  x <- suppressWarnings(list(...))
-  x <- lapply(x, function(x) {
-    if (is.null(x)) {
-      NA
-    } else {
-      x
-    }
-  })
-  x <- lapply(x, function(x) {
-    if (length(x[[1]]) == 0) {
-      NA
-    } else {
-      x
-    }
-  }) # lists
-  x <- tibble::as_tibble(x)
-  x
-}
+# safe_data_frame and safe_tibble moved to import_functions.R
 
 default_fun <- function(data) {
   data$body <- lapply(data$body, function(x) x$body)

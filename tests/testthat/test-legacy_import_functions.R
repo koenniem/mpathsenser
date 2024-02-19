@@ -1,4 +1,4 @@
-# Tests for import_functions.R
+# Tests for legacy_import_functions.R
 
 # common_test ===========
 common_test <- function(sensor, ...) {
@@ -58,25 +58,6 @@ unit_test <- function(sensor, ...) {
   testthat::expect_equal(res, true)
   testthat::expect_equal(res_which, true)
 }
-
-# safe_data_frame  ===========
-test_that("safe_data_frame", {
-  dat <- data.frame(a = 1, b = NA)
-  res <- safe_data_frame(a = dat$a, b = dat$b, c = dat$c)
-  true <- data.frame(a = 1, b = NA, c = NA)
-  expect_equal(res, true)
-})
-
-# safe_tibble ===========
-test_that("safe_tibble", {
-  dat <- tibble::tibble(a = 1, b = NA, c = vector("list", 1))
-  dat2 <- tibble::tibble(a = 1, b = NA, c = vector("list", 0))
-  res <- safe_tibble(a = dat$a, b = dat$b, c = dat$c, d = dat$d)
-  res2 <- safe_tibble(a = dat$a, b = dat$b, c = dat$c, d = dat$d)
-  true <- tibble::tibble(a = 1, b = NA, c = NA, d = NA)
-  expect_equal(res, true)
-  expect_equal(res2, true)
-})
 
 # Accelerometer ===========
 test_that("accelerometer", {
@@ -752,6 +733,20 @@ test_that("geofence", {
   )
 })
 
+# Heartbeat ==========
+test_that("heartbeat", {
+  unit_test("heartbeat",
+    period = 5,
+    device_type = "dk.cachet.carp.common.application.devices.Smartphone",
+    device_role_name = "Primary Phone"
+  )
+  unit_test("heartbeat",
+    period = NA,
+    device_type = NA,
+    device_role_name = NA
+  )
+})
+
 # Keyboard ===========
 test_that("keyboard", {
   expect_warning(
@@ -1009,6 +1004,16 @@ test_that("text_message", {
   expect_equal(res, res_which)
   expect_equal(res, true)
   expect_equal(res_which, true)
+})
+
+# Timezone ==========
+test_that("timezone", {
+  unit_test("timezone",
+    timezone = "Europe/Brussels"
+  )
+  unit_test("timezone",
+    timezone = NA
+  )
 })
 
 # Weather ===========

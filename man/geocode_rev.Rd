@@ -4,7 +4,7 @@
 \alias{geocode_rev}
 \title{Reverse geocoding with latitude and longitude}
 \usage{
-geocode_rev(lat, lon, zoom = 18, email = "", rate_limit = 1)
+geocode_rev(lat, lon, zoom = 18, email = "", rate_limit = 1, format = "jsonv2")
 }
 \arguments{
 \item{lat}{The latitude of the location (in degrees)}
@@ -18,10 +18,14 @@ address to identify your requests. See Nominatim's Usage Policy for more details
 
 \item{rate_limit}{The time interval to keep between queries, in seconds. If the rate limit is too
 low, OpenStreetMaps may reject further requests or even ban your entirely.}
+
+\item{format}{The format of the response. Either "jsonv2", "geojson", or"geocodejson". See
+Nomatims documentation for more details.}
 }
 \value{
 A list of information about the location. See \href{https://nominatim.org/release-docs/develop/api/Reverse/#example-with-formatjsonv2}{Nominatim's documentation}
-for more details.
+for more details. The response may also be an error message in case of API errors, or \code{NA} if
+the client or API is offline.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}

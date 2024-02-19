@@ -1,13 +1,9 @@
-#' @keywords internal
-unpack_sensor_data <- function(data){
-  UseMethod("unpack_sensor_data")
-}
-
 rand <- function(n, chars = TRUE, numbers = TRUE, uppercase = FALSE) {
+  if (!chars && !numbers) {
+    abort("You must select either letters, numbers, or both.")
+  }
+
   data <- NULL
-
-  if (!chars && !numbers) abort("Select either letters, numbers, or both.")
-
   if (chars) {
     if (uppercase) {
       data <- c(data, LETTERS[1:6])
@@ -20,24 +16,62 @@ rand <- function(n, chars = TRUE, numbers = TRUE, uppercase = FALSE) {
     data <- c(data, 0:9)
   }
 
-  paste(sample(data, n, TRUE), collapse = "")
+  paste0(sample(data, n, TRUE), collapse = "")
 }
 
 gen_id <- function(uppercase = FALSE) {
+  res <- paste(rand(8), rand(4), rand(4), rand(4), rand(12), sep = "-")
+
   if (uppercase) {
-    paste0(
-      rand(8, uppercase = TRUE), "-", rand(4, uppercase = TRUE), "-",
-      rand(4, uppercase = TRUE), "-", rand(4, uppercase = TRUE), "-",
-      rand(12, uppercase = TRUE)
-    )
-  } else {
-    paste0(rand(8), "-", rand(4), "-", rand(4), "-", rand(4), "-", rand(12))
+    res <- toupper(res)
   }
+
+  res
+}
+
+# Make a data frame, handling missing columns, filling with NA
+safe_data_frame <- function(...) {
+  x <- suppressWarnings(list(...))
+  x <- lapply(x, function(x) {
+    if (is.null(x)) {
+      NA
+    } else {
+      x
+    }
+  })
+  x <- as.data.frame(x)
+  x
+}
+
+safe_tibble <- function(...) {
+  x <- suppressWarnings(list(...))
+  x <- lapply(x, function(x) {
+    if (is.null(x)) {
+      NA
+    } else {
+      x
+    }
+  })
+  x <- lapply(x, function(x) {
+    if (length(x[[1]]) == 0) {
+      NA
+    } else {
+      x
+    }
+  }) # lists
+  x <- tibble::as_tibble(x)
+  x
+}
+
+#' @keywords internal
+unpack_sensor_data <- function(data, ...){
+  rlang::check_dots_empty()
+  UseMethod("unpack_sensor_data")
 }
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.default <- function(data) {
+unpack_sensor_data.default <- function(data, sensor, ...) {
   data <- tidyr::unnest_wider(data, "data")
   data$data <- NULL
 
@@ -50,19 +84,17 @@ unpack_sensor_data.default <- function(data) {
     )
   }
 
+  # Remap column names
+  class(data) <- c(sensor, class(data))
+  data <- alias_column_names(data)
+
   data
 }
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.accelerometer <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "accelerometer"),
-    )
+unpack_sensor_data.accelerometer <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "accelerometer", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
@@ -117,20 +149,14 @@ unpack_sensor_data.accelerometer <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.activity <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "activity"),
-    )
+unpack_sensor_data.activity <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "activity", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     confidence = data$confidence,
     type = data$type
   )
@@ -138,20 +164,14 @@ unpack_sensor_data.activity <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.airquality <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "airquality"),
-    )
+unpack_sensor_data.airquality <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "airquality", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     air_quality_index = data$air_quality_index,
     air_quality_level = data$air_quality_level,
     source = data$source,
@@ -163,24 +183,25 @@ unpack_sensor_data.airquality <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.appusage <- function(data) {
-  data <- unpack_sensor_data.default(data)
+unpack_sensor_data.appusage <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "appusage", ...)
 
-  data$usage <- lapply(data$usage, bind_rows)
-  data <- unnest(data, "usage", keep_empty = TRUE)
+  if (!is.null(data$usage) && !is.na(data$usage)) {
+    data$usage <- lapply(data$usage, bind_rows)
+    data <- unnest(data, "usage", keep_empty = TRUE)
+  }
 
-  # If `startDate` and `endDate` columns exist, remove `start` and `end` columns as these are duplicate
-  # of start_time and end_time.
-  if (any(c("startDate", "endDate") %in% colnames(data))) {
-    data <- data |>
-      select(-any_of(c("start", "end")))
+  # If `startDate` and `endDate` columns exist, remove `start` and `end` columns as these are
+  # duplicate of start_time and end_time.
+  # TODO: add synonyms of these columns if new ones are added. `alias_column_names()` does not solve
+  # this problem as it will throw an error that there are duplicate names (which is true).
+  if (any(c("startDate", "endDate", "start_date", "end_date") %in% colnames(data))) {
+    data <- select(data, -any_of(c("start", "end")))
   }
 
   # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "appusage"),
-    )
+  class(data) <- c("appusage", class(data))
+  data <- alias_column_names(data)
 
   # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$measurement_id, FUN = seq_along)
@@ -190,11 +211,15 @@ unpack_sensor_data.appusage <- function(data) {
     data$last_foreground[grepl("1970-01", data$last_foreground)] <- NA
   }
 
+  # In this case, the end_time of the measurement is not relevant and already included in the data.
+  # There is an end_date in the data, but this is already incorporated in the more precise `end`
+  # column.
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
+    end_time = data$end_time,
     start = data$start,
     end = data$end,
     usage = data$usage,
@@ -206,20 +231,14 @@ unpack_sensor_data.appusage <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.battery <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "battery"),
-    )
+unpack_sensor_data.battery <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "battery", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     battery_level = data$battery_level,
     battery_status = data$battery_status
   )
@@ -227,25 +246,16 @@ unpack_sensor_data.battery <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.bluetooth <- function(data) {
-  data <- unpack_sensor_data.default(data)
+unpack_sensor_data.bluetooth <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "bluetooth", ...)
 
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "bluetooth"),
-    )
-
-  if (!all(is.na(data$scan_result))) {
+  if ("scan_result" %in% colnames(data) && !all(is.na(data$scan_result))) {
     data$scan_result <- lapply(data$scan_result, bind_rows)
     data <- unnest(data, "scan_result", keep_empty = TRUE)
 
     # Remap column names again, now with unnested data
-    data <- data |>
-      dplyr::rename_with(
-        .fn = \(x) alias_column_names(x, "bluetooth"),
-      )
-
+    class(data) <- c("bluetooth", class(data))
+    data <- alias_column_names(data)
   }
 
   # TODO: Consider unique ID constraint Temporary fix
@@ -256,7 +266,7 @@ unpack_sensor_data.bluetooth <- function(data) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     start_scan = data$start_scan,
     end_scan = data$end_scan,
     advertisement_name = data$advertisement_name,
@@ -271,65 +281,56 @@ unpack_sensor_data.bluetooth <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.connectivity <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "connectivity"),
-    )
+unpack_sensor_data.connectivity <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "connectivity", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     connectivity_status = data$connectivity_status
   )
 }
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.device <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "device"),
-    )
+unpack_sensor_data.device <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "device", ...)
 
   # Try to add sdk and OS version info
-  if (unique(data$platform)[[1]] == "Android") {
-    data$operating_system_version <- vapply(
-      data$deviceData,
-      \(x) purrr::pluck(x, "version", "release"),
-      character(1)
+  if ("device_data" %in% colnames(data)) {
+    android_osv <- purrr::map_chr(
+      data$device_data,
+      \(x) purrr::pluck(x, "version", "release")
     )
-    data$sdk <- purrr::map_vec(
-      data$deviceData,
+    android_sdk <- purrr::map_chr(
+      data$device_data,
       \(x) purrr::pluck(x, "version", "sdkInt")
     )
-    data$sdk <- as.character(data$sdk)
-  } else if (unique(data$platform)[[1]] == "iOS") {
-    data$operating_system_version <- vapply(
-      data$deviceData,
-      \(x) purrr::pluck(x, "systemVersion"),
-      character(1)
+    ios_osv <- purrr::map_chr(
+      data$device_data,
+      \(x) purrr::pluck(x, "systemVersion")
     )
-    data$sdk <- vapply(
-      data$deviceData,
-      \(x) purrr::pluck(x, "utsname", "release"),
-      character(1)
+    ios_sdk <- purrr::map_chr(
+      data$device_data,
+      \(x) purrr::pluck(x, "utsname", "release")
     )
+
+    # Use iOS values if Android values are missing
+    # If the other turns out to be missing as well, it doesn't matter which one we use
+    osv <- if (all(is.na(android_osv))) ios_osv else android_osv
+    sdk <- if (all(is.na(android_sdk))) ios_sdk else android_sdk
+
+    data$operating_system_version <- osv
+    data$sdk <- sdk
   }
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     device_id = data$device_id,
     hardware = data$hardware,
     device_name = data$device_name,
@@ -344,40 +345,28 @@ unpack_sensor_data.device <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.error <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "error"),
-    )
+unpack_sensor_data.error <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "error", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     message = data$message
   )
 }
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.geofence <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "geofence"),
-    )
+unpack_sensor_data.geofence <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "geofence", ...)
 
   safe_data_frame(
-    measurement_id = data$id,
+    measurement_id = data$measurement_id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    date = substr(data$time, 1, 10),
+    time = substr(data$time, 12, 23),
     center = data$center,
     dwell = data$dwell,
     name = data$name,
@@ -388,14 +377,8 @@ unpack_sensor_data.geofence <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.gyroscope <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "gyroscope"),
-    )
+unpack_sensor_data.gyroscope <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "gyroscope", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
@@ -410,20 +393,14 @@ unpack_sensor_data.gyroscope <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.heartbeat <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "heartbeat"),
-    )
+unpack_sensor_data.heartbeat <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "heartbeat", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     period = data$period,
     device_type = data$device_type,
     device_role_name = data$device_role_name
@@ -432,27 +409,21 @@ unpack_sensor_data.heartbeat <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.keyboard <- function(data) {
+unpack_sensor_data.keyboard <- function(data, ...) {
   warn("Function for implementing keyboard data currently not implemented.")
   return(NULL)
 }
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.light <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "light"),
-    )
+unpack_sensor_data.light <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "light", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     end_time =  data$end_time,
     mean_lux = data$mean_lux,
     std_lux = data$std_lux,
@@ -463,8 +434,8 @@ unpack_sensor_data.light <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.location <- function(data) {
-  data <- unpack_sensor_data.default(data)
+unpack_sensor_data.location <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "location", ...)
 
   # If a column 'time' is already present in the data and it is not NA, use this instead of the
   # sensor's start_time, as the timestamp from the location service is likely to be more accurate
@@ -474,16 +445,14 @@ unpack_sensor_data.location <- function(data) {
   }
 
   # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "location"),
-    )
+  class(data) <- c("location", class(data))
+  data <- alias_column_names(data)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     latitude = data$latitude,
     longitude = data$longitude,
     altitude = data$altitude,
@@ -499,20 +468,14 @@ unpack_sensor_data.location <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.memory <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "memory"),
-    )
+unpack_sensor_data.memory <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "memory", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     free_physical_memory = data$free_physical_memory,
     free_virtual_memory = data$free_virtual_memory
   )
@@ -520,21 +483,16 @@ unpack_sensor_data.memory <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.noise <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "noise"),
-    )
+unpack_sensor_data.noise <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "noise", ...)
 
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
+    end_time =  data$end_time,
     mean_decibel = data$mean_decibel,
     std_decibel = data$std_decibel,
     min_decibel = data$min_decibel,
@@ -544,80 +502,56 @@ unpack_sensor_data.noise <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.pedometer <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "pedometer"),
-    )
+unpack_sensor_data.pedometer <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "pedometer", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     step_count = data$step_count
   )
 }
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.screen <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "screen"),
-    )
+unpack_sensor_data.screen <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "screen", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     screen_event = data$screen_event
   )
 }
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.timezone <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "timezone"),
-    )
+unpack_sensor_data.timezone <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "timezone", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     timezone = data$timezone
   )
 }
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.weather <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "weather"),
-    )
+unpack_sensor_data.weather <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "weather", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     country = data$country,
     area_name = data$area_name,
     weather_main = data$weather_main,
@@ -643,20 +577,14 @@ unpack_sensor_data.weather <- function(data) {
 
 #' @export
 #' @keywords internal
-unpack_sensor_data.wifi <- function(data) {
-  data <- unpack_sensor_data.default(data)
-
-  # Remap column names
-  data <- data |>
-    dplyr::rename_with(
-      .fn = \(x) alias_column_names(x, "wifi"),
-    )
+unpack_sensor_data.wifi <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "wifi", ...)
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 19),
+    time = substr(data$time, 12, 23),
     ssid = data$ssid,
     bssid = data$bssid,
     ip = data$ip

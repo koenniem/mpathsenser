@@ -14,7 +14,7 @@ fix_jsons(path = getwd(), files = NULL, recursive = TRUE)
 \item{recursive}{Should the listing recurse into directories?}
 }
 \value{
-A message indicating how many files were fixed.
+A message indicating how many files were fixed, and the number of fixed files invisibly.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}

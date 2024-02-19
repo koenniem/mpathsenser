@@ -70,7 +70,7 @@ tribble(
   "study_id", "character", "ID of the study.",
   "data_format", "character", "Name indicating which data format is used."
 ) |> 
-  kbl(booktabs = TRUE, table.attr = 'style="display:table;"') |> 
+  kbl(booktabs = TRUE) |> 
   table_style()
 ```
 
@@ -82,7 +82,7 @@ tribble(
   "participant_id", "character", "Unique ID of the participant.",
   "study_id", "character", "ID of the study."
 ) |> 
-  kbl(booktabs = TRUE, table.attr = 'style="display:table;"') |> 
+  kbl(booktabs = TRUE) |> 
   table_style()
 ```
 
@@ -96,7 +96,7 @@ tribble(
   "participant_id", "character", "Unique ID of the participant.",
   "study_id", "character", "ID of the study."
 ) |> 
-  kbl(booktabs = TRUE, table.attr = 'style="display:table;"') |> 
+  kbl(booktabs = TRUE) |> 
   table_style()
 
 ```
@@ -264,8 +264,9 @@ tribble(
   "participant_id", "character", "Unique ID of the participant.",
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
   "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "start", "character", "Start time of the of sampling window, represented as an ISO 8601 date.",
-  "end", "character", "End time of the of sampling window, represented as an ISO 8601 date.",
+  "end_time", "character", "The end time of the measurement. Represented in 24-hour time as 00:00:00.000.",
+  "start", "character", "Start time of the of sampling window of this app, represented as an ISO 8601 date. This can vary slightly from the general start time.",
+  "end", "character", "End time of the of sampling window of this app, represented as an ISO 8601 date. This can vary slightly from the general end time.",
   "usage", "integer", "A map of names of apps and their cumulative usage in seconds.",
   "app", "character", "The last part of the application package name. For instance, “com.facebook.katana” would become “katana”.",
   "package_name", "character", "The full application package name.",
@@ -555,6 +556,7 @@ tribble(
   "participant_id", "character", "Unique ID of the participant.",
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
   "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
+  "end_time", "character", "The time at which the sample of the data ended, represented as an ISO 8601 date.",
   "mean_decibel", "double", "Mean decibel of sampling window.",
   "std_decibel", "double", "Standard deviation (in decibel) of sampling window.",
   "min_decibel", "double", "Minimum decibel of sampling window.",

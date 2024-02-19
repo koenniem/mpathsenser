@@ -43,8 +43,8 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   if (file.exists(db_name)) {
     if (overwrite) {
       tryCatch(file.remove(db_name),
-        warning = function(e) abort(as.character(e)),
-        error = function(e) abort(as.character(e))
+               warning = function(e) abort(as.character(e)),
+               error = function(e) abort(as.character(e))
       )
     } else {
       abort(c(
@@ -294,10 +294,15 @@ add_processed_files <- function(db, file_name, study_id, participant_id) {
 }
 
 #' @noRd
-clear_sensors_db <- function(db) {
+clear_db <- function(db) {
   check_db(db)
-  res <- lapply(sensors, function(x) dbExecute(db, paste0("DELETE FROM ", x, " WHERE 1;")))
-  names(res) <- sensors
+  tables <- c("Study", "Participant", "ProcessedFiles", sensors)
+  res <- vapply(
+    tables,
+    \(x) dbExecute(db, paste0("DELETE FROM ", x, " WHERE 1;")),
+    numeric(1)
+  )
+  names(res) <- tables
   res
 }
 
@@ -380,11 +385,12 @@ get_studies <- function(db, lazy = FALSE) {
 #'
 #' @returns A named vector containing the number of rows for each sensor.
 #' @export
-get_nrows <- function(db,
-                      sensor = "All",
-                      participant_id = NULL,
-                      start_date = NULL,
-                      end_date = NULL) {
+get_nrows <- function(
+    db,
+    sensor = "All",
+    participant_id = NULL,
+    start_date = NULL,
+    end_date = NULL) {
   check_db(db)
   check_arg(sensor, "character", allow_null = TRUE)
 

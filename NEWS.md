@@ -1,5 +1,4 @@
 # mpathsenser 1.2.0
-
 ## Major changes
 `mpathsenser` now supports the new data format as of m-Path Sense 4.2.6. This comes with a large 
 number of changes. Most importantly, this means that `import()` had to be updated to handle the new
@@ -51,6 +50,8 @@ Second, some fields have been added:
     - `sma` is the signal magnitude area, being the sum of absolute values of the three axis 
     averaged over a window.
 * The `AppUsage` table has gained 2 new fields:
+    - `end_time` is the time at which the sample of the data ended, where `time` denotes the start
+    time. Note that this timestamp may vary slightly from the `end` field in the data.
     - `package_name` is the full application package name.
     - `last_foreground` is the time at which the application was last in the foreground. If the app
     had not yet been in the foreground, this is `NA`.
@@ -74,6 +75,9 @@ Second, some fields have been added:
     available on Android. 
     - `is_mock` is a boolean indicating whether this location was mocked or not. Always `FALSE` on
     iOS. Moreover, because SQLite does not support booleans, this is stored as an integer.
+* The `Noise` table has gained 1 new field:
+    - `end_time` is the time at which the sample of the data ended, where `time` denotes the start
+    time.
 * `Timezone` has been added a separate sensor. This table has the following fields:
     - `measurement_id`, `participant_id`, `date`, and `time` like every other sensor.
     - `timezone` is the time zone of the device at the time of the measurement.

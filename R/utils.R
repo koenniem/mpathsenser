@@ -76,7 +76,7 @@ ccopy <- function(from,
 #' @param files Alternatively, a character list of the input files
 #' @param recursive Should the listing recurse into directories?
 #'
-#' @return A message indicating how many files were fixed.
+#' @return A message indicating how many files were fixed, and the number of fixed files invisibly.
 #' @export
 #' @examples
 #' \dontrun{
