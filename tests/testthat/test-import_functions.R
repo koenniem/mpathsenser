@@ -556,6 +556,8 @@ test_that("device", {
     sdk = "1.0.0"
   )
 
+  # iOS
+  # TODO: Add deviceData
   unit_test(
     "device",
     .cols = .cols,
@@ -567,6 +569,16 @@ test_that("device", {
     operatingSystem = "iOS",
     platform = "iOS",
     operatingSystemVersion = "15.0",
+    # deviceData = list(
+    #   utsName = list(
+    #     sysname = "Darwin",
+    #     nodename = "iPhone",
+    #     release = "15.0",
+    #     version = "15.0.0",
+    #     machine = "iPhone12,1"
+    #   ),
+    #   systemVersion = "15.0"
+    # ),
     sdk = "1.0.0",
     new_names = new_names
   )

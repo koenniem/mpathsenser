@@ -386,8 +386,12 @@ safe_extract <- function(vec, var) {
   )
 
   # Change the timestamps from UNIX timestamp to ISO 8601, as this is how it will be saved later
-  data$start_time <- as.character(as.POSIXct(data$start_time / 1e6, tz = "UTC"))
-  data$end_time <- as.character(as.POSIXct(data$end_time / 1e6, tz = "UTC"))
+  data$start_time <- as.character(
+    as.POSIXct(data$start_time / 1e6, tz = "UTC", origin = "1970-01-01")
+  )
+  data$end_time <- as.character(
+    as.POSIXct(data$end_time / 1e6, tz = "UTC", origin = "1970-01-01")
+  )
 
   # Extract the sensor
   data <- data |>

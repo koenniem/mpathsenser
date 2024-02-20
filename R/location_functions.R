@@ -179,11 +179,11 @@ geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1, format 
   query <- lapply(args, function(x) paste0(base_query, x))
   lapply(query, function(x) {
 
-    res <- tryCatch({
+    res <- suppressWarnings(tryCatch({
       jsonlite::fromJSON(x)
     }, error = \(e) {
       NA
-    })
+    }))
 
     if (length(args) > 1) {
       Sys.sleep(rate_limit)

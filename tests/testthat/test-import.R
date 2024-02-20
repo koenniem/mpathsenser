@@ -178,7 +178,7 @@ test_that(".import_clean", {
 test_that(".import_clean_new", {
   data <- list(
     list(
-      sensorStartTime = 1708293365,
+      sensorStartTime = 1.705944e+15,
       data = list(
         `__type` = "dk.cachet.carp.wifi",
         ip = "192.168.1"
@@ -200,8 +200,12 @@ test_that(".import_clean_new", {
     study_id = "study",
     participant_id = "456",
     data_format = "cams 1.0.0",
-    start_time = as.character(as.POSIXct(c(1708293365, 1.705945e+15) / 1e6, tz = "UTC")),
-    end_time = as.character(as.POSIXct(c(NA, 1.705945e+15) / 1e6, tz = "UTC")),
+    start_time = as.character(
+      as.POSIXct(c(1.705944e+15, 1.705945e+15) / 1e6, tz = "UTC", origin = "1970-01-01")
+    ),
+    end_time = as.character(
+      as.POSIXct(c(NA, 1.705945e+15) / 1e6, tz = "UTC", origin = "1970-01-01")
+    ),
     sensor = c("wifi", "ambientLight"),
     data = list(
       list(

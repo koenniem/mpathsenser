@@ -214,7 +214,10 @@ app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE) {
   }
 
   for (i in seq_along(name)) {
-    res[i, 2:3] <- app_category_impl(name[i], num, exact)
+    res[i, 2:3] <- tryCatch(
+      app_category_impl(name[i], num, exact),
+      error = \(e) list(package = NA, genre = NA)
+    )
 
     if (requireNamespace("progressr", quietly = TRUE)) {
       p()
@@ -229,7 +232,7 @@ app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE) {
 }
 
 app_category_impl <- function(name, num, exact) {
-  # Replace illegal characters
+  # Replace illegal characters in app name
   name <- iconv(name, from = "UTF-8", to = "ASCII//TRANSLIT")
   name <- gsub("[^[:alnum:] .@]", " ", name, perl = TRUE)
   name <- gsub(" ", "%20", name)
@@ -240,9 +243,12 @@ app_category_impl <- function(name, num, exact) {
     "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:70.0) Gecko/20100101 Firefox/70.0"
   )
 
-  session <- httr::GET(query, ua)
+  session <- tryCatch(
+    httr::GET(query, ua),
+    error = \(e) e
+  )
 
-  if (!httr::http_error(session)) {
+  if (!inherits(session, "error") && !httr::http_error(session)) {
     session <- httr::content(session)
   } else {
     return(list(package = NA, genre = NA)) # nocov
@@ -284,9 +290,12 @@ app_category_impl <- function(name, num, exact) {
     link <- paste0("https://play.google.com", link)
   }
 
-  session <- httr::GET(link, ua)
+  session <- tryCatch(
+    httr::GET(link, ua),
+    error = \(e) e
+  )
 
-  if (!httr::http_error(session)) {
+  if (!inherits(session, "error") && !httr::http_error(session)) {
     session <- httr::content(session)
   } else {
     return(list(package = NA, genre = NA)) # nocov
