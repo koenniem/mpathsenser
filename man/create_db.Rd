@@ -20,3 +20,15 @@ A database connection using prepared database schemas.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
+\examples{
+# Create a new database in a temporary directory
+db <- create_db(tempdir(), "mydb.db")
+
+# You can also create an in-memory database
+db2 <- create_db(path = NULL, ":memory:")
+
+# Cleanup
+close_db(db)
+close_db(db2)
+file.remove(file.path(tempdir(), "mydb.db"))
+}

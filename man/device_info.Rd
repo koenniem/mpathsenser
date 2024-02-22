@@ -19,3 +19,15 @@ A tibble containing device info for each participant
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
+\examples{
+\dontrun{
+# Open the database
+db <- open_db("path/to/db")
+
+# Get device info for all participants
+device_info(db)
+
+# Get device info for a specific participant
+device_info(db, participant_id = 1)
+}
+}

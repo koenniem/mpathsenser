@@ -37,3 +37,18 @@ calling this function.
 how to subscribe to these updates.
 }
 
+\examples{
+\dontrun{
+# Test all files in a directory
+test_jsons(path = "path/to/jsons", recursive = FALSE)
+
+# Test all files in a directory and its subdirectories
+test_jsons(path = "path/to/jsons", recursive = TRUE)
+
+# Test specific files
+test_jsons(files = c("file1.json", "file2.json"))
+
+# Test files in a directory, but skip those that are already in the database
+test_jsons(path = "path/to/jsons", db = db)
+}
+}

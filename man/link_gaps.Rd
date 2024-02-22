@@ -53,13 +53,41 @@ the gaps within the interval. The function ensures all durations and gap time st
 the range of the interval.
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
 Gaps in mobile sensing data typically occur when the app is stopped by the operating system or
 the user. While small gaps may not pose problems with analyses, greater gaps may cause bias or
 skew your data. As a result, gap data should be considered in order to inspect and limit their
 influence. This function, analogous to \code{\link[=link]{link()}}, allows you to connect gaps to other data
 (usually ESM/EMA data) within a user-specified time range.
+}
+\examples{
+# Create some data
+x <- data.frame(
+  time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 3), 2),
+  participant_id = c(rep("12345", 3), rep("23456", 3)),
+  item_one = rep(c(40, 50, 60), 2)
+)
+
+# Create some gaps
+gaps <- data.frame(
+ from = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:00:00")),
+ to = as.POSIXct(c("2021-11-14 13:30:00", "2021-11-14 14:30:00")),
+ participant_id = c("12345", "23456")
+)
+
+# Link the gaps to the data
+link_gaps(x, gaps, by = "participant_id", offset_before = 0, offset_after = 1800)
+
+# Link the gaps to the data and include the raw data
+link_gaps(
+  x,
+  gaps,
+  by = "participant_id",
+  offset_before = 0,
+  offset_after = 1800,
+  raw_data = TRUE
+)
 }
 \seealso{
 \code{\link[=bin_data]{bin_data()}} for linking two sets of intervals to each other; \code{\link[=identify_gaps]{identify_gaps()}} for

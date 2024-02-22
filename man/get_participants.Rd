@@ -17,3 +17,18 @@ A data frame containing all \code{participant_id} and \code{study_id}.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
+\examples{
+# Create a database
+db <- create_db(tempdir(), "mydb.db")
+
+# Add some participants
+DBI::dbExecute(db, "INSERT INTO Study VALUES('study1', 'data_format1')")
+DBI::dbExecute(db, "INSERT INTO Participant VALUES('participant1', 'study1')")
+
+# Get the participants
+get_participants(db)
+
+# Cleanup
+close_db(db)
+file.remove(file.path(tempdir(), "mydb.db"))
+}

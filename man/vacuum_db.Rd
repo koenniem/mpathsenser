@@ -18,3 +18,14 @@ a scalar numeric that specifies the number of rows affected by the vacuum.
 This is a convenience function that calls the \code{VACUUM} command on a database. This command will
 rebuild the database file, repacking it into a minimal amount of disk space.
 }
+\examples{
+# Create a database in a temporary directory
+db <- create_db(tempdir(), "mydb.db")
+
+# Assuming that we have imported some data into the database, we can vacuum it
+vacuum_db(db)
+
+# Cleanup
+close_db(db)
+file.remove(file.path(tempdir(), "mydb.db"))
+}

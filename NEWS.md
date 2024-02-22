@@ -1,4 +1,4 @@
-# mpathsenser 1.2.0
+# mpathsenser 1.2.2
 ## Major changes
 `mpathsenser` now supports the new data format as of m-Path Sense 4.2.6. This comes with a large 
 number of changes. Most importantly, this means that `import()` had to be updated to handle the new
@@ -99,10 +99,8 @@ the `maggrittr` pipe `%>%`.
 they mean.
 * Added a `format` argument to `geocode_rev()` to allow for different output formats from 
 Nominatim's API.
-* `geocode_rev()` now returns `NA` if the client or API is offline, as per CRAN guidelines.
-
-## Deprecations
-
+* `geocode_rev()` and `app_category()` now return `NA` if the client or API is offline, as per CRAN 
+guidelines.
 
 ## Bugfixes
 * Fixed an issue in `fix_jsons()` where files with illegal ASCII characters could be not fixed 
@@ -113,6 +111,8 @@ followed by a closing bracket `]` on a new line. This trailing comma is now remo
 * If `recursive = TRUE` in `unzip_data()` and `to = NULL`, the output path of the JSON files will 
 be the local directories through which the recursive path is traversed rather than the main 
 directory.
+* Replaced double quotation marks with single quotation marks in the description, per CRAN 
+guidelines.
 
 # mpathsenser 1.1.3
 This is a release with breaking changes due to removal of deprecated arguments. Please review 

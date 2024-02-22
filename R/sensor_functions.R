@@ -145,6 +145,17 @@ last_date <- function(db, sensor, participant_id = NULL) {
 #'
 #' @returns A tibble containing app names.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' db <- open_db()
+#'
+#' # Get installed apps for all participants
+#' installed_apps(db)
+#'
+#' # Get installed apps for a single participant
+#' installed_apps(db, "12345")
+#' }
 installed_apps <- function(db, participant_id = NULL) {
   check_db(db)
 
@@ -319,6 +330,18 @@ app_category_impl <- function(name, num, exact) {
 #'
 #' @returns A tibble containing device info for each participant
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Open the database
+#' db <- open_db("path/to/db")
+#'
+#' # Get device info for all participants
+#' device_info(db)
+#'
+#' # Get device info for a specific participant
+#' device_info(db, participant_id = 1)
+#' }
 device_info <- function(db, participant_id = NULL) {
   get_data(db, "Device", participant_id = participant_id) |>
     select(-any_of(c("measurement_id", "date", "time"))) |>
@@ -340,12 +363,20 @@ device_info <- function(db, participant_id = NULL) {
 #'
 #' @returns A data frame containing a column 'app' and a column 'usage' for the hourly app usage.
 #' @keywords internal
-app_usage <- function(db,
-                      participant_id = NULL,
-                      start_date = NULL,
-                      end_date = NULL,
-                      by = c("Total", "Day", "Hour")) {
-
+app_usage <- function(
+    db,
+    participant_id = NULL,
+    start_date = NULL,
+    end_date = NULL,
+    by = c("Total", "Day", "Hour")) {
+  lifecycle::deprecate_stop(
+    when = "1.1.2",
+    what = "app_usage()",
+    details = c(
+      i = paste("`app_usage()` is defunctional for now, as it",
+                "is unclear how this function should behave."),
+      i = "It will be reimplemented in mpathsenser 2.0.0."
+    ))
 }
 
 #' Get a summary of physical activity (recognition)
@@ -365,15 +396,24 @@ app_usage <- function(db,
 #' @returns A tibble containing a column 'activity' and a column 'duration' for the hourly
 #' activity duration.
 #' @keywords internal
-activity_duration <- function(data = NULL,
-                              db = NULL,
-                              participant_id = NULL,
-                              confidence = 70,
-                              direction = "forward",
-                              start_date = NULL,
-                              end_date = NULL,
-                              by = c("Total", "Day", "Hour")) {
+activity_duration <- function(
+    data = NULL,
+    db = NULL,
+    participant_id = NULL,
+    confidence = 70,
+    direction = "forward",
+    start_date = NULL,
+    end_date = NULL,
+    by = c("Total", "Day", "Hour")) {
 
+  lifecycle::deprecate_stop(
+    when = "1.1.2",
+    what = "activity_duration()",
+    details = c(
+      i = paste("`activity_duration()` is defunctional for now, as it",
+                "is unclear how this function should behave."),
+      i = "It will be reimplemented in mpathsenser 2.0.0."
+    ))
 }
 
 #' @noRd
@@ -398,11 +438,20 @@ compress_activity <- function(data, direction = "forward") {
 #' depending on the \code{by} argument. Alternatively, if no \code{by} is specified, a remote
 #' tibble is returned with the date, time, and duration since the previous measurement.
 #' @keywords internal
-screen_duration <- function(db,
-                            participant_id,
-                            start_date = NULL,
-                            end_date = NULL,
-                            by = c("Hour", "Day")) {
+screen_duration <- function(
+    db,
+    participant_id,
+    start_date = NULL,
+    end_date = NULL,
+    by = c("Hour", "Day")) {
+  lifecycle::deprecate_stop(
+    when = "1.1.2",
+    what = "screen_duration()",
+    details = c(
+      i = paste("`screen_duration()` is defunctional for now, as it",
+                "is unclear how this function should behave."),
+      i = "It will be reimplemented in mpathsenser 2.0.0."
+    ))
 
 }
 
@@ -418,18 +467,20 @@ screen_duration <- function(db,
 #' @returns In case grouping is by the total amount, returns a single numeric value. For date and
 #' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen on's 'n'.
 #' @keywords internal
-n_screen_on <- function(db,
-                        participant_id,
-                        start_date = NULL,
-                        end_date = NULL,
-                        by = c("Total", "Hour", "Day")) {
-  lifecycle::deprecate_stop(when = "1.1.2",
-                            what = "n_screen_on()",
-                            details = c(
-                              i = paste("`n_screen_on()` is defunctional for now, as it",
-                                        "is unclear how this function should behave."),
-                              i = "It will be reimplemented in mpathsenser 2.0.0."
-                            ))
+n_screen_on <- function(
+    db,
+    participant_id,
+    start_date = NULL,
+    end_date = NULL,
+    by = c("Total", "Hour", "Day")) {
+  lifecycle::deprecate_stop(
+    when = "1.1.2",
+    what = "n_screen_on()",
+    details = c(
+      i = paste("`n_screen_on()` is defunctional for now, as it",
+                "is unclear how this function should behave."),
+      i = "It will be reimplemented in mpathsenser 2.0.0."
+    ))
 }
 
 #' Get number of screen unlocks
@@ -445,18 +496,20 @@ n_screen_on <- function(db,
 #' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen unlocks
 #' 'n'.
 #' @keywords internal
-n_screen_unlocks <- function(db,
-                             participant_id,
-                             start_date = NULL,
-                             end_date = NULL,
-                             by = c("Total", "Hour", "Day")) {
-  lifecycle::deprecate_stop(when = "1.1.2",
-                            what = "n_screen_unlocks()",
-                            details = c(
-                              i = paste("`n_screen_unlocks()` is defunctional for now, as it",
-                                        "is unclear how this function should behave."),
-                              i = "It will be reimplemented in mpathsenser 2.0.0."
-                            ))
+n_screen_unlocks <- function(
+    db,
+    participant_id,
+    start_date = NULL,
+    end_date = NULL,
+    by = c("Total", "Hour", "Day")) {
+  lifecycle::deprecate_stop(
+    when = "1.1.2",
+    what = "n_screen_unlocks()",
+    details = c(
+      i = paste("`n_screen_unlocks()` is defunctional for now, as it",
+                "is unclear how this function should behave."),
+      i = "It will be reimplemented in mpathsenser 2.0.0."
+    ))
 }
 
 
@@ -472,13 +525,14 @@ n_screen_unlocks <- function(db,
 #' @returns A tibble with the 'date', 'hour', and the number of 'steps'.
 #' @keywords internal
 step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = NULL) {
-  lifecycle::deprecate_stop(when = "1.1.2",
-                            what = "step_count()",
-                            details = c(
-                              i = paste("`step_count()` is defunctional for now, as it",
-                                        "is unclear how this function should behave."),
-                              i = "It will be reimplemented in mpathsenser 2.0.0."
-                            ))
+  lifecycle::deprecate_stop(
+    when = "1.1.2",
+    what = "step_count()",
+    details = c(
+      i = paste("`step_count()` is defunctional for now, as it",
+                "is unclear how this function should behave."),
+      i = "It will be reimplemented in mpathsenser 2.0.0."
+    ))
 }
 # nocov end
 
@@ -508,13 +562,15 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
 #' )
 #' close_db(db)
 #' }
-moving_average <- function(db,
-                           sensor,
-                           cols,
-                           n,
-                           participant_id = NULL,
-                           start_date = NULL,
-                           end_date = NULL) {
+moving_average <- function(
+    db,
+    sensor,
+    cols,
+    n,
+    participant_id = NULL,
+    start_date = NULL,
+    end_date = NULL) {
+
   lifecycle::signal_stage("experimental", "moving_average()")
   check_db(db)
   check_sensors(sensor, n = 1)

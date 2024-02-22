@@ -54,8 +54,6 @@ Only applicable to non-reactive sensors with 'continuous' sampling
 }
 \examples{
 \dontrun{
-fix_json()
-unzip()
 freq <- c(
   Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
   AirQuality = 1,
@@ -70,6 +68,7 @@ freq <- c(
   Weather = 1,
   Wifi = 60 # once per minute
 )
+
 coverage(
   db = db,
   participant_id = "12345",

@@ -17,6 +17,20 @@ A connection to an mpathsenser database.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
+\examples{
+# First create a database in a temporary directory
+db <- create_db(tempdir(), "mydb.db")
+close_db(db)
+DBI::dbIsValid(db) # db is closed
+
+# Then re-open it
+db2 <- open_db(tempdir(), "mydb.db")
+DBI::dbIsValid(db2) # db is opened
+
+# Cleanup
+close_db(db2)
+file.remove(file.path(tempdir(), "mydb.db"))
+}
 \seealso{
 \code{\link[=close_db]{close_db()}} for closing a database; \code{\link[=copy_db]{copy_db()}} for copying (part of) a database;
 \code{\link[=index_db]{index_db()}} for indexing a database; \code{\link[=get_data]{get_data()}} for extracting data from a database.

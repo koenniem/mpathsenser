@@ -1,6 +1,6 @@
 Package: mpathsenser
 Title: Process and Analyse Data from m-Path Sense
-Version: 1.2.0
+Version: 1.2.2
 Authors@R: c(
     person("Koen", "Niemeijer", , "koen.niemeijer@kuleuven.be", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-0816-534X")),
@@ -10,8 +10,8 @@ Authors@R: c(
   )
 Description: Overcomes one of the major challenges in mobile (passive)
     sensing, namely being able to pre-process the raw data that comes from
-    a mobile sensing app, specifically "m-Path Sense" <https://m-path.io>.
-    The main task of 'mpathsenser' is therefore to read "m-Path Sense"
+    a mobile sensing app, specifically 'm-Path Sense' <https://m-path.io>.
+    The main task of 'mpathsenser' is therefore to read 'm-Path Sense'
     JSON files into a database and provide several convenience functions
     to aid in data processing.
 License: GPL (>= 3)

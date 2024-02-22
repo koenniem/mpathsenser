@@ -488,6 +488,19 @@ link <- function(x,
 #'   either `sensor_two` or `external` according to `offset_before` or `offset_after`. The other way
 #'   around when `reverse = TRUE`.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Open a database
+#' db <- open_db("path/to/db")
+#'
+#' # Link two sensors
+#' link_db(db, "accelerometer", "gyroscope", offset_before = 300, offset_after = 300)
+#'
+#' # Link a sensor with an external data frame
+#' link_db(db, "accelerometer", external = my_external_data,
+#' external_time = "time", offset_before = 300, offset_after = 300)
+#' }
 link_db <- function(db,
                     sensor_one,
                     sensor_two = NULL,
@@ -591,7 +604,7 @@ link_db <- function(db,
 
 #' Link gaps to (ESM) data
 #'
-#' @description `r lifecycle::badge("experimental")`
+#' @description `r lifecycle::badge("stable")`
 #'
 #'   Gaps in mobile sensing data typically occur when the app is stopped by the operating system or
 #'   the user. While small gaps may not pose problems with analyses, greater gaps may cause bias or
@@ -616,12 +629,42 @@ link_db <- function(db,
 #'   the gaps within the interval. The function ensures all durations and gap time stamps are within
 #'   the range of the interval.
 #' @export
-link_gaps <- function(data,
-                      gaps,
-                      by = NULL,
-                      offset_before = 0,
-                      offset_after = 0,
-                      raw_data = FALSE) {
+#'
+#' @examples
+#' # Create some data
+#' x <- data.frame(
+#'   time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00"), by = "1 hour", length.out = 3), 2),
+#'   participant_id = c(rep("12345", 3), rep("23456", 3)),
+#'   item_one = rep(c(40, 50, 60), 2)
+#' )
+#'
+#' # Create some gaps
+#' gaps <- data.frame(
+#'  from = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:00:00")),
+#'  to = as.POSIXct(c("2021-11-14 13:30:00", "2021-11-14 14:30:00")),
+#'  participant_id = c("12345", "23456")
+#' )
+#'
+#' # Link the gaps to the data
+#' link_gaps(x, gaps, by = "participant_id", offset_before = 0, offset_after = 1800)
+#'
+#' # Link the gaps to the data and include the raw data
+#' link_gaps(
+#'   x,
+#'   gaps,
+#'   by = "participant_id",
+#'   offset_before = 0,
+#'   offset_after = 1800,
+#'   raw_data = TRUE
+#' )
+link_gaps <- function(
+    data,
+    gaps,
+    by = NULL,
+    offset_before = 0,
+    offset_after = 0,
+    raw_data = FALSE) {
+
   # Argument checking
   check_arg(data, type = "data.frame")
   check_arg(gaps, type = "data.frame")
@@ -728,10 +771,12 @@ link_gaps <- function(data,
 }
 
 # Link intervals of y within intervals of x
-link_intervals <- function(x, x_start, x_end,
-                           y, y_start, y_end,
-                           by = NULL,
-                           name = "data") {
+link_intervals <- function(
+    x, x_start, x_end,
+    y, y_start, y_end,
+    by = NULL,
+    name = "data") {
+
   check_arg(x, "data.frame")
   check_arg(y, "data.frame")
   check_arg(by, "character", allow_null = TRUE)
@@ -786,7 +831,7 @@ link_intervals <- function(x, x_start, x_end,
 
 #' Create bins in variable time series
 #'
-#' @description `r lifecycle::badge("experimental")`
+#' @description `r lifecycle::badge("stable")`
 #'
 #' In time series with variable measurements, an often recurring task is calculating the total time
 #' spent (i.e. the duration) in fixed bins, for example per hour or day. However, this may be
@@ -807,6 +852,7 @@ link_intervals <- function(x, x_start, x_end,
 #'
 #' @examples
 #' library(dplyr)
+#'
 #' data <- tibble(
 #'   participant_id = 1,
 #'   datetime = c(

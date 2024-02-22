@@ -36,3 +36,18 @@ A named vector containing the number of rows for each sensor.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
+\examples{
+\dontrun{
+# Open a database connection
+db <- open_db("path/to/db")
+
+# Get the number of rows for all sensors
+get_nrows(db, sensor = NULL)
+
+# Get the number of rows for the Accelerometer and Gyroscope sensors
+get_nrows(db, c("Accelerometer", "Gyroscope"))
+
+# Remember to close the connection
+close_db(db)
+}
+}

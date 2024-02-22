@@ -21,6 +21,9 @@
 #' Wifi | 60 |  Once per minute.
 #'
 #' @export freq
+#'
+#' @examples
+#' freq
 freq <- c(
   Accelerometer = 720,
   AirQuality = 1,
@@ -68,8 +71,6 @@ freq <- c(
 #'
 #' @examples
 #' \dontrun{
-#' fix_json()
-#' unzip()
 #' freq <- c(
 #'   Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
 #'   AirQuality = 1,
@@ -84,6 +85,7 @@ freq <- c(
 #'   Weather = 1,
 #'   Wifi = 60 # once per minute
 #' )
+#'
 #' coverage(
 #'   db = db,
 #'   participant_id = "12345",
@@ -194,6 +196,35 @@ coverage <- function(
 #' @seealso [coverage()]
 #' @returns A [ggplot2::ggplot] object.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' freq <- c(
+#'   Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
+#'   AirQuality = 1,
+#'   AppUsage = 2, # Once every 30 minutes
+#'   Bluetooth = 60, # Once per minute. Can have multiple measurements.
+#'   Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
+#'   Light = 360, # Once per 10 seconds
+#'   Location = 60, # Once per 60 seconds
+#'   Memory = 60, # Once per minute
+#'   Noise = 120,
+#'   Pedometer = 1,
+#'   Weather = 1,
+#'   Wifi = 60 # once per minute
+#' )
+#'
+#' data <- coverage(
+#'   db = db,
+#'   participant_id = "12345",
+#'   sensor = c("Accelerometer", "Gyroscope"),
+#'   frequency = mpathsenser::freq,
+#'   start_date = "2021-01-01",
+#'   end_date = "2021-05-01"
+#' )
+#'
+#' plot(data)
+#' }
 plot.coverage <- function(x, ...) {
   ensure_suggested_package("ggplot2")
 

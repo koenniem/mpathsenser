@@ -16,3 +16,19 @@ processed files.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
+\examples{
+# Create a database
+db <- create_db(tempdir(), "mydb.db")
+
+# Add some processed files
+DBI::dbExecute(db, "INSERT INTO Study VALUES('study1', 'data_format1')")
+DBI::dbExecute(db, "INSERT INTO Participant VALUES('participant1', 'study1')")
+DBI::dbExecute(db, "INSERT INTO ProcessedFiles VALUES('file1', 'participant1', 'study1')")
+
+# Get the processed files
+get_processed_files(db)
+
+# Cleanup
+close_db(db)
+file.remove(file.path(tempdir(), "mydb.db"))
+}

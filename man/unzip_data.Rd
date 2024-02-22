@@ -39,3 +39,22 @@ calling this function.
 how to subscribe to these updates.
 }
 
+\examples{
+\dontrun{
+# Unzip all files in a directory
+unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", recursive = FALSE)
+
+# Unzip all files in a directory and its subdirectories
+unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", recursive = TRUE)
+
+# Unzip specific files
+unzip_data(
+ path = "path/to/zipfiles",
+ to = "path/to/unzipped",
+ files = c("file1.zip", "file2.zip")
+)
+
+# Unzip files in a directory, but skip those that are already unzipped
+unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", overwrite = FALSE
+}
+}

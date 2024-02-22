@@ -72,6 +72,29 @@ calling this function.
 how to subscribe to these updates.
 }
 
+\examples{
+\dontrun{
+path <- "some/path"
+# Create a database
+db <- create_db(path = path, db_name = "my_db")
+
+# Import all JSON files in the current directory
+import(path = path, db = db)
+
+# Import all JSON files in the current directory, but do so sequentially
+import(path = path, db = db, batch_size = 1)
+
+# Import all JSON files in the current directory, but only the accelerometer data
+import(path = path, db = db, sensors = "accelerometer")
+
+# Import all JSON files in the current directory, but only the accelerometer and gyroscope data
+import(path = path, db = db, sensors = c("accelerometer", "gyroscope"))
+
+# Remember to close the database
+close_db(db)
+}
+
+}
 \seealso{
 \code{\link[=create_db]{create_db()}} for creating a database for \code{import()} to use, \code{\link[=close_db]{close_db()}} for closing
 this database; \code{\link[=index_db]{index_db()}} to create indices on the database for faster future processing, and

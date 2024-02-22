@@ -31,4 +31,7 @@ information:\tabular{lll}{
 A numeric vector containing (an example) of example measurement frequencies per sensor.
 Such input is needed for \code{\link[=coverage]{coverage()}}.
 }
+\examples{
+freq
+}
 \keyword{datasets}

@@ -17,3 +17,17 @@ A data frame containing all studies.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
+\examples{
+# Create a database
+db <- create_db(tempdir(), "mydb.db")
+
+# Add some studies
+DBI::dbExecute(db, "INSERT INTO Study VALUES('study1', 'data_format1')")
+
+# Get the studies
+get_studies(db)
+
+# Cleanup
+close_db(db)
+file.remove(file.path(tempdir(), "mydb.db"))
+}

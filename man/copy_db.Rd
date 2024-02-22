@@ -17,8 +17,32 @@ copy_db(source_db, target_db, sensor = "All")
 sensors.}
 }
 \value{
-No return value, called for side effects.
+Returns \code{TRUE} invisibly, called for side effects.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
+}
+\examples{
+# First create two databases in a temporary directory
+db1 <- create_db(tempdir(), "mydb1.db")
+db2 <- create_db(tempdir(), "mydb2.db")
+
+# Populate the first database with some data
+DBI::dbExecute(db1, "INSERT INTO Study VALUES ('study_1', 'default')")
+DBI::dbExecute(db1, "INSERT INTO Participant VALUES ('1', 'study_1')")
+DBI::dbExecute(db1, "INSERT INTO Activity VALUES(
+               '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')"
+)
+
+# Then copy the first database to the second database
+copy_db(db1, db2)
+
+# Check that the second database has the same data as the first database
+get_data(db2, "Activity")
+
+# Cleanup
+close_db(db1)
+close_db(db2)
+file.remove(file.path(tempdir(), "mydb1.db"))
+file.remove(file.path(tempdir(), "mydb2.db"))
 }

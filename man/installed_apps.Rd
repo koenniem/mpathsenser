@@ -23,3 +23,14 @@ Extract installed apps for one or all participants. Contrarily to other get_* fu
 this package, start and end dates are not used since installed apps are assumed to be fixed
 throughout the study.
 }
+\examples{
+\dontrun{
+db <- open_db()
+
+# Get installed apps for all participants
+installed_apps(db)
+
+# Get installed apps for a single participant
+installed_apps(db, "12345")
+}
+}

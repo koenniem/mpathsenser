@@ -46,10 +46,31 @@
 #'   this database; [index_db()] to create indices on the database for faster future processing, and
 #'   [vacuum_db()] to shrink the database to its minimal size.
 #'
-#'
 #' @returns A message indicating how many files were imported. If all files were imported
 #'   successfully, this functions returns an empty string invisibly. Otherwise the file names of the
 #'   files that were not imported are returned visibly.
+#'
+#' @examples
+#' \dontrun{
+#' path <- "some/path"
+#' # Create a database
+#' db <- create_db(path = path, db_name = "my_db")
+#'
+#' # Import all JSON files in the current directory
+#' import(path = path, db = db)
+#'
+#' # Import all JSON files in the current directory, but do so sequentially
+#' import(path = path, db = db, batch_size = 1)
+#'
+#' # Import all JSON files in the current directory, but only the accelerometer data
+#' import(path = path, db = db, sensors = "accelerometer")
+#'
+#' # Import all JSON files in the current directory, but only the accelerometer and gyroscope data
+#' import(path = path, db = db, sensors = c("accelerometer", "gyroscope"))
+#'
+#' # Remember to close the database
+#' close_db(db)
+#' }
 #'
 #' @export
 import <- function(

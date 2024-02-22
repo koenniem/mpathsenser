@@ -263,10 +263,27 @@ fix_eof <- function(file, eof, lines) {
 #' @return A message indicating whether there were any issues and a character vector of the file
 #'   names that need to be fixed. If there were no issues, an invisible empty string is returned.
 #' @export
-test_jsons <- function(path = getwd(),
-                       files = NULL,
-                       db = NULL,
-                       recursive = TRUE) {
+#'
+#' @examples
+#' \dontrun{
+#' # Test all files in a directory
+#' test_jsons(path = "path/to/jsons", recursive = FALSE)
+#'
+#' # Test all files in a directory and its subdirectories
+#' test_jsons(path = "path/to/jsons", recursive = TRUE)
+#'
+#' # Test specific files
+#' test_jsons(files = c("file1.json", "file2.json"))
+#'
+#' # Test files in a directory, but skip those that are already in the database
+#' test_jsons(path = "path/to/jsons", db = db)
+#' }
+test_jsons <- function(
+    path = getwd(),
+    files = NULL,
+    db = NULL,
+    recursive = TRUE) {
+
   check_arg(path, "character", n = 1, allow_null = TRUE)
   check_arg(files, "character", allow_null = TRUE)
   check_arg(recursive, "logical", n = 1)
@@ -342,10 +359,31 @@ test_jsons <- function(path = getwd(),
 #'
 #' @return A message indicating how many files were unzipped.
 #' @export
-unzip_data <- function(path = getwd(),
-                       to = NULL,
-                       overwrite = FALSE,
-                       recursive = TRUE) {
+#'
+#' @examples
+#' \dontrun{
+#' # Unzip all files in a directory
+#' unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", recursive = FALSE)
+#'
+#' # Unzip all files in a directory and its subdirectories
+#' unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", recursive = TRUE)
+#'
+#' # Unzip specific files
+#' unzip_data(
+#'  path = "path/to/zipfiles",
+#'  to = "path/to/unzipped",
+#'  files = c("file1.zip", "file2.zip")
+#' )
+#'
+#' # Unzip files in a directory, but skip those that are already unzipped
+#' unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", overwrite = FALSE
+#' }
+unzip_data <- function(
+    path = getwd(),
+    to = NULL,
+    overwrite = FALSE,
+    recursive = TRUE) {
+
   check_arg(path, "character", n = 1)
   check_arg(to, "character", allow_null = TRUE, n = 1)
   check_arg(overwrite, "logical", n = 1)

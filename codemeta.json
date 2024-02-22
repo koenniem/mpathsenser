@@ -2,25 +2,19 @@
   "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
   "@type": "SoftwareSourceCode",
   "identifier": "mpathsenser",
-  "description": "Overcomes one of the major challenges in mobile (passive) sensing, namely being able to pre-process the raw data that comes from a mobile sensing app, specifically \"m-Path Sense\" <https://m-path.io>. The main task of 'mpathsenser' is therefore to read \"m-Path Sense\" JSON files into a database and provide several convenience functions to aid in data processing.",
+  "description": "Overcomes one of the major challenges in mobile (passive) sensing, namely being able to preprocess the raw data that comes from a mobile sensing app, specifically 'm-Path Sense' <https://m-path.io>. The main task of 'mpathsenser' is therefore to read 'm-Path Sense' 'JSON' files into a database and provide several convenience functions to aid in data processing.",
   "name": "mpathsenser: Process and Analyse Data from m-Path Sense",
-  "relatedLink": ["https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/", "https://CRAN.R-project.org/package=mpathsenser"],
+  "relatedLink": "https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/",
   "codeRepository": "https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/",
   "issueTracker": "\n    https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/issues/",
   "license": "https://spdx.org/licenses/GPL-3.0",
-  "version": "1.1.3",
+  "version": "1.2.2",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "R",
     "url": "https://r-project.org"
   },
-  "runtimePlatform": "R version 4.2.2 (2022-10-31 ucrt)",
-  "provider": {
-    "@id": "https://cran.r-project.org",
-    "@type": "Organization",
-    "name": "Comprehensive R Archive Network (CRAN)",
-    "url": "https://cran.r-project.org"
-  },
+  "runtimePlatform": "R version 4.3.2 (2023-10-31 ucrt)",
   "author": [
     {
       "@type": "Person",
@@ -108,6 +102,18 @@
         "url": "https://cran.r-project.org"
       },
       "sameAs": "https://CRAN.R-project.org/package=httr"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "identifier": "kableExtra",
+      "name": "kableExtra",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=kableExtra"
     },
     {
       "@type": "SoftwareApplication",
@@ -300,18 +306,6 @@
     },
     "9": {
       "@type": "SoftwareApplication",
-      "identifier": "magrittr",
-      "name": "magrittr",
-      "provider": {
-        "@id": "https://cran.r-project.org",
-        "@type": "Organization",
-        "name": "Comprehensive R Archive Network (CRAN)",
-        "url": "https://cran.r-project.org"
-      },
-      "sameAs": "https://CRAN.R-project.org/package=magrittr"
-    },
-    "10": {
-      "@type": "SoftwareApplication",
       "identifier": "purrr",
       "name": "purrr",
       "provider": {
@@ -322,7 +316,7 @@
       },
       "sameAs": "https://CRAN.R-project.org/package=purrr"
     },
-    "11": {
+    "10": {
       "@type": "SoftwareApplication",
       "identifier": "rlang",
       "name": "rlang",
@@ -334,7 +328,7 @@
       },
       "sameAs": "https://CRAN.R-project.org/package=rlang"
     },
-    "12": {
+    "11": {
       "@type": "SoftwareApplication",
       "identifier": "RSQLite",
       "name": "RSQLite",
@@ -346,12 +340,12 @@
       },
       "sameAs": "https://CRAN.R-project.org/package=RSQLite"
     },
-    "13": {
+    "12": {
       "@type": "SoftwareApplication",
       "identifier": "stats",
       "name": "stats"
     },
-    "14": {
+    "13": {
       "@type": "SoftwareApplication",
       "identifier": "tibble",
       "name": "tibble",
@@ -363,7 +357,7 @@
       },
       "sameAs": "https://CRAN.R-project.org/package=tibble"
     },
-    "15": {
+    "14": {
       "@type": "SoftwareApplication",
       "identifier": "tidyr",
       "name": "tidyr",
@@ -377,6 +371,54 @@
     },
     "SystemRequirements": null
   },
-  "fileSize": "4066.771KB",
+  "fileSize": "4931.489KB",
+  "citation": [
+    {
+      "@type": "ScholarlyArticle",
+      "datePublished": "2023",
+      "author": [
+        {
+          "@type": "Person",
+          "givenName": "Koen",
+          "familyName": "Niemeijer"
+        },
+        {
+          "@type": "Person",
+          "givenName": "Merijn",
+          "familyName": "Mestdagh"
+        },
+        {
+          "@type": "Person",
+          "givenName": "Stijn",
+          "familyName": "Verdonck"
+        },
+        {
+          "@type": "Person",
+          "givenName": "Kristof",
+          "familyName": "Meers"
+        },
+        {
+          "@type": "Person",
+          "givenName": "Peter",
+          "familyName": "Kuppens"
+        }
+      ],
+      "name": "Combining Experience Sampling and Mobile Sensing for Digital Phenotyping With m-Path Sense: Performance Study",
+      "identifier": "10.2196/43296",
+      "pagination": "e43296",
+      "@id": "https://doi.org/10.2196/43296",
+      "sameAs": "https://doi.org/10.2196/43296",
+      "isPartOf": {
+        "@type": "PublicationIssue",
+        "issueNumber": "1",
+        "datePublished": "2023",
+        "isPartOf": {
+          "@type": ["PublicationVolume", "Periodical"],
+          "volumeNumber": "7",
+          "name": "JMIR Formative Review"
+        }
+      }
+    }
+  ],
   "developmentStatus": "https://www.repostatus.org/#active"
 }

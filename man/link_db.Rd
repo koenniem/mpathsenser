@@ -77,6 +77,19 @@ This function is specific to mpathsenser databases. It is a wrapper around \code
 extracts data in the database for you. It is now soft deprecated as I feel this function's use
 is limited in comparison to \code{\link[=link]{link()}}.
 }
+\examples{
+\dontrun{
+# Open a database
+db <- open_db("path/to/db")
+
+# Link two sensors
+link_db(db, "accelerometer", "gyroscope", offset_before = 300, offset_after = 300)
+
+# Link a sensor with an external data frame
+link_db(db, "accelerometer", external = my_external_data,
+external_time = "time", offset_before = 300, offset_after = 300)
+}
+}
 \seealso{
 \code{\link[=link]{link()}}
 }

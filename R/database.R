@@ -29,6 +29,18 @@ sensors <- c(
 #'
 #' @returns A database connection using prepared database schemas.
 #' @export
+#'
+#' @examples
+#' # Create a new database in a temporary directory
+#' db <- create_db(tempdir(), "mydb.db")
+#'
+#' # You can also create an in-memory database
+#' db2 <- create_db(path = NULL, ":memory:")
+#'
+#' # Cleanup
+#' close_db(db)
+#' close_db(db2)
+#' file.remove(file.path(tempdir(), "mydb.db"))
 create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
   check_arg(db_name, "character", n = 1)
@@ -103,6 +115,20 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 #'
 #' @returns A connection to an mpathsenser database.
 #' @export
+#'
+#' @examples
+#' # First create a database in a temporary directory
+#' db <- create_db(tempdir(), "mydb.db")
+#' close_db(db)
+#' DBI::dbIsValid(db) # db is closed
+#'
+#' # Then re-open it
+#' db2 <- open_db(tempdir(), "mydb.db")
+#' DBI::dbIsValid(db2) # db is opened
+#'
+#' # Cleanup
+#' close_db(db2)
+#' file.remove(file.path(tempdir(), "mydb.db"))
 open_db <- function(path = getwd(), db_name = "sense.db") {
   check_arg(path, "character", n = 1, allow_null = TRUE)
   check_arg(db_name, c("character", "integerish"), n = 1)
@@ -137,6 +163,19 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 #' @returns Returns invisibly regardless of whether the database is active, valid,
 #' or even exists.
 #' @export
+#'
+#' @examples
+#' # First create a database in a temporary directory
+#' db <- create_db(tempdir(), "mydb.db")
+#'
+#' # Then close it
+#' close_db(db)
+#'
+#' # You can even try to close a database that is already closed. This will not trigger an error.
+#' close_db(db)
+#'
+#' # Cleanup
+#' file.remove(file.path(tempdir(), "mydb.db"))
 close_db <- function(db) {
   exists <- try(db, silent = TRUE)
   if (inherits(exists, "SQLiteConnection") && !is.null(db)) {
@@ -156,8 +195,20 @@ close_db <- function(db) {
 #'
 #' @inheritParams get_data
 #'
-#' @returns No return value, called for side effects.
+#' @returns Returns `TRUE` invisibly, called for side effects.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' # First create a database in a temporary directory
+#' db <- create_db(tempdir(), "mydb.db")
+#'
+#' # Import some files
+#' import(path = "path/to/jsons", db = db)
+#'
+#' # Then index it to speed up the database
+#' index_db(db)
+#' }
 index_db <- function(db) {
   check_db(db)
 
@@ -173,6 +224,8 @@ index_db <- function(db) {
       abort(as.character(e))
     }
   )
+
+  invisible(TRUE)
 }
 
 #' Vacuum a database
@@ -185,6 +238,18 @@ index_db <- function(db) {
 #' @inheritParams get_data
 #'
 #' @return  a scalar numeric that specifies the number of rows affected by the vacuum.
+#' @export
+#'
+#' @examples
+#' # Create a database in a temporary directory
+#' db <- create_db(tempdir(), "mydb.db")
+#'
+#' # Assuming that we have imported some data into the database, we can vacuum it
+#' vacuum_db(db)
+#'
+#' # Cleanup
+#' close_db(db)
+#' file.remove(file.path(tempdir(), "mydb.db"))
 vacuum_db <- function(db) {
   check_db(db)
   dbExecute(db, "VACUUM")
@@ -201,11 +266,36 @@ vacuum_db <- function(db) {
 #'   \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
 #'   sensors.
 #'
-#' @returns No return value, called for side effects.
+#' @returns Returns `TRUE` invisibly, called for side effects.
 #' @export
-copy_db <- function(source_db,
-                    target_db,
-                    sensor = "All") {
+#'
+#' @examples
+#' # First create two databases in a temporary directory
+#' db1 <- create_db(tempdir(), "mydb1.db")
+#' db2 <- create_db(tempdir(), "mydb2.db")
+#'
+#' # Populate the first database with some data
+#' DBI::dbExecute(db1, "INSERT INTO Study VALUES ('study_1', 'default')")
+#' DBI::dbExecute(db1, "INSERT INTO Participant VALUES ('1', 'study_1')")
+#' DBI::dbExecute(db1, "INSERT INTO Activity VALUES(
+#'                '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')"
+#' )
+#'
+#' # Then copy the first database to the second database
+#' copy_db(db1, db2)
+#'
+#' # Check that the second database has the same data as the first database
+#' get_data(db2, "Activity")
+#'
+#' # Cleanup
+#' close_db(db1)
+#' close_db(db2)
+#' file.remove(file.path(tempdir(), "mydb1.db"))
+#' file.remove(file.path(tempdir(), "mydb2.db"))
+copy_db <- function(
+    source_db,
+    target_db,
+    sensor = "All") {
 
   check_db(source_db, arg = "source_db")
   check_db(target_db, arg = "target_db")
@@ -318,6 +408,22 @@ clear_db <- function(db) {
 #' @returns A data frame containing the `file_name`, `participant_id`, and `study_id` of the
 #'   processed files.
 #' @export
+#'
+#' @examples
+#' # Create a database
+#' db <- create_db(tempdir(), "mydb.db")
+#'
+#' # Add some processed files
+#' DBI::dbExecute(db, "INSERT INTO Study VALUES('study1', 'data_format1')")
+#' DBI::dbExecute(db, "INSERT INTO Participant VALUES('participant1', 'study1')")
+#' DBI::dbExecute(db, "INSERT INTO ProcessedFiles VALUES('file1', 'participant1', 'study1')")
+#'
+#' # Get the processed files
+#' get_processed_files(db)
+#'
+#' # Cleanup
+#' close_db(db)
+#' file.remove(file.path(tempdir(), "mydb.db"))
 get_processed_files <- function(db) {
   check_db(db)
 
@@ -334,6 +440,21 @@ get_processed_files <- function(db) {
 #'
 #' @returns A data frame containing all `participant_id` and `study_id`.
 #' @export
+#'
+#' @examples
+#' # Create a database
+#' db <- create_db(tempdir(), "mydb.db")
+#'
+#' # Add some participants
+#' DBI::dbExecute(db, "INSERT INTO Study VALUES('study1', 'data_format1')")
+#' DBI::dbExecute(db, "INSERT INTO Participant VALUES('participant1', 'study1')")
+#'
+#' # Get the participants
+#' get_participants(db)
+#'
+#' # Cleanup
+#' close_db(db)
+#' file.remove(file.path(tempdir(), "mydb.db"))
 get_participants <- function(db, lazy = FALSE) {
   check_db(db)
   check_arg(lazy, "logical", n = 1)
@@ -355,6 +476,20 @@ get_participants <- function(db, lazy = FALSE) {
 #'
 #' @returns A data frame containing all studies.
 #' @export
+#'
+#' @examples
+#' # Create a database
+#' db <- create_db(tempdir(), "mydb.db")
+#'
+#' # Add some studies
+#' DBI::dbExecute(db, "INSERT INTO Study VALUES('study1', 'data_format1')")
+#'
+#' # Get the studies
+#' get_studies(db)
+#'
+#' # Cleanup
+#' close_db(db)
+#' file.remove(file.path(tempdir(), "mydb.db"))
 get_studies <- function(db, lazy = FALSE) {
   check_db(db)
   check_arg(lazy, "logical", n = 1)
@@ -385,6 +520,21 @@ get_studies <- function(db, lazy = FALSE) {
 #'
 #' @returns A named vector containing the number of rows for each sensor.
 #' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Open a database connection
+#' db <- open_db("path/to/db")
+#'
+#' # Get the number of rows for all sensors
+#' get_nrows(db, sensor = NULL)
+#'
+#' # Get the number of rows for the Accelerometer and Gyroscope sensors
+#' get_nrows(db, c("Accelerometer", "Gyroscope"))
+#'
+#' # Remember to close the connection
+#' close_db(db)
+#' }
 get_nrows <- function(
     db,
     sensor = "All",

@@ -18,6 +18,19 @@ or even exists.
 
 This is a convenience function that is simply a wrapper around \code{\link[DBI:dbDisconnect]{DBI::dbDisconnect()}}.
 }
+\examples{
+# First create a database in a temporary directory
+db <- create_db(tempdir(), "mydb.db")
+
+# Then close it
+close_db(db)
+
+# You can even try to close a database that is already closed. This will not trigger an error.
+close_db(db)
+
+# Cleanup
+file.remove(file.path(tempdir(), "mydb.db"))
+}
 \seealso{
 \code{\link[=open_db]{open_db()}} for opening an mpathsenser database.
 }
