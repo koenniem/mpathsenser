@@ -68,7 +68,6 @@ freq <- c(
 #' hour, type of measure (i.e. sensor), and (relative) coverage.
 #' @export
 #'
-#'
 #' @examples
 #' \dontrun{
 #' freq <- c(

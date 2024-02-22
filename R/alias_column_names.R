@@ -22,6 +22,17 @@
 #' @return A data frame with the column names remapped according to the specific method for this
 #' data frame.
 #' @keywords internal
+#'
+#' @examples
+#' x <- data.frame(
+#'   id = 1:3,
+#'   timestamp = as.POSIXct(c("2021-01-01 00:00:00", "2021-01-01 00:00:01", "2021-01-01 00:00:02")),
+#'   xm = c(1, 2, 3),
+#'   ym = c(4, 5, 6),
+#'   zm = c(7, 8, 9)
+#' )
+#' class(x) <- c("accelerometer", class(x))
+#' mpathsenser:::alias_column_names(x)
 alias_column_names <- function(data, ...) {
   rlang::check_dots_empty()
   UseMethod("alias_column_names")

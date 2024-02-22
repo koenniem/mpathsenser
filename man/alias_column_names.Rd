@@ -28,4 +28,15 @@ class of \code{data}.
 Aliasing of the column names depends on the specific method, but column names are only changed
 if they have an alias available. Otherwise, they are kept unchanged.
 }
+\examples{
+x <- data.frame(
+  id = 1:3,
+  timestamp = as.POSIXct(c("2021-01-01 00:00:00", "2021-01-01 00:00:01", "2021-01-01 00:00:02")),
+  xm = c(1, 2, 3),
+  ym = c(4, 5, 6),
+  zm = c(7, 8, 9)
+)
+class(x) <- c("accelerometer", class(x))
+mpathsenser:::alias_column_names(x)
+}
 \keyword{internal}

@@ -63,7 +63,34 @@ safe_tibble <- function(...) {
   x
 }
 
+
+#' Unpack raw sensor data
+#'
+#' This function takes raw sensor data coming from [import()] and unpacks it into tidy data frames
+#' so that it can be written to the database. Note that this function is internal and should not
+#' be used for other purposes.
+#'
+#' @param data A data frame containing the raw sensor data.
+#' @inheritParams rlang::args_dots_empty
+#'
+#' @return A data frame with the sensor data unpacked.
 #' @keywords internal
+#'
+#' @examples
+#' x <- tibble::tibble(
+#'   study_id = "test-study",
+#'   participant_id = "12345",
+#'   data_format = "cams 1.0.0",
+#'   start_time = "2021-11-14 16:40:00.123456",
+#'   end_time = NULL,
+#'   sensor = "Activity",
+#'   data = list(list(
+#'     confidence = 80,
+#'     type = "WALKING"
+#'   ))
+#' )
+#' class(x) <- c("activity", class(x))
+#' mpathsenser:::unpack_sensor_data(x)
 unpack_sensor_data <- function(data, ...){
   rlang::check_dots_empty()
   UseMethod("unpack_sensor_data")

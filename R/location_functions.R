@@ -7,16 +7,16 @@
 #'  This function takes a character vector and decrypts its longitude and latitude columns using the
 #'  provided `key`.
 #'
-#'@inheritSection import Parallel
+#' @inheritSection import Parallel
 #'
-#'@param data A character vector containing hexadecimal (i.e. encrypted) data.
-#'@param key A curve25519 private key.
-#'@param ignore A string with characters to ignore from `data`. See [sodium::hex2bin()].
+#' @param data A character vector containing hexadecimal (i.e. encrypted) data.
+#' @param key A curve25519 private key.
+#' @param ignore A string with characters to ignore from `data`. See [sodium::hex2bin()].
 #'
-#'@returns A vector of doubles of the decrypted GPS coordinates.
-#'@export
+#' @returns A vector of doubles of the decrypted GPS coordinates.
+#' @export
 #'
-#' @examples
+#' @examplesIf rlang::is_installed("sodium")
 #'library(dplyr)
 #'library(sodium)
 #'# Create some GPS  coordinates.

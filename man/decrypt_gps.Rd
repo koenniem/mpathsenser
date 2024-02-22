@@ -32,6 +32,7 @@ calling this function.
 }
 
 \examples{
+\dontshow{if (rlang::is_installed("sodium")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 library(dplyr)
 library(sodium)
 # Create some GPS  coordinates.
@@ -65,4 +66,5 @@ data$latitude <- encrypt(data$latitude, pub)
 data |>
  mutate(longitude = decrypt_gps(longitude, key)) |>
  mutate(latitude = decrypt_gps(latitude, key))
+\dontshow{\}) # examplesIf}
 }
