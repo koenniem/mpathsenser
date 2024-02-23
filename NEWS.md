@@ -1,3 +1,5 @@
+# mpathsenser (development version)
+
 # mpathsenser 1.2.2
 ## Major changes
 `mpathsenser` now supports the new data format as of m-Path Sense 4.2.6. This comes with a large 

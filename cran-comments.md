@@ -11,7 +11,10 @@ and API names.
 * Windows (devel and release)
 
 ## R CMD check results
-There were no ERRORs or WARNINGs, but there was 1 NOTE:
+0 errors | 0 warnings | 1 note
+* New submission
+
+There were additional issues that did not trigger an ERROR, WARNING or NOTE:
 * Possibly misspelled words in DESCRIPTION:
   JSON (15:5)
   pre (12:35)
