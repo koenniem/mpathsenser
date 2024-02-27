@@ -275,6 +275,11 @@ test_that("appusage", {
       start = "2024-01-24 20:16:40.434183",
       end = "2024-01-24 20:46:40.434183",
       usage = list()
+    ),
+    list(
+      start = "2024-01-24 20:16:41.434183",
+      end = "2024-01-24 20:46:41.434183",
+      usage = list()
     )
   )
 
@@ -288,12 +293,12 @@ test_that("appusage", {
     date = "2021-11-14",
     time = "16:40:00.123",
     end_time = "2024-01-24 20:46:40.434183",
-    start = "2024-01-24 20:16:40.434183",
-    end = "2024-01-24 20:46:40.434183",
-    usage = NA,
-    app = NA,
-    package_name = NA,
-    last_foreground = NA
+    start = c("2024-01-24 20:16:40.434183", "2024-01-24 20:16:41.434183"),
+    end = c("2024-01-24 20:46:40.434183", "2024-01-24 20:46:41.434183"),
+    usage = c(NA, NA),
+    app = c(NA, NA),
+    package_name = c(NA, NA),
+    last_foreground = c(NA, NA)
   )
 
   # Check that a measurement_id is present, but don't check the value
