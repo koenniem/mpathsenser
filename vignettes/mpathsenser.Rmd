@@ -64,7 +64,7 @@ unzip_data(path = tempdir)
 
 In m-Path Sense, data is written to JSON files as it comes in. In the JSON file format, every file starts with `[` and ends with `]`. If the app is killed, JSON files are not properly closed and hence cannot be read by JSON parsers. So, we must first test if all files are in a valid JSON format and fix those that are not.
 
-While you can also call `fix_jsons()` directly, it is generally safer (and faster) to first run `test_jsons()` to get an idea of how many files need fixing.
+You may first run `fix_jsons()` to fix all files in the directory that need fixing, or you can first run `test_jsons()` to get an estimate of how many file need fixing. Running `fix_jsons()` also runs `test_jsons()` implicitly to only fix files that really need fixing.
 
 ```{r fix and test JSONS}
 # Note that test_jsons returns the full path names
@@ -73,33 +73,52 @@ print(to_fix)
 
 fix_jsons(path = NULL, to_fix)
 ```
+Next, we can create an `mpathsenser` database using the `create_db()` function. This function takes as a first argument a pathname where the database will be created and as a second argument a `db_name` to name the database file. You may also leave `path` set to `NULL` and specify a full path name (including file name)  in the `db_name` argument. Always remember to save the output to a variable so you can use it later and to avoid having an open handle but unused handle on the database connection.
 
-```{r import data}
+```{r create db}
 # Create a new database
 db <- create_db(tempdir, "getstarted.db")
+```
 
+Finally, we can import the data into the newly created database using the `import()` function. This function takes as a first argument the path to the directory where the data is located and as a second argument the database handle. You may also specify a `batch_size` to control how many files are imported at once. Files are processed sequentially (though parallellism is supported via the `future` package) but files are written in batch to the database for the sake of efficiency. A greater batch size thus denotes larger batches of files being written to the database at once (and is more efficient), but risk failing the larger batch a single file fails to be processed.
+
+```{r import data}
 # Import the data
 import(
   path = tempdir,
   db = db,
-  batch_size = 12
+  sensors = NULL, # All sensors
+  batch_size = 12,
+  recursive = TRUE
 )
 ```
 
-```{r, fig.width=13, fig.height=8, fig.align='center', dpi=55}
+# Creating a coverage chart
+To get a better overview of the data, we may create a coverage chart that shows the average number of collected samples per hour for each sensor for a single participant. An important distinction must be made between a relative and absolute coverage chart. The relative coverage chart shows the average number of samples per hour for each sensor as a percentage of the __expected__ number of samples per hour for that sensor. The absolute coverage chart shows the average number of samples per hour for each sensor as a percentage of the maximum number of samples per hour for any sensor. The relative coverage chart is useful to see how well the data is being collected for each sensor, while the absolute coverage chart is useful to see how well the data is being collected in general.
+
+```{r}
 sensors <- c(
   "Accelerometer", "Activity", "AppUsage", "Bluetooth", "Calendar",
   "Connectivity", "Device", "Gyroscope", "InstalledApps", "Light",
   "Location", "Memory", "Pedometer", "Screen", "Weather", "Wifi"
 )
-coverage(
+cov <- coverage(
   db = db,
   participant_id = "2784",
   sensor = sensors,
   relative = FALSE
 )
+
+print(cov)
 ```
 
+Additionally, we can print the coverage data using the `plot()` function.
+```{r, fig.width=13, fig.height=8, fig.align='center', dpi=55}
+plot(cov)
+```
+
+
+# Closing the database
 Finally, recall that once you're done working with a database to also close it.
 
 ```{r}

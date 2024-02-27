@@ -8,7 +8,7 @@ docs
 public/
 inst/doc
 R/stats.R
-^inst/extdata/.*drawio.*$
+inst/extdata/*.drawio*
 revdep/
 /doc/
 /Meta/
