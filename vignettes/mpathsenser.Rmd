@@ -73,7 +73,8 @@ print(to_fix)
 
 fix_jsons(path = NULL, to_fix)
 ```
-Next, we can create an `mpathsenser` database using the `create_db()` function. This function takes as a first argument a pathname where the database will be created and as a second argument a `db_name` to name the database file. You may also leave `path` set to `NULL` and specify a full path name (including file name)  in the `db_name` argument. Always remember to save the output to a variable so you can use it later and to avoid having an open handle but unused handle on the database connection.
+
+Next, we can create an `mpathsenser` database using the `create_db()` function. This function takes as a first argument a pathname where the database will be created and as a second argument a `db_name` to name the database file. You may also leave `path` set to `NULL` and specify a full path name (including file name) in the `db_name` argument. Always remember to save the output to a variable so you can use it later and to avoid having an open handle but unused handle on the database connection.
 
 ```{r create db}
 # Create a new database
@@ -94,7 +95,8 @@ import(
 ```
 
 # Creating a coverage chart
-To get a better overview of the data, we may create a coverage chart that shows the average number of collected samples per hour for each sensor for a single participant. An important distinction must be made between a relative and absolute coverage chart. The relative coverage chart shows the average number of samples per hour for each sensor as a percentage of the __expected__ number of samples per hour for that sensor. The absolute coverage chart shows the average number of samples per hour for each sensor as a percentage of the maximum number of samples per hour for any sensor. The relative coverage chart is useful to see how well the data is being collected for each sensor, while the absolute coverage chart is useful to see how well the data is being collected in general.
+
+To get a better overview of the data, we may create a coverage chart that shows the average number of collected samples per hour for each sensor for a single participant. An important distinction must be made between a relative and absolute coverage chart. The relative coverage chart shows the average number of samples per hour for each sensor as a percentage of the *expected* number of samples per hour for that sensor. The absolute coverage chart shows the average number of samples per hour for each sensor. The relative coverage chart is useful to see how well the data is being collected for each sensor, while the absolute coverage chart is useful to see how well the data is being collected in general.
 
 ```{r}
 sensors <- c(
@@ -113,12 +115,13 @@ print(cov)
 ```
 
 Additionally, we can print the coverage data using the `plot()` function.
+
 ```{r, fig.width=13, fig.height=8, fig.align='center', dpi=55}
 plot(cov)
 ```
 
-
 # Closing the database
+
 Finally, recall that once you're done working with a database to also close it.
 
 ```{r}

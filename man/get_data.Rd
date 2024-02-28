@@ -30,10 +30,17 @@ A lazy \code{\link[dplyr]{tbl}} containing the requested data.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-This is a convenience function to help extract data from an m-Path sense database. For some
-sensors that require a bit more pre-processing, such as app usage and screen time, more
-specialised functions are available (e.g. \code{\link[mpathsenser]{app_usage}} and
-\code{\link[mpathsenser]{screen_duration}}).
+This is a convenience function to help extract data from an m-Path sense database.
+}
+\details{
+Note that this function returns a lazy (also called remote) \code{tibble}. This means that
+the data is not actually in R until you call a function that pulls the data from the database.
+This is useful for various functions in this package that work with a lazy tibble, for example
+\code{\link[=identify_gaps]{identify_gaps()}}. You may manually want to modify this lazy \code{tibble} by using \code{dplyr}
+functions such as \code{\link[dplyr:filter]{dplyr::filter()}} or \code{\link[dplyr:mutate]{dplyr::mutate()}} before pulling the data into R. These
+functions will be executed in-database, and will therefore be much faster than having to first
+pull all data into R and then possibly removing a large part of it. Importantly, data can
+pulled into R using \code{\link[dplyr:compute]{dplyr::collect()}}.
 }
 \examples{
 \dontrun{
@@ -46,4 +53,6 @@ get_data(db, "Accelerometer", "12345")
 # Or within a specific window
 get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
 }
+
+
 }

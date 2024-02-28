@@ -2,10 +2,17 @@
 #'
 #' @description `r lifecycle::badge("stable")`
 #'
-#' This is a convenience function to help extract data from an m-Path sense database. For some
-#' sensors that require a bit more pre-processing, such as app usage and screen time, more
-#' specialised functions are available (e.g. \code{\link[mpathsenser]{app_usage}} and
-#' \code{\link[mpathsenser]{screen_duration}}).
+#'   This is a convenience function to help extract data from an m-Path sense database.
+#'
+#' @details Note that this function returns a lazy (also called remote) `tibble`. This means that
+#'   the data is not actually in R until you call a function that pulls the data from the database.
+#'   This is useful for various functions in this package that work with a lazy tibble, for example
+#'   [identify_gaps()]. You may manually want to modify this lazy `tibble` by using `dplyr`
+#'   functions such as [dplyr::filter()] or [dplyr::mutate()] before pulling the data into R. These
+#'   functions will be executed in-database, and will therefore be much faster than having to first
+#'   pull all data into R and then possibly removing a large part of it. Importantly, data can
+#'   pulled into R using [dplyr::collect()].
+#'
 #'
 #' @param db A database connection to an m-Path Sense database.
 #' @param sensor The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
@@ -34,7 +41,15 @@
 #' # Or within a specific window
 #' get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
 #' }
-get_data <- function(db, sensor, participant_id = NULL, start_date = NULL, end_date = NULL) {
+#'
+#'
+get_data <- function(
+    db,
+    sensor,
+    participant_id = NULL,
+    start_date = NULL,
+    end_date = NULL) {
+
   check_db(db)
   check_sensors(sensor, n = 1)
   check_arg(participant_id, type = c("character", "integerish"), allow_null = TRUE)
