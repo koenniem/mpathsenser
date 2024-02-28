@@ -104,7 +104,6 @@ coverage <- function(
     start_date = NULL,
     end_date = NULL,
     plot = deprecated()) {
-
   check_db(db)
   check_arg(participant_id, type = c("character"), n = 1)
   check_sensors(sensor, allow_null = TRUE)
@@ -235,7 +234,7 @@ plot.coverage <- function(x, ...) {
       group_by(.data$measure) |>
       mutate(max_coverage = max(.data$coverage)) |>
       mutate(max_coverage = ifelse(.data$max_coverage == 0, 1, .data$max_coverage)) |>
-      mutate(scaled_coverage = .data$coverage /  max(.data$max_coverage)) |>
+      mutate(scaled_coverage = .data$coverage / max(.data$max_coverage)) |>
       ungroup("measure")
 
     plot <- ggplot2::ggplot(
@@ -265,22 +264,22 @@ plot.coverage <- function(x, ...) {
 
   if (is_relative) {
     plot <- plot +
-    ggplot2::scale_fill_gradientn(
-      colours = c("#d70525", "#645a6c", "#3F7F93"),
-      breaks = c(0, 0.5, 1),
-      labels = c(0, 0.5, 1),
-      limits = c(0, 1),
-      name = "coverage"
-    )
+      ggplot2::scale_fill_gradientn(
+        colours = c("#d70525", "#645a6c", "#3F7F93"),
+        breaks = c(0, 0.5, 1),
+        labels = c(0, 0.5, 1),
+        limits = c(0, 1),
+        name = "coverage"
+      )
   } else {
     plot <- plot +
-    ggplot2::scale_fill_gradientn(
-      colours = c("#d70525", "#645a6c", "#3F7F93"),
-      breaks = c(0, 0.5, 1),
-      labels = c("low", "medium", "high"),
-      limits = c(0, 1),
-      name = "coverage"
-    )
+      ggplot2::scale_fill_gradientn(
+        colours = c("#d70525", "#645a6c", "#3F7F93"),
+        breaks = c(0, 0.5, 1),
+        labels = c("low", "medium", "high"),
+        limits = c(0, 1),
+        name = "coverage"
+      )
   }
 
   plot

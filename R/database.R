@@ -55,8 +55,8 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   if (file.exists(db_name)) {
     if (overwrite) {
       tryCatch(file.remove(db_name),
-               warning = function(e) abort(as.character(e)),
-               error = function(e) abort(as.character(e))
+        warning = function(e) abort(as.character(e)),
+        error = function(e) abort(as.character(e))
       )
     } else {
       abort(c(
@@ -278,8 +278,7 @@ vacuum_db <- function(db) {
 #' DBI::dbExecute(db1, "INSERT INTO Study VALUES ('study_1', 'default')")
 #' DBI::dbExecute(db1, "INSERT INTO Participant VALUES ('1', 'study_1')")
 #' DBI::dbExecute(db1, "INSERT INTO Activity VALUES(
-#'                '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')"
-#' )
+#'                '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')")
 #'
 #' # Then copy the first database to the second database
 #' copy_db(db1, db2)
@@ -296,7 +295,6 @@ copy_db <- function(
     source_db,
     target_db,
     sensor = "All") {
-
   check_db(source_db, arg = "source_db")
   check_db(target_db, arg = "target_db")
   check_arg(sensor, "character")

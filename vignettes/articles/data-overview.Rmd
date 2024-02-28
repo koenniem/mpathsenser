@@ -30,23 +30,23 @@ library(dplyr)
 library(mpathsenser)
 
 table_style <- function(kbl) {
-  kbl |> 
+  kbl |>
     kable_styling(
-      bootstrap_options = c("striped", "bordered"), 
-      full_width = TRUE, 
+      bootstrap_options = c("striped", "bordered"),
+      full_width = TRUE,
       fixed_thead = TRUE
-    ) |> 
-    row_spec(0, color = "white", background = "#0071ff") |> 
+    ) |>
+    row_spec(0, color = "white", background = "#0071ff") |>
     column_spec(1, extra_css = "font-family: 'Courier New';")
 }
 
 pop <- spec_popover(
-    content = paste(
-      "The type variable refers to the BLOB type in SQLite, which means that any type of data may", 
-      "be held by this field. This is commonly done when the original data type may be encrypted",
-      "and is therefore text-based, while the original values are not."
-    ),
-    position = "top"
+  content = paste(
+    "The type variable refers to the BLOB type in SQLite, which means that any type of data may",
+    "be held by this field. This is commonly done when the original data type may be encrypted",
+    "and is therefore text-based, while the original values are not."
+  ),
+  position = "top"
 )
 ```
 
@@ -69,8 +69,8 @@ tribble(
   ~Variable, ~Type, ~Description,
   "study_id", "character", "ID of the study.",
   "data_format", "character", "Name indicating which data format is used."
-) |> 
-  kbl(booktabs = TRUE) |> 
+) |>
+  kbl(booktabs = TRUE) |>
   table_style()
 ```
 
@@ -81,8 +81,8 @@ tribble(
   ~Variable, ~Type, ~Description,
   "participant_id", "character", "Unique ID of the participant.",
   "study_id", "character", "ID of the study."
-) |> 
-  kbl(booktabs = TRUE) |> 
+) |>
+  kbl(booktabs = TRUE) |>
   table_style()
 ```
 
@@ -95,10 +95,9 @@ tribble(
   "file_name", "character", "Name of the JSON file containing the raw data.",
   "participant_id", "character", "Unique ID of the participant.",
   "study_id", "character", "ID of the study."
-) |> 
-  kbl(booktabs = TRUE) |> 
+) |>
+  kbl(booktabs = TRUE) |>
   table_style()
-
 ```
 
 ## Sensor-specific tables
@@ -154,12 +153,12 @@ tribble(
   "x_energy", "double", "Energy of the signal along the x axis is computed by taking the mean of sum of squares of the values in a window in that particular axis.",
   "y_energy", "double", "Energy of the signal along the y axis is computed by taking the mean of sum of squares of the values in a window in that particular axis.",
   "z_energy", "double", "Energy of the signal along the z axis is computed by taking the mean of sum of squares of the values in a window in that particular axis.",
-  "avg_res_acc", "double", "Average resultant acceleration over the window is computed by taking average of the square roots of the values in each of the three axis squared and added together.", 
+  "avg_res_acc", "double", "Average resultant acceleration over the window is computed by taking average of the square roots of the values in each of the three axis squared and added together.",
   "sma", "double", "Signal magnitude area is defined as the sum of absolute values of the three axis averaged over a window."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
-  table_style() |> 
-  column_spec(1, color = c(rep("auto", 4), rep("red", 3), rep("auto", 41))) 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style() |>
+  column_spec(1, color = c(rep("auto", 4), rep("red", 3), rep("auto", 41)))
 ```
 
 ### Activity
@@ -181,8 +180,8 @@ tribble(
 	<li> STILL - The device is still (not moving).
 	<li> TILTING - The device angle relative to gravity changed significantly.
   </ul>"
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -249,10 +248,10 @@ tribble(
   "place", "character", "Name of the monitoring station.",
   "latitude", "variable", "Latitude of the monitoring station.",
   "longitude", "variable", "Longitude of the monitoring station."
-) |> 
-  mutate(Type = ifelse(Type == "variable", cell_spec(Type, popover = pop), Type)) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
-  table_style() |> 
+) |>
+  mutate(Type = ifelse(Type == "variable", cell_spec(Type, popover = pop), Type)) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style() |>
   column_spec(3, extra_css = "word-break: break-all;")
 ```
 
@@ -271,8 +270,8 @@ tribble(
   "app", "character", "The last part of the application package name. For instance, “com.facebook.katana” would become “katana”.",
   "package_name", "character", "The full application package name.",
   "last_foreground", "character", "The time at which the application was last in the foreground. If the app had not yet been in the foreground, this is NA. Represented as an ISO 8601 date."
-) |> 
-  kbl(booktabs = TRUE) |> 
+) |>
+  kbl(booktabs = TRUE) |>
   table_style()
 ```
 
@@ -286,8 +285,8 @@ tribble(
   "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
   "battery_level", "integer", "The battery level in percent.",
   "battery_status", "character", "The charging status of the battery: Full, charging, discharging, unknown."
-) |> 
-  kbl(booktabs = TRUE) |> 
+) |>
+  kbl(booktabs = TRUE) |>
   table_style()
 ```
 
@@ -314,8 +313,8 @@ tribble(
   "connectable", "boolean", "Is the device connectable? As SQLite does not support booleans, this is represented as an integer where  ‘0’ denotes false and ‘1’ denotes true.",
   "rssi", "integer", "The Received Signal Strength Indicator (RSSI) signal strength to the device in decibels referenced to one milliwatt (dBm) ranging from 0 to -100.",
   "tx_power_level", "integer", "The power level of the device in percentage."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -338,8 +337,8 @@ tribble(
   "all_day", "boolean", "Indicates if this is an all-day event.",
   "location", "character", "The location of this event.",
   "attendees", "character", "A list of attendees' name for this event. If multiple attendees are present, then these are separate by a comma."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -361,8 +360,8 @@ tribble(
     <li> none: Device not connected to any network
     <li> unknown (error)
   </ul>"
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -383,8 +382,8 @@ tribble(
   "platform", "character", "The platform type from which this Datum was collected. Either Android or iOS.",
   "operating_system_version", "character", "The version of the operating system.",
   "sdk", "character", "The version of the Sofware Development Kit (SDK) of Android or the iOS (Darwin) kernel."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -399,8 +398,8 @@ tribble(
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
   "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
   "message", "character", "An error message from a sensor."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -419,8 +418,8 @@ tribble(
   "name", "character", "The name of this geofence.",
   "radius", "double", "The radius of the geofence in meters.",
   "state", "character", "The possible states of a geofence event: enter, exit, dwell."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -435,8 +434,8 @@ tribble(
   "x", "double", "Rate of rotation around the x axis measured in rad/s. When the device is held upright, this can also be thought of as describing 'pitch'. The top of the device will tilt towards or away from the user as this value changes.",
   "y", "double", "Rate of rotation around the y axis measured in rad/s. When the device is held upright, this can also be thought of as describing 'yaw'. The lengthwise edge of the device will rotate towards or away from the user as this value changes.",
   "z", "double", "Rate of rotation around the z axis measured in rad/s. When the device is held upright, this can also be thought of as describing 'roll'. When this changes the face of the device should remain facing forward, but the orientation will change from portrait to landscape and so on."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -451,8 +450,8 @@ tribble(
   "period", "integer", "The period of heartbeats per minute. Defaults to 5 minutes.",
   "device_type", "character", "The type of device.",
   "device_role_name", "character", "The role name of the device in the protocol."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -466,8 +465,8 @@ tribble(
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
   "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
   "Installed apps", "character", "The name of an installed app."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -484,8 +483,8 @@ tribble(
   "start", "character", "Timestamp of when the first key is pressed. Represented as an ISO 8601 date.",
   "end", "character", "Timestamp of when the last key is pressed. Represented as an ISO 8601 date.",
   "body", "character", "The text body of the typed message."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -502,8 +501,8 @@ tribble(
   "std_lux", "double", "The standard deviation of the light intensity of the sample in lux.",
   "min_lux", "double", "The minimum light intensity of the sample in lux.",
   "max_lux", "double", "The maximum light intensity of the sample in lux."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -525,9 +524,9 @@ tribble(
   "heading", "double", "The heading in which the device is traveling in degrees. Only available on Android. The heading is not on all devices. In these cases the returned value is 0.0.",
   "heading_accuracy", "double", "The estimated bearing accuracy of this location, in degrees. Only available on Android.",
   "is_mock", "boolean", "Is the location currently mocked. Always false on iOS."
-) |> 
-  mutate(Type = ifelse(Type == "variable", cell_spec(Type, popover = pop), Type)) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  mutate(Type = ifelse(Type == "variable", cell_spec(Type, popover = pop), Type)) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -541,8 +540,8 @@ tribble(
   "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
   "free_physical_memory", "double", "Amount of free physical memory in bytes.",
   "free_virtual_memory", "double", "Amount of free virtual memory in bytes."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -561,8 +560,8 @@ tribble(
   "std_decibel", "double", "Standard deviation (in decibel) of sampling window.",
   "min_decibel", "double", "Minimum decibel of sampling window.",
   "max_decibel", "double", "Maximum decibel of sampling window."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -575,8 +574,8 @@ tribble(
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
   "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
   "step_count", "integer", "Cumulative number of steps as measured by the phone’s operating system since the last reboot."
-) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -607,7 +606,7 @@ tribble(
   "name", "character", "The name of the caller (if available).",
   "number", "character", "The phone number"
 ) |>
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -626,7 +625,7 @@ tribble(
     <li> SCREEN_UNLOCKED </li>
   </ul>"
 ) |>
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -661,7 +660,7 @@ tribble(
     <li> sent </li>
   </ul>"
 ) |>
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -675,8 +674,8 @@ tribble(
   "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
   "timezone", "character", "The current time zone of the device. See <a href='https://en.wikipedia.org/wiki/List_of_tz_database_time_zones'>https://en.wikipedia.org/wiki/List_of_tz_database_time_zones</a>"
 ) |>
-  kbl(booktabs = TRUE, escape = FALSE) |> 
-  table_style() |> 
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style() |>
   column_spec(3, extra_css = "word-break: break-all;")
 ```
 
@@ -709,8 +708,8 @@ tribble(
   "temp_min", "double", "Minimum temperature in Celsius at the moment. This is minimal currently observed temperature (within large megalopolises and urban areas).",
   "temp_max", "double", "Maximum temperature in Celsius at the moment. This is maximal currently observed temperature (within large megalopolises and urban areas)."
 ) |>
-  mutate(Type = ifelse(Type == "variable", cell_spec(Type, popover = pop), Type)) |> 
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+  mutate(Type = ifelse(Type == "variable", cell_spec(Type, popover = pop), Type)) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
@@ -726,6 +725,6 @@ tribble(
   "bssid", "character", "Basic service set identifier (BSSID) of the connected network.",
   "ip", "character", "The internet protocol (IP) address of the connected network."
 ) |>
-  kbl(booktabs = TRUE, escape = FALSE) |> 
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```

@@ -1,6 +1,6 @@
-#'Decrypt GPS data from a curve25519 public key
+#' Decrypt GPS data from a curve25519 public key
 #'
-#'@description `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("stable")`
 #'
 #'  By default, the latitude and longitude of the GPS data collected by m-Path Sense are encrypted
 #'  using an asymmetric curve25519 key to provide extra protection for these highly sensitive data.
@@ -17,39 +17,41 @@
 #' @export
 #'
 #' @examplesIf rlang::is_installed("sodium")
-#'library(dplyr)
-#'library(sodium)
-#'# Create some GPS  coordinates.
-#'data <- data.frame(
-#'  participant_id = "12345",
-#'  time = as.POSIXct(c("2022-12-02 12:00:00",
-#'                      "2022-12-02 12:00:01",
-#'                      "2022-12-02 12:00:02")),
-#'  longitude = c("50.12345", "50.23456", "50.34567"),
-#'  latitude = c("4.12345", "4.23456", "4.345678")
-#')
+#' library(dplyr)
+#' library(sodium)
+#' # Create some GPS  coordinates.
+#' data <- data.frame(
+#'   participant_id = "12345",
+#'   time = as.POSIXct(c(
+#'     "2022-12-02 12:00:00",
+#'     "2022-12-02 12:00:01",
+#'     "2022-12-02 12:00:02"
+#'   )),
+#'   longitude = c("50.12345", "50.23456", "50.34567"),
+#'   latitude = c("4.12345", "4.23456", "4.345678")
+#' )
 #'
-#'# Generate keypair
-#'key <- sodium::keygen()
-#'pub <- sodium::pubkey(key)
+#' # Generate keypair
+#' key <- sodium::keygen()
+#' pub <- sodium::pubkey(key)
 #'
-#'# Encrypt coordinates with pubkey
-#'# You do not need to do this for m-Path Sense
-#'# as this is already encrypted
-#'encrypt <- function(data, pub) {
-#'  data <- lapply(data, charToRaw)
-#'  data <- lapply(data, function(x) sodium::simple_encrypt(x, pub))
-#'  data <- lapply(data, sodium::bin2hex)
-#'  data <- unlist(data)
-#'  data
-#'}
-#'data$longitude <- encrypt(data$longitude, pub)
-#'data$latitude <- encrypt(data$latitude, pub)
+#' # Encrypt coordinates with pubkey
+#' # You do not need to do this for m-Path Sense
+#' # as this is already encrypted
+#' encrypt <- function(data, pub) {
+#'   data <- lapply(data, charToRaw)
+#'   data <- lapply(data, function(x) sodium::simple_encrypt(x, pub))
+#'   data <- lapply(data, sodium::bin2hex)
+#'   data <- unlist(data)
+#'   data
+#' }
+#' data$longitude <- encrypt(data$longitude, pub)
+#' data$latitude <- encrypt(data$latitude, pub)
 #'
-#'# Once the data has been collected, decrypt it using decrypt_gps().
-#'data |>
-#'  mutate(longitude = decrypt_gps(longitude, key)) |>
-#'  mutate(latitude = decrypt_gps(latitude, key))
+#' # Once the data has been collected, decrypt it using decrypt_gps().
+#' data |>
+#'   mutate(longitude = decrypt_gps(longitude, key)) |>
+#'   mutate(latitude = decrypt_gps(latitude, key))
 decrypt_gps <- function(data, key, ignore = ":") {
   ensure_suggested_package("sodium")
   check_arg(data, "character")
@@ -178,12 +180,14 @@ geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1, format 
   args <- lapply(args, function(x) paste0(names(x), "=", x, collapse = "&"))
   query <- lapply(args, function(x) paste0(base_query, x))
   lapply(query, function(x) {
-
-    res <- suppressWarnings(tryCatch({
-      jsonlite::fromJSON(x)
-    }, error = \(e) {
-      NA
-    }))
+    res <- suppressWarnings(tryCatch(
+      {
+        jsonlite::fromJSON(x)
+      },
+      error = \(e) {
+        NA
+      }
+    ))
 
     if (length(args) > 1) {
       Sys.sleep(rate_limit)

@@ -391,5 +391,4 @@ test_that("add_gaps", {
   )
   expect_equal(res, true)
   expect_equal(res_continue, true)
-
 })

@@ -9,7 +9,6 @@ link_impl <- function(x,
                       add_before,
                       add_after,
                       name) {
-
   # Force variables to be evaluated, or somehow it cannot be found later on.
   force(add_before)
   force(add_after)
@@ -103,7 +102,7 @@ link_impl <- function(x,
       dplyr::anti_join(equal_to_end, by = ".row_id") |>
       filter(.data$.y_time > .data$.end_time) |>
       group_by(.data$.row_id) |>
-      dplyr::slice_min(order_by =  .data$.y_time, n = 1, with_ties = TRUE) |>
+      dplyr::slice_min(order_by = .data$.y_time, n = 1, with_ties = TRUE) |>
       ungroup() |>
       mutate(across(dplyr::all_of(y_time), .names = "original_time")) |>
       mutate({{ y_time }} := lubridate::as_datetime(.data$.end_time, tz = tz)) |>
@@ -139,12 +138,15 @@ link_impl <- function(x,
   }
 
   res <- data_main |>
-    mutate({{ name }} := ifelse(test = lapply(X = !!rlang::ensym(name),
-                                              FUN = \(x) {
-                                                is.null(x) || identical(x, NA) || nrow(x) == 0
-                                              }),
-                                yes = list(proto),
-                                no = !!rlang::ensym(name))) |>
+    mutate({{ name }} := ifelse(test = lapply(
+      X = !!rlang::ensym(name),
+      FUN = \(x) {
+        is.null(x) || identical(x, NA) || nrow(x) == 0
+      }
+    ),
+    yes = list(proto),
+    no = !!rlang::ensym(name)
+    )) |>
     select(-".row_id")
 
   res
@@ -321,15 +323,21 @@ link_impl <- function(x,
 #' # without using fixed offsets.
 #' x <- data.frame(
 #'   start_time = rep(
-#'     x = as.POSIXct(c("2021-11-14 12:40:00",
-#'                      "2021-11-14 13:30:00",
-#'                      "2021-11-14 15:00:00")),
-#'     times = 2),
+#'     x = as.POSIXct(c(
+#'       "2021-11-14 12:40:00",
+#'       "2021-11-14 13:30:00",
+#'       "2021-11-14 15:00:00"
+#'     )),
+#'     times = 2
+#'   ),
 #'   end_time = rep(
-#'     x = as.POSIXct(c("2021-11-14 13:20:00",
-#'                      "2021-11-14 14:10:00",
-#'                      "2021-11-14 15:30:00")),
-#'     times = 2),
+#'     x = as.POSIXct(c(
+#'       "2021-11-14 13:20:00",
+#'       "2021-11-14 14:10:00",
+#'       "2021-11-14 15:30:00"
+#'     )),
+#'     times = 2
+#'   ),
 #'   participant_id = c(rep("12345", 3), rep("23456", 3)),
 #'   item_one = rep(c(40, 50, 60), 2)
 #' )
@@ -367,11 +375,16 @@ link <- function(x,
       when = "1.1.2",
       what = "link(time = 'must not be missing')",
       details = c(
-        i = paste("Due to backwards compatiblity, `time` defaults to",
-                  "'time' for now."),
-        i = paste("Please make this argument explicit to prevent your",
-                  "code from breaking in a future version.")
-      ))
+        i = paste(
+          "Due to backwards compatiblity, `time` defaults to",
+          "'time' for now."
+        ),
+        i = paste(
+          "Please make this argument explicit to prevent your",
+          "code from breaking in a future version."
+        )
+      )
+    )
     time <- "time"
   }
 
@@ -380,11 +393,16 @@ link <- function(x,
       when = "1.1.2",
       what = "link(y_time = 'must not be missing')",
       details = c(
-        i = paste("Due to backwards compatiblity, `y_time` defaults to",
-                  "'time' for now."),
-        i = paste("Please make this argument explicit to prevent your",
-                  "code from breaking in a future version.")
-      ))
+        i = paste(
+          "Due to backwards compatiblity, `y_time` defaults to",
+          "'time' for now."
+        ),
+        i = paste(
+          "Please make this argument explicit to prevent your",
+          "code from breaking in a future version."
+        )
+      )
+    )
     y_time <- "time"
   }
 
@@ -444,17 +462,19 @@ link <- function(x,
 
   x |>
     furrr::future_map(
-      ~ link_impl(x = .x,
-                  y = y,
-                  by = by,
-                  start_time = start_time,
-                  end_time = end_time,
-                  y_time = y_time,
-                  offset_before = offset_before,
-                  offset_after = offset_after,
-                  add_before = add_before,
-                  add_after = add_after,
-                  name = name),
+      ~ link_impl(
+        x = .x,
+        y = y,
+        by = by,
+        start_time = start_time,
+        end_time = end_time,
+        y_time = y_time,
+        offset_before = offset_before,
+        offset_after = offset_after,
+        add_before = add_before,
+        add_after = add_after,
+        name = name
+      ),
       .options = furrr::furrr_options(seed = TRUE)
     ) |>
     bind_rows()
@@ -498,8 +518,10 @@ link <- function(x,
 #' link_db(db, "accelerometer", "gyroscope", offset_before = 300, offset_after = 300)
 #'
 #' # Link a sensor with an external data frame
-#' link_db(db, "accelerometer", external = my_external_data,
-#' external_time = "time", offset_before = 300, offset_after = 300)
+#' link_db(db, "accelerometer",
+#'   external = my_external_data,
+#'   external_time = "time", offset_before = 300, offset_after = 300
+#' )
 #' }
 link_db <- function(db,
                     sensor_one,
@@ -640,9 +662,9 @@ link_db <- function(db,
 #'
 #' # Create some gaps
 #' gaps <- data.frame(
-#'  from = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:00:00")),
-#'  to = as.POSIXct(c("2021-11-14 13:30:00", "2021-11-14 14:30:00")),
-#'  participant_id = c("12345", "23456")
+#'   from = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:00:00")),
+#'   to = as.POSIXct(c("2021-11-14 13:30:00", "2021-11-14 14:30:00")),
+#'   participant_id = c("12345", "23456")
 #' )
 #'
 #' # Link the gaps to the data
@@ -664,7 +686,6 @@ link_gaps <- function(
     offset_before = 0,
     offset_after = 0,
     raw_data = FALSE) {
-
   # Argument checking
   check_arg(data, type = "data.frame")
   check_arg(gaps, type = "data.frame")
@@ -776,7 +797,6 @@ link_intervals <- function(
     y, y_start, y_end,
     by = NULL,
     name = "data") {
-
   check_arg(x, "data.frame")
   check_arg(y, "data.frame")
   check_arg(by, "character", allow_null = TRUE)
@@ -786,7 +806,6 @@ link_intervals <- function(
 
   # Calculate which values in y are within x's bounds
   if (length(by) == 0 && utils::packageVersion("dplyr") >= "1.1.0") {
-
     res <- dplyr::cross_join(x, y)
   } else {
     join_by <- dplyr::join_by(
@@ -801,7 +820,7 @@ link_intervals <- function(
     filter(
       (
         (is.na({{ y_end }} & {{ y_start }} >= {{ x_start }} & {{ y_start }} < {{ x_end }})) &
-        (is.na({{ y_start }} & {{ y_end }} >= {{ x_start }} & {{ y_end }} < {{ x_end }}))
+          (is.na({{ y_start }} & {{ y_end }} >= {{ x_start }} & {{ y_end }} < {{ x_end }}))
       ) |
         ({{ y_start }} < {{ x_end }} & {{ y_end }} > {{ x_start }})
     )
@@ -820,12 +839,13 @@ link_intervals <- function(
 
   out <- x |>
     dplyr::nest_join(res,
-                     by = c(
-                       by,
-                       colnames(mutate(ungroup(x), {{ x_start }}, .keep = "used")),
-                       colnames(mutate(ungroup(x), {{ x_end }}, .keep = "used"))
-                     ),
-                     name = name)
+      by = c(
+        by,
+        colnames(mutate(ungroup(x), {{ x_start }}, .keep = "used")),
+        colnames(mutate(ungroup(x), {{ x_end }}, .keep = "used"))
+      ),
+      name = name
+    )
   out
 }
 
@@ -969,14 +989,14 @@ bin_data <- function(data,
   if (fixed) {
     out <- out |>
       mutate(bin_start = trunc(.data$bin_start, by))
-      # mutate(bin_start = lubridate::floor_date(.data$bin_start, by))
+    # mutate(bin_start = lubridate::floor_date(.data$bin_start, by))
   }
 
   out <- out |>
     distinct() |>
     drop_na("bin_start")
 
-  if (utils::packageVersion("dplyr") >= "1.1.0") {# nocov start
+  if (utils::packageVersion("dplyr") >= "1.1.0") { # nocov start
     groups <- dplyr::group_vars(out)
     out <- out |>
       dplyr::reframe(bin_start = seq.POSIXt(
@@ -996,7 +1016,7 @@ bin_data <- function(data,
         to = max(.data$bin_start, na.rm = TRUE) + by_duration,
         by = by_duration
       ))
-  } #nocov end
+  } # nocov end
 
   if (by == "day") {
     out <- out |>

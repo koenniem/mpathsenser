@@ -91,7 +91,7 @@ safe_tibble <- function(...) {
 #' )
 #' class(x) <- c("activity", class(x))
 #' mpathsenser:::unpack_sensor_data(x)
-unpack_sensor_data <- function(data, ...){
+unpack_sensor_data <- function(data, ...) {
   rlang::check_dots_empty()
   UseMethod("unpack_sensor_data")
 }
@@ -451,7 +451,7 @@ unpack_sensor_data.light <- function(data, ...) {
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
     time = substr(data$time, 12, 23),
-    end_time =  data$end_time,
+    end_time = data$end_time,
     mean_lux = data$mean_lux,
     std_lux = data$std_lux,
     min_lux = data$min_lux,
@@ -517,7 +517,7 @@ unpack_sensor_data.noise <- function(data, ...) {
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
     time = substr(data$time, 12, 23),
-    end_time =  data$end_time,
+    end_time = data$end_time,
     mean_decibel = data$mean_decibel,
     std_decibel = data$std_decibel,
     min_decibel = data$min_decibel,

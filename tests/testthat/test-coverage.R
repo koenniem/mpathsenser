@@ -5,16 +5,20 @@ test_that("coverage", {
   # Working cases
   expect_s3_class(coverage(db, "12345"), "tbl_df")
   expect_s3_class(coverage(db, "12345", sensor = c("Accelerometer", "Gyroscope")), "tbl_df")
-  expect_warning(coverage(db, "12345", plot = TRUE),
-                 "The `plot` argument of `coverage\\(\\)` is deprecated as of mpathsenser 1.1.1.")
+  expect_warning(
+    coverage(db, "12345", plot = TRUE),
+    "The `plot` argument of `coverage\\(\\)` is deprecated as of mpathsenser 1.1.1."
+  )
   expect_s3_class(
     coverage(db, "12345", start_date = "2021-11-13", end_date = "2021-11-14"),
     "tbl_df"
   )
 
   # Sensors
-  expect_error(coverage(db, "12345", sensor = "foo"),
-               "Sensor\\(s\\) \"foo\" could not be found.")
+  expect_error(
+    coverage(db, "12345", sensor = "foo"),
+    "Sensor\\(s\\) \"foo\" could not be found."
+  )
 
   # participant_id
   expect_error(coverage(db, "-1"), "Participant_id not known.")

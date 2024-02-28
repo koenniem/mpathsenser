@@ -88,7 +88,6 @@ fix_jsons <- function(
     path = getwd(),
     files = NULL,
     recursive = TRUE) {
-
   ensure_suggested_package("vroom")
 
   check_arg(path, "character", n = 1, allow_null = TRUE)
@@ -225,7 +224,7 @@ fix_eof <- function(file, eof, lines) {
     # 8: Is the last line long (>3) and are the last two characters "}}"? Then somehow all
     # we are missing is a closing bracket.
     write("]", file, append = TRUE)
-  } else if (nchar(eof[2]) > 10 & substr(eof[2], nchar(eof[2]) - 2, nchar(eof[2])) == "}}," & last == "]"){
+  } else if (nchar(eof[2]) > 10 & substr(eof[2], nchar(eof[2]) - 2, nchar(eof[2])) == "}}," & last == "]") {
     # 9: The second to last line is a full line (i.e. of a certain length, let's say 10), has a
     # starting and end curly bracket, and a trailing comma before the last character of the file,
     # the trailing square bracket. This can be fixed by removing the comman from the second to last
@@ -283,7 +282,6 @@ test_jsons <- function(
     files = NULL,
     db = NULL,
     recursive = TRUE) {
-
   check_arg(path, "character", n = 1, allow_null = TRUE)
   check_arg(files, "character", allow_null = TRUE)
   check_arg(recursive, "logical", n = 1)
@@ -370,20 +368,19 @@ test_jsons <- function(
 #'
 #' # Unzip specific files
 #' unzip_data(
-#'  path = "path/to/zipfiles",
-#'  to = "path/to/unzipped",
-#'  files = c("file1.zip", "file2.zip")
+#'   path = "path/to/zipfiles",
+#'   to = "path/to/unzipped",
+#'   files = c("file1.zip", "file2.zip")
 #' )
 #'
 #' # Unzip files in a directory, but skip those that are already unzipped
-#' unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", overwrite = FALSE
+#' unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", overwrite = FALSE)
 #' }
 unzip_data <- function(
     path = getwd(),
     to = NULL,
     overwrite = FALSE,
     recursive = TRUE) {
-
   check_arg(path, "character", n = 1)
   check_arg(to, "character", allow_null = TRUE, n = 1)
   check_arg(overwrite, "logical", n = 1)

@@ -131,11 +131,11 @@ test_that("safe_tibble", {
 # Accelerometer =========
 test_that("accelerometer", {
   col_names <- c(
-    "n","x_mean","y_mean","z_mean","x_median","y_median","z_median","x_std","y_std","z_std","x_aad",
-    "y_aad","z_aad","x_min","y_min","z_min","x_max","y_max","z_max","x_max_min_diff",
-    "y_max_min_diff","z_max_min_diff","x_mad","y_mad","z_mad","x_iqr","y_iqr","z_iqr","x_neg_n",
-    "y_neg_n","z_neg_n","x_pos_n","y_pos_n","z_pos_n","x_above_mean","y_above_mean","z_above_mean",
-    "x_energy","y_energy","z_energy","avg_res_acc","sma"
+    "n", "x_mean", "y_mean", "z_mean", "x_median", "y_median", "z_median", "x_std", "y_std", "z_std", "x_aad",
+    "y_aad", "z_aad", "x_min", "y_min", "z_min", "x_max", "y_max", "z_max", "x_max_min_diff",
+    "y_max_min_diff", "z_max_min_diff", "x_mad", "y_mad", "z_mad", "x_iqr", "y_iqr", "z_iqr", "x_neg_n",
+    "y_neg_n", "z_neg_n", "x_pos_n", "y_pos_n", "z_pos_n", "x_above_mean", "y_above_mean", "z_above_mean",
+    "x_energy", "y_energy", "z_energy", "avg_res_acc", "sma"
   )
 
   unit_test(
@@ -228,7 +228,7 @@ test_that("activity", {
 
 # Air Quality ===========
 test_that("air_quality", {
-  col_names = c("air_quality_index", "air_quality_level", "source", "place", "latitude", "longitude")
+  col_names <- c("air_quality_index", "air_quality_level", "source", "place", "latitude", "longitude")
 
   new_names <- c(
     air_quality_index = "airQualityIndex",
@@ -604,7 +604,7 @@ test_that("error", {
 
 # Geofence ==========
 test_that("geofence", {
-  .cols = c("center", "dwell", "name", "radius", "state")
+  .cols <- c("center", "dwell", "name", "radius", "state")
 
   unit_test(
     "geofence",
@@ -623,8 +623,8 @@ test_that("geofence", {
 })
 
 # Gyroscope ============
-test_that("gyroscope",{
-  .cols = c("x", "y", "z")
+test_that("gyroscope", {
+  .cols <- c("x", "y", "z")
 
   unit_test(
     "gyroscope",
@@ -719,7 +719,7 @@ test_that("light", {
 
 # Location ===============
 test_that("location", {
-  .cols = c(
+  .cols <- c(
     "latitude", "longitude", "altitude", "accuracy", "vertical_accuracy", "speed",
     "speed_accuracy", "heading", "heading_accuracy", "is_mock"
   )

@@ -13,7 +13,6 @@ check_db <- function(db,
                      allow_null = FALSE,
                      arg = rlang::caller_arg(db),
                      call = rlang::caller_env()) {
-
   rlang::check_required(db, arg = arg, call = call)
 
   if (allow_null && rlang::is_null(db)) {
@@ -48,7 +47,6 @@ check_arg <- function(x,
                       allow_null = FALSE,
                       arg = rlang::caller_arg(x),
                       call = rlang::caller_env()) {
-
   rlang::check_required(x, arg = arg, call = call)
 
   if (allow_null && rlang::is_null(x)) {
@@ -131,21 +129,24 @@ check_sensors <- function(x,
 
 check_offset <- function(offset_before, offset_after, call = rlang::caller_env()) {
   if ((is.null(offset_before) || all(offset_before == 0)) &&
-      (is.null(offset_after) || all(offset_after == 0))) {
+    (is.null(offset_after) || all(offset_after == 0))) {
     return(abort("`offset_before` and `offset_after` cannot be 0 or NULL at the same time.",
-          call = call))
+      call = call
+    ))
   }
   if (!is.null(offset_before) && !(is.character(offset_before) ||
-                                   lubridate::is.period(offset_before) ||
-                                   is.numeric(offset_before))) {
+    lubridate::is.period(offset_before) ||
+    is.numeric(offset_before))) {
     return(abort("`offset_before` must be a character vector, numeric vector, or a period.",
-          call = call))
+      call = call
+    ))
   }
   if (!is.null(offset_after) && !(is.character(offset_after) ||
-                                  lubridate::is.period(offset_after) ||
-                                  is.numeric(offset_after))) {
+    lubridate::is.period(offset_after) ||
+    is.numeric(offset_after))) {
     return(abort("`offset_after` must be a character vector, numeric vector, or a period.",
-          call = call))
+      call = call
+    ))
   }
 
   # Convert offset_before to integer time

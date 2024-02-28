@@ -12,13 +12,15 @@ test_that("link", {
     x = rep(1:30, 2)
   )
 
-  res <- link(x = dat1,
-              y = dat2,
-              by = "participant_id",
-              time = "time",
-              y_time = "time",
-              offset_before = 1800,
-              split = NULL)
+  res <- link(
+    x = dat1,
+    y = dat2,
+    by = "participant_id",
+    time = "time",
+    y_time = "time",
+    offset_before = 1800,
+    split = NULL
+  )
   true <- tibble::tibble(
     time = rep(c(
       as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
@@ -54,34 +56,40 @@ test_that("link", {
 
   # Test warning if time and y_time are not specified
   lifecycle::expect_deprecated(
-    link(x = dat1,
-         y = dat2,
-         by = "participant_id",
-         y_time = "time",
-         offset_before = 1800,
-         split = NULL),
+    link(
+      x = dat1,
+      y = dat2,
+      by = "participant_id",
+      y_time = "time",
+      offset_before = 1800,
+      split = NULL
+    ),
     "The `time` argument of `link\\(\\)` must not be missing as of mpathsenser 1.1.2."
   )
 
   lifecycle::expect_deprecated(
-    link(x = dat1,
-         y = dat2,
-         by = "participant_id",
-         time = "time",
-         offset_before = 1800,
-         split = NULL),
+    link(
+      x = dat1,
+      y = dat2,
+      by = "participant_id",
+      time = "time",
+      offset_before = 1800,
+      split = NULL
+    ),
     "The `y_time` argument of `link\\(\\)` must not be missing as of mpathsenser 1.1.2."
   )
 
   # Test x and y identical
   expect_error(
-    link(x = dat1,
-         y = dat1,
-         by = "participant_id",
-         time = "time",
-         y_time = "time",
-         offset_before = 1800,
-         split = NULL),
+    link(
+      x = dat1,
+      y = dat1,
+      by = "participant_id",
+      time = "time",
+      y_time = "time",
+      offset_before = 1800,
+      split = NULL
+    ),
     "`x` and `y` are identical."
   )
 
@@ -89,12 +97,14 @@ test_that("link", {
   res2 <- dat1 %>%
     dplyr::rename(end_time = time) %>%
     mutate(start_time = end_time - 1800) %>%
-    link(x = .,
-         y = dat2,
-         by = "participant_id",
-         time = start_time,
-         end_time = end_time,
-         y_time = time)
+    link(
+      x = .,
+      y = dat2,
+      by = "participant_id",
+      time = start_time,
+      end_time = end_time,
+      y_time = time
+    )
   true2 <- true
   true2$start_time <- true2$time - 1800
   true2 <- select(true2, end_time = time, participant_id, item_one, start_time, data)
@@ -105,24 +115,28 @@ test_that("link", {
     dat1 %>%
       dplyr::rename(end_time = time) %>%
       mutate(start_time = end_time - 1800) %>%
-      link(x = .,
-           y = dat2,
-           by = "participant_id",
-           time = start_time,
-           end_time = end_time,
-           y_time = time,
-           offset_before = 1800),
+      link(
+        x = .,
+        y = dat2,
+        by = "participant_id",
+        time = start_time,
+        end_time = end_time,
+        y_time = time,
+        offset_before = 1800
+      ),
     "`end_time` and `offset_before` or `offset_after` cannot be used at the same time."
   )
 
   # Test split argument
-  res <- link(x = dat1,
-              y = dat2,
-              by = "participant_id",
-              time = time,
-              y_time = time,
-              offset_before = 1800,
-              split = 6)
+  res <- link(
+    x = dat1,
+    y = dat2,
+    by = "participant_id",
+    time = time,
+    y_time = time,
+    offset_before = 1800,
+    split = 6
+  )
   expect_equal(res, true)
 
   # Scrambled test
@@ -130,21 +144,25 @@ test_that("link", {
     idx <- sample(seq_along(data[, 1]), nrow(data))
     data[idx, ]
   }
-  res <- link(x = scramble(dat1),
-              y = scramble(dat2),
-              by = "participant_id",
-              time = time,
-              y_time = time,
-              offset_before = 1800) %>%
+  res <- link(
+    x = scramble(dat1),
+    y = scramble(dat2),
+    by = "participant_id",
+    time = time,
+    y_time = time,
+    offset_before = 1800
+  ) %>%
     arrange(participant_id, time)
   expect_equal(res, true)
 
-  res <- link(x = dat1,
-              y = dat2,
-              by = "participant_id",
-              time = time,
-              y_time = time,
-              offset_after = 1800)
+  res <- link(
+    x = dat1,
+    y = dat2,
+    by = "participant_id",
+    time = time,
+    y_time = time,
+    offset_after = 1800
+  )
   true <- tibble::tibble(
     time = rep(c(
       as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
@@ -178,12 +196,14 @@ test_that("link", {
   )
   expect_equal(res, true)
 
-  res <- link(x = scramble(dat1),
-              y = scramble(dat2),
-              by = "participant_id",
-              time = time,
-              y_time = time,
-              offset_after = 1800) %>%
+  res <- link(
+    x = scramble(dat1),
+    y = scramble(dat2),
+    by = "participant_id",
+    time = time,
+    y_time = time,
+    offset_after = 1800
+  ) %>%
     arrange(participant_id, time)
   expect_equal(res, true)
 
@@ -192,14 +212,16 @@ test_that("link", {
   # This is due to new functionality where a row is not added if the first measurements in an
   # interval is equal to the start time
   dat2$time <- dat2$time + lubridate::minutes(1)
-  res <- link(x = dat1,
-              y = dat2,
-              by = "participant_id",
-              time = time,
-              y_time = time,
-              offset_before = 1800,
-              add_before = TRUE,
-              add_after = TRUE)
+  res <- link(
+    x = dat1,
+    y = dat2,
+    by = "participant_id",
+    time = time,
+    y_time = time,
+    offset_before = 1800,
+    add_before = TRUE,
+    add_after = TRUE
+  )
   true <- tibble::tibble(
     time = rep(c(
       as.POSIXct("2021-11-14 13:00:00"), as.POSIXct("2021-11-14 14:00:00"),
@@ -262,14 +284,16 @@ test_that("link", {
   res2 <- dat1 %>%
     dplyr::rename(end_time = time) %>%
     mutate(start_time = end_time - 1800) %>%
-    link(x = .,
-         y = dat2,
-         by = "participant_id",
-         time = start_time,
-         end_time = end_time,
-         y_time = time,
-         add_before = TRUE,
-         add_after = TRUE)
+    link(
+      x = .,
+      y = dat2,
+      by = "participant_id",
+      time = start_time,
+      end_time = end_time,
+      y_time = time,
+      add_before = TRUE,
+      add_after = TRUE
+    )
   true$start_time <- true$time - 1800
   true <- select(true, end_time = time, participant_id, item_one, start_time, data)
   expect_equal(res2, true)
@@ -337,19 +361,25 @@ test_that("link", {
 
   # Check that timezones stay consistent, even with add_before and add_after
   dat1 <- data.frame(
-    time = rep(seq.POSIXt(as.POSIXct("2021-11-14 13:00:00", tz = "Europe/Brussels"),
-                          by = "1 hour",
-                          length.out = 3),
-               2),
+    time = rep(
+      seq.POSIXt(as.POSIXct("2021-11-14 13:00:00", tz = "Europe/Brussels"),
+        by = "1 hour",
+        length.out = 3
+      ),
+      2
+    ),
     participant_id = c(rep("12345", 3), rep("23456", 3)),
     item_one = rep(c(40, 50, 60), 2)
   )
 
   dat2 <- data.frame(
-    time = rep(seq.POSIXt(as.POSIXct("2021-11-14 11:00:00", tz = "UTC"),
-                          by = "10 mins",
-                          length.out = 40),
-               2),
+    time = rep(
+      seq.POSIXt(as.POSIXct("2021-11-14 11:00:00", tz = "UTC"),
+        by = "10 mins",
+        length.out = 40
+      ),
+      2
+    ),
     participant_id = c(rep("12345", 40), rep("23456", 40)),
     x = rep(1:2, 2)
   )
@@ -364,8 +394,8 @@ test_that("link", {
     add_after = TRUE
   )
   expect_equal(attr(res$time, "tz"), "Europe/Brussels")
-  expect_equal(unique(map_chr(res$data, ~attr(.x$time, "tz"))), "UTC")
-  expect_equal(unique(map_chr(res$data, ~attr(.x$original_time, "tz"))), "UTC")
+  expect_equal(unique(map_chr(res$data, ~ attr(.x$time, "tz"))), "UTC")
+  expect_equal(unique(map_chr(res$data, ~ attr(.x$original_time, "tz"))), "UTC")
 
   # Make sure link does not add an extra row if first measurement equal start of the interval or
   # vice versa for the end of the interval.
@@ -376,9 +406,11 @@ test_that("link", {
   )
 
   dat2 <- data.frame(
-    time = as.POSIXct(c("2021-11-14 10:20:00", "2021-11-14 10:30:00", "2021-11-14 10:40:00",
-                        "2021-11-14 11:00:00", "2021-11-14 11:10:00", "2021-11-14 11:30:01",
-                        "2021-11-14 11:40:00", "2021-11-14 12:10:00")),
+    time = as.POSIXct(c(
+      "2021-11-14 10:20:00", "2021-11-14 10:30:00", "2021-11-14 10:40:00",
+      "2021-11-14 11:00:00", "2021-11-14 11:10:00", "2021-11-14 11:30:01",
+      "2021-11-14 11:40:00", "2021-11-14 12:10:00"
+    )),
     participant_id = "12345",
     x = 1:8
   )
@@ -394,8 +426,10 @@ test_that("link", {
         original_time = as.POSIXct(c(NA, NA, NA))
       ),
       tibble::tibble(
-        time = as.POSIXct(c("2021-11-14 11:30:00", "2021-11-14 11:30:01", "2021-11-14 11:40:00",
-                            "2021-11-14 12:00:00")),
+        time = as.POSIXct(c(
+          "2021-11-14 11:30:00", "2021-11-14 11:30:01", "2021-11-14 11:40:00",
+          "2021-11-14 12:00:00"
+        )),
         x = c(5, 6, 7, 8),
         original_time = as.POSIXct(c("2021-11-14 11:10:00", NA, NA, "2021-11-14 12:10:00"))
       )
@@ -430,7 +464,8 @@ test_that("link", {
     end_time = end_time,
     y_time = time,
     add_before = TRUE,
-    add_after = TRUE)
+    add_after = TRUE
+  )
 
   true <- tibble::tibble(
     time = as.POSIXct(c("2021-11-14 11:00:00", "2021-11-14 12:00:00")),
@@ -439,19 +474,21 @@ test_that("link", {
     end_time = as.POSIXct(c("2021-11-14 12:00:00", NA)),
     data = list(
       tibble::tibble(
-        time = as.POSIXct(c("2021-11-14 11:00:00", "2021-11-14 11:10:00", "2021-11-14 11:30:00",
-                            "2021-11-14 11:40:00", "2021-11-14 12:00:00")),
+        time = as.POSIXct(c(
+          "2021-11-14 11:00:00", "2021-11-14 11:10:00", "2021-11-14 11:30:00",
+          "2021-11-14 11:40:00", "2021-11-14 12:00:00"
+        )),
         x = c(4, 5, 6, 7, 8),
         original_time = as.POSIXct(c(NA, NA, NA, NA, "2021-11-14 12:10:00"))
       ),
       tibble::tibble(
         time = as.POSIXct(double(0)),
         x = integer(0),
-        original_time = as.POSIXct(double(0)))
+        original_time = as.POSIXct(double(0))
+      )
     )
   )
   expect_equal(res, true)
-
 })
 
 ## link_db ===============
@@ -460,7 +497,7 @@ test_that("link_db", {
   db <- open_db(path, "test.db")
   dat1 <- data.frame(
     time = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:00:00", "2021-11-14 15:00:00"),
-                      tz = "UTC"
+      tz = "UTC"
     ),
     participant_id = "12345",
     item_one = c(40, 50, 60)
@@ -482,7 +519,7 @@ test_that("link_db", {
     ),
     participant_id = "12345",
     time = as.POSIXct(c("2021-11-14 13:59:59", "2021-11-14 14:00:00", "2021-11-14 14:00:01"),
-                      tz = "UTC"
+      tz = "UTC"
     ),
     confidence = c(NA, 100L, 99L),
     type = c(NA, "WALKING", "STILL"),
@@ -601,8 +638,8 @@ test_that("link_db", {
 
   sens_value <- seq.int(0, 10, length.out = 50001)
   time_value <- seq.POSIXt(as.POSIXct("2021-11-14 14:00:00.000", format = "%F %H:%M:%OS"),
-                           by = "sec",
-                           length.out = 50001
+    by = "sec",
+    length.out = 50001
   )
   acc <- data.frame(
     measurement_id = paste0("id_", 1:50001),
@@ -1207,7 +1244,7 @@ test_that("bin_data", {
   duration <- purrr::map_dbl(
     .x = res$bin_data,
     .f = ~ sum(as.double(.x$lead) - as.double(.x$datetime),
-               na.rm = TRUE
+      na.rm = TRUE
     ) / 60
   )
 
@@ -1251,9 +1288,13 @@ test_that("bin_data", {
   # Test bug #8: bin_data() incorrectly rounded off days after DST change
   data <- tibble::tibble(
     participant_id = 1,
-    datetime = as.POSIXct(c("2022-10-30 15:00:00", "2022-10-30 15:55:00",
-                            "2022-10-31 17:05:00", "2022-10-31 17:10:00"),
-                          tz = "Europe/Brussels"),
+    datetime = as.POSIXct(
+      c(
+        "2022-10-30 15:00:00", "2022-10-30 15:55:00",
+        "2022-10-31 17:05:00", "2022-10-31 17:10:00"
+      ),
+      tz = "Europe/Brussels"
+    ),
     confidence = 100,
     type = "WALKING"
   )

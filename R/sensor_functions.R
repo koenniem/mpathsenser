@@ -42,14 +42,12 @@
 #' get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
 #' }
 #'
-#'
 get_data <- function(
     db,
     sensor,
     participant_id = NULL,
     start_date = NULL,
     end_date = NULL) {
-
   check_db(db)
   check_sensors(sensor, n = 1)
   check_arg(participant_id, type = c("character", "integerish"), allow_null = TRUE)
@@ -388,10 +386,13 @@ app_usage <- function(
     when = "1.1.2",
     what = "app_usage()",
     details = c(
-      i = paste("`app_usage()` is defunctional for now, as it",
-                "is unclear how this function should behave."),
+      i = paste(
+        "`app_usage()` is defunctional for now, as it",
+        "is unclear how this function should behave."
+      ),
       i = "It will be reimplemented in mpathsenser 2.0.0."
-    ))
+    )
+  )
 }
 
 #' Get a summary of physical activity (recognition)
@@ -420,15 +421,17 @@ activity_duration <- function(
     start_date = NULL,
     end_date = NULL,
     by = c("Total", "Day", "Hour")) {
-
   lifecycle::deprecate_stop(
     when = "1.1.2",
     what = "activity_duration()",
     details = c(
-      i = paste("`activity_duration()` is defunctional for now, as it",
-                "is unclear how this function should behave."),
+      i = paste(
+        "`activity_duration()` is defunctional for now, as it",
+        "is unclear how this function should behave."
+      ),
       i = "It will be reimplemented in mpathsenser 2.0.0."
-    ))
+    )
+  )
 }
 
 #' @noRd
@@ -463,11 +466,13 @@ screen_duration <- function(
     when = "1.1.2",
     what = "screen_duration()",
     details = c(
-      i = paste("`screen_duration()` is defunctional for now, as it",
-                "is unclear how this function should behave."),
+      i = paste(
+        "`screen_duration()` is defunctional for now, as it",
+        "is unclear how this function should behave."
+      ),
       i = "It will be reimplemented in mpathsenser 2.0.0."
-    ))
-
+    )
+  )
 }
 
 #' Get number of times screen turned on
@@ -492,10 +497,13 @@ n_screen_on <- function(
     when = "1.1.2",
     what = "n_screen_on()",
     details = c(
-      i = paste("`n_screen_on()` is defunctional for now, as it",
-                "is unclear how this function should behave."),
+      i = paste(
+        "`n_screen_on()` is defunctional for now, as it",
+        "is unclear how this function should behave."
+      ),
       i = "It will be reimplemented in mpathsenser 2.0.0."
-    ))
+    )
+  )
 }
 
 #' Get number of screen unlocks
@@ -521,10 +529,13 @@ n_screen_unlocks <- function(
     when = "1.1.2",
     what = "n_screen_unlocks()",
     details = c(
-      i = paste("`n_screen_unlocks()` is defunctional for now, as it",
-                "is unclear how this function should behave."),
+      i = paste(
+        "`n_screen_unlocks()` is defunctional for now, as it",
+        "is unclear how this function should behave."
+      ),
       i = "It will be reimplemented in mpathsenser 2.0.0."
-    ))
+    )
+  )
 }
 
 
@@ -544,10 +555,13 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
     when = "1.1.2",
     what = "step_count()",
     details = c(
-      i = paste("`step_count()` is defunctional for now, as it",
-                "is unclear how this function should behave."),
+      i = paste(
+        "`step_count()` is defunctional for now, as it",
+        "is unclear how this function should behave."
+      ),
       i = "It will be reimplemented in mpathsenser 2.0.0."
-    ))
+    )
+  )
 }
 # nocov end
 
@@ -585,7 +599,6 @@ moving_average <- function(
     participant_id = NULL,
     start_date = NULL,
     end_date = NULL) {
-
   lifecycle::signal_stage("experimental", "moving_average()")
   check_db(db)
   check_sensors(sensor, n = 1)
@@ -947,11 +960,13 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
 
   # Now, match the data (without the gaps) to each corresponding row_id. Thus, in some cases data
   # and data2 will be identical. Only for the end points of gaps, set data to data2.
-  data <- dplyr::nest_join(data, lead_data, by = c(rlang::as_name(rlang::enquo(by)), "row_id"),
-                           name = "data2") |>
+  data <- dplyr::nest_join(data, lead_data,
+    by = c(rlang::as_name(rlang::enquo(by)), "row_id"),
+    name = "data2"
+  ) |>
     mutate(data = ifelse(!is.na(.data$gap_type) & .data$gap_type == "to",
-                         .data$data2,
-                         .data$data
+      .data$data2,
+      .data$data
     ))
 
   # Lastly, unnest the data to get the original (and modified for "to") nested data, and ungroup

@@ -55,7 +55,6 @@ test_that("Accelerometer", {
     measurement_id = c(
       "15d06c62-3b69-5a1d-21b1-bf82ddc573bg",
       "9da62087-feb7-cd4d-2964-f33c96587863"
-
     ),
     participant_id = "12345",
     date = "2021-11-14",
@@ -322,7 +321,7 @@ test_that("Gyroscope", {
     ),
     participant_id = "12345",
     date = "2021-11-14",
-    time = c("14:00:01.000","14:00:02.000"),
+    time = c("14:00:01.000", "14:00:02.000"),
     x = c(NA, -1.0022081288080912509),
     y = c(NA, -2.0004500896919943741),
     z = c(NA, -3.02347734926530979)

@@ -80,7 +80,6 @@ import <- function(
     batch_size = 24,
     backend = "RSQLite",
     recursive = TRUE) {
-
   # Check arguments
   check_arg(path, type = "character", n = 1)
   check_db(db)
@@ -462,33 +461,33 @@ safe_extract <- function(vec, var) {
   lower_names <- tolower(names)
   dplyr::case_match(
     lower_names,
-    c("accelerometer", "accelerationfeatures", "averageaccelerometer")  ~ "Accelerometer",
-    "activity"                                                          ~ "Activity",
-    c("airquality", "air_quality")                                      ~ "AirQuality",
-    c("app_usage", "appusage")                                          ~ "AppUsage",
-    c("battery", "batterystate")                                        ~ "Battery",
-    "bluetooth"                                                         ~ "Bluetooth",
-    "calendar"                                                          ~ "Calendar",
-    "connectivity"                                                      ~ "Connectivity",
-    c("device", "deviceinformation")                                    ~ "Device",
-    "error"                                                             ~ "Error",
-    "geofence"                                                          ~ "Geofence",
-    "gyroscope"                                                         ~ "Gyroscope",
-    "heartbeat"                                                         ~ "Heartbeat",
-    c("apps", "installed_apps")                                         ~ "InstalledApps",
-    "keyboard"                                                          ~ "Keyboard",
-    c("light", "ambientlight")                                          ~ "Light",
-    "location"                                                          ~ "Location",
-    c("memory", "freememory")                                           ~ "Memory",
-    "mobility"                                                          ~ "Mobility",
-    "noise"                                                             ~ "Noise",
-    c("pedometer", "stepcount")                                         ~ "Pedometer",
-    c("phone_log", "phonelog")                                          ~ "PhoneLog",
-    c("screen", "screenevent")                                          ~ "Screen",
-    c("text_message", "textmessage")                                    ~ "TextMessage",
-    "timezone"                                                          ~ "Timezone",
-    "weather"                                                           ~ "Weather",
-    "wifi"                                                              ~ "Wifi",
+    c("accelerometer", "accelerationfeatures", "averageaccelerometer") ~ "Accelerometer",
+    "activity" ~ "Activity",
+    c("airquality", "air_quality") ~ "AirQuality",
+    c("app_usage", "appusage") ~ "AppUsage",
+    c("battery", "batterystate") ~ "Battery",
+    "bluetooth" ~ "Bluetooth",
+    "calendar" ~ "Calendar",
+    "connectivity" ~ "Connectivity",
+    c("device", "deviceinformation") ~ "Device",
+    "error" ~ "Error",
+    "geofence" ~ "Geofence",
+    "gyroscope" ~ "Gyroscope",
+    "heartbeat" ~ "Heartbeat",
+    c("apps", "installed_apps") ~ "InstalledApps",
+    "keyboard" ~ "Keyboard",
+    c("light", "ambientlight") ~ "Light",
+    "location" ~ "Location",
+    c("memory", "freememory") ~ "Memory",
+    "mobility" ~ "Mobility",
+    "noise" ~ "Noise",
+    c("pedometer", "stepcount") ~ "Pedometer",
+    c("phone_log", "phonelog") ~ "PhoneLog",
+    c("screen", "screenevent") ~ "Screen",
+    c("text_message", "textmessage") ~ "TextMessage",
+    "timezone" ~ "Timezone",
+    "weather" ~ "Weather",
+    "wifi" ~ "Wifi",
     .default = names
   )
 }
@@ -542,7 +541,8 @@ safe_extract <- function(vec, var) {
       } else {
         data <- mapply(
           \(x, name) `class<-`(x, c(name, class(x))),
-          data, tolower(names(data)), SIMPLIFY = FALSE
+          data, tolower(names(data)),
+          SIMPLIFY = FALSE
         )
         out <- lapply(data, unpack_sensor_data)
       }
