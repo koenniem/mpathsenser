@@ -116,5 +116,4 @@ For an overview of all functions in this package, see the [mpathsenser Reference
 If you encounter a clear bug or need help getting a function to run, please file an issue with a minimal reproducible example on [Gitlab](https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/issues).
 
 ## Code of Conduct
-
-Please note that this project is released with a [Contributor Code of Conduct](https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/blob/master/CONTRIBUTING.md). By participating in this project you agree to abide by its terms.
+Please note that this project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree to abide by its terms.
