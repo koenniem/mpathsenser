@@ -37,12 +37,14 @@ library(dplyr)
 library(sodium)
 # Create some GPS  coordinates.
 data <- data.frame(
- participant_id = "12345",
- time = as.POSIXct(c("2022-12-02 12:00:00",
-                     "2022-12-02 12:00:01",
-                     "2022-12-02 12:00:02")),
- longitude = c("50.12345", "50.23456", "50.34567"),
- latitude = c("4.12345", "4.23456", "4.345678")
+  participant_id = "12345",
+  time = as.POSIXct(c(
+    "2022-12-02 12:00:00",
+    "2022-12-02 12:00:01",
+    "2022-12-02 12:00:02"
+  )),
+  longitude = c("50.12345", "50.23456", "50.34567"),
+  latitude = c("4.12345", "4.23456", "4.345678")
 )
 
 # Generate keypair
@@ -53,18 +55,18 @@ pub <- sodium::pubkey(key)
 # You do not need to do this for m-Path Sense
 # as this is already encrypted
 encrypt <- function(data, pub) {
- data <- lapply(data, charToRaw)
- data <- lapply(data, function(x) sodium::simple_encrypt(x, pub))
- data <- lapply(data, sodium::bin2hex)
- data <- unlist(data)
- data
+  data <- lapply(data, charToRaw)
+  data <- lapply(data, function(x) sodium::simple_encrypt(x, pub))
+  data <- lapply(data, sodium::bin2hex)
+  data <- unlist(data)
+  data
 }
 data$longitude <- encrypt(data$longitude, pub)
 data$latitude <- encrypt(data$latitude, pub)
 
 # Once the data has been collected, decrypt it using decrypt_gps().
 data |>
- mutate(longitude = decrypt_gps(longitude, key)) |>
- mutate(latitude = decrypt_gps(latitude, key))
+  mutate(longitude = decrypt_gps(longitude, key)) |>
+  mutate(latitude = decrypt_gps(latitude, key))
 \dontshow{\}) # examplesIf}
 }

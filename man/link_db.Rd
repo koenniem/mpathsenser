@@ -86,8 +86,10 @@ db <- open_db("path/to/db")
 link_db(db, "accelerometer", "gyroscope", offset_before = 300, offset_after = 300)
 
 # Link a sensor with an external data frame
-link_db(db, "accelerometer", external = my_external_data,
-external_time = "time", offset_before = 300, offset_after = 300)
+link_db(db, "accelerometer",
+  external = my_external_data,
+  external_time = "time", offset_before = 300, offset_after = 300
+)
 }
 }
 \seealso{

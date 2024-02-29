@@ -54,5 +54,4 @@ get_data(db, "Accelerometer", "12345")
 get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
 }
 
-
 }

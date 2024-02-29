@@ -71,9 +71,9 @@ x <- data.frame(
 
 # Create some gaps
 gaps <- data.frame(
- from = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:00:00")),
- to = as.POSIXct(c("2021-11-14 13:30:00", "2021-11-14 14:30:00")),
- participant_id = c("12345", "23456")
+  from = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:00:00")),
+  to = as.POSIXct(c("2021-11-14 13:30:00", "2021-11-14 14:30:00")),
+  participant_id = c("12345", "23456")
 )
 
 # Link the gaps to the data
