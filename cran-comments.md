@@ -1,8 +1,3 @@
-## Resubmission
-This is a resubmission. In this version I have:
-* Replaced the double quotation marks with single quotation marks in the description to denote package, software,
-and API names.
-
 ## Test environments
 * local Windows 10 install, R 4.3.2
 * Fedora Linux (on R-hub) R-devel
@@ -11,17 +6,7 @@ and API names.
 * Windows (devel and release)
 
 ## R CMD check results
-0 errors | 0 warnings | 1 note
-* New submission
-
-There were additional issues that did not trigger an ERROR, WARNING or NOTE:
-* Possibly misspelled words in DESCRIPTION:
-  JSON (15:5)
-  pre (12:35)
-
-JSON is a commonly and well-known file format in the community and I believe should not be spelled in full. The prefix
-'pre' belongs to 'pre-processing', a common variant of 'preprocessing', which also triggers a spelling error. This word is 
-commonplace and should be accepted.
+0 errors | 0 warnings | 0 note
 
 ## revdepcheck results
 

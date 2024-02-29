@@ -13,6 +13,7 @@
 ^cran-comments\.md$
 ^ci/lib$
 ^contributing\.md$
+^CODE_OF_CONDUCT\.md$
 ^binary_latest\.zip$
 ^revdep$
 ^CRAN-SUBMISSION$

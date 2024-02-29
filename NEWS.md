@@ -1,4 +1,13 @@
-# mpathsenser (development version)
+# mpathsenser 1.2.3
+This is a hotfix release to fix a bug in `import()`.
+
+## Minor changes
+* Added a contribution statement to the project. The previous contribution statement was actually 
+a code of conduct which has now been appropriately assigned as such.
+
+## Bugfixes
+* Fixed bugs in the import functions of `AppUsage`, `Device`, and `Location` that may have prevented
+files from being imported.
 
 # mpathsenser 1.2.2
 ## Major changes
