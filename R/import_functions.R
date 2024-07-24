@@ -311,6 +311,17 @@ unpack_sensor_data.bluetooth <- function(data, ...) {
 unpack_sensor_data.connectivity <- function(data, ...) {
   data <- unpack_sensor_data.default(data, "connectivity", ...)
 
+  # double unnes on connectivity_status in case this is a list, which means it can contain multiple
+  # entries of a connectivity_status in  the same measurement
+  if ("connectivity_status" %in% colnames(data) && is.list(data[["connectivity_status"]])) {
+    data <- unnest(data, "connectivity_status")
+    data <- unnest(data, "connectivity_status")
+
+    # TODO: Consider unique ID constraint Temporary fix
+    ids <- stats::ave(numeric(nrow(data)) + 1, data$measurement_id, FUN = seq_along)
+    data$measurement_id <- paste0(data$measurement_id, "_", ids)
+  }
+
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,

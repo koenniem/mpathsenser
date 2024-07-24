@@ -204,6 +204,17 @@ test_that("unzip_data", {
     "Unzipped 1 files."
   )
 
+  # Try a mixture of zip and json files
+  file.copy(
+    from = system.file("testdata", "test.json", package = "mpathsenser"),
+    to = file.path(zip_dir, "test.json"),
+    overwrite = TRUE
+  )
+  expect_message(
+    unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE),
+    "Unzipped 1 files."
+  )
+
   # Get the correct file name in the temp directory and remove
   unlink(zip_dir, recursive = TRUE)
 })

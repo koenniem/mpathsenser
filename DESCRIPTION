@@ -1,6 +1,6 @@
 Package: mpathsenser
 Title: Process and Analyse Data from m-Path Sense
-Version: 1.2.3
+Version: 1.2.3.9000
 Authors@R: c(
     person("Koen", "Niemeijer", , "koen.niemeijer@kuleuven.be", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-0816-534X")),

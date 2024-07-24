@@ -1,3 +1,7 @@
+# mpathsenser (development version)
+* `import()` now supports the new output format for `connectivity` where `connectivity_status` can
+be a list of statuses as well.
+
 # mpathsenser 1.2.3
 This is a hotfix release to fix a bug in `import()`.
 

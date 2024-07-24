@@ -40,7 +40,12 @@ unit_test <- function(sensor, ..., .cols = NULL, new_names = NULL, end_time = NU
   # If there is a list column containing data, unlist it first
   which_list <- colnames(true)[purrr::map_lgl(true, is.list)]
   if (length(which_list) > 0) {
-    true <- tidyr::unnest_wider(true, all_of(which_list))
+    first_element <- true[[which_list]][[1]]
+    if (is.list(first_element) || is.null(first_element)) {
+      true <- tidyr::unnest_wider(true, all_of(which_list))
+    } else {
+      true <- unnest(true, all_of(which_list))
+    }
   }
 
   # Replace different-styled column names
@@ -521,6 +526,13 @@ test_that("connectivity", {
     .cols = "connectivity_status",
     new_names = c(connectivity_status = "connectivityStatus"),
     connectivityStatus = "Mobile"
+  )
+
+  # Test with multiple entries for connectivityStatus
+  unit_test(
+    "connectivity",
+    .cols = "connectivity_status",
+    connectivity_status = list("Mobile", "WiFi")
   )
 })
 
