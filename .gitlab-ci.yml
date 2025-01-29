@@ -71,7 +71,7 @@ commit-man:
   script:
     - echo "Committing man files to git"
     - apt-get update -qq && apt-get install -y libxt6
-    - Rscript -e 'install.packages("stringi")'
+    - Rscript -e 'install.packages(c("stringi", "RSQLite"))'
     - Rscript -e 'devtools::document()'
     - git add NAMESPACE man
     - |-
