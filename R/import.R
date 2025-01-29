@@ -152,21 +152,11 @@ import <- function(
     # Save the empty files in data frame to add to the meta data later
     # Meta data is what is being registered
     if (length(batch_na) > 0) {
-      split_file_name <- strsplit(batch_na, "_")
-      p_id <- purrr::map_chr(split_file_name, \(x) x[3])
-      study_id <- purrr::map_chr(split_file_name, \(x) x[2])
+      batch_na <- .import_meta_data_from_file_name(batch_na)
 
-      if (any(is.na(p_id))) {
-        p_id[is.na(p_id)] <- "N/A"
-      }
-      if (any(is.na(study_id))) {
-        study_id[is.na(study_id)] <- "-1"
-      }
-      batch_na <- data.frame(
-        participant_id = p_id,
-        study_id = study_id,
+      batch_na <- tibble(
+        batch_na,
         data_format = NA,
-        file_name = batch_na
       )
     }
 
@@ -356,7 +346,7 @@ safe_extract <- function(vec, var) {
     lapply(names) |>
     unlist(use.names = FALSE) |>
     unique()
-  if (all(c("data", "sensorStartTime", "sensorEndTime") %in% header_names)) {
+  if (all(c("data", "sensorStartTime") %in% header_names)) {
     return(.import_clean_new(data, file_name))
   }
 
@@ -391,14 +381,11 @@ safe_extract <- function(vec, var) {
 
 # New clean function for the new file format as of CARP 1.0.0
 .import_clean_new <- function(data, file_name) {
-  # Get meta data
-  split_file_name <- strsplit(file_name, "_")
-  study_id <- purrr::map_chr(split_file_name, \(x) x[2])
-  p_id <- purrr::map_chr(split_file_name, \(x) x[3])
+  meta <- .import_meta_data_from_file_name(file_name)
+  meta$file_name <- NULL
 
   data <- tibble(
-    study_id = study_id,
-    participant_id = p_id,
+    meta,
     data_format = "cams 1.0.0",
     start_time = purrr::map_dbl(data, \(x) purrr::pluck(x, "sensorStartTime", .default = NA)),
     end_time = purrr::map_dbl(data, \(x) purrr::pluck(x, "sensorEndTime", .default = NA)),
@@ -521,13 +508,15 @@ safe_extract <- function(vec, var) {
     names <- names[tolower(names) %in% tolower(sensors)]
   }
 
-  # Check if all sensors exist and are supported
-  if (any(!(names %in% mpathsenser::sensors))) {
+  # Check if all sensors exist and are supported, except 'mpathinfo', which contains metadata
+  if (any(!(setdiff(names, "mpathinfo") %in% mpathsenser::sensors))) {
     not_exist <- names[!(names %in% mpathsenser::sensors)]
+    not_exist <- setdiff(not_exist, "mpathinfo")
     warn(c(
       paste0("Sensor '", not_exist, "' is not supported by this package."),
       i = "Data from this sensor is removed from the output."
     ))
+    # Note: the following 2 lines remove mpathinfo from the data and names
     data <- data[names %in% mpathsenser::sensors]
     names <- names[names %in% mpathsenser::sensors]
   }
@@ -600,4 +589,55 @@ save2db <- function(db, name, data) {
     params = as.list(data)
   )
   DBI::dbClearResult(res)
+}
+
+.import_meta_data_from_file_name <- function(file_name) {
+  # The file name is structured as follows:
+  # therapistid_study_id_participantid_m_Path_sense_yyyy-mm-dd_HH-MM-SS%OS6.json
+  # Note that the number of seconds may contain milliseconds (or smaller) as well, but that there
+  # is no decimal point with the comma.
+  # First, check that these are m-Path Sense files
+  valid_names <- grepl("m_Path_sense", file_name)
+  if (any(!valid_names)) {
+    # Create a tibble with missing meta data for files with invalid names
+    invalid_names <- tibble(
+      study_id = "-1",
+      participant_id = "N/A",
+      file_name = file_name[!valid_names]
+    )
+
+    file_name <- file_name[valid_names]
+
+    # If there are no more valid names, return the invalid names only
+    if (length(file_name) == 0) {
+      return(invalid_names)
+    }
+  }
+
+  split_file_name <- strsplit(file_name, "_")
+
+  # The account ID is simply the first part of the file name, and is always a number
+  account_id <- purrr::map_chr(split_file_name, \(x) x[1])
+
+  study_id <- purrr::map(split_file_name, \(x) x[-c(1, seq.int(length(x) - 5, length(x)))])
+  study_id <- purrr::map_chr(study_id, \(x) paste0(x, collapse = "_"))
+
+  p_id <- purrr::map_chr(split_file_name, \(x) x[length(x) - 5])
+
+  # If the study_id is missing for some reason, indicate this with -1
+  # study_id[study_id == ""] <- "-1"
+
+  out <- tibble(
+    study_id = study_id,
+    participant_id = p_id,
+    file_name = file_name
+  )
+
+  # Add the missing data from file name that were not valid, if any
+  if (any(!valid_names)) {
+    out <- bind_rows(out, invalid_names)
+    out <- out[match(file_name, out$file_name),]
+  }
+
+  out
 }

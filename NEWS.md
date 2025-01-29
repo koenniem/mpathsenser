@@ -1,6 +1,11 @@
 # mpathsenser (development version)
 * `import()` now supports the new output format for `connectivity` where `connectivity_status` can
 be a list of statuses as well.
+* Fixed a bug in `import()` where files could not be read in correctly if they did not contain any
+measurement with a `sensorEndTime`. 
+* Bump minimum R requirement to 4.1.0 as the native pipe `|>` is used in this package.
+* `mpathsenser` no longer gives a warning for unimplemented 'mpathinfo' sensor.
+* `import()` now correctly reads `study_id` if it contains an underscore `_`.
 
 # mpathsenser 1.2.3
 This is a hotfix release to fix a bug in `import()`.

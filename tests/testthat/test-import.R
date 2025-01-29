@@ -194,7 +194,7 @@ test_that(".import_clean_new", {
     )
   )
 
-  file_name <- "123_study_456_m_Path_sense_2021-11-14T14:01:00.000000.json"
+  file_name <- "123_study_456_m_Path_sense_2021-11-14_14:01:00.000000.json"
 
   true <- tibble(
     study_id = "study",
@@ -218,10 +218,6 @@ test_that(".import_clean_new", {
   )
 
   expect_equal(.import_clean_new(data, file_name), true)
-
-  # If the file name is incorrect, NA is returned for the study and participant_id
-  res <- .import_clean_new(data, "foo")
-  expect_true(all(is.na(select(res, "study_id", "participant_id"))))
 })
 
 test_that(".import_map_sensor_names", {
@@ -565,3 +561,59 @@ test_that("save2db", {
   dbDisconnect(db)
   file.remove(filename)
 })
+
+test_that(".import_meta_data_from_file_name correctly extracts metadata", {
+  file_names <- c(
+    "1234_studyA_participant1_m_Path_sense_2023-01-01_12-34-56.json",
+    "5678_studyB_participant2_m_Path_sense_2023-01-02_01-23-45.json",
+    "9012_studyC_participant3_m_Path_sense_2023-01-03_23-59-59.json"
+  )
+
+  result <- .import_meta_data_from_file_name(file_names)
+
+  # Check structure and values
+  expect_s3_class(result, "tbl_df")
+  expect_equal(ncol(result), 3)
+  expect_named(result, c("study_id", "participant_id", "file_name"))
+
+  # Check extracted metadata
+  expect_equal(result$study_id, c("studyA", "studyB", "studyC"))
+  expect_equal(result$participant_id, c("participant1", "participant2", "participant3"))
+  expect_equal(result$file_name, file_names)
+})
+
+test_that(".import_meta_data_from_file_name handles missing participant ID or study ID", {
+  file_names <- c(
+    "1234__participant1_m_Path_sense_2023-01-01_12-34-56.json",
+    "5678_studyB__m_Path_sense_2023-01-02_01-23-45.json"
+  )
+
+  result <- .import_meta_data_from_file_name(file_names)
+
+  # Check structure and values
+  expect_s3_class(result, "tbl_df")
+  expect_equal(ncol(result), 3)
+  expect_named(result, c("study_id", "participant_id", "file_name"))
+
+  # Check missing metadata handling
+  expect_equal(result$study_id, c("", "studyB"))
+  expect_equal(result$participant_id, c("participant1", ""))
+  expect_equal(result$file_name, file_names)
+})
+
+test_that(".import_meta_data_from_file_name handles completely incorrect file names", {
+  file_names <- c(NA, "foo", "foo_bar")
+
+  res <- .import_meta_data_from_file_name(file_names)
+
+  expect_s3_class(res, "tbl_df")
+  expect_equal(ncol(res), 3)
+  expect_named(res, c("study_id", "participant_id", "file_name"))
+
+  expect_equal(res$study_id, rep("-1", 3))
+  expect_equal(res$participant_id, rep("N/A", 3))
+  expect_equal(res$file_name, c(NA, "foo", "foo_bar"))
+
+})
+
+
