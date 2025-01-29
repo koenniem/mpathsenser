@@ -9,7 +9,8 @@ bin_data(
   start_time,
   end_time,
   by = c("sec", "min", "hour", "day"),
-  fixed = TRUE
+  fixed = TRUE,
+  .name = "bin"
 )
 }
 \arguments{
@@ -24,6 +25,8 @@ bin_data(
 \item{fixed}{Whether to create fixed bins. If \code{TRUE}, bins will be rounded to, for example,
 whole hours or days (depending on \code{by}). If \code{FALSE}, bins will be created based on the
 first timestamp.}
+
+\item{.name}{The name of the column containing the nested data.}
 }
 \value{
 A tibble containing the group columns (if any), date, hour (if \code{by = "hour"}), and

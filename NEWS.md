@@ -6,6 +6,8 @@ measurement with a `sensorEndTime`.
 * Bump minimum R requirement to 4.1.0 as the native pipe `|>` is used in this package.
 * `mpathsenser` no longer gives a warning for unimplemented 'mpathinfo' sensor.
 * `import()` now correctly reads `study_id` if it contains an underscore `_`.
+* `bin_data()` gained a `.name` argument to specify the name of the column containing the binned 
+data.
 
 # mpathsenser 1.2.3
 This is a hotfix release to fix a bug in `import()`.

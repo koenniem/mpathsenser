@@ -864,6 +864,7 @@ link_intervals <- function(
 #' @param fixed Whether to create fixed bins. If `TRUE`, bins will be rounded to, for example,
 #' whole hours or days (depending on `by`). If `FALSE`, bins will be created based on the
 #' first timestamp.
+#' @param .name The name of the column containing the nested data.
 #'
 #' @seealso [link_gaps()] for linking gaps to data.
 #' @returns A tibble containing the group columns (if any), date, hour (if `by = "hour"`), and
@@ -945,11 +946,15 @@ link_intervals <- function(
 #'   mutate(duration = .data$lead - .data$datetime) |>
 #'   group_by(bin, .add = TRUE) |>
 #'   summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
-bin_data <- function(data,
-                     start_time,
-                     end_time,
-                     by = c("sec", "min", "hour", "day"),
-                     fixed = TRUE) {
+bin_data <- function(
+    data,
+    start_time,
+    end_time,
+    by = c("sec", "min", "hour", "day"),
+    fixed = TRUE,
+    .name = "bin"
+) {
+
   check_arg(data, "data.frame")
   check_arg(fixed, "logical")
 
@@ -968,7 +973,7 @@ bin_data <- function(data,
     ))
   }
 
-  tz <- attr(pull(data, {{ start_time }}), "tz")
+  tz <- lubridate::tz(pull(data, {{ start_time }}))
 
   # check that start_time and end_time are a datetime, or try to convert
   if (!lubridate::is.POSIXt(pull(data, {{ start_time }})) ||
@@ -1040,8 +1045,8 @@ bin_data <- function(data,
 
   out <- out |>
     mutate(bin_start = lubridate::as_datetime(.data$bin_start, tz = tz)) |>
-    dplyr::rename(bin = "bin_start") |>
-    select(-"bin_end")
+    dplyr::rename({{ .name }} := "bin_start") |>
+    select(-any_of("bin_end"))
 
   out
 }
