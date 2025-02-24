@@ -65,7 +65,7 @@ link_impl <- function(x,
     dplyr::left_join(data_main, by = ".row_id", multiple = "all", relationship = "many-to-many")
 
   # Add the last measurement before start_time
-  tz <- attr(pull(y, {{ y_time }}), "tz")
+  tz <- lubridate::tz(pull(y, {{ y_start }}))
   if (add_before) {
     # Calculate in which groups there is a measurement that equals start_time
     equal_to_start <- data |>
@@ -802,7 +802,7 @@ link_intervals <- function(
   check_arg(by, "character", allow_null = TRUE)
   check_arg(name, "character", n = 1)
 
-  tz <- attr(pull(y, {{ y_start }}), "tz")
+  tz <- lubridate::tz(pull(y, {{ y_start }}))
 
   # Calculate which values in y are within x's bounds
   if (length(by) == 0 && utils::packageVersion("dplyr") >= "1.1.0") {

@@ -4,7 +4,7 @@ output: github_document
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-```{r, include = FALSE}
+```{r, include = FALSE, echo = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -12,6 +12,7 @@ knitr::opts_chunk$set(
   out.width = "100%"
 )
 options(tibble.print_min = 5, tibble.print_max = 5)
+library(mpathsenser)
 ```
 
 # mpathsenser <a href='https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/index.html'><img src='man/figures/logo.png' align="right" height="139" /></a>
@@ -33,81 +34,112 @@ devtools::install_git("https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047
 
 ## Importing files
 
-Specify a path variable to wherever you put the JSON files. Make sure to use / and not a backslash.
+Specify a path variable to wherever you put the JSON files. Make sure to use `/` and not a backslash.
 
 ```{r, eval = FALSE}
 path <- "~/Mobile Sensing Study/Data"
 ```
 
+```{r, include = FALSE, echo = FALSE} 
+# Get the temp folder
+tempdir <- tempdir()
+tempdir <- file.path(tempdir, "readme")
+
+if (dir.exists(tempdir)) {
+  unlink(tempdir, recursive = TRUE, force = TRUE)
+}
+
+dir.create(tempdir)
+
+# Get a handle to the data files
+path <- system.file("extdata", "example", package = "mpathsenser")
+
+# Get a list of all the files that are to be copied
+copy_list <- list.files(path, "carp-data", full.names = TRUE)
+
+# Copy all data
+invisible(file.copy(
+  from = copy_list,
+  to = tempdir,
+  overwrite = TRUE,
+  copy.mode = FALSE
+))
+
+path <- tempdir
+```
+
 If you haven't done so, unzip all files.
 
-```{r, eval = FALSE}
+```{r}
 unzip_data(path = path)
 ```
 
-In m-Path Sense, data is written to JSON files as it comes in. In the JSON file format, every file starts with [ and ends with ]. If the app is killed, JSON files are not properly closed and hence cannot be read by JSON readers. So, we must first test if all files are in a valid JSON format and fix those that are not.
+In m-Path Sense, data is written to JSON files as it comes in. In the JSON file format, every file starts with `[` and ends with `]`. If the app is killed, JSON files may not be properly closed and hence cannot be read by JSON parsers. So, we must first test if all files are in a valid JSON format and fix those that are not.
 
-```{r, eval = FALSE}
+```{r}
+# Test JSONs for problems. Output is a character vector containing bad files (if any).
 to_fix <- test_jsons(path = path)
 
-# Fix JSON files if there are any
-if (to_fix != "") {
-  fix_jsons(path = path, files = to_fix)
+# Fix JSON files if there are any.
+# Note that test_jsons() returns the full path names, so a path directory is not necessary.
+if (length(to_fix) > 0) {
+  fix_jsons(path = NULL, files = to_fix)
 }
 ```
 
-If you want to  put the database in a different directory than the files, create it first and then pass it to `import`.
+To import data, first create a database.
 
-```{r, eval = FALSE}
-db <- create_db("path/for/you/new/database/", "some_db.db")
+```{r}
+db <- create_db(path = path, db_name = "some_db.db")
 ``` 
 
-If not, you can simply call `import` to start reading in the files.
+Then, call `import()` to start reading in the files.
 
-```{r, eval = FALSE}
-import(path = path, dbname = "some_db.db")
-
-# In the case of an existing database or database in another location:
-# import(path = path, db = db)
+```{r}
+import(path = path, db = db)
 ```
-
-Note that `import` always closes the database connection.
+If everything went correctly, there should be a message that all files were successfully written to the database. Otherwise `import()` return a character vector containing the files that failed to be imported. Note that files only need to be imported once, and that new files can be added to the database by calling `import()` again using the same database. Files that were processed previously will be skipped.
 
 ## Extracting data from the database
-To establish a database connection, use `open_db`. Don't forget to save it to a variable!
+Once files are imported, you can establish a database connection with `open_db()`. Don't forget to save it to a variable!
 
 ```{r, eval = FALSE}
-db <- open_db(path = path, db_name = "some_db.db")
+db <- open_db(
+  path = path, 
+  db_name = "some_db.db"
+)
 ```
 
 To find out which participants are in the database (or rather their participant numbers):
-```{r, eval = FALSE}
+```{r}
 get_participants(db)
 ```
 
 We can also check what device they are using (which can be found in the Device table of the database).
 
-```{r, eval = FALSE}
+```{r}
 device_info(db = db)
 ```
 
-To find out how much data there is in this database, look at the number of rows as an indication. You may notice from running this function that it's not exactly fast. That's because it is a lot of data. So be careful when computing things, or you'll be stuck for a long time (especially when working with accelerometer and gyroscope)
+To find out how much data there is in this database, look at the number of rows as an indication. Note that this operation may be slow for large databases, as every tables in the database needs to be queried.
 
-```{r, eval = FALSE}
+```{r}
 get_nrows(db)
 ```
 
-Now let's find out how to actually retrieve data from the database. There is a simple function for this, which is called `get_data`. With this function you can extract any kind of data you want. Make sure you also run `?get_data` for an overview of how to use this (or any other) function. In most functions, you can also leave arguments empty to retrieve all data (e.g. not in a specific time window).
+Now let's find out how to actually retrieve data from the database. There is a simple function for this, which is called `get_data()`. With this function you can extract any kind of data you want. Make sure you also run `?get_data` for an overview of how to use this (or any other) function. In most functions, you can also leave arguments empty to retrieve all data (e.g. not in a specific time window).
 
-```{r, eval = FALSE}
+```{r}
 get_data(
   db = db, # the ACTIVE database connection, open with open_db AND save to a variable
-  sensor = "Activity", # A sensor name, see mpathsenser::sensors for the full list
-  participant_id = "12345", # A participant ID, see get_participants
-  start_date = "2021-11-14", # An optional start date, in the format YYYY-MM-DD
-  end_date = "2021-11-15" # An optional end date, in the format YYYY-MM-DD
+  sensor = "Pedometer", # A sensor name, see mpathsenser::sensors for the full list
+  participant_id = "2784", # A participant ID, see get_participants
+  start_date = "2022-06-14", # An optional start date, in the format YYYY-MM-DD
+  end_date = "2022-06-15" # An optional end date, in the format YYYY-MM-DD
 )
 ```
+
+A more comprehensive guide is provided in the [Get Started vignette](https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/articles/mpathsenser.html).
 
 ## Reference 
 For an overview of all functions in this package, see the [mpathsenser Reference Site](https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/reference/index.html). The database schema used in this package can be found [here](https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/blob/master/inst/extdata/mpathsenser_db.png).
@@ -117,3 +149,7 @@ If you encounter a clear bug or need help getting a function to run, please file
 
 ## Code of Conduct
 Please note that this project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree to abide by its terms.
+
+```{r include=FALSE}
+close_db(db)
+```
