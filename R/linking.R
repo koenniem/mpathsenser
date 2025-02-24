@@ -1,14 +1,16 @@
-link_impl <- function(x,
-                      y,
-                      by,
-                      start_time,
-                      end_time,
-                      y_time,
-                      offset_before,
-                      offset_after,
-                      add_before,
-                      add_after,
-                      name) {
+link_impl <- function(
+    x,
+    y,
+    by,
+    start_time,
+    end_time,
+    y_time,
+    offset_before,
+    offset_after,
+    add_before,
+    add_after,
+    name) {
+
   # Force variables to be evaluated, or somehow it cannot be found later on.
   force(add_before)
   force(add_after)
@@ -65,7 +67,7 @@ link_impl <- function(x,
     dplyr::left_join(data_main, by = ".row_id", multiple = "all", relationship = "many-to-many")
 
   # Add the last measurement before start_time
-  tz <- lubridate::tz(pull(y, {{ y_start }}))
+  tz <- lubridate::tz(pull(y, {{ y_time}}))
   if (add_before) {
     # Calculate in which groups there is a measurement that equals start_time
     equal_to_start <- data |>
