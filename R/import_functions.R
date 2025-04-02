@@ -519,6 +519,23 @@ unpack_sensor_data.memory <- function(data, ...) {
 
 #' @export
 #' @keywords internal
+unpack_sensor_data.mpathinfo <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "mpathinfo", ...)
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = substr(data$time, 1, 10),
+    time = substr(data$time, 12, 23),
+    connection_id = data$connection_id,
+    account_code = data$account_code,
+    study_name = data$study_name,
+    sense_version = data$sense_version
+  )
+}
+
+#' @export
+#' @keywords internal
 unpack_sensor_data.noise <- function(data, ...) {
   data <- unpack_sensor_data.default(data, "noise", ...)
 

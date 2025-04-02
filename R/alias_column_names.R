@@ -361,6 +361,25 @@ alias_column_names.memory <- function(data, ...) {
 
 #' @export
 #' @keywords internal
+alias_column_names.mpathinfo <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) dplyr::case_match(
+        colnames,
+        c("id") ~ "measurement_id",
+        c("timestamp", "start_time") ~ "time",
+        c("connectionId") ~ "connection_id",
+        c("accountCode") ~ "accountCode",
+        c("studyName") ~ "study_name",
+        c("senseVersion") ~ "sense_version",
+        .default = colnames,
+        .ptype = character()
+      )
+    )
+}
+
+#' @export
+#' @keywords internal
 alias_column_names.noise <- function(data, ...) {
   data |>
     dplyr::rename_with(
