@@ -212,6 +212,10 @@ import <- function(
       .options = furrr::furrr_options(seed = TRUE)
     )
 
+    # To do: Use mpathinfo to generate new metadata
+    # For now, mpathinfo is already removed in .import_extract_sensor_data()
+
+
     # If a file failed to process, NA is returned
     batch_data <- batch_data[!is.na(batch_data)]
     meta_data <- meta_data[meta_data[["id"]] %in% names(batch_data), ]
@@ -498,6 +502,7 @@ safe_extract <- function(vec, var) {
   # Drop useless data
   data[["unknown"]] <- NULL
   data[["triggeredtask"]] <- NULL
+  data[["mpathinfo"]] <- NULL # temporary
 
   # the unique sensors in this data file
   names <- names(data)
