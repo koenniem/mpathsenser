@@ -29,7 +29,8 @@ R-CMD-CHECK:
       - VERSION:
         - latest
         - devel
-
+  only:
+    - master
   script:
     - apt-get update -qq && apt-get install -y libharfbuzz-dev libfribidi-dev libxt6
     - apt-get install -y qpdf libcctz-dev
@@ -88,10 +89,12 @@ commit-man:
         # Commit all changes
         git commit -m "Updated manual files"
 
-        git config user.email "koen.niemeijer@kuleuven.be"
-        git config user.name "CI_bot"
+        git config user.email ${GITLAB_USER_EMAIL}
+        git config user.name ${GITLAB_USER_LOGIN}
 
         ## Push back to Gitlab using secret token created earlier with "skip-ci" option to stop builds triggering in a loop
+        echo "https://${GITLAB_USER_LOGIN}:${CI_ACCESS_TOKEN}@${CI_REPOSITORY_URL#*@}"
+        echo "HEAD:${CI_COMMIT_REF_NAME}"
         git push "https://${GITLAB_USER_LOGIN}:${CI_ACCESS_TOKEN}@${CI_REPOSITORY_URL#*@}" "HEAD:${CI_COMMIT_REF_NAME}" -o ci.skip
       fi
 
