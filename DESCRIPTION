@@ -16,10 +16,10 @@ Description: Overcomes one of the major challenges in mobile (passive)
     to aid in data processing.
 License: GPL (>= 3)
 URL: 
-    https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/,
-    https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/
+    https://github.com/koenniem/mpathsenser,
+    https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser
 BugReports: 
-    https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/issues/
+    https://github.com/koenniem/mpathsenser/issues
 Depends: 
     R (>= 4.2.0)
 Imports:

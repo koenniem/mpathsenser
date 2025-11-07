@@ -12,7 +12,7 @@ RUN cd /home/rstudio/ \
   && cd mpathsenser \
   && git switch debug \
   && Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "always", force = TRUE, INSTALL_opts = "--install-tests")' \
-  && Rscript -e 'devtools::document()' 
+  && Rscript -e 'devtools::document()'
 
 ## Change file permission
 RUN chmod -R 777 /home/rstudio/mpathsenser

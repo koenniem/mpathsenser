@@ -3,7 +3,7 @@
 be a list of statuses as well.
 * Fixed a bug in `import()` where files could not be read in correctly if they did not contain any
 measurement with a `sensorEndTime`. 
-* Bump minimum R requirement to 4.1.0 as the native pipe `|>` is used in this package.
+* Bump minimum R requirement to 4.2.0 as the native pipe `|>` is used in this package.
 * `mpathsenser` no longer gives a warning for unimplemented 'mpathinfo' sensor.
 * `import()` now correctly reads `study_id` if it contains an underscore `_`.
 * `bin_data()` gained a `.name` argument to specify the name of the column containing the binned 

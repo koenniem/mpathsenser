@@ -117,6 +117,8 @@ print(cov)
 Additionally, we can print the coverage data using the `plot()` function.
 
 ```{r, fig.width=13, fig.height=8, fig.align='center', dpi=55}
+#| fig.alt: > 
+#|   Coverage plot showing average number of samples per hour for each sensor.
 plot(cov)
 ```
 
