@@ -136,11 +136,48 @@ test_that("safe_tibble", {
 # Accelerometer =========
 test_that("accelerometer", {
   col_names <- c(
-    "n", "x_mean", "y_mean", "z_mean", "x_median", "y_median", "z_median", "x_std", "y_std", "z_std", "x_aad",
-    "y_aad", "z_aad", "x_min", "y_min", "z_min", "x_max", "y_max", "z_max", "x_max_min_diff",
-    "y_max_min_diff", "z_max_min_diff", "x_mad", "y_mad", "z_mad", "x_iqr", "y_iqr", "z_iqr", "x_neg_n",
-    "y_neg_n", "z_neg_n", "x_pos_n", "y_pos_n", "z_pos_n", "x_above_mean", "y_above_mean", "z_above_mean",
-    "x_energy", "y_energy", "z_energy", "avg_res_acc", "sma"
+    "n",
+    "x_mean",
+    "y_mean",
+    "z_mean",
+    "x_median",
+    "y_median",
+    "z_median",
+    "x_std",
+    "y_std",
+    "z_std",
+    "x_aad",
+    "y_aad",
+    "z_aad",
+    "x_min",
+    "y_min",
+    "z_min",
+    "x_max",
+    "y_max",
+    "z_max",
+    "x_max_min_diff",
+    "y_max_min_diff",
+    "z_max_min_diff",
+    "x_mad",
+    "y_mad",
+    "z_mad",
+    "x_iqr",
+    "y_iqr",
+    "z_iqr",
+    "x_neg_n",
+    "y_neg_n",
+    "z_neg_n",
+    "x_pos_n",
+    "y_pos_n",
+    "z_pos_n",
+    "x_above_mean",
+    "y_above_mean",
+    "z_above_mean",
+    "x_energy",
+    "y_energy",
+    "z_energy",
+    "avg_res_acc",
+    "sma"
   )
 
   unit_test(
@@ -233,7 +270,14 @@ test_that("activity", {
 
 # Air Quality ===========
 test_that("air_quality", {
-  col_names <- c("air_quality_index", "air_quality_level", "source", "place", "latitude", "longitude")
+  col_names <- c(
+    "air_quality_index",
+    "air_quality_level",
+    "source",
+    "place",
+    "latitude",
+    "longitude"
+  )
 
   new_names <- c(
     air_quality_index = "airQualityIndex",
@@ -369,7 +413,6 @@ test_that("appusage", {
   true <- as.data.frame(true)
   expect_equal(res, true)
 
-
   # Repeat but with different column names
   dat2 <- common_data(
     sensor = "appusage",
@@ -445,8 +488,14 @@ test_that("battery", {
 # Bluetooth ===============
 test_that("bluetooth", {
   .cols <- c(
-    "start_scan", "end_scan", "advertisement_name", "bluetooth_device_id",
-    "bluetooth_device_name", "bluetooth_device_type", "connectable", "rssi",
+    "start_scan",
+    "end_scan",
+    "advertisement_name",
+    "bluetooth_device_id",
+    "bluetooth_device_name",
+    "bluetooth_device_type",
+    "connectable",
+    "rssi",
     "tx_power_level"
   )
   new_names <- c(
@@ -539,8 +588,15 @@ test_that("connectivity", {
 # Device ===========
 test_that("device", {
   .cols <- c(
-    "device_id", "hardware", "device_name", "device_manufacturer", "device_model",
-    "operating_system", "platform", "operating_system_version", "sdk"
+    "device_id",
+    "hardware",
+    "device_name",
+    "device_manufacturer",
+    "device_model",
+    "operating_system",
+    "platform",
+    "operating_system_version",
+    "sdk"
   )
   new_names <- c(
     device_id = "deviceId",
@@ -732,8 +788,16 @@ test_that("light", {
 # Location ===============
 test_that("location", {
   .cols <- c(
-    "latitude", "longitude", "altitude", "accuracy", "vertical_accuracy", "speed",
-    "speed_accuracy", "heading", "heading_accuracy", "is_mock"
+    "latitude",
+    "longitude",
+    "altitude",
+    "accuracy",
+    "vertical_accuracy",
+    "speed",
+    "speed_accuracy",
+    "heading",
+    "heading_accuracy",
+    "is_mock"
   )
   new_names <- c(
     vertical_accuracy = "verticalAccuracy",
@@ -890,10 +954,26 @@ test_that("timezone", {
 # Weather ===============
 test_that("weather", {
   col_names <- c(
-    "country", "area_name", "weather_main", "weather_description", "sunrise", "sunset",
-    "latitude", "longitude", "pressure", "wind_speed", "wind_degree", "humidity", "cloudiness",
-    "rain_last_hour", "rain_last_3hours", "snow_last_hour", "snow_last_3hours", "temperature",
-    "temp_min", "temp_max"
+    "country",
+    "area_name",
+    "weather_main",
+    "weather_description",
+    "sunrise",
+    "sunset",
+    "latitude",
+    "longitude",
+    "pressure",
+    "wind_speed",
+    "wind_degree",
+    "humidity",
+    "cloudiness",
+    "rain_last_hour",
+    "rain_last_3hours",
+    "snow_last_hour",
+    "snow_last_3hours",
+    "temperature",
+    "temp_min",
+    "temp_max"
   )
 
   new_names <- c(

@@ -43,11 +43,12 @@
 #' }
 #'
 get_data <- function(
-    db,
-    sensor,
-    participant_id = NULL,
-    start_date = NULL,
-    end_date = NULL) {
+  db,
+  sensor,
+  participant_id = NULL,
+  start_date = NULL,
+  end_date = NULL
+) {
   check_db(db)
   check_sensors(sensor, n = 1)
   check_arg(participant_id, type = c("character", "integerish"), allow_null = TRUE)
@@ -291,7 +292,8 @@ app_category_impl <- function(name, num, exact) {
   # Check if the name occurs in any of the package names
   # If so, select the num (usually first) link from this list
   if (exact) {
-    name_detected <- vapply(links,
+    name_detected <- vapply(
+      links,
       function(x) grepl(paste0("\\.", tolower(name), "$"), tolower(x)),
       FUN.VALUE = logical(1)
     )
@@ -304,7 +306,6 @@ app_category_impl <- function(name, num, exact) {
   } else {
     link <- links[num]
   }
-
 
   if (is.na(link)) {
     return(list(package = NA, genre = NA))
@@ -377,11 +378,12 @@ device_info <- function(db, participant_id = NULL) {
 #' @returns A data frame containing a column 'app' and a column 'usage' for the hourly app usage.
 #' @keywords internal
 app_usage <- function(
-    db,
-    participant_id = NULL,
-    start_date = NULL,
-    end_date = NULL,
-    by = c("Total", "Day", "Hour")) {
+  db,
+  participant_id = NULL,
+  start_date = NULL,
+  end_date = NULL,
+  by = c("Total", "Day", "Hour")
+) {
   lifecycle::deprecate_stop(
     when = "1.1.2",
     what = "app_usage()",
@@ -413,14 +415,15 @@ app_usage <- function(
 #' activity duration.
 #' @keywords internal
 activity_duration <- function(
-    data = NULL,
-    db = NULL,
-    participant_id = NULL,
-    confidence = 70,
-    direction = "forward",
-    start_date = NULL,
-    end_date = NULL,
-    by = c("Total", "Day", "Hour")) {
+  data = NULL,
+  db = NULL,
+  participant_id = NULL,
+  confidence = 70,
+  direction = "forward",
+  start_date = NULL,
+  end_date = NULL,
+  by = c("Total", "Day", "Hour")
+) {
   lifecycle::deprecate_stop(
     when = "1.1.2",
     what = "activity_duration()",
@@ -457,11 +460,12 @@ compress_activity <- function(data, direction = "forward") {
 #' tibble is returned with the date, time, and duration since the previous measurement.
 #' @keywords internal
 screen_duration <- function(
-    db,
-    participant_id,
-    start_date = NULL,
-    end_date = NULL,
-    by = c("Hour", "Day")) {
+  db,
+  participant_id,
+  start_date = NULL,
+  end_date = NULL,
+  by = c("Hour", "Day")
+) {
   lifecycle::deprecate_stop(
     when = "1.1.2",
     what = "screen_duration()",
@@ -488,11 +492,12 @@ screen_duration <- function(
 #' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen on's 'n'.
 #' @keywords internal
 n_screen_on <- function(
-    db,
-    participant_id,
-    start_date = NULL,
-    end_date = NULL,
-    by = c("Total", "Hour", "Day")) {
+  db,
+  participant_id,
+  start_date = NULL,
+  end_date = NULL,
+  by = c("Total", "Hour", "Day")
+) {
   lifecycle::deprecate_stop(
     when = "1.1.2",
     what = "n_screen_on()",
@@ -520,11 +525,12 @@ n_screen_on <- function(
 #' 'n'.
 #' @keywords internal
 n_screen_unlocks <- function(
-    db,
-    participant_id,
-    start_date = NULL,
-    end_date = NULL,
-    by = c("Total", "Hour", "Day")) {
+  db,
+  participant_id,
+  start_date = NULL,
+  end_date = NULL,
+  by = c("Total", "Hour", "Day")
+) {
   lifecycle::deprecate_stop(
     when = "1.1.2",
     what = "n_screen_unlocks()",
@@ -592,13 +598,14 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
 #' close_db(db)
 #' }
 moving_average <- function(
-    db,
-    sensor,
-    cols,
-    n,
-    participant_id = NULL,
-    start_date = NULL,
-    end_date = NULL) {
+  db,
+  sensor,
+  cols,
+  n,
+  participant_id = NULL,
+  start_date = NULL,
+  end_date = NULL
+) {
   lifecycle::signal_stage("experimental", "moving_average()")
   check_db(db)
   check_sensors(sensor, n = 1)
@@ -614,10 +621,20 @@ moving_average <- function(
   # Calculate moving average
   avgs <- lapply(cols, function(x) {
     paste0(
-      "avg(`", x, "`) OVER (",
+      "avg(`",
+      x,
+      "`) OVER (",
       "PARTITION BY `participant_id` ",
       "ORDER BY UNIXEPOCH(`datetime`) ",
-      "RANGE BETWEEN ", n / 2, " PRECEDING ", "AND ", n / 2, " FOLLOWING", ") AS `", x, "`"
+      "RANGE BETWEEN ",
+      n / 2,
+      " PRECEDING ",
+      "AND ",
+      n / 2,
+      " FOLLOWING",
+      ") AS `",
+      x,
+      "`"
     )
   })
 
@@ -626,14 +643,19 @@ moving_average <- function(
 
   # FROM
   query <- paste0(
-    query, " FROM (SELECT `participant_id`, `date` || 'T' || `time` AS `datetime`, ",
-    paste0("`", cols, "`", collapse = ", "), " FROM `", sensor, "`"
+    query,
+    " FROM (SELECT `participant_id`, `date` || 'T' || `time` AS `datetime`, ",
+    paste0("`", cols, "`", collapse = ", "),
+    " FROM `",
+    sensor,
+    "`"
   )
 
   # Where
   if (!is.null(participant_id)) {
     query <- paste0(
-      query, " WHERE (",
+      query,
+      " WHERE (",
       paste0("`participant_id` = '", participant_id, "'", collapse = " OR "),
       ")"
     )
@@ -730,11 +752,14 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
   check_sensors(sensor)
 
   # Get the data for each sensor
-  data <- purrr::map(sensor, ~ {
-    get_data(db, .x, participant_id) |>
-      mutate(datetime = DATETIME(paste(.data$date, .data$time))) |>
-      select("participant_id", "datetime")
-  })
+  data <- purrr::map(
+    sensor,
+    ~ {
+      get_data(db, .x, participant_id) |>
+        mutate(datetime = DATETIME(paste(.data$date, .data$time))) |>
+        select("participant_id", "datetime")
+    }
+  )
 
   # Merge all together
   data <- Reduce(dplyr::union, data)
@@ -840,7 +865,8 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
 
     if (inherits(err, "try-error")) {
       abort(paste0(
-        "Column(s) ", paste0("\"", by, "\"", collapse = ", "),
+        "Column(s) ",
+        paste0("\"", by, "\"", collapse = ", "),
         " must be present in both `data` and `gaps`."
       ))
     }
@@ -960,14 +986,13 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
 
   # Now, match the data (without the gaps) to each corresponding row_id. Thus, in some cases data
   # and data2 will be identical. Only for the end points of gaps, set data to data2.
-  data <- dplyr::nest_join(data, lead_data,
+  data <- dplyr::nest_join(
+    data,
+    lead_data,
     by = c(rlang::as_name(rlang::enquo(by)), "row_id"),
     name = "data2"
   ) |>
-    mutate(data = ifelse(!is.na(.data$gap_type) & .data$gap_type == "to",
-      .data$data2,
-      .data$data
-    ))
+    mutate(data = ifelse(!is.na(.data$gap_type) & .data$gap_type == "to", .data$data2, .data$data))
 
   # Lastly, unnest the data to get the original (and modified for "to") nested data, and ungroup
   # and cleanup

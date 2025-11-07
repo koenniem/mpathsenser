@@ -8,10 +8,7 @@ test_that("ccopy", {
     tempfile(file.path("mpathsenser_zip", "test"), fileext = ".zip")
 
   # Zip in the new temp directory
-  utils::zip(zipfile,
-    system.file("testdata", "test.json", package = "mpathsenser"),
-    flags = "-q"
-  )
+  utils::zip(zipfile, system.file("testdata", "test.json", package = "mpathsenser"), flags = "-q")
 
   expect_message(ccopy(zip_dir, zip_dir), "No files left to copy")
   expect_message(ccopy(zip_dir, tempdir()), "Copying 1 files\\.")
@@ -152,9 +149,7 @@ test_that("test_jsons", {
   )
 
   # Test output type if errors are found
-  suppressWarnings(expect_vector(test_jsons(broken_path),
-    ptype = character()
-  ))
+  suppressWarnings(expect_vector(test_jsons(broken_path), ptype = character()))
 
   # Test empty file
   empty <- tempfile(fileext = ".json")
@@ -184,10 +179,7 @@ test_that("unzip_data", {
   zipfile <- tempfile(file.path("mpathsenser_zip", "test"), fileext = ".zip")
 
   # Zip in the new temp directory
-  utils::zip(zipfile,
-    system.file("testdata", "test.json", package = "mpathsenser"),
-    flags = "-q"
-  )
+  utils::zip(zipfile, system.file("testdata", "test.json", package = "mpathsenser"), flags = "-q")
 
   expect_message(
     unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE),

@@ -15,13 +15,16 @@ common_test <- function(sensor, ...) {
 # unit_test ===========
 unit_test <- function(sensor, ...) {
   # Define the input
-  dat <- common_test(sensor, list(
-    body = list(
-      id = "12345a",
-      timestamp = "2021-11-14T16:40:01.123456Z",
-      ...
+  dat <- common_test(
+    sensor,
+    list(
+      body = list(
+        id = "12345a",
+        timestamp = "2021-11-14T16:40:01.123456Z",
+        ...
+      )
     )
-  ))
+  )
 
   # Execute the sensor function based on its name
   res <- do.call(paste0(sensor, "_fun"), list(dat))
@@ -334,19 +337,14 @@ test_that("periodic_gyroscope", {
 
 # Activity ===========
 test_that("activity", {
-  unit_test("activity",
-    confidence = 80,
-    type = "WALKING"
-  )
-  unit_test("activity",
-    confidence = NA,
-    type = NA
-  )
+  unit_test("activity", confidence = 80, type = "WALKING")
+  unit_test("activity", confidence = NA, type = NA)
 })
 
 # Air Quality ===========
 test_that("air_quality", {
-  unit_test("airquality",
+  unit_test(
+    "airquality",
     air_quality_index = 30,
     air_quality_level = "GOOD",
     source = "IRCEL-CELINE - Belgian Interregional Environment Agency",
@@ -354,7 +352,8 @@ test_that("air_quality", {
     latitude = 50.12345678901234,
     longitude = 4.12345678901234
   )
-  unit_test("airquality",
+  unit_test(
+    "airquality",
     air_quality_index = NA,
     air_quality_level = NA,
     source = NA,
@@ -451,8 +450,14 @@ test_that("app_usage", {
   res_which <- which_sensor(dat, "appusage")
   true <- data.frame(
     measurement_id = c(
-      "12345a_1", "12345a_2", "12345a_3", "12345b_1",
-      "12345b_2", "12345b_3", "12345c_1", "12345d_1"
+      "12345a_1",
+      "12345a_2",
+      "12345a_3",
+      "12345b_1",
+      "12345b_2",
+      "12345b_3",
+      "12345c_1",
+      "12345d_1"
     ),
     participant_id = "12345",
     date = "2021-11-14",
@@ -498,14 +503,8 @@ test_that("app_usage", {
 
 # Battery ===========
 test_that("battery", {
-  unit_test("battery",
-    battery_level = 85,
-    battery_status = "discharging"
-  )
-  unit_test("battery",
-    battery_level = NA,
-    battery_status = NA
-  )
+  unit_test("battery", battery_level = 85, battery_status = "discharging")
+  unit_test("battery", battery_level = NA, battery_status = NA)
 })
 
 # Bluetooth ===========
@@ -594,8 +593,7 @@ test_that("calendar", {
         id = "12345a",
         calendar_events = list(
           list(
-            event_id =
-              "8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9",
+            event_id = "8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9",
             calendar_id = "45ED76B4-87A1-D7E0-FA93-A7A1F64CF3E7",
             title = "96475fc78435bef84354fc05dd185ac944c5c3c1",
             description = "81af04ac942e1bbf4f3c638b086395dfabe2164a",
@@ -611,8 +609,7 @@ test_that("calendar", {
             )
           ),
           list(
-            event_id =
-              "8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9",
+            event_id = "8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9",
             calendar_id = "45ED76B4-87A1-D7E0-FA93-A7A1F64CF3E7",
             title = "96475fc78435bef84354fc05dd185ac944c5c3c1",
             description = "81af04ac942e1bbf4f3c638b086395dfabe2164a",
@@ -623,8 +620,7 @@ test_that("calendar", {
             attendees = vector("list", 0)
           ),
           list(
-            event_id =
-              "8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9",
+            event_id = "8752301D-3AE5-A7FF-6822-867418B8CC3E:F81E8964C1BC1C48365F9",
             calendar_id = "45ED76B4-87A1-D7E0-FA93-A7A1F64CF3E7",
             title = "96475fc78435bef84354fc05dd185ac944c5c3c1",
             description = "81af04ac942e1bbf4f3c638b086395dfabe2164a",
@@ -671,18 +667,15 @@ test_that("calendar", {
 
 # Connectivity ===========
 test_that("connectivity", {
-  unit_test("connectivity",
-    connectivity_status = "wifi"
-  )
-  unit_test("connectivity",
-    connectivity_status = NA
-  )
+  unit_test("connectivity", connectivity_status = "wifi")
+  unit_test("connectivity", connectivity_status = NA)
 })
 
 
 # Device ===========
 test_that("device", {
-  unit_test("device",
+  unit_test(
+    "device",
     platform = "IOS",
     device_id = "AB12CD34F5-12AA-34B5-67890-123AA45678901",
     hardware = "iPhone10,4",
@@ -691,7 +684,8 @@ test_that("device", {
     device_model = "iPhone",
     operating_system = "iOS"
   )
-  unit_test("device",
+  unit_test(
+    "device",
     platform = NA,
     device_id = NA,
     hardware = NA,
@@ -704,17 +698,14 @@ test_that("device", {
 
 # Error ===========
 test_that("error", {
-  unit_test("error",
-    message = "WeatherStation plugin returned null."
-  )
-  unit_test("error",
-    message = NA
-  )
+  unit_test("error", message = "WeatherStation plugin returned null.")
+  unit_test("error", message = NA)
 })
 
 # Geofence ===========
 test_that("geofence", {
-  unit_test("geofence",
+  unit_test(
+    "geofence",
     center = paste0(
       "ed1007174d0668bb262d702652f3b3f81d6be2d6e08db967810f8d128a0042014cc8",
       "e04792d8cdfe51da2158fd3efbedaf23fc02da9e5fea4c896ecb81c81672bf"
@@ -724,27 +715,18 @@ test_that("geofence", {
     radius = 50,
     state = "ENTER"
   )
-  unit_test("geofence",
-    center = NA,
-    dwell = NA,
-    name = NA,
-    radius = NA,
-    state = NA
-  )
+  unit_test("geofence", center = NA, dwell = NA, name = NA, radius = NA, state = NA)
 })
 
 # Heartbeat ==========
 test_that("heartbeat", {
-  unit_test("heartbeat",
+  unit_test(
+    "heartbeat",
     period = 5,
     device_type = "dk.cachet.carp.common.application.devices.Smartphone",
     device_role_name = "Primary Phone"
   )
-  unit_test("heartbeat",
-    period = NA,
-    device_type = NA,
-    device_role_name = NA
-  )
+  unit_test("heartbeat", period = NA, device_type = NA, device_role_name = NA)
 })
 
 # Keyboard ===========
@@ -761,23 +743,14 @@ test_that("keyboard", {
 
 # Light ===========
 test_that("light", {
-  unit_test("light",
-    mean_lux = 110,
-    std_lux = 5,
-    min_lux = 0,
-    max_lux = 200
-  )
-  unit_test("light",
-    mean_lux = NA,
-    std_lux = NA,
-    min_lux = NA,
-    max_lux = NA
-  )
+  unit_test("light", mean_lux = 110, std_lux = 5, min_lux = 0, max_lux = 200)
+  unit_test("light", mean_lux = NA, std_lux = NA, min_lux = NA, max_lux = NA)
 })
 
 # Location ===========
 test_that("location", {
-  unit_test("location",
+  unit_test(
+    "location",
     latitude = paste0(
       "69daf931cc38118ce450d5bfd9437324d1ad9b463e22d97a3ec5338c5de1f3a3a5",
       "bfc163eabdc8b0c99320b0c6fbc6ca4be89dac7db9d1f1d86fb1776534dddc89"
@@ -792,7 +765,8 @@ test_that("location", {
     speed_accuracy = 0,
     heading = 123.456789012354567
   )
-  unit_test("location",
+  unit_test(
+    "location",
     latitude = NA,
     longitude = NA,
     altitude = NA,
@@ -805,19 +779,14 @@ test_that("location", {
 
 # Memory  ===========
 test_that("memory", {
-  unit_test("memory",
-    free_physical_memory = 12345678,
-    free_virtual_memory = 123456789
-  )
-  unit_test("memory",
-    free_physical_memory = NA,
-    free_virtual_memory = NA
-  )
+  unit_test("memory", free_physical_memory = 12345678, free_virtual_memory = 123456789)
+  unit_test("memory", free_physical_memory = NA, free_virtual_memory = NA)
 })
 
 # Mobility ===========
 test_that("mobility", {
-  unit_test("mobility",
+  unit_test(
+    "mobility",
     number_of_places = 1,
     location_variance = 0,
     entropy = 0,
@@ -825,7 +794,8 @@ test_that("mobility", {
     home_stay = -1,
     distance_travelled = 0
   )
-  unit_test("mobility",
+  unit_test(
+    "mobility",
     number_of_places = NA,
     location_variance = NA,
     entropy = NA,
@@ -837,28 +807,20 @@ test_that("mobility", {
 
 # Noise ===========
 test_that("noise", {
-  unit_test("noise",
+  unit_test(
+    "noise",
     mean_decibel = 50.123456789,
     std_decibel = 10.123456789,
     min_decibel = 5.123456789,
     max_decibel = 80.123456789
   )
-  unit_test("noise",
-    mean_decibel = NA,
-    std_decibel = NA,
-    min_decibel = NA,
-    max_decibel = NA
-  )
+  unit_test("noise", mean_decibel = NA, std_decibel = NA, min_decibel = NA, max_decibel = NA)
 })
 
 # Pedometer ===========
 test_that("pedometer", {
-  unit_test("pedometer",
-    step_count = 12345
-  )
-  unit_test("pedometer",
-    step_count = NA
-  )
+  unit_test("pedometer", step_count = 12345)
+  unit_test("pedometer", step_count = NA)
 })
 
 # Phone log ===========
@@ -936,12 +898,8 @@ test_that("phone_log", {
 
 # Screen ===========
 test_that("screen", {
-  unit_test("screen",
-    screen_event = "SCREEN_OFF"
-  )
-  unit_test("screen",
-    screen_event = NA
-  )
+  unit_test("screen", screen_event = "SCREEN_OFF")
+  unit_test("screen", screen_event = NA)
 })
 
 # Text message ===========
@@ -1008,17 +966,14 @@ test_that("text_message", {
 
 # Timezone ==========
 test_that("timezone", {
-  unit_test("timezone",
-    timezone = "Europe/Brussels"
-  )
-  unit_test("timezone",
-    timezone = NA
-  )
+  unit_test("timezone", timezone = "Europe/Brussels")
+  unit_test("timezone", timezone = NA)
 })
 
 # Weather ===========
 test_that("weather", {
-  unit_test("weather",
+  unit_test(
+    "weather",
     country = "BE",
     area_name = "Arrondissement Leuven",
     weather_main = "Clouds",
@@ -1040,7 +995,8 @@ test_that("weather", {
     temp_min = 12.123456789012345,
     temp_max = 14.123456789012345
   )
-  unit_test("weather",
+  unit_test(
+    "weather",
     country = NA,
     area_name = NA,
     weather_main = NA,
@@ -1066,14 +1022,11 @@ test_that("weather", {
 
 # Wifi ===========
 test_that("wifi", {
-  unit_test("wifi",
+  unit_test(
+    "wifi",
     ssid = "318e527d52bb2f775c79d84a5c888614ca772b30",
     bssid = "e412411ff32dcf879275b33882643ee2d328a56a",
     ip = "10.11.31.06"
   )
-  unit_test("wifi",
-    ssid = NA,
-    bssid = NA,
-    ip = NA
-  )
+  unit_test("wifi", ssid = NA, bssid = NA, ip = NA)
 })

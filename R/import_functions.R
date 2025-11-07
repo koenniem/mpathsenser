@@ -231,7 +231,11 @@ unpack_sensor_data.appusage <- function(data, ...) {
   data <- alias_column_names(data)
 
   # TODO: Consider unique ID constraint Temporary fix
-  ids <- stats::ave(numeric(nrow(data)) + 1, data$measurement_id, FUN = seq_along)
+  ids <- stats::ave(
+    numeric(nrow(data)) + 1,
+    data$measurement_id,
+    FUN = seq_along
+  )
   data$measurement_id <- paste0(data$measurement_id, "_", ids)
 
   if ("last_foreground" %in% colnames(data)) {
@@ -286,7 +290,11 @@ unpack_sensor_data.bluetooth <- function(data, ...) {
   }
 
   # TODO: Consider unique ID constraint Temporary fix
-  ids <- stats::ave(numeric(nrow(data)) + 1, data$measurement_id, FUN = seq_along)
+  ids <- stats::ave(
+    numeric(nrow(data)) + 1,
+    data$measurement_id,
+    FUN = seq_along
+  )
   data$measurement_id <- paste0(data$measurement_id, "_", ids)
 
   safe_data_frame(
@@ -313,12 +321,20 @@ unpack_sensor_data.connectivity <- function(data, ...) {
 
   # double unnes on connectivity_status in case this is a list, which means it can contain multiple
   # entries of a connectivity_status in  the same measurement
-  if ("connectivity_status" %in% colnames(data) && is.list(data[["connectivity_status"]])) {
+  if (
+    "connectivity_status" %in%
+      colnames(data) &&
+      is.list(data[["connectivity_status"]])
+  ) {
     data <- unnest(data, "connectivity_status")
     data <- unnest(data, "connectivity_status")
 
     # TODO: Consider unique ID constraint Temporary fix
-    ids <- stats::ave(numeric(nrow(data)) + 1, data$measurement_id, FUN = seq_along)
+    ids <- stats::ave(
+      numeric(nrow(data)) + 1,
+      data$measurement_id,
+      FUN = seq_along
+    )
     data$measurement_id <- paste0(data$measurement_id, "_", ids)
   }
 
@@ -538,7 +554,6 @@ unpack_sensor_data.mpathinfo <- function(data, ...) {
 #' @keywords internal
 unpack_sensor_data.noise <- function(data, ...) {
   data <- unpack_sensor_data.default(data, "noise", ...)
-
 
   safe_data_frame(
     measurement_id = data$measurement_id,

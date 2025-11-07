@@ -32,7 +32,7 @@ calling this function.
 }
 
 \examples{
-\dontshow{if (rlang::is_installed("sodium")) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (rlang::is_installed("sodium")) withAutoprint(\{ # examplesIf}
 library(dplyr)
 library(sodium)
 # Create some GPS  coordinates.

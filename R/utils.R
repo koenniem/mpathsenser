@@ -17,9 +17,7 @@
 #' \dontrun{
 #' ccopy("K:/data/myproject/", "~/myproject")
 #' }
-ccopy <- function(from,
-                  to,
-                  recursive = TRUE) {
+ccopy <- function(from, to, recursive = TRUE) {
   check_arg(from, "character", n = 1)
   check_arg(to, "character", n = 1)
   check_arg(recursive, "logical", n = 1)
@@ -85,9 +83,10 @@ ccopy <- function(from,
 #' fix_jsons(files = files)
 #' }
 fix_jsons <- function(
-    path = getwd(),
-    files = NULL,
-    recursive = TRUE) {
+  path = getwd(),
+  files = NULL,
+  recursive = TRUE
+) {
   ensure_suggested_package("vroom")
 
   check_arg(path, "character", n = 1, allow_null = TRUE)
@@ -135,40 +134,43 @@ fix_jsons_impl <- function(jsonfiles) {
     p <- progressr::progressor(steps = length(jsonfiles)) # nolint
   }
 
-  furrr::future_map_int(jsonfiles, ~ {
-    if (requireNamespace("progressr", quietly = TRUE)) {
-      p()
-    }
+  furrr::future_map_int(
+    jsonfiles,
+    ~ {
+      if (requireNamespace("progressr", quietly = TRUE)) {
+        p()
+      }
 
-    # Read the file in binary mode, so it doesn't stop reading when encountering illegal ASCIIs
-    con <- file(.x, open = "rb", blocking = TRUE)
-    lines <- readLines(con, warn = FALSE, skipNul = TRUE)
-    close(con)
-    res <- 0L
+      # Read the file in binary mode, so it doesn't stop reading when encountering illegal ASCIIs
+      con <- file(.x, open = "rb", blocking = TRUE)
+      lines <- readLines(con, warn = FALSE, skipNul = TRUE)
+      close(con)
+      res <- 0L
 
-    # Are there any illegal characters in the file? If so, remove these before parsing.
-    illegal_ascii <- any(grepl("[^ -~]", lines))
-    if (illegal_ascii) {
-      lines <- fix_illegal_ascii(.x, lines)
-      res <- 1L
-    }
+      # Are there any illegal characters in the file? If so, remove these before parsing.
+      illegal_ascii <- any(grepl("[^ -~]", lines))
+      if (illegal_ascii) {
+        lines <- fix_illegal_ascii(.x, lines)
+        res <- 1L
+      }
 
-    if (length(lines) == 0) {
-      return(res)
-    } else if (length(lines) > 2) {
-      eof <- lines[(length(lines) - 2):length(lines)]
-    } else {
-      eof <- character(3)
-      eof[seq_along(lines)] <- lines
-    }
+      if (length(lines) == 0) {
+        return(res)
+      } else if (length(lines) > 2) {
+        eof <- lines[(length(lines) - 2):length(lines)]
+      } else {
+        eof <- character(3)
+        eof[seq_along(lines)] <- lines
+      }
 
-    res <- res + fix_eof(.x, eof, lines)
-    if (res != 0) {
-      return(1L)
-    } else {
-      return(0L)
+      res <- res + fix_eof(.x, eof, lines)
+      if (res != 0) {
+        return(1L)
+      } else {
+        return(0L)
+      }
     }
-  })
+  )
 }
 
 fix_illegal_ascii <- function(file, lines) {
@@ -224,7 +226,9 @@ fix_eof <- function(file, eof, lines) {
     # 8: Is the last line long (>3) and are the last two characters "}}"? Then somehow all
     # we are missing is a closing bracket.
     write("]", file, append = TRUE)
-  } else if (nchar(eof[2]) > 10 & substr(eof[2], nchar(eof[2]) - 2, nchar(eof[2])) == "}}," & last == "]") {
+  } else if (
+    nchar(eof[2]) > 10 & substr(eof[2], nchar(eof[2]) - 2, nchar(eof[2])) == "}}," & last == "]"
+  ) {
     # 9: The second to last line is a full line (i.e. of a certain length, let's say 10), has a
     # starting and end curly bracket, and a trailing comma before the last character of the file,
     # the trailing square bracket. This can be fixed by removing the comman from the second to last
@@ -278,10 +282,11 @@ fix_eof <- function(file, eof, lines) {
 #' test_jsons(path = "path/to/jsons", db = db)
 #' }
 test_jsons <- function(
-    path = getwd(),
-    files = NULL,
-    db = NULL,
-    recursive = TRUE) {
+  path = getwd(),
+  files = NULL,
+  db = NULL,
+  recursive = TRUE
+) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
   check_arg(files, "character", allow_null = TRUE)
   check_arg(recursive, "logical", n = 1)
@@ -306,7 +311,6 @@ test_jsons <- function(
     jsonfiles <- normalizePath(file.path(files), mustWork = TRUE)
   }
 
-
   if (!is.null(db)) {
     processed_files <- get_processed_files(db)
     jsonfiles <- jsonfiles[!(jsonfiles %in% processed_files$file_name)]
@@ -316,17 +320,21 @@ test_jsons <- function(
     p <- progressr::progressor(steps = length(jsonfiles)) # nolint
   }
 
-  missing <- furrr::future_map_lgl(jsonfiles, ~ {
-    if (requireNamespace("progressr", quietly = TRUE)) {
-      p()
-    }
-    str <- readLines(.x, warn = FALSE, skipNul = TRUE)
-    if (length(str) == 0) {
-      # empty file
-      return(TRUE)
-    }
-    jsonlite::validate(str)
-  }, .options = furrr::furrr_options(seed = TRUE))
+  missing <- furrr::future_map_lgl(
+    jsonfiles,
+    ~ {
+      if (requireNamespace("progressr", quietly = TRUE)) {
+        p()
+      }
+      str <- readLines(.x, warn = FALSE, skipNul = TRUE)
+      if (length(str) == 0) {
+        # empty file
+        return(TRUE)
+      }
+      jsonlite::validate(str)
+    },
+    .options = furrr::furrr_options(seed = TRUE)
+  )
 
   jsonfiles <- jsonfiles[!missing]
   if (length(jsonfiles) == 0) {
@@ -370,10 +378,11 @@ test_jsons <- function(
 #' unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", overwrite = FALSE)
 #' }
 unzip_data <- function(
-    path = getwd(),
-    to = NULL,
-    overwrite = FALSE,
-    recursive = TRUE) {
+  path = getwd(),
+  to = NULL,
+  overwrite = FALSE,
+  recursive = TRUE
+) {
   check_arg(path, "character", n = 1)
   check_arg(to, "character", allow_null = TRUE, n = 1)
   check_arg(overwrite, "logical", n = 1)
@@ -388,17 +397,20 @@ unzip_data <- function(
       p <- progressr::progressor(steps = length(dirs)) # nolint
     }
 
-    unzipped_files <- furrr::future_map_int(dirs, ~ {
-      if (requireNamespace("progressr", quietly = TRUE)) {
-        p()
-      }
+    unzipped_files <- furrr::future_map_int(
+      dirs,
+      ~ {
+        if (requireNamespace("progressr", quietly = TRUE)) {
+          p()
+        }
 
-      if (is.null(to)) {
-        to <- .x
-      }
+        if (is.null(to)) {
+          to <- .x
+        }
 
-      unzip_impl(.x, to, overwrite)
-    })
+        unzip_impl(.x, to, overwrite)
+      }
+    )
     unzipped_files <- sum(unzipped_files)
   } else {
     if (is.null(to)) {

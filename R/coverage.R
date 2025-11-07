@@ -95,15 +95,16 @@ freq <- c(
 #' )
 #' }
 coverage <- function(
-    db,
-    participant_id,
-    sensor = NULL,
-    frequency = mpathsenser::freq,
-    relative = TRUE,
-    offset = "None",
-    start_date = NULL,
-    end_date = NULL,
-    plot = deprecated()) {
+  db,
+  participant_id,
+  sensor = NULL,
+  frequency = mpathsenser::freq,
+  relative = TRUE,
+  offset = "None",
+  start_date = NULL,
+  end_date = NULL,
+  plot = deprecated()
+) {
   check_db(db)
   check_arg(participant_id, type = c("character"), n = 1)
   check_sensors(sensor, allow_null = TRUE)
@@ -159,8 +160,10 @@ coverage <- function(
       i = "Ignoring the offset argument."
     ))
     offset <- NULL
-  } else if (!(is.null(start_date) || convert2date(start_date)) ||
-    !(is.null(end_date) || convert2date(end_date))) {
+  } else if (
+    !(is.null(start_date) || convert2date(start_date)) ||
+      !(is.null(end_date) || convert2date(end_date))
+  ) {
     abort("start_date and end_date must be NULL, a character string, or date.")
   }
 
@@ -173,7 +176,15 @@ coverage <- function(
   }
 
   # Calculate coverage from db - internal function
-  data <- coverage_impl(db, participant_id, sensor, frequency, relative, start_date, end_date)
+  data <- coverage_impl(
+    db,
+    participant_id,
+    sensor,
+    frequency,
+    relative,
+    start_date,
+    end_date
+  )
 
   # Bind all together and make factors
   data <- bind_rows(data)
@@ -233,18 +244,28 @@ plot.coverage <- function(x, ...) {
     x <- x |>
       group_by(.data$measure) |>
       mutate(max_coverage = max(.data$coverage)) |>
-      mutate(max_coverage = ifelse(.data$max_coverage == 0, 1, .data$max_coverage)) |>
+      mutate(
+        max_coverage = ifelse(.data$max_coverage == 0, 1, .data$max_coverage)
+      ) |>
       mutate(scaled_coverage = .data$coverage / max(.data$max_coverage)) |>
       ungroup("measure")
 
     plot <- ggplot2::ggplot(
       data = x,
-      mapping = ggplot2::aes(x = .data$hour, y = .data$measure, fill = .data$scaled_coverage)
+      mapping = ggplot2::aes(
+        x = .data$hour,
+        y = .data$measure,
+        fill = .data$scaled_coverage
+      )
     )
   } else {
     plot <- ggplot2::ggplot(
       data = x,
-      mapping = ggplot2::aes(x = .data$hour, y = .data$measure, fill = .data$coverage)
+      mapping = ggplot2::aes(
+        x = .data$hour,
+        y = .data$measure,
+        fill = .data$coverage
+      )
     )
   }
 
@@ -285,68 +306,89 @@ plot.coverage <- function(x, ...) {
   plot
 }
 
-coverage_impl <- function(db, participant_id, sensor, frequency, relative, start_date, end_date) {
+coverage_impl <- function(
+  db,
+  participant_id,
+  sensor,
+  frequency,
+  relative,
+  start_date,
+  end_date
+) {
   # Interesting bug/feature in dbplyr: If participant_id is used in the query, the index of the
   # table is not used. Hence, we rename participant_id to p_id
   p_id <- as.character(participant_id) # nolint
 
   # Loop over each sensor and calculate the coverage rate for that sensor
-  data <- furrr::future_map(.x = sensor, .f = ~ {
-    tmp_db <- open_db(NULL, db@dbname)
+  data <- furrr::future_map(
+    .x = sensor,
+    .f = ~ {
+      tmp_db <- open_db(NULL, db@dbname)
 
-    # Extract the data for this participant and sensor
-    tmp <- dplyr::tbl(tmp_db, .x) |>
-      filter(participant_id == p_id) |>
-      select("measurement_id", "time", "date")
+      # Extract the data for this participant and sensor
+      tmp <- dplyr::tbl(tmp_db, .x) |>
+        filter(participant_id == p_id) |>
+        select("measurement_id", "time", "date")
 
-    # Filter by date if needed
-    if (!is.null(start_date) && !is.null(end_date)) {
+      # Filter by date if needed
+      if (!is.null(start_date) && !is.null(end_date)) {
+        tmp <- tmp |>
+          filter(date >= start_date) |>
+          filter(date <= end_date)
+      }
+
+      # Remove duplicate IDs with _ for certain sensors
+      # Removed Accelerometer and Gyroscope from the list, as they are already binned per second
+      if (
+        .x %in%
+          c(
+            "AppUsage",
+            "Bluetooth",
+            "Calendar",
+            "InstalledApps",
+            "TextMessage"
+          )
+      ) {
+        tmp <- tmp |>
+          mutate(measurement_id = substr(.data$measurement_id, 1, 36)) |>
+          distinct()
+      }
+
+      # Calculate the number of average measurements per hour i.e. the sum of all measurements in
+      # that hour divided by n
       tmp <- tmp |>
-        filter(date >= start_date) |>
-        filter(date <= end_date)
-    }
+        mutate(hour = strftime("%H", .data$time)) |>
+        # mutate(Date = date(time)) |>
+        dplyr::count(.data$date, .data$hour) |>
+        group_by(.data$hour) |>
+        summarise(coverage = sum(.data$n, na.rm = TRUE) / n())
 
-    # Remove duplicate IDs with _ for certain sensors
-    # Removed Accelerometer and Gyroscope from the list, as they are already binned per second
-    if (.x %in% c(
-      "AppUsage", "Bluetooth",
-      "Calendar", "InstalledApps", "TextMessage"
-    )) {
+      # Transfer the result to R's memory and ensure it's numeric
       tmp <- tmp |>
-        mutate(measurement_id = substr(.data$measurement_id, 1, 36)) |>
-        distinct()
-    }
+        collect() |>
+        mutate(
+          hour = as.numeric(.data$hour),
+          coverage = as.numeric(.data$coverage)
+        )
 
-    # Calculate the number of average measurements per hour i.e. the sum of all measurements in
-    # that hour divided by n
-    tmp <- tmp |>
-      mutate(hour = strftime("%H", .data$time)) |>
-      # mutate(Date = date(time)) |>
-      dplyr::count(.data$date, .data$hour) |>
-      group_by(.data$hour) |>
-      summarise(coverage = sum(.data$n, na.rm = TRUE) / n())
+      # Disconnect from the temporary database connection
+      dbDisconnect(tmp_db)
 
-    # Transfer the result to R's memory and ensure it's numeric
-    tmp <- tmp |>
-      collect() |>
-      mutate(hour = as.numeric(.data$hour), coverage = as.numeric(.data$coverage))
+      # Calculate the relative target frequency ratio by dividing the average number of measurements
+      # per hour by the expected number of measurements
+      if (relative) {
+        tmp <- tmp |>
+          mutate(coverage = round(.data$coverage / frequency[.x], 2))
+      }
 
-    # Disconnect from the temporary database connection
-    dbDisconnect(tmp_db)
-
-    # Calculate the relative target frequency ratio by dividing the average number of measurements
-    # per hour by the expected number of measurements
-    if (relative) {
-      tmp <- tmp |>
-        mutate(coverage = round(.data$coverage / frequency[.x], 2))
-    }
-
-    tmp |>
-      # Pour into ggplot format
-      mutate(measure = .x) |>
-      # Fill in missing hours with 0
-      complete(hour = 0:23, measure = .x, fill = list(coverage = 0))
-  }, .options = furrr::furrr_options(seed = TRUE))
+      tmp |>
+        # Pour into ggplot format
+        mutate(measure = .x) |>
+        # Fill in missing hours with 0
+        complete(hour = 0:23, measure = .x, fill = list(coverage = 0))
+    },
+    .options = furrr::furrr_options(seed = TRUE)
+  )
 
   # Give the output list the sensor names
   names(data) <- names(sensor)

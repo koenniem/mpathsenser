@@ -11,10 +11,33 @@
 #' sensors
 #' @export sensors
 sensors <- c(
-  "Accelerometer", "AirQuality", "Activity", "AppUsage", "Battery", "Bluetooth", "Calendar",
-  "Connectivity", "Device", "Error", "Geofence", "Gyroscope", "Heartbeat", "InstalledApps",
-  "Keyboard", "Light", "Location", "Memory", "Mobility", "Noise", "Pedometer", "PhoneLog",
-  "Screen", "TextMessage", "Timezone", "Weather", "Wifi"
+  "Accelerometer",
+  "AirQuality",
+  "Activity",
+  "AppUsage",
+  "Battery",
+  "Bluetooth",
+  "Calendar",
+  "Connectivity",
+  "Device",
+  "Error",
+  "Geofence",
+  "Gyroscope",
+  "Heartbeat",
+  "InstalledApps",
+  "Keyboard",
+  "Light",
+  "Location",
+  "Memory",
+  "Mobility",
+  "Noise",
+  "Pedometer",
+  "PhoneLog",
+  "Screen",
+  "TextMessage",
+  "Timezone",
+  "Weather",
+  "Wifi"
 )
 
 #' Create a new mpathsenser database
@@ -54,7 +77,8 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   # If db already exists, remove it or throw an error
   if (file.exists(db_name)) {
     if (overwrite) {
-      tryCatch(file.remove(db_name),
+      tryCatch(
+        file.remove(db_name),
         warning = function(e) abort(as.character(e)),
         error = function(e) abort(as.character(e))
       )
@@ -81,7 +105,6 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
     }
   )
 
-
   # Populate the db with empty tables
   tryCatch(
     {
@@ -91,7 +114,8 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
         dbExecute(db, statement)
       }
     },
-    error = function(e) { # nocov start
+    error = function(e) {
+      # nocov start
       dbDisconnect(db)
       abort(c(
         "Database definition file not found. The package is probably corrupted.",
@@ -292,9 +316,10 @@ vacuum_db <- function(db) {
 #' file.remove(file.path(tempdir(), "mydb1.db"))
 #' file.remove(file.path(tempdir(), "mydb2.db"))
 copy_db <- function(
-    source_db,
-    target_db,
-    sensor = "All") {
+  source_db,
+  target_db,
+  sensor = "All"
+) {
   check_db(source_db, arg = "source_db")
   check_db(target_db, arg = "target_db")
   check_arg(sensor, "character")
@@ -320,13 +345,17 @@ copy_db <- function(
     "INSERT OR IGNORE INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles"
   )
 
-
   # Copy all specified sensors
   for (i in seq_along(sensor)) {
-    dbExecute(source_db, paste0(
-      "INSERT OR IGNORE INTO new_db.", sensor[i],
-      " SELECT * FROM ", sensor[i]
-    ))
+    dbExecute(
+      source_db,
+      paste0(
+        "INSERT OR IGNORE INTO new_db.",
+        sensor[i],
+        " SELECT * FROM ",
+        sensor[i]
+      )
+    )
   }
 
   # Detach
@@ -395,7 +424,6 @@ clear_db <- function(db) {
 }
 
 ### ----------- Getters ---------------
-
 
 #' Get all processed files from a database
 #'
@@ -534,11 +562,12 @@ get_studies <- function(db, lazy = FALSE) {
 #' close_db(db)
 #' }
 get_nrows <- function(
-    db,
-    sensor = "All",
-    participant_id = NULL,
-    start_date = NULL,
-    end_date = NULL) {
+  db,
+  sensor = "All",
+  participant_id = NULL,
+  start_date = NULL,
+  end_date = NULL
+) {
   check_db(db)
   check_arg(sensor, "character", allow_null = TRUE)
 
@@ -546,9 +575,13 @@ get_nrows <- function(
     sensor <- sensors
   }
 
-  vapply(sensor, function(x) {
-    get_data(db, x, participant_id, start_date, end_date) |>
-      dplyr::count() |>
-      pull(n)
-  }, integer(1))
+  vapply(
+    sensor,
+    function(x) {
+      get_data(db, x, participant_id, start_date, end_date) |>
+        dplyr::count() |>
+        pull(n)
+    },
+    integer(1)
+  )
 }

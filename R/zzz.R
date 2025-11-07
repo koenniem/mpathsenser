@@ -6,7 +6,9 @@
     mpathsenser.show_progress = TRUE
   )
   toset <- !(names(op_mpathsenser) %in% names(op))
-  if (any(toset)) options(op_mpathsenser[toset])
+  if (any(toset)) {
+    options(op_mpathsenser[toset])
+  }
 
   rlang::run_on_load()
 

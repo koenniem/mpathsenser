@@ -2,7 +2,8 @@
 # (i.e. dynamic evaluation) poses a problem from the globals package, which would then not
 # include these import functions in the futures.
 which_sensor <- function(data, sensor) {
-  switch(tolower(sensor),
+  switch(
+    tolower(sensor),
     accelerometer = accelerometer_fun(data),
     activity = activity_fun(data),
     airquality = airquality_fun(data),
@@ -211,7 +212,6 @@ calendar_fun <- function(data) {
       })
     })
   }
-
 
   data$body <- lapply(data$body, bind_rows)
   data <- unnest(data, body, keep_empty = TRUE)
