@@ -71,7 +71,7 @@ commit-man:
   script:
     - echo "Committing man files to git"
     - apt-get update -qq && apt-get install -y libxt6
-    - Rscript -e 'install.packages("stringi")'
+    - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "never", force = TRUE)'
     - Rscript -e 'devtools::document()'
     - git add NAMESPACE man
     - |-
@@ -82,8 +82,14 @@ commit-man:
         # Show the status of files that are about to be created, updated or deleted
         git status
 
+        # Make sure we are on a branch
+        git checkout "${CI_COMMIT_REF_NAME}"
+
         # Commit all changes
         git commit -m "Updated manual files"
+
+        # git config user.email "koen.niemeijer@kuleuven.be"
+        # git config user.name "CI_bot"
 
         ## Push back to Gitlab using secret token created earlier with "skip-ci" option to stop builds triggering in a loop
         git push "https://${GITLAB_USER_LOGIN}:${CI_ACCESS_TOKEN}@${CI_REPOSITORY_URL#*@}" "HEAD:${CI_COMMIT_REF_NAME}" -o ci.skip
