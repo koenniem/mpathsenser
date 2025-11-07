@@ -83,9 +83,6 @@ commit-man:
         # Show the status of files that are about to be created, updated or deleted
         git status
 
-        # Make sure we are on a branch
-        git checkout "${CI_COMMIT_REF_NAME}"
-
         # Commit all changes
         git commit -m "Updated manual files"
 
