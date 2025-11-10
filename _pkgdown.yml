@@ -1,6 +1,6 @@
 url: https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser
 lang: en
-llm-docs: true
+llm-docs: false
 
 template:
   bootstrap: 5
@@ -37,8 +37,8 @@ navbar:
 repo:
   url:
     home: https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/
-    source: https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/blob/master/
-    issue: https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/issues/
+    source: https://github.com/koenniem/mpathsenser/tree/master
+    issue: https://github.com/koenniem/mpathsenser/issues
     branch: master
 
 reference:
@@ -49,6 +49,7 @@ reference:
       - test_jsons
       - unzip_data
       - ccopy
+      - add_timezones_to_db
 
   - title: Database handling
     contents:
@@ -83,6 +84,7 @@ reference:
       - add_gaps
       - bin_data
       - moving_average
+      - with_localtime
 
   - title: Sensor-specific functions
     contents:

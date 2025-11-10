@@ -428,32 +428,25 @@ unzip_data <- function(
 }
 
 unzip_impl <- function(path, to, overwrite) {
-  # Get all json and zipfiles in the path
-  jsonfiles <- dir(path = path, pattern = "*.json$", all.files = TRUE)
-  tag_json <- sapply(strsplit(jsonfiles, "data-"), function(x) x[2])
   zipfiles <- dir(path = path, pattern = "*.zip$", all.files = TRUE)
-  tag_zip <- sapply(strsplit(zipfiles, "data-"), function(x) x[2])
-  tag_zip <- substr(tag_zip, 1, nchar(tag_zip) - 4)
 
-  # Do not unzip files that already exist as JSON file
-  if (!overwrite) {
-    zipfiles <- zipfiles[!(tag_zip %in% tag_json)]
+  if (length(zipfiles) == 0) {
+    return(0)
   }
 
-  if (length(zipfiles) > 0) {
-    lapply(zipfiles, function(x) {
-      tryCatch(
-        {
-          invisible(utils::unzip(
-            zipfile = file.path(path, x),
-            overwrite = overwrite,
-            junkpaths = TRUE,
-            exdir = to
-          ))
-        },
-        error = function(e) warn(paste0("Failed to unzip", x))
-      )
-    })
-  }
-  return(length(zipfiles))
+  res <- lapply(zipfiles, function(x) {
+    tryCatch(
+      {
+        suppressWarnings(invisible(utils::unzip(
+          zipfile = file.path(path, x),
+          overwrite = overwrite,
+          junkpaths = TRUE,
+          exdir = to
+        )))
+      },
+      error = function(e) warn(paste0("Failed to unzip", x))
+    )
+  })
+
+  length(unlist(res))
 }
