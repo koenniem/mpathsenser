@@ -2,7 +2,7 @@
 % Please edit documentation in R/timezone_helpers.R
 \name{add_timezones_to_db}
 \alias{add_timezones_to_db}
-\title{Add timezone information to all sensor tables in an m-Path Sense database}
+\title{Add timezone to measurements in an m-Path Sense database}
 \usage{
 add_timezones_to_db(db, .progress = TRUE)
 }
@@ -21,17 +21,6 @@ This function looks for a \code{Timezone} table in a local m-Path Sense SQLite d
 assign timezone values to all other sensor tables. For each observation in a sensor table, it
 finds the timezone interval that matches the observation's timestamp and adds or updates a
 \code{timezone} column accordingly.
-}
-\details{
-The function performs the timezone assignment entirely within the database using \code{dplyr}
-and \code{dbplyr}. For each sensor table, it: 1. Computes UNIX timestamps for measurement start and
-end times. 2. Joins with timezone intervals from the \code{Timezone} table based on overlapping start
-and end times. 3. Inserts or updates the resulting timezone values into the original table via
-\code{\link[dplyr:rows]{dplyr::rows_upsert()}}.
-
-The function assumes that all tables share a common \code{participant_id} column and that each sensor
-table contains \code{date} and \code{time} columns (and optionally an \code{end_time} column). The \code{Timezone}
-table is expected to have at least \code{participant_id}, \code{date}, \code{time}, and \code{timezone} columns.
 }
 \examples{
 \dontrun{
