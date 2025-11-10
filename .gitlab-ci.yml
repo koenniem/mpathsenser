@@ -82,14 +82,12 @@ commit-man:
         # Show the status of files that are about to be created, updated or deleted
         git status
 
-        # Make sure we are on a branch
-        git checkout "${CI_COMMIT_REF_NAME}"
+        # Identify
+        git config user.email ${GITLAB_USER_EMAIL}
+        git config user.name ${GITLAB_USER_LOGIN}
 
         # Commit all changes
         git commit -m "Updated manual files"
-
-        git config user.email ${GITLAB_USER_EMAIL}
-        git  config user.name ${GITLAB_USER_LOGIN}
         
         ## Push back to Gitlab using secret token created earlier with "skip-ci" option to stop builds triggering in a loop
         git push "https://${GITLAB_USER_LOGIN}:${CI_ACCESS_TOKEN}@${CI_REPOSITORY_URL#*@}" "HEAD:${CI_COMMIT_REF_NAME}" -o ci.skip
