@@ -86,16 +86,16 @@ commit-man:
         git config --global user.email ${GITLAB_USER_EMAIL}
         git config --global user.name ${GITLAB_USER_LOGIN}
 
-        echo "CI_COMMIT_REF: ${CI_COMMIT_REF_NAME}"
+        echo "CI_COMMIT_REF_NAME: ${CI_COMMIT_REF_NAME}"
         echo "CI_COMMIT_BRANCH: ${CI_COMMIT_BRANCH}"
+        echo $"CI_REPOSITORY_URL: ${CI_REPOSITORY_URL}"
 
         # Commit all changes
         git commit -m "Updated manual files"
 
         ## Push back to Gitlab using secret token created earlier with "skip-ci" option to stop builds triggering in a loop
-        git remote set-url origin $CI_COMMIT BRANCH
-        git push -o ci.skip "HEAD:${CI_COMMIT_BRANCH}" "HEAD:${CI_COMMIT_REF_NAME}"
-        # git push "https://${GITLAB_USER_LOGIN}:${CI_JOB_TOKEN}@${CI_REPOSITORY_URL#*@}" "HEAD:${CI_COMMIT_REF_NAME}" -o ci.skip
+        # git remote set-url origin $CI_COMMIT BRANCH
+        git push "https://${GITLAB_USER_LOGIN}:${CI_JOB_TOKEN}@${CI_REPOSITORY_URL#*@}" "HEAD:${CI_COMMIT_REF_NAME}" -o ci.skip
       fi
 
 build-site:
