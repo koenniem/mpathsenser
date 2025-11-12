@@ -2,12 +2,14 @@
 #'
 #' @description `r lifecycle::badge("experimental")`
 #'
-#' This function looks for a `Timezone` table in a local m-Path Sense SQLite database and uses it to
-#' assign timezone values to all other sensor tables. For each observation in a sensor table, it
-#' finds the timezone interval that matches the observation's timestamp and adds or updates a
-#' `timezone` column accordingly.
+#'   This function looks for a `Timezone` table in a local m-Path Sense SQLite database and uses it
+#'   to assign timezone values to all other sensor tables. For each observation in a sensor table,
+#'   it finds the timezone interval that matches the observation's timestamp and adds or updates a
+#'   `timezone` column accordingly.
 #'
 #' @param db A database connection, typically created by [open_db()].
+#' @param sensors A character vector of sensor table names to update. Defaults to `NULL` for all supported
+#'   sensors.
 #' @param .progress Logical; whether to show a progress bar during processing. Defaults to `TRUE`.
 #'
 #' @return Invisibly returns `TRUE` if all updates complete successfully.
@@ -25,8 +27,18 @@
 #' }
 #'
 #' @export
-add_timezones_to_db <- function(db, .progress = TRUE) {
+add_timezones_to_db <- function(db, sensors, .progress = TRUE) {
   check_db(db)
+  check_sensors(sensors, allow_null = TRUE)
+
+  if (is.null(sensors)) {
+    sensors <- mpathsenser::sensors
+  }
+
+  # Do not add the timezone to the timezone table itself to avoid confusion
+  if ("timezone" %in% tolower(sensors)) {
+    sensors <- sensors[which(tolower(sensors) != "timezone")]
+  }
 
   # Check that the table timezone exists
   if (!DBI::dbExistsTable(db, "Timezone")) {

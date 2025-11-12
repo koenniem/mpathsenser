@@ -83,14 +83,15 @@ commit-man:
         git status
 
         # Identify
-        git config user.email ${GITLAB_USER_EMAIL}
-        git config user.name ${GITLAB_USER_LOGIN}
+        git config --global user.email ${GITLAB_USER_EMAIL}
+        git config --global user.name ${GITLAB_USER_NAME}
 
         # Commit all changes
         git commit -m "Updated manual files"
 
         ## Push back to Gitlab using secret token created earlier with "skip-ci" option to stop builds triggering in a loop
-        git push "https://${GITLAB_USER_LOGIN}:${CI_ACCESS_TOKEN}@${CI_REPOSITORY_URL#*@}" "HEAD:${CI_COMMIT_REF_NAME}" -o ci.skip
+        git remote set-url origin $CI_REPOSITORY_URL
+        git push -o ci.skip "HEAD:${CI_COMMIT_REF_NAME}"
       fi
 
 build-site:
