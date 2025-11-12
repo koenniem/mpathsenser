@@ -47,7 +47,7 @@ parallel is active, it is recommended that \code{batch_size} be a scalar multipl
 CPU cores the parallel cluster can use. If a single JSON file in the batch causes and error,
 the batch is terminated (but not the function) and it is up to the user to fix the file. This
 means that if \code{batch_size} is large, many files will not be processed. Set \code{batch_size} to 1
-for sequential (one-by-one) file processing.
+for sequential (one-by-one) file processing
 
 Currently, only SQLite is supported as a backend. Due to its concurrency restriction, parallel
 processing works for cleaning the raw data, but not for importing it into the database. This is
