@@ -4,10 +4,13 @@
 \alias{add_timezones_to_db}
 \title{Add timezone to measurements in an m-Path Sense database}
 \usage{
-add_timezones_to_db(db, .progress = TRUE)
+add_timezones_to_db(db, sensors, .progress = TRUE)
 }
 \arguments{
 \item{db}{A database connection, typically created by \code{\link[=open_db]{open_db()}}.}
+
+\item{sensors}{A character vector of sensor table names to update. Defaults to \code{NULL} for all supported
+sensors.}
 
 \item{.progress}{Logical; whether to show a progress bar during processing. Defaults to \code{TRUE}.}
 }
@@ -17,9 +20,9 @@ Invisibly returns \code{TRUE} if all updates complete successfully.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
-This function looks for a \code{Timezone} table in a local m-Path Sense SQLite database and uses it to
-assign timezone values to all other sensor tables. For each observation in a sensor table, it
-finds the timezone interval that matches the observation's timestamp and adds or updates a
+This function looks for a \code{Timezone} table in a local m-Path Sense SQLite database and uses it
+to assign timezone values to all other sensor tables. For each observation in a sensor table,
+it finds the timezone interval that matches the observation's timestamp and adds or updates a
 \code{timezone} column accordingly.
 }
 \examples{
