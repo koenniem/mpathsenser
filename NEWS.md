@@ -8,6 +8,14 @@ measurement with a `sensorEndTime`.
 * `import()` now correctly reads `study_id` if it contains an underscore `_`.
 * `bin_data()` gained a `.name` argument to specify the name of the column containing the binned 
 data.
+* Added `add_timezone_to_db()` function to add the timezone "measurements" to each measurement of
+sensor data. This allows you to more easily take into account which timezone a participant was in
+instead of only relying on UTC.
+* Added `with_localtime()` function to easily add the relevant timezone to a timestamp, even if 
+multiple timezones are present in the data. Note that this does not work in-database.
+* The use of `progressr::progress()` has been removed from the documentation is this function is 
+now defunct. 
+
 
 # mpathsenser 1.2.3
 This is a hotfix release to fix a bug in `import()`.
