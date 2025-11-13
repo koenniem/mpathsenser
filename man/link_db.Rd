@@ -73,9 +73,8 @@ around when \code{reverse = TRUE}.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 
-This function is specific to mpathsenser databases. It is a wrapper around \code{\link[=link]{link()}} but
-extracts data in the database for you. It is now soft deprecated as I feel this function's use
-is limited in comparison to \code{\link[=link]{link()}}.
+This function is deprecated in favour of \code{\link[=link]{link()}}. It used to be a wrapper around \code{\link[=link]{link()}} but
+extracts data in the database for you.
 }
 \examples{
 \dontrun{

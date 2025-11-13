@@ -172,14 +172,18 @@ test_that("test_jsons", {
 
 test_that("unzip_data", {
   # Create directory for zip in tempdir
-  zip_dir <- file.path(tempdir(), "mpathsenser_zip")
+  zip_dir <- tempfile()
   dir.create(zip_dir)
 
   # Define the path for the zip
-  zipfile <- tempfile(file.path("mpathsenser_zip", "test"), fileext = ".zip")
+  zipfile <- file.path(zip_dir, "test.zip")
 
   # Zip in the new temp directory
-  utils::zip(zipfile, system.file("testdata", "test.json", package = "mpathsenser"), flags = "-q")
+  utils::zip(
+    zipfile,
+    system.file("testdata", "test.json", package = "mpathsenser"),
+    flags = "-rjq9X"
+  )
 
   expect_message(
     unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE),
@@ -199,7 +203,7 @@ test_that("unzip_data", {
   # Try a mixture of zip and json files
   file.copy(
     from = system.file("testdata", "test.json", package = "mpathsenser"),
-    to = file.path(zip_dir, "test.json"),
+    to = file.path(zip_dir, "test2.json"),
     overwrite = TRUE
   )
   expect_message(

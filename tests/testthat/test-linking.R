@@ -422,9 +422,9 @@ test_that("link", {
     add_before = TRUE,
     add_after = TRUE
   )
-  expect_equal(attr(res$time, "tz"), "Europe/Brussels")
-  expect_equal(unique(map_chr(res$data, ~ attr(.x$time, "tz"))), "UTC")
-  expect_equal(unique(map_chr(res$data, ~ attr(.x$original_time, "tz"))), "UTC")
+  expect_equal(attr(res$time, "tzone"), "Europe/Brussels")
+  expect_equal(unique(map_chr(res$data, ~ attr(.x$time, "tzone"))), "UTC")
+  expect_equal(unique(map_chr(res$data, ~ attr(.x$original_time, "tzone"))), "UTC")
 
   # Make sure link does not add an extra row if first measurement equal start of the interval or
   # vice versa for the end of the interval.
