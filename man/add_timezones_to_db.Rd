@@ -4,7 +4,7 @@
 \alias{add_timezones_to_db}
 \title{Add timezone to measurements in an m-Path Sense database}
 \usage{
-add_timezones_to_db(db, sensors, .progress = TRUE)
+add_timezones_to_db(db, sensors = NULL, .progress = TRUE)
 }
 \arguments{
 \item{db}{A database connection, typically created by \code{\link[=open_db]{open_db()}}.}
@@ -24,6 +24,11 @@ This function looks for a \code{Timezone} table in a local m-Path Sense SQLite d
 to assign timezone values to all other sensor tables. For each observation in a sensor table,
 it finds the timezone interval that matches the observation's timestamp and adds or updates a
 \code{timezone} column accordingly.
+}
+\details{
+Note that rerunning this function overwrites existing \code{timezone} columns in the sensor tables.
+Also note that if a measurement matches multiple time zones (i.e. a timezone change occurred
+during the measurement), the timezone with the longest overlap is chosen.
 }
 \examples{
 \dontrun{

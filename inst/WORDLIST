@@ -1,6 +1,5 @@
 AirQuality
 AppUsage
-DateTimeClasses
 EMA
 ESM
 Geofence
@@ -32,7 +31,6 @@ apps’
 booleans
 centered
 db
-dbplyr
 dd
 defunctional
 dplyr
@@ -42,14 +40,16 @@ geocoding
 geojson
 ggplot
 hotfix
-jsons
 jsonv
 kilometers
 knitr
 lifecycle
+localtime
+mpathinfo
 nominatim
 on's
 parallellism
 th
 tibble
 timezone
+timezones
