@@ -15,6 +15,7 @@ instead of only relying on UTC.
 multiple timezones are present in the data. Note that this does not work in-database.
 * The use of `progressr::progress()` has been removed from the documentation is this function is 
 now defunct. 
+* `link_db()` is now defunct. Please use `link()` instead.
 
 
 # mpathsenser 1.2.3
