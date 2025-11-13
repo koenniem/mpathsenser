@@ -26,10 +26,10 @@ You can install the latest version of mpathsenser from CRAN:
 install.packages("mpathsenser")
 ```
 
-Alternatively, you can install the development version from my Gitlab repo. First, make sure you have [Rtools](https://cran.r-project.org/bin/windows/Rtools/) (Windows, Linux) or XCode installed. For XCode, register as an [Apple Developer](https://developer.apple.com/) (don't worry, it's free) and then run `xcode-select --install` in a terminal. Then, run the following code in R:
+Or the development version from Github:
 
 ```{r, eval = FALSE}
-devtools::install_git("https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser")
+remotes::install_github("koenniem/mpathsenser")
 ```
 
 ## Importing files
@@ -148,7 +148,7 @@ For an overview of all functions in this package, see the [mpathsenser Reference
 If you encounter a clear bug or need help getting a function to run, please file an issue with a minimal reproducible example on [Gitlab](https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/issues).
 
 ## Code of Conduct
-Please note that this project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree to abide by its terms.
+Please note that this project is released with a [Contributor Code of Conduct](https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/CODE_OF_CONDUCT.html). By participating in this project you agree to abide by its terms.
 
 ```{r include=FALSE}
 close_db(db)

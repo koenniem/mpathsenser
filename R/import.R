@@ -31,7 +31,7 @@
 #'
 #' @section Progress: You can be updated of the progress of this function by using the
 #'   \pkg{progressr} package. See `progressr`'s
-#'   \href{https://cran.r-project.org/web/packages/progressr/vignettes/progressr-01-intro.html}{vignette}
+#'   \href{https://cran.r-project.org/package=progressr/vignettes/progressr-01-intro.html}{vignette}
 #'   on how to subscribe to these updates.
 #'
 #' @param path The path to the file directory

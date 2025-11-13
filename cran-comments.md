@@ -1,8 +1,7 @@
 ## Test environments
-* local Windows 10 install, R 4.3.3
-* Fedora Linux (on R-hub) R-devel
+* local Windows 11 install, R 4.5.2
 * Ubuntu Linux (devel and release)
-* Mac OSX M1 (devel and release)
+* Mac OSX M1 (release)
 * Windows (devel and release)
 
 ## R CMD check results

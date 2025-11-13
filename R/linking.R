@@ -501,9 +501,8 @@ link <- function(
 #'
 #' @description `r lifecycle::badge("deprecated")`
 #'
-#'   This function is specific to mpathsenser databases. It is a wrapper around [link()] but
-#'   extracts data in the database for you. It is now soft deprecated as I feel this function's use
-#'   is limited in comparison to [link()].
+#'   This function is deprecated in favour of [link()]. It used to be a wrapper around [link()] but
+#'   extracts data in the database for you.
 #'
 #' @inheritParams get_data
 #' @inheritParams link

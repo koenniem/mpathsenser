@@ -1,22 +1,28 @@
-# mpathsenser (development version)
-* `import()` now supports the new output format for `connectivity` where `connectivity_status` can
-be a list of statuses as well.
-* Fixed a bug in `import()` where files could not be read in correctly if they did not contain any
-measurement with a `sensorEndTime`. 
+# mpathsenser 1.2.4
+## Major changes
+* `link_db()` is now defunct. Please use `link()` instead.
 * Bump minimum R requirement to 4.2.0 as the native pipe `|>` is used in this package.
-* `mpathsenser` no longer gives a warning for unimplemented 'mpathinfo' sensor.
-* `import()` now correctly reads `study_id` if it contains an underscore `_`.
-* `bin_data()` gained a `.name` argument to specify the name of the column containing the binned 
-data.
 * Added `add_timezone_to_db()` function to add the timezone "measurements" to each measurement of
 sensor data. This allows you to more easily take into account which timezone a participant was in
 instead of only relying on UTC.
 * Added `with_localtime()` function to easily add the relevant timezone to a timestamp, even if 
 multiple timezones are present in the data. Note that this does not work in-database.
+
+## Minor changes
+* `import()` now supports the new output format for `connectivity` where `connectivity_status` can
+be a list of statuses as well.
+* `mpathsenser` no longer gives a warning for unimplemented 'mpathinfo' meta data.
+* `bin_data()` gained a `.name` argument to specify the name of the column containing the binned 
+data.
 * The use of `progressr::progress()` has been removed from the documentation is this function is 
 now defunct. 
-* `link_db()` is now defunct. Please use `link()` instead.
 
+## Bugfixes
+* Fixed a bug in `import()` where files could not be read in correctly if they did not contain any
+measurement with a `sensorEndTime`. 
+* Fixed `unzip_data()` not correctly detecting which files not to overwrite if `overwrite = FALSE`
+and the zip files have a non-standard name.
+* `import()` now correctly reads `study_id` if it contains an underscore `_`.
 
 # mpathsenser 1.2.3
 This is a hotfix release to fix a bug in `import()`.

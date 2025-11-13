@@ -42,7 +42,7 @@ If you haven’t done so, unzip all files.
 
 ``` r
 unzip_data(path = path)
-#> No files found to unzip.
+#> Unzipped 37 files.
 ```
 
 In m-Path Sense, data is written to JSON files as it comes in. In the
@@ -101,9 +101,9 @@ participant numbers):
 
 ``` r
 get_participants(db)
-#>                               participant_id     study_id
-#> 1                                       2784 Study_Merijn
-#> 2 carp-data-2022-06-14-09-18-41-055229Z.json      example
+#>   participant_id     study_id
+#> 1           2784 Study_Merijn
+#> 2            N/A           -1
 ```
 
 We can also check what device they are using (which can be found in the
@@ -150,7 +150,7 @@ get_data(
   end_date = "2022-06-15" # An optional end date, in the format YYYY-MM-DD
 )
 #> # Source:   SQL [?? x 5]
-#> # Database: sqlite 3.46.0 [C:\Users\u0134047\AppData\Local\Temp\RtmpiImu0Z\readme\some_db.db]
+#> # Database: sqlite 3.50.4 [C:\Users\u0134047\AppData\Local\Temp\RtmpiQPrJV\readme\some_db.db]
 #>   measurement_id                       participant_id date       time     step_count
 #>   <chr>                                <chr>          <chr>      <chr>         <int>
 #> 1 ce16d410-ebc5-11ec-a276-bfb1e065589a 2784           2022-06-14 09:38:54     119131
@@ -181,5 +181,5 @@ please file an issue with a minimal reproducible example on
 ## Code of Conduct
 
 Please note that this project is released with a [Contributor Code of
-Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree
-to abide by its terms.
+Conduct](https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/CODE_OF_CONDUCT.html).
+By participating in this project you agree to abide by its terms.

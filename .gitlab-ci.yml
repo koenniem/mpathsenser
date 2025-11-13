@@ -38,6 +38,7 @@ R-CMD-CHECK:
     - Rscript -e 'install.packages("remotes")'
     - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "always", force = TRUE, INSTALL_opts = "--install-tests")'
     - Rscript -e 'install.packages("stringi")'
+    - Rscript -e 'update.packages("roxygen2")'
     - Rscript -e 'devtools::document()'
     - R -e 'devtools::check(manual = FALSE, cran = TRUE, remote = TRUE, incoming = TRUE, force_suggests = FALSE, error_on = "warning")'
     - chmod -R 555 $R_LIBS
@@ -72,6 +73,7 @@ commit-man:
     - echo "Committing man files to git"
     - apt-get update -qq && apt-get install -y libxt6
     - Rscript -e 'remotes::install_local(dependencies = TRUE, upgrade = "never", force = TRUE)'
+    - Rscript -e 'update.packages("roxygen2")'
     - Rscript -e 'devtools::document()'
     - git add NAMESPACE man
     - |-
