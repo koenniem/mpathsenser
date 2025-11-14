@@ -2,19 +2,25 @@
   "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
   "@type": "SoftwareSourceCode",
   "identifier": "mpathsenser",
-  "description": "Overcomes one of the major challenges in mobile (passive) sensing, namely being able to preprocess the raw data that comes from a mobile sensing app, specifically 'm-Path Sense' <https://m-path.io>. The main task of 'mpathsenser' is therefore to read 'm-Path Sense' 'JSON' files into a database and provide several convenience functions to aid in data processing.",
+  "description": "Overcomes one of the major challenges in mobile (passive) sensing, namely being able to pre-process the raw data that comes from a mobile sensing app, specifically 'm-Path Sense' <https://m-path.io>. The main task of 'mpathsenser' is therefore to read 'm-Path Sense' JSON files into a database and provide several convenience functions to aid in data processing.",
   "name": "mpathsenser: Process and Analyse Data from m-Path Sense",
-  "relatedLink": "https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/",
-  "codeRepository": "https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/",
-  "issueTracker": "\n    https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/issues/",
+  "relatedLink": ["https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser", "https://CRAN.R-project.org/package=mpathsenser"],
+  "codeRepository": "https://github.com/koenniem/mpathsenser",
+  "issueTracker": "\n    https://github.com/koenniem/mpathsenser/issues",
   "license": "https://spdx.org/licenses/GPL-3.0",
-  "version": "1.2.2",
+  "version": "1.2.4",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "R",
     "url": "https://r-project.org"
   },
-  "runtimePlatform": "R version 4.3.2 (2023-10-31 ucrt)",
+  "runtimePlatform": "R version 4.5.2 (2025-10-31 ucrt)",
+  "provider": {
+    "@id": "https://cran.r-project.org",
+    "@type": "Organization",
+    "name": "Comprehensive R Archive Network (CRAN)",
+    "url": "https://cran.r-project.org"
+  },
   "author": [
     {
       "@type": "Person",
@@ -189,6 +195,18 @@
     },
     {
       "@type": "SoftwareApplication",
+      "identifier": "spelling",
+      "name": "spelling",
+      "provider": {
+        "@id": "https://cran.r-project.org",
+        "@type": "Organization",
+        "name": "Comprehensive R Archive Network (CRAN)",
+        "url": "https://cran.r-project.org"
+      },
+      "sameAs": "https://CRAN.R-project.org/package=spelling"
+    },
+    {
+      "@type": "SoftwareApplication",
       "identifier": "testthat",
       "name": "testthat",
       "version": ">= 3.0.0",
@@ -218,7 +236,7 @@
       "@type": "SoftwareApplication",
       "identifier": "R",
       "name": "R",
-      "version": ">= 4.0.0"
+      "version": ">= 4.2.0"
     },
     "2": {
       "@type": "SoftwareApplication",
@@ -371,7 +389,7 @@
     },
     "SystemRequirements": null
   },
-  "fileSize": "4931.489KB",
+  "fileSize": "4982.685KB",
   "citation": [
     {
       "@type": "ScholarlyArticle",
@@ -420,5 +438,8 @@
       }
     }
   ],
-  "developmentStatus": "https://www.repostatus.org/#active"
+  "releaseNotes": "https://github.com/koenniem/mpathsenser/blob/main/NEWS.md",
+  "readme": "https://github.com/koenniem/mpathsenser/blob/master/README.md",
+  "developmentStatus": "https://www.repostatus.org/#active",
+  "keywords": ["mobile-sensing", "r"]
 }

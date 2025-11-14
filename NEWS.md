@@ -1,3 +1,5 @@
+# mpathsenser (in-development version)
+
 # mpathsenser 1.2.4
 ## Major changes
 * `link_db()` is now defunct. Please use `link()` instead.
