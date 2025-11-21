@@ -12,8 +12,8 @@
 #' @export sensors
 sensors <- c(
   "Accelerometer",
-  "AirQuality",
   "Activity",
+  "AirQuality",
   "AppUsage",
   "Battery",
   "Bluetooth",

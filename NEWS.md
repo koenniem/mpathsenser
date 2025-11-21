@@ -1,4 +1,5 @@
 # mpathsenser (in-development version)
+* Fixed `sensors` vector not being in alphabetical order.
 
 # mpathsenser 1.2.4
 ## Major changes
