@@ -62,12 +62,12 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
   # First, get the ordered timezone data and add an end timestamp based on the next observation.
   # This creates a remote tibble of timezones with start and end timestamps for each participant.
   tzs <- dplyr::tbl(db, "Timezone") |>
-    mutate(start = UNIXEPOCH(paste(.data$date, .data$time))) |>
-    dbplyr::window_order(.data$participant_id, .data$start) |>
+    mutate(.start = UNIXEPOCH(paste(.data$date, .data$time))) |>
+    dbplyr::window_order(.data$participant_id, .data$.start) |>
     group_by(.data$participant_id) |>
-    mutate(end = lead(.data$start)) |>
+    mutate(.end = lead(.data$.start)) |>
     ungroup() |>
-    select("participant_id", "start", "end", "timezone")
+    select("participant_id", ".start", ".end", "timezone")
 
   # Handle special case for observations that occurred either before the first timezone measurement
   # or after the last timezone measurement. We will assume that those belong to the first and last
@@ -76,14 +76,14 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
   # We then have timezone intervals spanning from 1970 until the actual first measurement.
   missing_start <- tzs |>
     group_by(.data$participant_id) |>
-    dplyr::slice_min(.data$start, n = 1, with_ties = FALSE, na_rm = TRUE) |>
-    mutate(end = .data$start, start = 0)
+    dplyr::slice_min(.data$.start, n = 1, with_ties = FALSE, na_rm = TRUE) |>
+    mutate(.end = .data$.start, .start = 0)
 
   # Add the missing first timezones and set the missing end time of each last measurement to a very
   # high number, as SQLite does not support infinite.
   tzs <- tzs |>
     dplyr::rows_append(missing_start) |>
-    mutate(end = ifelse(is.na(.data$end), 1e11, .data$end))
+    mutate(.end = ifelse(is.na(.data$.end), 1e11, .data$.end))
 
   # Copy the results to a new table, so that we do not have to recompute the calculations above
   # for each sensor
@@ -142,7 +142,7 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
       y = tzs,
       by = dplyr::join_by(
         "participant_id",
-        overlaps("start_time", "end_time", "start", "end")
+        overlaps("start_time", "end_time", ".start", ".end")
       )
     )
 
@@ -152,8 +152,8 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
       mutate(
         overlap_time = pmax(
           0,
-          pmin(.data$end_time, .data$end, na.rm = TRUE) -
-            pmax(.data$start_time, .data$start, na.rm = TRUE),
+          pmin(.data$end_time, .data$.end, na.rm = TRUE) -
+            pmax(.data$start_time, .data$.start, na.rm = TRUE),
           na.rm = TRUE
         )
       ) |>
