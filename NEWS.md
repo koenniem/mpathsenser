@@ -1,6 +1,8 @@
 # mpathsenser (in-development version)
 * Fixed `add_timezones_to_db()` clashing with the `start` column in the `AppUsage` table which
 may cause an error.
+* Fixed `with_localtime()` not being able to handle empty logical vectors. They are now coerced
+to POSIXt with length zero.
 * Fixed `sensors` vector not being in alphabetical order.
 
 # mpathsenser 1.2.4

@@ -211,14 +211,16 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
 #' # Times not appear to be in UTC, but the values are in their local time zone.
 #' with_localtime(times, tzs)
 with_localtime <- function(x, tz) {
-  if (is.character(x)) {
-    x <- as.POSIXct(x, tz = "UTC")
+  # Try to convert timestamp if not yet POSIXt
+  if (!inherits(x, "POSIXt")) {
+    class_x <- class(x)
+    x <- try(as.POSIXct(x, tz = "UTC"), silent = TRUE)
   }
 
   if (!inherits(x, "POSIXt")) {
     cli::cli_abort(c(
       "{.var x} must be a vector of class POSIXt or a character coercible to POSIXt.",
-      "x" = "You've supplied a vector of class {.cls {class(x)}}"
+      "x" = "You've supplied a vector of class {.cls {class_x}}"
     ))
   }
 

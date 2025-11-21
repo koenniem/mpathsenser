@@ -320,15 +320,23 @@ test_that("with_localtime accepts character timestamps", {
 })
 
 test_that("with_localtime throws error for non-POSIX input", {
-  expect_error(
-    with_localtime(1:3, "UTC"),
-    "must be a vector of class POSIXt"
+  expect_no_error(
+    with_localtime(1:3, "UTC")
+  )
+
+  expect_no_error(
+    with_localtime(logical(0), "UTC")
   )
 
   # Error in as.POSIXct
   expect_error(
     with_localtime("0", "UTC"),
-    "not in a standard unambiguous format"
+    " must be a vector of class POSIXt or a character coercible"
+  )
+
+  expect_error(
+    with_localtime(TRUE, "UTC"),
+    " must be a vector of class POSIXt or a character coercible"
   )
 })
 
