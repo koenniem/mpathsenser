@@ -756,7 +756,7 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
     sensor,
     ~ {
       get_data(db, .x, participant_id) |>
-        mutate(datetime = CAST(paste(.data$date, .data$time) %AS% TIMESTAMP)) |>
+        mutate(datetime = paste(.data$date, .data$time)) |>
         select("participant_id", "datetime")
     }
   )
@@ -764,15 +764,23 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
   # Merge all together
   data <- Reduce(dplyr::union, data)
 
-  # Then, calculate the gap duration (use epoch() for DuckDB)
+  # Then, calculate the gap duration
+  # For DuckDB, we use epoch() with STRPTIME to convert datetime string to timestamp
   data |>
     dbplyr::window_order(.data$participant_id, .data$datetime) |>
     group_by(.data$participant_id) |>
     mutate(to = lead(.data$datetime)) |>
     ungroup() |>
-    mutate(gap = epoch(.data$to) - epoch(.data$datetime)) |>
+    mutate(
+      gap = epoch(strptime(.data$to, "%Y-%m-%d %H:%M:%S")) -
+        epoch(strptime(.data$datetime, "%Y-%m-%d %H:%M:%S"))
+    ) |>
     filter(.data$gap >= min_gap) |>
-    select("participant_id", from = "datetime", "to", "gap") |>
+    mutate(
+      from = strptime(.data$datetime, "%Y-%m-%d %H:%M:%S"),
+      to = strptime(.data$to, "%Y-%m-%d %H:%M:%S")
+    ) |>
+    select("participant_id", "from", "to", "gap") |>
     collect()
 }
 
