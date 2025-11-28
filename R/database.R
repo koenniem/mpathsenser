@@ -109,6 +109,10 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   tryCatch(
     {
       fn <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
+      if (fn == "") {
+        # Fall back to local inst folder when package isn't installed
+        fn <- file.path(getwd(), "inst", "extdata", "dbdef.sql")
+      }
       script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
       for (statement in script) {
         dbExecute(db, statement)
@@ -116,7 +120,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
     },
     error = function(e) {
       # nocov start
-      dbDisconnect(db)
+      dbDisconnect(db, shutdown = TRUE)
       abort(c(
         "Database definition file not found. The package is probably corrupted.",
         i = "Please reinstall mpathsenser using `install.packages(\"mpathsenser\")`"
@@ -239,6 +243,10 @@ index_db <- function(db) {
   tryCatch(
     {
       fn <- system.file("extdata", "indexes.sql", package = "mpathsenser")
+      if (fn == "") {
+        # Fall back to local inst folder when package isn't installed
+        fn <- file.path(getwd(), "inst", "extdata", "indexes.sql")
+      }
       script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
       for (statement in script) {
         dbExecute(db, statement)
