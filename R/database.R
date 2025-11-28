@@ -98,7 +98,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   # Create a new db instance
   tryCatch(
     {
-      db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
+      db <- dbConnect(duckdb::duckdb(), db_name)
     },
     error = function(e) {
       abort(paste0("Could not create a database in ", db_name)) # nocov
@@ -165,9 +165,9 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
   if (!file.exists(db_name)) {
     abort("There is no such file")
   }
-  db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
+  db <- dbConnect(duckdb::duckdb(), db_name, read_only = TRUE)
   if (!DBI::dbExistsTable(db, "Participant")) {
-    dbDisconnect(db)
+    dbDisconnect(db, shutdown = TRUE)
     abort("Sorry, this does not appear to be a mpathsenser database.")
   }
   return(db)
@@ -202,9 +202,9 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 #' file.remove(file.path(tempdir(), "mydb.db"))
 close_db <- function(db) {
   exists <- try(db, silent = TRUE)
-  if (inherits(exists, "SQLiteConnection") && !is.null(db)) {
+  if (inherits(exists, "duckdb_connection") && !is.null(db)) {
     if (dbIsValid(db)) {
-      dbDisconnect(db)
+      dbDisconnect(db, shutdown = TRUE)
     }
   }
 }
@@ -334,15 +334,18 @@ copy_db <- function(
     }
   }
 
-  # Attach new database to old database
-  dbExecute(source_db, paste0("ATTACH DATABASE '", target_db@dbname, "' AS new_db"))
+  # Get target database path - for duckdb, we access the path via the driver
+  target_path <- target_db@driver@dbdir
 
-  # Copy participants, studies, processed_files
-  dbExecute(source_db, "INSERT OR IGNORE INTO new_db.Study SELECT * FROM Study")
-  dbExecute(source_db, "INSERT OR IGNORE INTO new_db.Participant SELECT * FROM Participant")
+  # Attach new database to old database (DuckDB syntax)
+  dbExecute(source_db, paste0("ATTACH '", target_path, "' AS new_db"))
+
+  # Copy participants, studies, processed_files (using ON CONFLICT DO NOTHING for DuckDB)
+  dbExecute(source_db, "INSERT INTO new_db.Study SELECT * FROM Study ON CONFLICT DO NOTHING")
+  dbExecute(source_db, "INSERT INTO new_db.Participant SELECT * FROM Participant ON CONFLICT DO NOTHING")
   dbExecute(
     source_db,
-    "INSERT OR IGNORE INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles"
+    "INSERT INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles ON CONFLICT DO NOTHING"
   )
 
   # Copy all specified sensors
@@ -350,16 +353,17 @@ copy_db <- function(
     dbExecute(
       source_db,
       paste0(
-        "INSERT OR IGNORE INTO new_db.",
+        "INSERT INTO new_db.",
         sensor[i],
         " SELECT * FROM ",
-        sensor[i]
+        sensor[i],
+        " ON CONFLICT DO NOTHING"
       )
     )
   }
 
   # Detach
-  dbExecute(source_db, "DETACH DATABASE new_db")
+  dbExecute(source_db, "DETACH new_db")
 
   return(invisible(TRUE))
 }
@@ -371,10 +375,11 @@ add_study <- function(db, study_id, data_format) {
   dbExecute(
     db,
     paste(
-      "INSERT OR IGNORE INTO Study(study_id, data_format)",
-      "VALUES(:study_id, :data_format);"
+      "INSERT INTO Study(study_id, data_format)",
+      "VALUES($1, $2)",
+      "ON CONFLICT DO NOTHING;"
     ),
-    list(study_id = study_id, data_format = data_format)
+    list(study_id, data_format)
   )
 }
 
@@ -385,10 +390,11 @@ add_participant <- function(db, participant_id, study_id) {
   dbExecute(
     db,
     paste(
-      "INSERT OR IGNORE INTO Participant(participant_id, study_id)",
-      "VALUES(:participant_id, :study_id);"
+      "INSERT INTO Participant(participant_id, study_id)",
+      "VALUES($1, $2)",
+      "ON CONFLICT DO NOTHING;"
     ),
-    list(participant_id = participant_id, study_id = study_id)
+    list(participant_id, study_id)
   )
 }
 
@@ -399,13 +405,14 @@ add_processed_files <- function(db, file_name, study_id, participant_id) {
   dbExecute(
     db,
     paste(
-      "INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)",
-      "VALUES(:file_name, :study_id, :participant_id);"
+      "INSERT INTO ProcessedFiles(file_name, study_id, participant_id)",
+      "VALUES($1, $2, $3)",
+      "ON CONFLICT DO NOTHING;"
     ),
     list(
-      file_name = file_name,
-      study_id = study_id,
-      participant_id = participant_id
+      file_name,
+      study_id,
+      participant_id
     )
   )
 }

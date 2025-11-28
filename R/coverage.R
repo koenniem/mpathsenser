@@ -319,11 +319,14 @@ coverage_impl <- function(
   # table is not used. Hence, we rename participant_id to p_id
   p_id <- as.character(participant_id) # nolint
 
+  # Get the database path from the DuckDB connection
+  db_path <- db@driver@dbdir
+
   # Loop over each sensor and calculate the coverage rate for that sensor
   data <- furrr::future_map(
     .x = sensor,
     .f = ~ {
-      tmp_db <- open_db(NULL, db@dbname)
+      tmp_db <- open_db(NULL, db_path)
 
       # Extract the data for this participant and sensor
       tmp <- dplyr::tbl(tmp_db, .x) |>
@@ -355,9 +358,9 @@ coverage_impl <- function(
       }
 
       # Calculate the number of average measurements per hour i.e. the sum of all measurements in
-      # that hour divided by n
+      # that hour divided by n (use substr to extract hour from time string HH:MM:SS)
       tmp <- tmp |>
-        mutate(hour = strftime("%H", .data$time)) |>
+        mutate(hour = substr(.data$time, 1, 2)) |>
         # mutate(Date = date(time)) |>
         dplyr::count(.data$date, .data$hour) |>
         group_by(.data$hour) |>
@@ -372,7 +375,7 @@ coverage_impl <- function(
         )
 
       # Disconnect from the temporary database connection
-      dbDisconnect(tmp_db)
+      dbDisconnect(tmp_db, shutdown = TRUE)
 
       # Calculate the relative target frequency ratio by dividing the average number of measurements
       # per hour by the expected number of measurements

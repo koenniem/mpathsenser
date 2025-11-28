@@ -1,11 +1,3 @@
-PRAGMA foreign_keys = 1;
-
-PRAGMA main.synchronous = 1;
-
-PRAGMA busy_timeout = 3000;
-
-PRAGMA page_size = 8192;
-
 CREATE TABLE IF NOT EXISTS Study
 (
 study_id TEXT NOT NULL,

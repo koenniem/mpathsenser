@@ -7,7 +7,7 @@ test_that("sensors-vec", {
 test_that("create_db", {
   filename <- tempfile("create", fileext = ".db")
   db <- create_db(path = NULL, filename)
-  dbDisconnect(db)
+  dbDisconnect(db, shutdown = TRUE)
   expect_true(file.exists(filename))
 
   # Test merging path and filename
@@ -15,7 +15,7 @@ test_that("create_db", {
   expect_error(
     {
       db <- create_db(path = tempdir(), db_name = temp_file)
-      dbDisconnect(db)
+      dbDisconnect(db, shutdown = TRUE)
     },
     NA
   )
@@ -24,7 +24,7 @@ test_that("create_db", {
   expect_error(
     {
       db <- create_db(path = NULL, filename, overwrite = TRUE)
-      dbDisconnect(db)
+      dbDisconnect(db, shutdown = TRUE)
     },
     NA
   )
@@ -32,7 +32,7 @@ test_that("create_db", {
   expect_error(
     {
       db <- create_db(path = NULL, filename, overwrite = FALSE)
-      dbDisconnect(db)
+      dbDisconnect(db, shutdown = TRUE)
     },
     "Database .+?(?=\\.db)\\.db already exists\\.",
     perl = TRUE
@@ -49,16 +49,16 @@ test_that("open_db", {
   expect_error(open_db(NULL, fake_db), "There is no such file")
 
   # Create a new (non-mpathsenser db)
-  db <- dbConnect(RSQLite::SQLite(), fake_db)
+  db <- dbConnect(duckdb::duckdb(), fake_db)
   dbExecute(db, "CREATE TABLE foo(bar INTEGER, PRIMARY KEY(bar));")
-  dbDisconnect(db)
+  dbDisconnect(db, shutdown = TRUE)
   expect_error(open_db(NULL, fake_db), "Sorry, this does not appear to be a mpathsenser database.")
   file.remove(fake_db)
 
   path <- system.file("testdata", package = "mpathsenser")
   db <- open_db(path, "test.db")
   expect_true(dbIsValid(db))
-  dbDisconnect(db)
+  dbDisconnect(db, shutdown = TRUE)
 })
 
 test_that("copy_db", {
@@ -92,8 +92,8 @@ test_that("copy_db", {
   names(true) <- sensors
   expect_equal(get_nrows(new_db), true)
 
-  dbDisconnect(db)
-  dbDisconnect(new_db)
+  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(new_db, shutdown = TRUE)
 
   file.remove(test_db_name)
   file.remove(filename)
@@ -116,10 +116,10 @@ test_that("index_db", {
   db <- create_db(NULL, filename)
 
   expect_error(index_db(db), NA)
-  expect_error(index_db(db), "index idx_accelerometer already exists")
+  expect_error(index_db(db), "already exists")
 
   # Cleanup
-  dbDisconnect(db)
+  dbDisconnect(db, shutdown = TRUE)
   file.remove(filename)
 
   expect_error(
@@ -135,7 +135,7 @@ test_that("vacuum_db", {
   expect_error(vacuum_db(db), NA)
 
   # Cleanup
-  dbDisconnect(db)
+  dbDisconnect(db, shutdown = TRUE)
   file.remove(filename)
 })
 
@@ -153,7 +153,7 @@ test_that("add_study", {
   expect_equal(add_study(db, NULL, NULL), 0)
 
   # Cleanup
-  dbDisconnect(db)
+  dbDisconnect(db, shutdown = TRUE)
   file.remove(filename)
 })
 
@@ -171,7 +171,7 @@ test_that("add_participant", {
   expect_equal(add_participant(db, NULL, NULL), 0)
 
   # Cleanup
-  dbDisconnect(db)
+  dbDisconnect(db, shutdown = TRUE)
   file.remove(filename)
 })
 
@@ -190,7 +190,7 @@ test_that("add_processed_file", {
   expect_equal(add_processed_files(db, NULL, NULL, NULL), 0)
 
   # Cleanup
-  dbDisconnect(db)
+  dbDisconnect(db, shutdown = TRUE)
   file.remove(filename)
 })
 
@@ -213,7 +213,7 @@ test_that("clear_db", {
   expect_equal(sum(get_nrows(db)), 0L)
 
   # Cleanup
-  dbDisconnect(db)
+  dbDisconnect(db, shutdown = TRUE)
   file.remove(filename)
 })
 
@@ -226,7 +226,7 @@ test_that("get_processed_files", {
     study_id = c("-1", "tests.json", "test-study")
   )
   expect_equal(res, true)
-  dbDisconnect(db)
+  dbDisconnect(db, shutdown = TRUE)
 })
 
 test_that("get_participants", {
@@ -238,8 +238,8 @@ test_that("get_participants", {
     study_id = c("-1", "test-study")
   )
   expect_equal(res, true)
-  expect_s3_class(res_lazy, "tbl_SQLiteConnection")
-  dbDisconnect(db)
+  expect_s3_class(res_lazy, "tbl_duckdb_connection")
+  dbDisconnect(db, shutdown = TRUE)
 })
 
 test_that("get_study", {
@@ -251,12 +251,12 @@ test_that("get_study", {
     data_format = c(NA, NA, "carp")
   )
   expect_equal(res, true)
-  expect_s3_class(res_lazy, "tbl_SQLiteConnection")
-  dbDisconnect(db)
+  expect_s3_class(res_lazy, "tbl_duckdb_connection")
+  dbDisconnect(db, shutdown = TRUE)
 })
 
 test_that("get_nrows", {
   db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
   expect_vector(get_nrows(db), integer(), length(sensors))
-  dbDisconnect(db)
+  dbDisconnect(db, shutdown = TRUE)
 })
