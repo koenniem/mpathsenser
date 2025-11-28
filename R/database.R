@@ -111,7 +111,21 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
       fn <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
       if (fn == "") {
         # Fall back to local inst folder when package isn't installed
-        fn <- file.path(getwd(), "inst", "extdata", "dbdef.sql")
+        # Try multiple candidate paths relative to different working directories
+        candidates <- c(
+          file.path(getwd(), "inst", "extdata", "dbdef.sql"),
+          file.path(getwd(), "..", "..", "inst", "extdata", "dbdef.sql"),
+          file.path(dirname(getwd()), "..", "inst", "extdata", "dbdef.sql"),
+          normalizePath(file.path(getwd(), "..", "..", "inst", "extdata", "dbdef.sql"),
+                        mustWork = FALSE)
+        )
+        fn <- ""
+        for (candidate in candidates) {
+          if (file.exists(candidate)) {
+            fn <- candidate
+            break
+          }
+        }
       }
       script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
       for (statement in script) {
@@ -245,7 +259,21 @@ index_db <- function(db) {
       fn <- system.file("extdata", "indexes.sql", package = "mpathsenser")
       if (fn == "") {
         # Fall back to local inst folder when package isn't installed
-        fn <- file.path(getwd(), "inst", "extdata", "indexes.sql")
+        # Try multiple candidate paths relative to different working directories
+        candidates <- c(
+          file.path(getwd(), "inst", "extdata", "indexes.sql"),
+          file.path(getwd(), "..", "..", "inst", "extdata", "indexes.sql"),
+          file.path(dirname(getwd()), "..", "inst", "extdata", "indexes.sql"),
+          normalizePath(file.path(getwd(), "..", "..", "inst", "extdata", "indexes.sql"),
+                        mustWork = FALSE)
+        )
+        fn <- ""
+        for (candidate in candidates) {
+          if (file.exists(candidate)) {
+            fn <- candidate
+            break
+          }
+        }
       }
       script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
       for (statement in script) {
