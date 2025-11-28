@@ -55,23 +55,22 @@ test_that("open_db", {
   expect_error(open_db(NULL, fake_db), "Sorry, this does not appear to be a mpathsenser database.")
   file.remove(fake_db)
 
-  path <- system.file("testdata", package = "mpathsenser")
-  db <- open_db(path, "test.db")
+  # Test with a fresh test database
+  db <- create_test_db()
+  db_path <- db@driver@dbdir
+  dbDisconnect(db, shutdown = TRUE)
+  
+  db <- open_db(NULL, db_path)
   expect_true(dbIsValid(db))
   dbDisconnect(db, shutdown = TRUE)
+  file.remove(db_path)
 })
 
 test_that("copy_db", {
-  test_db_name <- tempfile("test", fileext = ".db")
+  # Create a test database
+  db <- create_test_db()
+  
   filename <- tempfile("copy", fileext = ".db")
-  file.copy(
-    from = system.file("testdata", "test.db", package = "mpathsenser"),
-    to = test_db_name,
-    overwrite = TRUE,
-    copy.mode = FALSE
-  )
-
-  db <- open_db(NULL, test_db_name)
   new_db <- create_db(NULL, filename)
 
   # Invalid sensor
@@ -92,15 +91,13 @@ test_that("copy_db", {
   names(true) <- sensors
   expect_equal(get_nrows(new_db), true)
 
-  dbDisconnect(db, shutdown = TRUE)
+  cleanup_test_db(db)
   dbDisconnect(new_db, shutdown = TRUE)
-
-  file.remove(test_db_name)
   file.remove(filename)
 })
 
 test_that("close_db", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   expect_error(close_db(db), NA)
   expect_false(dbIsValid(db))
   expect_error(close_db(db), NA) # Invalid db
@@ -218,7 +215,7 @@ test_that("clear_db", {
 })
 
 test_that("get_processed_files", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   res <- get_processed_files(db)
   true <- data.frame(
     file_name = c("empty.json", "new_tests.json", "test.json"),
@@ -226,11 +223,11 @@ test_that("get_processed_files", {
     study_id = c("-1", "tests.json", "test-study")
   )
   expect_equal(res, true)
-  dbDisconnect(db, shutdown = TRUE)
+  cleanup_test_db(db)
 })
 
 test_that("get_participants", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   res <- get_participants(db)
   res_lazy <- get_participants(db, lazy = TRUE)
   true <- data.frame(
@@ -239,11 +236,11 @@ test_that("get_participants", {
   )
   expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_duckdb_connection")
-  dbDisconnect(db, shutdown = TRUE)
+  cleanup_test_db(db)
 })
 
 test_that("get_study", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   res <- get_studies(db)
   res_lazy <- get_studies(db, lazy = TRUE)
   true <- data.frame(
@@ -252,11 +249,11 @@ test_that("get_study", {
   )
   expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_duckdb_connection")
-  dbDisconnect(db, shutdown = TRUE)
+  cleanup_test_db(db)
 })
 
 test_that("get_nrows", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   expect_vector(get_nrows(db), integer(), length(sensors))
-  dbDisconnect(db, shutdown = TRUE)
+  cleanup_test_db(db)
 })

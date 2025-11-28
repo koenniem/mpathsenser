@@ -1,6 +1,5 @@
 test_that("coverage", {
-  path <- system.file("testdata", package = "mpathsenser")
-  db <- open_db(path, db_name = "test.db")
+  db <- create_test_db()
 
   # Working cases
   expect_s3_class(coverage(db, "12345"), "tbl_df")
@@ -63,19 +62,18 @@ test_that("coverage", {
   )
 
   # Cleanup
-  dbDisconnect(db)
+  cleanup_test_db(db)
 })
 
 test_that("plot.mpathsenser_coverage", {
-  path <- system.file("testdata", package = "mpathsenser")
-  db <- open_db(path, db_name = "test.db")
+  db <- create_test_db()
 
   # Working cases
   expect_s3_class(plot(coverage(db, "12345")), "ggplot")
   expect_s3_class(plot(coverage(db, "12345", relative = FALSE)), "ggplot")
 
   # Cleanup
-  dbDisconnect(db)
+  cleanup_test_db(db)
 })
 
 test_that("freq", {

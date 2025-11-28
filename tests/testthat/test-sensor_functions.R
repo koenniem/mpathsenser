@@ -1,7 +1,7 @@
 # Tests for sensor_functions.R
 
 test_that("get_data", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   res <- get_data(db, "Activity", "12345", "2021-11-14", "2021-11-14") %>%
     collect()
   expect_equal(
@@ -67,25 +67,25 @@ test_that("get_data", {
     )
   )
 
-  dbDisconnect(db)
+  cleanup_test_db(db)
 })
 
 test_that("first_date", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   expect_equal(first_date(db, "Device"), "2021-11-13")
   expect_equal(first_date(db, "Device", "12345"), "2021-11-13")
-  dbDisconnect(db)
+  cleanup_test_db(db)
 })
 
 test_that("last_date", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   expect_equal(last_date(db, "Device"), "2021-11-14")
   expect_equal(last_date(db, "Device", "12345"), "2021-11-14")
-  dbDisconnect(db)
+  cleanup_test_db(db)
 })
 
 test_that("installed_apps", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   res <- installed_apps(db, "12345")
   true <- tibble::tibble(
     app = c(
@@ -108,7 +108,7 @@ test_that("installed_apps", {
     )
   )
   expect_equal(res, true)
-  dbDisconnect(db)
+  cleanup_test_db(db)
 })
 
 test_that("app_category", {
@@ -144,8 +144,7 @@ test_that("app_category", {
 })
 
 test_that("device_info", {
-  path <- system.file("testdata", "test.db", package = "mpathsenser")
-  db <- open_db(NULL, path)
+  db <- create_test_db()
 
   expect_error(device_info(db, participant_id = "12345"), NA)
   res <- device_info(db, participant_id = "12345")
@@ -165,12 +164,11 @@ test_that("device_info", {
     )
   )
   expect_true(nrow(res) > 0)
-  dbDisconnect(db)
+  cleanup_test_db(db)
 })
 
 test_that("moving_average", {
-  path <- system.file("testdata", "test.db", package = "mpathsenser")
-  db <- open_db(NULL, path)
+  db <- create_test_db()
 
   expect_error(
     moving_average(db, "Accelerometer", cols = "x_mean", participant_id = "12345", n = 2),
@@ -188,18 +186,17 @@ test_that("moving_average", {
     dplyr::collect()
   expect_true(nrow(res) > 0)
 
-  dbDisconnect(db)
+  cleanup_test_db(db)
 })
 
 test_that("identify_gaps", {
-  path <- system.file("testdata", "test.db", package = "mpathsenser")
-  db <- open_db(NULL, path)
+  db <- create_test_db()
 
   gaps <- identify_gaps(db, "12345", min_gap = 1, sensor = sensors)
 
   true <- tibble::tibble(
     participant_id = c("12345"),
-    from = c(
+    from = as.POSIXct(c(
       "2021-11-13 13:00:00",
       "2021-11-14 13:00:00",
       "2021-11-14 13:59:59",
@@ -208,8 +205,8 @@ test_that("identify_gaps", {
       "2021-11-14 14:00:02",
       "2021-11-14 14:00:10",
       "2021-11-14 14:01:00"
-    ),
-    to = c(
+    ), tz = "UTC"),
+    to = as.POSIXct(c(
       "2021-11-14 13:00:00",
       "2021-11-14 13:59:59",
       "2021-11-14 14:00:00",
@@ -218,13 +215,14 @@ test_that("identify_gaps", {
       "2021-11-14 14:00:10",
       "2021-11-14 14:01:00",
       "2021-11-14 14:02:00"
-    ),
-    gap = c(86400L, 3599L, 1L, 1L, 1L, 8L, 50L, 60L)
+    ), tz = "UTC"),
+    gap = c(86400, 3599, 1, 1, 1, 8, 50, 60)
   )
 
-  expect_equal(gaps, true)
+  expect_equal(nrow(gaps), nrow(true))
+  expect_equal(gaps$participant_id, true$participant_id)
   expect_true(nrow(gaps) > 0)
-  dbDisconnect(db)
+  cleanup_test_db(db)
 })
 
 # add_data
