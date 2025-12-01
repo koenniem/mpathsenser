@@ -16,8 +16,12 @@ library(mpathsenser)
 ```
 
 # mpathsenser <a href='https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/index.html'><img src='man/figures/logo.png' align="right" height="139" /></a>
+<!-- badges: start -->
 [![CRAN status](https://www.r-pkg.org/badges/version/mpathsenser)](https://cran.r-project.org/package=mpathsenser)
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![R-CMD-check](https://github.com/koenniem/mpathsenser/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/koenniem/mpathsenser/actions/workflows/R-CMD-check.yaml)
+[![Codecov test coverage](https://codecov.io/gh/koenniem/mpathsenser/graph/badge.svg)](https://app.codecov.io/gh/koenniem/mpathsenser)
+<!-- badges: end -->
 
 ## Installing the package
 You can install the latest version of mpathsenser from CRAN:

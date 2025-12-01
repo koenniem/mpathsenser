@@ -3,11 +3,17 @@
 
 # mpathsenser <a href='https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/index.html'><img src='man/figures/logo.png' align="right" height="139" /></a>
 
+<!-- badges: start -->
+
 [![CRAN
 status](https://www.r-pkg.org/badges/version/mpathsenser)](https://cran.r-project.org/package=mpathsenser)
 [![Project Status: Active – The project has reached a stable, usable
 state and is being actively
 developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![R-CMD-check](https://github.com/koenniem/mpathsenser/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/koenniem/mpathsenser/actions/workflows/R-CMD-check.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/koenniem/mpathsenser/graph/badge.svg)](https://app.codecov.io/gh/koenniem/mpathsenser)
+<!-- badges: end -->
 
 ## Installing the package
 
@@ -17,16 +23,10 @@ You can install the latest version of mpathsenser from CRAN:
 install.packages("mpathsenser")
 ```
 
-Alternatively, you can install the development version from my Gitlab
-repo. First, make sure you have
-[Rtools](https://cran.r-project.org/bin/windows/Rtools/) (Windows,
-Linux) or XCode installed. For XCode, register as an [Apple
-Developer](https://developer.apple.com/) (don’t worry, it’s free) and
-then run `xcode-select --install` in a terminal. Then, run the following
-code in R:
+Or the development version from Github:
 
 ``` r
-devtools::install_git("https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser")
+remotes::install_github("koenniem/mpathsenser")
 ```
 
 ## Importing files
@@ -150,7 +150,7 @@ get_data(
   end_date = "2022-06-15" # An optional end date, in the format YYYY-MM-DD
 )
 #> # Source:   SQL [?? x 5]
-#> # Database: sqlite 3.50.4 [C:\Users\u0134047\AppData\Local\Temp\RtmpiQPrJV\readme\some_db.db]
+#> # Database: sqlite 3.51.0 [C:\Users\u0134047\AppData\Local\Temp\RtmpsbzfUd\readme\some_db.db]
 #>   measurement_id                       participant_id date       time     step_count
 #>   <chr>                                <chr>          <chr>      <chr>         <int>
 #> 1 ce16d410-ebc5-11ec-a276-bfb1e065589a 2784           2022-06-14 09:38:54     119131

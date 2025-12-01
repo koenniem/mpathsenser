@@ -16,8 +16,7 @@ Description: Overcomes one of the major challenges in mobile (passive)
     to aid in data processing.
 License: GPL (>= 3)
 URL: 
-    https://github.com/koenniem/mpathsenser,
-    https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser
+    https://koenniem.github.io/mpathsenser/
 BugReports: 
     https://github.com/koenniem/mpathsenser/issues
 Depends: 

@@ -4,6 +4,7 @@ may cause an error.
 * Fixed `with_localtime()` not being able to handle empty logical vectors. They are now coerced
 to POSIXt with length zero.
 * Fixed `sensors` vector not being in alphabetical order.
+* Switched package over to Github
 
 # mpathsenser 1.2.4
 ## Major changes
