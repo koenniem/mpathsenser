@@ -610,7 +610,7 @@ save2db <- function(db, name, data) {
       placeholders,
       ") ON CONFLICT DO NOTHING"
     ),
-    params = as.list(data)
+    params = unname(as.list(data))
   )
   DBI::dbClearResult(res)
 }

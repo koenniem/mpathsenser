@@ -408,10 +408,14 @@ copy_db <- function(
 add_study <- function(db, study_id, data_format) {
   check_db(db)
   
-  # Skip if primary key is NULL
-  if (is.null(study_id)) {
+  # Filter out NULL values in vectorized inputs
+  valid <- !is.na(study_id) & !is.null(study_id)
+  if (!any(valid)) {
     return(0)
   }
+  
+  study_id <- study_id[valid]
+  data_format <- data_format[valid]
 
   dbExecute(
     db,
@@ -428,10 +432,14 @@ add_study <- function(db, study_id, data_format) {
 add_participant <- function(db, participant_id, study_id) {
   check_db(db)
   
-  # Skip if primary key is NULL
-  if (is.null(participant_id)) {
+  # Filter out NULL values in vectorized inputs
+  valid <- !is.na(participant_id) & !is.null(participant_id)
+  if (!any(valid)) {
     return(0)
   }
+  
+  participant_id <- participant_id[valid]
+  study_id <- study_id[valid]
 
   dbExecute(
     db,
@@ -448,10 +456,15 @@ add_participant <- function(db, participant_id, study_id) {
 add_processed_files <- function(db, file_name, study_id, participant_id) {
   check_db(db)
   
-  # Skip if primary key is NULL
-  if (is.null(file_name)) {
+  # Filter out NULL values in vectorized inputs
+  valid <- !is.na(file_name) & !is.null(file_name)
+  if (!any(valid)) {
     return(0)
   }
+  
+  file_name <- file_name[valid]
+  study_id <- study_id[valid]
+  participant_id <- participant_id[valid]
 
   dbExecute(
     db,
