@@ -449,7 +449,7 @@ safe_extract <- function(vec, var) {
   )
 
   # Close db connection of worker
-  dbDisconnect(tmp_db, shutdown = TRUE)
+  dbDisconnect(tmp_db)
 
   # Return whether occurrence is more than 0, i.e. whether files have already been processed
   return(matches[, 1] > 0)

@@ -7,7 +7,7 @@ test_that("sensors-vec", {
 test_that("create_db", {
   filename <- tempfile("create", fileext = ".db")
   db <- create_db(path = NULL, filename)
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   expect_true(file.exists(filename))
 
   # Test merging path and filename
@@ -15,7 +15,7 @@ test_that("create_db", {
   expect_error(
     {
       db <- create_db(path = tempdir(), db_name = temp_file)
-      dbDisconnect(db, shutdown = TRUE)
+      dbDisconnect(db)
     },
     NA
   )
@@ -24,7 +24,7 @@ test_that("create_db", {
   expect_error(
     {
       db <- create_db(path = NULL, filename, overwrite = TRUE)
-      dbDisconnect(db, shutdown = TRUE)
+      dbDisconnect(db)
     },
     NA
   )
@@ -32,7 +32,7 @@ test_that("create_db", {
   expect_error(
     {
       db <- create_db(path = NULL, filename, overwrite = FALSE)
-      dbDisconnect(db, shutdown = TRUE)
+      dbDisconnect(db)
     },
     "Database .+?(?=\\.db)\\.db already exists\\.",
     perl = TRUE
@@ -51,18 +51,20 @@ test_that("open_db", {
   # Create a new (non-mpathsenser db)
   db <- dbConnect(duckdb::duckdb(), fake_db)
   dbExecute(db, "CREATE TABLE foo(bar INTEGER, PRIMARY KEY(bar));")
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
+  gc() # Force garbage collection to ensure file handles are released
   expect_error(open_db(NULL, fake_db), "Sorry, this does not appear to be a mpathsenser database.")
   file.remove(fake_db)
 
   # Test with a fresh test database
   db <- create_test_db()
   db_path <- db@driver@dbdir
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
+  gc() # Force garbage collection to ensure file handles are released
   
   db <- open_db(NULL, db_path)
   expect_true(dbIsValid(db))
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   file.remove(db_path)
 })
 
@@ -92,7 +94,7 @@ test_that("copy_db", {
   expect_equal(get_nrows(new_db), true)
 
   cleanup_test_db(db)
-  dbDisconnect(new_db, shutdown = TRUE)
+  dbDisconnect(new_db)
   file.remove(filename)
 })
 
@@ -116,7 +118,7 @@ test_that("index_db", {
   expect_error(index_db(db), "already exists")
 
   # Cleanup
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   file.remove(filename)
 
   expect_error(
@@ -132,7 +134,7 @@ test_that("vacuum_db", {
   expect_error(vacuum_db(db), NA)
 
   # Cleanup
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   file.remove(filename)
 })
 
@@ -150,7 +152,7 @@ test_that("add_study", {
   expect_equal(add_study(db, NULL, NULL), 0)
 
   # Cleanup
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   file.remove(filename)
 })
 
@@ -168,7 +170,7 @@ test_that("add_participant", {
   expect_equal(add_participant(db, NULL, NULL), 0)
 
   # Cleanup
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   file.remove(filename)
 })
 
@@ -187,7 +189,7 @@ test_that("add_processed_file", {
   expect_equal(add_processed_files(db, NULL, NULL, NULL), 0)
 
   # Cleanup
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   file.remove(filename)
 })
 
@@ -210,7 +212,7 @@ test_that("clear_db", {
   expect_equal(sum(get_nrows(db)), 0L)
 
   # Cleanup
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   file.remove(filename)
 })
 

@@ -37,7 +37,7 @@ cleanup_test_db <- function(db) {
   )
   
   if (dbIsValid(db)) {
-    dbDisconnect(db, shutdown = TRUE)
+    dbDisconnect(db)
   }
   
   if (!is.null(db_path) && file.exists(db_path)) {

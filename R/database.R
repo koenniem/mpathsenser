@@ -134,7 +134,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
     },
     error = function(e) {
       # nocov start
-      dbDisconnect(db, shutdown = TRUE)
+      dbDisconnect(db)
       abort(c(
         "Database definition file not found. The package is probably corrupted.",
         i = "Please reinstall mpathsenser using `install.packages(\"mpathsenser\")`"
@@ -185,7 +185,7 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
   }
   db <- dbConnect(duckdb::duckdb(), db_name, read_only = TRUE)
   if (!DBI::dbExistsTable(db, "Participant")) {
-    dbDisconnect(db, shutdown = TRUE)
+    dbDisconnect(db)
     abort("Sorry, this does not appear to be a mpathsenser database.")
   }
   return(db)
@@ -222,7 +222,7 @@ close_db <- function(db) {
   exists <- try(db, silent = TRUE)
   if (inherits(exists, "duckdb_connection") && !is.null(db)) {
     if (dbIsValid(db)) {
-      dbDisconnect(db, shutdown = TRUE)
+      dbDisconnect(db)
     }
   }
 }
@@ -407,6 +407,11 @@ copy_db <- function(
 #' @noRd
 add_study <- function(db, study_id, data_format) {
   check_db(db)
+  
+  # Skip if primary key is NULL
+  if (is.null(study_id)) {
+    return(0)
+  }
 
   dbExecute(
     db,
@@ -422,6 +427,11 @@ add_study <- function(db, study_id, data_format) {
 #' @noRd
 add_participant <- function(db, participant_id, study_id) {
   check_db(db)
+  
+  # Skip if primary key is NULL
+  if (is.null(participant_id)) {
+    return(0)
+  }
 
   dbExecute(
     db,
@@ -437,6 +447,11 @@ add_participant <- function(db, participant_id, study_id) {
 #' @noRd
 add_processed_files <- function(db, file_name, study_id, participant_id) {
   check_db(db)
+  
+  # Skip if primary key is NULL
+  if (is.null(file_name)) {
+    return(0)
+  }
 
   dbExecute(
     db,
@@ -625,6 +640,6 @@ get_nrows <- function(
         dplyr::count() |>
         pull(n)
     },
-    integer(1)
+    numeric(1)
   )
 }

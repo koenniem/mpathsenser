@@ -40,7 +40,7 @@ test_that("import", {
     "Can't find JSON files in .+\\."
   )
   unlink(temp, recursive = TRUE)
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   file.remove(filename)
 
   # Test deprecated arguments
@@ -61,7 +61,7 @@ test_that("import", {
     "Some files could not be written to the database.",
     all = FALSE
   )
-  dbDisconnect(db2, shutdown = TRUE)
+  dbDisconnect(db2)
   file.remove(filename)
 })
 
@@ -307,7 +307,7 @@ test_that(".import_is_duplicate", {
   expect_equal(.import_is_duplicate(db_path, NULL), NA)
 
   # Clean up
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   unlink(db_path)
 })
 
@@ -508,7 +508,7 @@ test_that(".import_write_to_db", {
 
   # Clean up
   db_path <- db@driver@dbdir
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   unlink(db_path)
 })
 
@@ -607,7 +607,7 @@ test_that("save2db", {
   )
 
   # Cleanup
-  dbDisconnect(db, shutdown = TRUE)
+  dbDisconnect(db)
   file.remove(filename)
 })
 
