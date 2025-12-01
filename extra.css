@@ -1,0 +1,56 @@
+[data-bs-theme="dark"] .form-control::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+#search-input {
+  color: rgb(255, 255, 255);
+}
+
+.container .row {
+  margin-top: 40px;
+}
+
+[data-bs-theme="dark"] img.r-plt {
+  filter: none !important;
+}
+
+.lifecycle {
+  color: var(--bs-secondary-color);
+  background-color: var(--bs-secondary-bg);
+  border-radius: 5px;
+}
+
+.badge {
+  --bs-badge-padding-x: .65em;
+  --bs-badge-padding-y: .35em;
+  --bs-badge-font-size: .75em;
+  --bs-badge-font-weight: 700;
+  --bs-badge-color: #FCFCFC;
+  --bs-badge-border-radius: var(--bs-border-radius);
+  display: inline-block;
+  padding: var(--bs-badge-padding-y) var(--bs-badge-padding-x);
+  font-size: var(--bs-badge-font-size);
+  font-weight: var(--bs-badge-font-weight);
+  line-height: 1;
+  color: var(--bs-badge-color);
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: var(--bs-badge-border-radius);
+  background-image: var(--bs-gradient);
+}
+
+.lifecycle-stable {
+  background-color: #108001;
+  color: var(--bs-white);
+}
+
+.lifecycle-experimental, .lifecycle-deprecated {
+  background-color: #fd8008;
+  color: var(--bs-black);
+}
+
+.lifecycle-superseded {
+  background-color: #074080;
+  color: var(--bs-white);
+}
