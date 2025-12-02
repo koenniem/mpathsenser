@@ -318,8 +318,8 @@ measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
-free_physical_memory INTEGER,
-free_virtual_memory INTEGER,
+free_physical_memory DOUBLE,
+free_virtual_memory DOUBLE,
 PRIMARY KEY (measurement_id),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id)
 );
