@@ -492,7 +492,7 @@ add_processed_files <- function(db, file_name, study_id, participant_id) {
 #' @noRd
 clear_db <- function(db) {
   check_db(db)
-  tables <- c("Study", "Participant", "ProcessedFiles", sensors)
+  tables <- c(sensors, "ProcessedFiles", "Participant", "Study")
   res <- vapply(
     tables,
     \(x) dbExecute(db, paste0("DELETE FROM ", x, " WHERE 1;")),
