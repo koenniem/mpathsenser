@@ -772,19 +772,22 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 
   # Then, calculate the gap duration
   # For DuckDB, we use epoch() with STRPTIME to convert datetime string to timestamp
+  # Take substring of the datetime because duckdb does not handle a mix of milliseconds and no
+  # milliseconds
   data |>
+    mutate(datetime = substr(.data$datetime, 1, 19)) |>
+    mutate(datetime = strptime(.data$datetime, "%Y-%m-%d %H:%M:%S")) |>
     dbplyr::window_order(.data$participant_id, .data$datetime) |>
     group_by(.data$participant_id) |>
     mutate(to = lead(.data$datetime)) |>
     ungroup() |>
     mutate(
-      gap = epoch(strptime(.data$to, "%Y-%m-%d %H:%M:%S")) -
-        epoch(strptime(.data$datetime, "%Y-%m-%d %H:%M:%S"))
+      gap = epoch(.data$to) - epoch(.data$datetime)
     ) |>
     filter(.data$gap >= min_gap) |>
     mutate(
-      from = strptime(.data$datetime, "%Y-%m-%d %H:%M:%S"),
-      to = strptime(.data$to, "%Y-%m-%d %H:%M:%S")
+      from = .data$datetime,
+      to = .data$to
     ) |>
     select("participant_id", "from", "to", "gap") |>
     collect()
