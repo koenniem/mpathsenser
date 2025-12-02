@@ -103,12 +103,15 @@ first_date <- function(db, sensor, participant_id = NULL) {
   check_db(db)
   check_arg(sensor, "character", n = 1)
 
-  query <- paste0("SELECT MIN(date) AS `min` FROM `", sensor, "`")
+  out <- dplyr::tbl(db, sensor)
 
   if (!is.null(participant_id)) {
-    query <- paste0(query, " WHERE (`participant_id` = '", participant_id, "')")
+    out <- filter(out, .data$participant_id == participant_id)
   }
-  DBI::dbGetQuery(db, query)[1, 1]
+
+  out |>
+    summarise(min_date = min(.data$date, na.rm = TRUE)) |>
+    dplyr::pull(.data$min_date)
 }
 
 #' Extract the date of the last entry
@@ -135,12 +138,15 @@ last_date <- function(db, sensor, participant_id = NULL) {
   check_db(db)
   check_arg(sensor, c("character", "integerish"), n = 1, allow_null = TRUE)
 
-  query <- paste0("SELECT MAX(date) AS `max` FROM `", sensor, "`")
+  out <- dplyr::tbl(db, sensor)
 
   if (!is.null(participant_id)) {
-    query <- paste0(query, " WHERE (`participant_id` = '", participant_id, "')")
+    out <- filter(out, .data$participant_id == participant_id)
   }
-  DBI::dbGetQuery(db, query)[1, 1]
+
+  out |>
+    summarise(max_date = max(.data$date, na.rm = TRUE)) |>
+    dplyr::pull(.data$max_date)
 }
 
 #' Get installed apps
