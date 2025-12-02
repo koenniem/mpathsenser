@@ -575,15 +575,26 @@ safe_extract <- function(vec, var) {
       participant_id = meta_data$participant_id,
       study_id = meta_data$study_id
     )
+  })
 
-    for (i in seq_along(sensor_data)) {
-      save2db(
-        db = db,
-        name = names(sensor_data)[[i]],
-        data = sensor_data[[i]]
-      )
-    }
+  for (i in seq_along(sensor_data)) {
+    # save2db(
+    #   db = db,
+    #   name = names(sensor_data)[[i]],
+    #   data = sensor_data[[i]]
+    # )
+    # browser()
+    dplyr::rows_insert(
+      dplyr::tbl(db, names(sensor_data)[[i]]),
+      sensor_data[[i]],
+      by = "measurement_id",
+      copy = TRUE,
+      in_place = TRUE,
+      conflict = "ignore"
+    )
+  }
 
+  DBI::dbWithTransaction(db, {
     # Add files to list of processed files
     add_processed_files(
       db = db,
