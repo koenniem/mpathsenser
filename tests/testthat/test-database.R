@@ -256,6 +256,6 @@ test_that("get_study", {
 
 test_that("get_nrows", {
   db <- create_test_db()
-  expect_vector(get_nrows(db), integer(), length(sensors))
+  expect_vector(get_nrows(db), numeric(), length(sensors))
   cleanup_test_db(db)
 })

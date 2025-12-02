@@ -536,9 +536,11 @@ test_that("save2db", {
     NA
   )
 
-  # Check if the file size increased
-  db_size2 <- file.size(filename)
-  expect_gt(db_size2, db_size)
+  # Check that data was added (instead of file size for DuckDB compatibility)
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
+    1000L
+  )
 
   # Check the data output
   expect_equal(
@@ -555,8 +557,7 @@ test_that("save2db", {
     NA
   )
   DBI::dbExecute(db, "VACUUM") # A vacuum to clear the tiny increase by replacement :)
-  db_size3 <- file.size(filename)
-  # Note: DuckDB may have different behavior for file size after vacuum
+  # Verify count remains the same (data not duplicated)
   expect_equal(
     DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
     1000L
@@ -595,8 +596,7 @@ test_that("save2db", {
     ),
     NA
   )
-  db_size4 <- file.size(filename)
-  expect_gt(db_size4, db_size3)
+  # Check that new data was added
   expect_equal(
     DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
     1500L
