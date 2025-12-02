@@ -17,7 +17,8 @@ copy_db(source_db, target_db, sensor = "All")
 sensors.}
 }
 \value{
-Returns \code{TRUE} invisibly, called for side effects.
+Returns a connection to \code{target_db}. Note that this is not the same connection as the
+input \code{target_db}.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
@@ -34,7 +35,7 @@ DBI::dbExecute(db1, "INSERT INTO Activity VALUES(
                '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')")
 
 # Then copy the first database to the second database
-copy_db(db1, db2)
+db2 <- copy_db(db1, db2)
 
 # Check that the second database has the same data as the first database
 get_data(db2, "Activity")

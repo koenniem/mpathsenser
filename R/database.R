@@ -116,8 +116,10 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
           file.path(getwd(), "inst", "extdata", "dbdef.sql"),
           file.path(getwd(), "..", "..", "inst", "extdata", "dbdef.sql"),
           file.path(dirname(getwd()), "..", "inst", "extdata", "dbdef.sql"),
-          normalizePath(file.path(getwd(), "..", "..", "inst", "extdata", "dbdef.sql"),
-                        mustWork = FALSE)
+          normalizePath(
+            file.path(getwd(), "..", "..", "inst", "extdata", "dbdef.sql"),
+            mustWork = FALSE
+          )
         )
         fn <- ""
         for (candidate in candidates) {
@@ -127,6 +129,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
           }
         }
       }
+
       script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
       for (statement in script) {
         dbExecute(db, statement)
@@ -264,8 +267,10 @@ index_db <- function(db) {
           file.path(getwd(), "inst", "extdata", "indexes.sql"),
           file.path(getwd(), "..", "..", "inst", "extdata", "indexes.sql"),
           file.path(dirname(getwd()), "..", "inst", "extdata", "indexes.sql"),
-          normalizePath(file.path(getwd(), "..", "..", "inst", "extdata", "indexes.sql"),
-                        mustWork = FALSE)
+          normalizePath(
+            file.path(getwd(), "..", "..", "inst", "extdata", "indexes.sql"),
+            mustWork = FALSE
+          )
         )
         fn <- ""
         for (candidate in candidates) {
@@ -439,13 +444,13 @@ add_study <- function(db, study_id, data_format) {
 #' @noRd
 add_participant <- function(db, participant_id, study_id) {
   check_db(db)
-  
+
   # Filter out NULL values in vectorized inputs
   valid <- !is.na(participant_id) & !is.null(participant_id)
   if (!any(valid)) {
     return(0)
   }
-  
+
   participant_id <- participant_id[valid]
   study_id <- study_id[valid]
 
@@ -463,13 +468,13 @@ add_participant <- function(db, participant_id, study_id) {
 #' @noRd
 add_processed_files <- function(db, file_name, study_id, participant_id) {
   check_db(db)
-  
+
   # Filter out NULL values in vectorized inputs
   valid <- !is.na(file_name) & !is.null(file_name)
   if (!any(valid)) {
     return(0)
   }
-  
+
   file_name <- file_name[valid]
   study_id <- study_id[valid]
   participant_id <- participant_id[valid]
