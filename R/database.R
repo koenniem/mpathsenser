@@ -326,7 +326,8 @@ vacuum_db <- function(db) {
 #'   \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
 #'   sensors.
 #'
-#' @returns Returns `TRUE` invisibly, called for side effects.
+#' @returns Returns a connection to `target_db`. Note that this is not the same connection as the
+#' input `target_db`.
 #' @export
 #'
 #' @examples
@@ -341,7 +342,7 @@ vacuum_db <- function(db) {
 #'                '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')")
 #'
 #' # Then copy the first database to the second database
-#' copy_db(db1, db2)
+#' db2 <- copy_db(db1, db2)
 #'
 #' # Check that the second database has the same data as the first database
 #' get_data(db2, "Activity")
@@ -371,6 +372,7 @@ copy_db <- function(
   }
 
   # Get target database path - for duckdb, we access the path via the driver
+  DBI::dbDisconnect(target_db) # Disconnect to avoid locking issues
   target_path <- target_db@driver@dbdir
 
   # Attach new database to old database (DuckDB syntax)
@@ -378,7 +380,10 @@ copy_db <- function(
 
   # Copy participants, studies, processed_files (using ON CONFLICT DO NOTHING for DuckDB)
   dbExecute(source_db, "INSERT INTO new_db.Study SELECT * FROM Study ON CONFLICT DO NOTHING")
-  dbExecute(source_db, "INSERT INTO new_db.Participant SELECT * FROM Participant ON CONFLICT DO NOTHING")
+  dbExecute(
+    source_db,
+    "INSERT INTO new_db.Participant SELECT * FROM Participant ON CONFLICT DO NOTHING"
+  )
   dbExecute(
     source_db,
     "INSERT INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles ON CONFLICT DO NOTHING"
@@ -401,19 +406,22 @@ copy_db <- function(
   # Detach
   dbExecute(source_db, "DETACH new_db")
 
-  return(invisible(TRUE))
+  # Reopen the target_db
+  target_db <- dbConnect(duckdb::duckdb(), target_path)
+
+  target_db
 }
 
 #' @noRd
 add_study <- function(db, study_id, data_format) {
   check_db(db)
-  
+
   # Filter out NULL values in vectorized inputs
   valid <- !is.na(study_id) & !is.null(study_id)
   if (!any(valid)) {
     return(0)
   }
-  
+
   study_id <- study_id[valid]
   data_format <- data_format[valid]
 

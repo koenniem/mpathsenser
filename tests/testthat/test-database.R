@@ -61,7 +61,7 @@ test_that("open_db", {
   db_path <- db@driver@dbdir
   dbDisconnect(db)
   gc() # Force garbage collection to ensure file handles are released
-  
+
   db <- open_db(NULL, db_path)
   expect_true(dbIsValid(db))
   dbDisconnect(db)
@@ -71,7 +71,7 @@ test_that("open_db", {
 test_that("copy_db", {
   # Create a test database
   db <- create_test_db()
-  
+
   filename <- tempfile("copy", fileext = ".db")
   new_db <- create_db(NULL, filename)
 
@@ -81,14 +81,14 @@ test_that("copy_db", {
     "Sensor\\(s\\) foo not found."
   )
 
-  copy_db(db, new_db, sensor = "All")
+  new_db <- copy_db(db, new_db, sensor = "All")
   expect_equal(get_nrows(db), get_nrows(new_db))
   close_db(new_db)
   file.remove(filename)
 
   # Create new db and copy to it
   new_db <- create_db(NULL, filename)
-  copy_db(db, new_db, sensor = "Accelerometer")
+  new_db <- copy_db(db, new_db, sensor = "Accelerometer")
   true <- c(2L, rep(0L, 26))
   names(true) <- sensors
   expect_equal(get_nrows(new_db), true)
