@@ -152,8 +152,8 @@ test_that("AirQuality", {
       air_quality_level = c(NA, "MODERATE"),
       source = c(NA, "IRCEL-CELINE - Belgian Interregional Environment Agency"),
       place = c(NA, "Aarschot, Belgium"),
-      latitude = c(NA, 50.43555),
-      longitude = c(NA, 4.146731)
+      latitude = c(NA, "50.43555"),
+      longitude = c(NA, "4.146731")
     )
   )
 })
@@ -274,7 +274,7 @@ test_that("Bluetooth", {
         NA
       ),
       bluetooth_device_type = c("unknown", "le", NA),
-      connectable = c(0L, 1L, NA),
+      connectable = c(FALSE, TRUE, NA),
       rssi = c(-84L, -91L, NA),
       tx_power_level = c(100L, NA, NA)
     )
@@ -307,7 +307,7 @@ test_that("Calendar", {
       ),
       start = c("2021-11-14T14:00:00.000Z", "2021-11-14T14:30:00.000Z", NA),
       end = c("2021-11-14T14:30:00.000Z", "2021-11-14T15:00:00.000Z", NA),
-      all_day = c(0L, 0L, NA),
+      all_day = c(FALSE, FALSE, NA),
       location = c("PSI", "02. Leuven", NA),
       attendees = c("c87ec7481c056ea2c88541cd41b966a9f8114d51", NA, NA)
     )
@@ -454,7 +454,7 @@ test_that("Location", {
       speed_accuracy = c(1.9150350848860985, NA),
       heading = c(35.5130489970395, NA),
       heading_accuracy = rep(NA_real_, 2),
-      is_mock = rep(NA_real_, 2) # SQLite doesn't have a boolean type
+      is_mock = rep(NA, 2)
     )
   )
 })
@@ -471,8 +471,8 @@ test_that("Memory", {
       participant_id = "12345",
       date = "2021-11-14",
       time = c("14:00:00", "14:01:00"),
-      free_physical_memory = c(2027336609L, NA),
-      free_virtual_memory = c(233377575L, NA)
+      free_physical_memory = c(2027336609, NA),
+      free_virtual_memory = c(233377575, NA)
     )
   )
 })
@@ -577,8 +577,8 @@ test_that("Weather", {
       weather_description = c("overcast clouds", NA),
       sunrise = c("2021-11-14T07:30:00.000", NA),
       sunset = c("2021-11-14T18:00:00.000", NA),
-      latitude = c(50.1234, NA),
-      longitude = c(4.1234, NA),
+      latitude = c("50.1234", NA),
+      longitude = c("4.1234", NA),
       pressure = c(1000L, NA),
       wind_speed = c(3.12, NA),
       wind_degree = c(250, NA),
