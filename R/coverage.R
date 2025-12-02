@@ -331,13 +331,15 @@ coverage_impl <- function(
       # Extract the data for this participant and sensor
       tmp <- dplyr::tbl(tmp_db, .x) |>
         filter(participant_id == p_id) |>
-        select("measurement_id", "time", "date")
+        select("measurement_id", "time")
 
-      # Filter by date if needed
+      # Filter by date if needed (compare timestamps with date boundaries)
       if (!is.null(start_date) && !is.null(end_date)) {
+        start_ts <- paste0(start_date, " 00:00:00")
+        end_ts <- paste0(end_date, " 23:59:59")
         tmp <- tmp |>
-          filter(date >= start_date) |>
-          filter(date <= end_date)
+          filter(time >= start_ts) |>
+          filter(time <= end_ts)
       }
 
       # Remove duplicate IDs with _ for certain sensors
@@ -358,10 +360,12 @@ coverage_impl <- function(
       }
 
       # Calculate the number of average measurements per hour i.e. the sum of all measurements in
-      # that hour divided by n (use substr to extract hour from time string HH:MM:SS)
+      # that hour divided by n (extract hour from timestamp, extract date for grouping)
       tmp <- tmp |>
-        mutate(hour = substr(.data$time, 1, 2)) |>
-        # mutate(Date = date(time)) |>
+        mutate(
+          hour = substr(.data$time, 12, 13),
+          date = substr(.data$time, 1, 10)
+        ) |>
         dplyr::count(.data$date, .data$hour) |>
         group_by(.data$hour) |>
         summarise(coverage = sum(.data$n, na.rm = TRUE) / n())

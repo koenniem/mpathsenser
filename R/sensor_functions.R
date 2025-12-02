@@ -446,7 +446,7 @@ activity_duration <- function(
 #' @noRd
 compress_activity <- function(data, direction = "forward") {
   data |>
-    arrange("date", "time") |>
+    arrange("time") |>
     filter(!(lead(.data$type) == .data$type & lag(.data$type) == .data$type))
 }
 

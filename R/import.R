@@ -605,26 +605,6 @@ safe_extract <- function(vec, var) {
   })
 }
 
-# First, try to simply add the data to the table If the measurement already exists,
-# skip that measurement
-save2db <- function(db, name, data) {
-  insert_cols <- paste0("\"", colnames(data), "\"", collapse = ", ")
-  placeholders <- paste0("$", seq_along(colnames(data)), collapse = ", ")
-  res <- DBI::dbSendStatement(
-    conn = db,
-    statement = paste0(
-      "INSERT INTO ",
-      name,
-      " (",
-      insert_cols,
-      ") VALUES (",
-      placeholders,
-      ") ON CONFLICT DO NOTHING"
-    ),
-    params = unname(as.list(data))
-  )
-  DBI::dbClearResult(res)
-}
 
 .import_meta_data_from_file_name <- function(file_name) {
   # The file name is structured as follows:

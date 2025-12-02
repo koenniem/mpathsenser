@@ -27,8 +27,7 @@ CREATE TABLE IF NOT EXISTS Accelerometer
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 end_time TEXT,
 n INTEGER,
 x_mean REAL,
@@ -80,8 +79,7 @@ CREATE TABLE IF NOT EXISTS Activity
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 confidence INTEGER,
 type TEXT,
 PRIMARY KEY (measurement_id),
@@ -92,8 +90,7 @@ CREATE TABLE IF NOT EXISTS AirQuality
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 air_quality_index INTEGER,
 air_quality_level TEXT,
 source TEXT,
@@ -108,8 +105,7 @@ CREATE TABLE IF NOT EXISTS AppUsage
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 end_time TEXT,
 "start" TEXT,
 "end" TEXT,
@@ -125,8 +121,7 @@ CREATE TABLE IF NOT EXISTS Battery
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 battery_level INTEGER,
 battery_status TEXT,
 PRIMARY KEY (measurement_id),
@@ -137,8 +132,7 @@ CREATE TABLE IF NOT EXISTS Bluetooth
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 start_scan TEXT,
 end_scan TEXT,
 advertisement_name TEXT,
@@ -156,8 +150,7 @@ CREATE TABLE IF NOT EXISTS Calendar
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 event_id TEXT,
 calendar_id TEXT,
 title TEXT,
@@ -175,8 +168,7 @@ CREATE TABLE IF NOT EXISTS Connectivity
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 connectivity_status TEXT,
 PRIMARY KEY (measurement_id),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id)
@@ -186,8 +178,7 @@ CREATE TABLE IF NOT EXISTS Device
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 device_id TEXT,
 hardware TEXT,
 device_name TEXT,
@@ -205,8 +196,7 @@ CREATE TABLE IF NOT EXISTS Error
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 message TEXT,
 PRIMARY KEY (measurement_id),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id)
@@ -216,8 +206,7 @@ CREATE TABLE IF NOT EXISTS Geofence
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 center REAL,
 dwell INTEGER,
 name TEXT,
@@ -231,8 +220,7 @@ CREATE TABLE IF NOT EXISTS Gyroscope
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 x REAL,
 y REAL,
 z REAL,
@@ -244,8 +232,7 @@ CREATE TABLE IF NOT EXISTS Heartbeat
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 period INTEGER,
 device_type TEXT,
 device_role_name TEXT,
@@ -257,8 +244,7 @@ CREATE TABLE IF NOT EXISTS InstalledApps
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 app TEXT,
 PRIMARY KEY (measurement_id),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id)
@@ -268,8 +254,7 @@ CREATE TABLE IF NOT EXISTS Keyboard
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 body TEXT,
 "end" TEXT,
 "start" TEXT,
@@ -281,8 +266,7 @@ CREATE TABLE IF NOT EXISTS Light
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 end_time TEXT,
 mean_lux REAL,
 std_lux REAL,
@@ -296,8 +280,7 @@ CREATE TABLE IF NOT EXISTS Location
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 latitude TEXT,
 longitude TEXT,
 altitude REAL,
@@ -316,8 +299,7 @@ CREATE TABLE IF NOT EXISTS Memory
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 free_physical_memory DOUBLE,
 free_virtual_memory DOUBLE,
 PRIMARY KEY (measurement_id),
@@ -328,8 +310,7 @@ CREATE TABLE IF NOT EXISTS Mobility
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 number_of_places INTEGER,
 location_variance REAL,
 entropy REAL,
@@ -344,8 +325,7 @@ CREATE TABLE IF NOT EXISTS Noise
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 end_time TEXT,
 mean_decibel REAL,
 std_decibel REAL,
@@ -359,8 +339,7 @@ CREATE TABLE IF NOT EXISTS Pedometer
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 step_count INTEGER,
 PRIMARY KEY (measurement_id),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id)
@@ -370,8 +349,7 @@ CREATE TABLE IF NOT EXISTS PhoneLog
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 call_type TEXT,
 datetime TEXT,
 duration INTEGER,
@@ -386,8 +364,7 @@ CREATE TABLE IF NOT EXISTS Screen
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 screen_event TEXT,
 PRIMARY KEY (measurement_id),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id)
@@ -397,8 +374,7 @@ CREATE TABLE IF NOT EXISTS TextMessage
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 address TEXT,
 body TEXT,
 text_date TEXT,
@@ -415,8 +391,7 @@ CREATE TABLE IF NOT EXISTS Timezone
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 timezone TEXT,
 PRIMARY KEY (measurement_id),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id)
@@ -426,8 +401,7 @@ CREATE TABLE IF NOT EXISTS Weather
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 country TEXT,
 area_name TEXT,
 weather_main TEXT,
@@ -456,8 +430,7 @@ CREATE TABLE IF NOT EXISTS Wifi
 (
 measurement_id TEXT NOT NULL,
 participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
+time TIMESTAMP NOT NULL,
 ssid TEXT,
 bssid TEXT,
 ip TEXT,

@@ -56,8 +56,7 @@ accelerometer_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 23),
+    time = data$timestamp,
     n = data$n,
     x_mean = data$xm,
     y_mean = data$ym,
@@ -94,8 +93,7 @@ activity_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     confidence = data$confidence,
     type = data$type
   )
@@ -107,8 +105,7 @@ airquality_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     air_quality_index = data$air_quality_index,
     air_quality_level = data$air_quality_level,
     source = data$source,
@@ -138,8 +135,7 @@ app_usage_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     start = data$start,
     end = data$end,
     usage = data$usage,
@@ -153,8 +149,7 @@ battery_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     battery_level = data$battery_level,
     battery_status = data$battery_status
   )
@@ -174,8 +169,7 @@ bluetooth_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     advertisement_name = data$advertisement_name,
     bluetooth_device_id = data$bluetooth_device_id,
     bluetooth_device_name = data$bluetooth_device_name,
@@ -239,8 +233,7 @@ calendar_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     event_id = data$event_id,
     calendar_id = data$calendar_id,
     title = data$title,
@@ -259,8 +252,7 @@ connectivity_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     connectivity_status = data$connectivity_status
   )
 }
@@ -271,8 +263,7 @@ device_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     platform = data$platform,
     device_id = data$device_id,
     hardware = data$hardware,
@@ -289,8 +280,7 @@ error_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     message = data$message
   )
 }
@@ -301,8 +291,7 @@ geofence_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     center = data$center,
     dwell = data$dwell,
     name = data$name,
@@ -323,8 +312,7 @@ gyroscope_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$timestamp, 1, 10),
-    time = substr(data$timestamp, 12, 23),
+    time = data$timestamp,
     x = data$x,
     y = data$y,
     z = data$z
@@ -337,8 +325,7 @@ heartbeat_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     period = data$period,
     device_type = data$device_type,
     device_role_name = data$device_role_name
@@ -366,8 +353,7 @@ installedapps_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     app = data$apps
   )
 }
@@ -383,8 +369,7 @@ light_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     mean_lux = data$mean_lux,
     std_lux = data$std_lux,
     min_lux = data$min_lux,
@@ -398,8 +383,7 @@ location_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     latitude = data$latitude,
     longitude = data$longitude,
     altitude = data$altitude,
@@ -416,8 +400,7 @@ memory_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     free_physical_memory = data$free_physical_memory,
     free_virtual_memory = data$free_virtual_memory
   )
@@ -429,8 +412,7 @@ mobility_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     number_of_places = data$number_of_places,
     location_variance = data$location_variance,
     entropy = data$entropy,
@@ -446,8 +428,7 @@ noise_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     mean_decibel = data$mean_decibel,
     std_decibel = data$std_decibel,
     min_decibel = data$min_decibel,
@@ -477,8 +458,7 @@ phone_log_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     call_type = data$call_type,
     datetime = data$datetime,
     duration = data$duration,
@@ -494,8 +474,7 @@ pedometer_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     step_count = data$step_count
   )
 }
@@ -506,8 +485,7 @@ screen_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     screen_event = data$screen_event
   )
 }
@@ -527,8 +505,7 @@ text_message_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     address = data$address,
     body = data$body,
     text_date = data$date,
@@ -546,8 +523,7 @@ timezone_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     timezone = data$timezone
   )
 }
@@ -559,8 +535,7 @@ weather_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     country = data$country,
     area_name = data$area_name,
     weather_main = data$weather_main,
@@ -590,8 +565,7 @@ wifi_fun <- function(data) {
   safe_data_frame(
     measurement_id = data$id,
     participant_id = data$participant_id,
-    date = substr(data$start_time, 1, 10),
-    time = substr(data$start_time, 12, 19),
+    time = data$start_time,
     ssid = data$ssid,
     bssid = data$bssid,
     ip = data$ip

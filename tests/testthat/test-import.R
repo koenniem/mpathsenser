@@ -404,8 +404,7 @@ test_that(".import_extract_sensor_data", {
           "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2"
         ),
         participant_id = "12345",
-        date = "2021-02-25",
-        time = "15:15:58.557",
+        time = "2021-02-25 15:15:58.557",
         n = NA,
         x_mean = NA,
         y_mean = NA,
@@ -477,8 +476,7 @@ test_that(".import_write_to_db", {
     Pedometer = tibble::tibble(
       measurement_id = "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_1",
       participant_id = "12345",
-      date = "2021-02-25",
-      time = "15:15:58.557",
+      time = "2021-02-25 15:15:58.557",
       step_count = 1
     )
   )
@@ -525,8 +523,7 @@ test_that("save2db", {
   data <- data.frame(
     measurement_id = paste0("12345_", 1:1000),
     participant_id = "12345",
-    date = "2021-11-14",
-    time = "16:40:01.123",
+    time = "2021-11-14 16:40:01.123",
     step_count = 1
   )
 
@@ -573,8 +570,7 @@ test_that("save2db", {
     data.frame(
       measurement_id = paste0("12345_", 500:1500),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = "16:40:01.123",
+      time = "2021-11-14 16:40:01.123",
       step_count = 1
     )
   )
@@ -588,8 +584,7 @@ test_that("save2db", {
         data = data.frame(
           measurement_id = paste0("12345_", 500:1500),
           participant_id = "12345",
-          date = "2021-11-14",
-          time = "16:40:01.123",
+          time = "2021-11-14 16:40:01.123",
           step_count = 1
         )
       )
