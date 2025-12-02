@@ -220,9 +220,9 @@ test_that("get_processed_files", {
   db <- create_test_db()
   res <- get_processed_files(db)
   true <- data.frame(
-    file_name = c("empty.json", "new_tests.json", "test.json"),
-    participant_id = c("N/A", "N/A", "12345"),
-    study_id = c("-1", "tests.json", "test-study")
+    file_name = c("test.json", "empty.json", "new_tests.json"),
+    participant_id = c("12345", "N/A", "N/A"),
+    study_id = c("test-study", "-1", "-1")
   )
   expect_equal(res, true)
   cleanup_test_db(db)
@@ -233,8 +233,8 @@ test_that("get_participants", {
   res <- get_participants(db)
   res_lazy <- get_participants(db, lazy = TRUE)
   true <- data.frame(
-    participant_id = c("N/A", "12345"),
-    study_id = c("-1", "test-study")
+    participant_id = c("12345", "N/A"),
+    study_id = c("test-study", "-1")
   )
   expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_duckdb_connection")
@@ -246,8 +246,8 @@ test_that("get_study", {
   res <- get_studies(db)
   res_lazy <- get_studies(db, lazy = TRUE)
   true <- data.frame(
-    study_id = c("-1", "tests.json", "test-study"),
-    data_format = c(NA, NA, "carp")
+    study_id = c("test-study", "-1"),
+    data_format = c("carp", NA)
   )
   expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_duckdb_connection")
