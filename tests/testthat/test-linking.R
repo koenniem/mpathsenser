@@ -104,11 +104,11 @@ test_that("link", {
   )
 
   # Test without offset bu using time and end_time
-  res2 <- dat1 %>%
-    dplyr::rename(end_time = time) %>%
-    mutate(start_time = end_time - 1800) %>%
+  res2 <- dat1 |>
+    dplyr::rename(end_time = time) |>
+    mutate(start_time = end_time - 1800) |>
     link(
-      x = .,
+      x = _,
       y = dat2,
       by = "participant_id",
       time = start_time,
@@ -122,11 +122,11 @@ test_that("link", {
 
   # Test that end_time and offset_before and offset_after cannot be used at the same time.
   expect_error(
-    dat1 %>%
-      dplyr::rename(end_time = time) %>%
-      mutate(start_time = end_time - 1800) %>%
+    dat1 |>
+      dplyr::rename(end_time = time) |>
+      mutate(start_time = end_time - 1800) |>
       link(
-        x = .,
+        x = _,
         y = dat2,
         by = "participant_id",
         time = start_time,
@@ -161,7 +161,7 @@ test_that("link", {
     time = time,
     y_time = time,
     offset_before = 1800
-  ) %>%
+  ) |>
     arrange(participant_id, time)
   expect_equal(res, true)
 
@@ -223,7 +223,7 @@ test_that("link", {
     time = time,
     y_time = time,
     offset_after = 1800
-  ) %>%
+  ) |>
     arrange(participant_id, time)
   expect_equal(res, true)
 
@@ -311,11 +311,11 @@ test_that("link", {
   expect_equal(res, true, ignore_attr = TRUE)
 
   # Without offset, using time, end_time, and y_time
-  res2 <- dat1 %>%
-    dplyr::rename(end_time = time) %>%
-    mutate(start_time = end_time - 1800) %>%
+  res2 <- dat1 |>
+    dplyr::rename(end_time = time) |>
+    mutate(start_time = end_time - 1800) |>
     link(
-      x = .,
+      x = _,
       y = dat2,
       by = "participant_id",
       time = start_time,
@@ -695,7 +695,7 @@ test_that("link_gaps", {
 
   expect_error(
     link_gaps(
-      data = res_raw %>% dplyr::select(-gap),
+      data = res_raw |> dplyr::select(-gap),
       gaps = dat2,
       by = "participant_id",
       offset_before = 1800L,
@@ -706,7 +706,7 @@ test_that("link_gaps", {
 
   expect_error(
     link_gaps(
-      data = res_raw %>% dplyr::select(-gap),
+      data = res_raw |> dplyr::select(-gap),
       gaps = dat2,
       by = "participant_id",
       offset_before = 1800L,
@@ -726,7 +726,7 @@ test_that("link_gaps", {
     by = "participant_id",
     offset_before = 1800,
     raw_data = TRUE
-  ) %>%
+  ) |>
     arrange(participant_id, time)
   expect_equal(res_raw, true)
 
@@ -748,8 +748,8 @@ test_that("link_gaps", {
 
   # Test whether results from raw_data = FALSE and TRUE are the same
   expect_equal(
-    res_raw %>%
-      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+    res_raw |>
+      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) |>
       dplyr::select(-gap_data),
     res
   )
@@ -824,8 +824,8 @@ test_that("link_gaps", {
 
   # Test whether results from raw_data = FALSE and TRUE are the same
   expect_equal(
-    res_raw %>%
-      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+    res_raw |>
+      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) |>
       dplyr::select(-gap_data),
     res
   )
@@ -906,8 +906,8 @@ test_that("link_gaps", {
 
   # Test whether results from raw_data = FALSE and TRUE are the same
   expect_equal(
-    res_raw %>%
-      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+    res_raw |>
+      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) |>
       dplyr::select(-gap_data),
     res
   )
@@ -957,9 +957,9 @@ test_that("bin_data", {
   )
 
   # get bins per hour, even if the interval is longer than one hour
-  res <- data %>%
-    mutate(datetime = as.POSIXct(datetime)) %>%
-    mutate(lead = lead(datetime)) %>%
+  res <- data |>
+    mutate(datetime = as.POSIXct(datetime)) |>
+    mutate(lead = lead(datetime)) |>
     bin_data(
       start_time = datetime,
       end_time = lead,
@@ -1002,9 +1002,9 @@ test_that("bin_data", {
   # bins, but only if fixed = FALSE. Not that these bins are not rounded to,
   # as in this example 30 minutes, but rather depends on the earliest time
   # in the group.
-  res <- data %>%
-    mutate(datetime = as.POSIXct(datetime)) %>%
-    mutate(lead = lead(datetime)) %>%
+  res <- data |>
+    mutate(datetime = as.POSIXct(datetime)) |>
+    mutate(lead = lead(datetime)) |>
     bin_data(
       start_time = datetime,
       end_time = lead,
@@ -1080,11 +1080,11 @@ test_that("bin_data", {
   )
 
   # binned_intervals also takes into account the prior grouping structure
-  res <- data %>%
-    mutate(datetime = as.POSIXct(datetime)) %>%
-    group_by(participant_id) %>%
-    mutate(lead = lead(datetime)) %>%
-    group_by(participant_id, type) %>%
+  res <- data |>
+    mutate(datetime = as.POSIXct(datetime)) |>
+    group_by(participant_id) |>
+    mutate(lead = lead(datetime)) |>
+    group_by(participant_id, type) |>
     bin_data(
       start_time = datetime,
       end_time = lead,
@@ -1138,7 +1138,7 @@ test_that("bin_data", {
       ),
       2
     )
-  ) %>%
+  ) |>
     group_by(participant_id, type)
   expect_equal(res, true)
 
@@ -1149,10 +1149,10 @@ test_that("bin_data", {
   )
 
   # Or:
-  duration2 <- res %>%
-    unnest(bin_data, keep_empty = TRUE) %>%
-    mutate(duration = .data$lead - .data$datetime) %>%
-    group_by(bin, .add = TRUE) %>%
+  duration2 <- res |>
+    unnest(bin_data, keep_empty = TRUE) |>
+    mutate(duration = .data$lead - .data$datetime) |>
+    group_by(bin, .add = TRUE) |>
     summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
 
   true <- c(55, 0, 5, 5, 60, 5, 55, 0, 5, 5, 60, 5)
@@ -1161,8 +1161,8 @@ test_that("bin_data", {
   expect_equal(as.double(duration2$duration), true)
 
   # Argument checks
-  data <- data %>%
-    mutate(datetime = as.POSIXct(datetime)) %>%
+  data <- data |>
+    mutate(datetime = as.POSIXct(datetime)) |>
     mutate(lead = lead(datetime))
 
   expect_error(
@@ -1175,8 +1175,8 @@ test_that("bin_data", {
     "`by` must be one of 'sec', 'min', 'hour', or 'day', or a numeric value if `fixed = FALSE`."
   )
   expect_error(
-    data %>%
-      mutate(datetime = as.character(datetime)) %>%
+    data |>
+      mutate(datetime = as.character(datetime)) |>
       bin_data(
         start_time = datetime,
         end_time = lead,
@@ -1201,9 +1201,9 @@ test_that("bin_data", {
     type = "WALKING"
   )
 
-  res <- data %>%
-    mutate(datetime = as.POSIXct(datetime)) %>%
-    mutate(lead = lead(datetime)) %>%
+  res <- data |>
+    mutate(datetime = as.POSIXct(datetime)) |>
+    mutate(lead = lead(datetime)) |>
     bin_data(
       start_time = datetime,
       end_time = lead,

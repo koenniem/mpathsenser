@@ -319,22 +319,27 @@ coverage_impl <- function(
   # table is not used. Hence, we rename participant_id to p_id
   p_id <- as.character(participant_id) # nolint
 
+  # Get the database path from the DuckDB connection
+  db_path <- db@driver@dbdir
+
   # Loop over each sensor and calculate the coverage rate for that sensor
   data <- furrr::future_map(
     .x = sensor,
     .f = ~ {
-      tmp_db <- open_db(NULL, db@dbname)
+      tmp_db <- open_db(NULL, db_path, read_only = TRUE)
 
       # Extract the data for this participant and sensor
       tmp <- dplyr::tbl(tmp_db, .x) |>
         filter(participant_id == p_id) |>
-        select("measurement_id", "time", "date")
+        select("measurement_id", "time")
 
-      # Filter by date if needed
+      # Filter by date if needed (compare timestamps with date boundaries)
       if (!is.null(start_date) && !is.null(end_date)) {
+        start_ts <- paste0(start_date, " 00:00:00")
+        end_ts <- paste0(end_date, " 23:59:59")
         tmp <- tmp |>
-          filter(date >= start_date) |>
-          filter(date <= end_date)
+          filter(time >= start_ts) |>
+          filter(time <= end_ts)
       }
 
       # Remove duplicate IDs with _ for certain sensors
@@ -355,10 +360,12 @@ coverage_impl <- function(
       }
 
       # Calculate the number of average measurements per hour i.e. the sum of all measurements in
-      # that hour divided by n
+      # that hour divided by n (extract hour from timestamp, extract date for grouping)
       tmp <- tmp |>
-        mutate(hour = strftime("%H", .data$time)) |>
-        # mutate(Date = date(time)) |>
+        mutate(
+          hour = strftime(.data$time, "%H"),
+          date = strftime(.data$time, "%Y-%m-%d")
+        ) |>
         dplyr::count(.data$date, .data$hour) |>
         group_by(.data$hour) |>
         summarise(coverage = sum(.data$n, na.rm = TRUE) / n())

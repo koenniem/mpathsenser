@@ -4,12 +4,16 @@
 \alias{open_db}
 \title{Open an mpathsenser database.}
 \usage{
-open_db(path = getwd(), db_name = "sense.db")
+open_db(path = getwd(), db_name = "sense.db", read_only = TRUE)
 }
 \arguments{
 \item{path}{The path to the database. Use NULL to use the full path name in db_name.}
 
 \item{db_name}{The name of the database.}
+
+\item{read_only}{Whether the database should be opened in read only mode. This is useful when you
+want to add data to the database (e.g. with \code{\link[=import]{import()}}) but leads to file locking and thereby
+prevents multiple connections reading from the database.}
 }
 \value{
 A connection to an mpathsenser database.

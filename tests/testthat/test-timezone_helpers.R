@@ -1,5 +1,5 @@
 test_that("add_timezones_to_db aborts if Timezone table is missing", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  db <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
 
   DBI::dbWriteTable(
     db,
@@ -22,7 +22,7 @@ test_that("add_timezones_to_db aborts if Timezone table is missing", {
 
 
 test_that("add_timezones_to_db adds timezone column correctly", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  db <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
 
   # Create a simple timezone table
   DBI::dbWriteTable(
@@ -62,7 +62,7 @@ test_that("add_timezones_to_db adds timezone column correctly", {
 
 
 test_that("add_timezones_to_db handles multiple participants independently", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  db <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
 
   tz <- data.frame(
     participant_id = c(1, 1, 2, 2),
@@ -93,7 +93,7 @@ test_that("add_timezones_to_db handles multiple participants independently", {
 })
 
 test_that("add_timezones_to_db handles measurements before and after known timezone intervals", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  db <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
 
   DBI::dbWriteTable(
     db,
@@ -128,7 +128,7 @@ test_that("add_timezones_to_db handles measurements before and after known timez
 })
 
 test_that("add_timezones_to_db works for empty tables", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  db <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
   DBI::dbWriteTable(
     db,
     "Timezone",
@@ -148,7 +148,7 @@ test_that("add_timezones_to_db works for empty tables", {
 })
 
 test_that("add_timezones_to_db skips already completed tables", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  db <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
 
   DBI::dbWriteTable(
     db,
@@ -180,7 +180,7 @@ test_that("add_timezones_to_db skips already completed tables", {
 
 
 test_that("add_timezones_to_db removes temporary timezone table afterward", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  db <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
 
   DBI::dbWriteTable(
     db,
@@ -213,7 +213,7 @@ test_that("add_timezones_to_db removes temporary timezone table afterward", {
 })
 
 test_that("add_timezones_to_db overwrites existing timezone values", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  db <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
 
   DBI::dbWriteTable(
     db,
@@ -249,7 +249,7 @@ test_that("add_timezones_to_db overwrites existing timezone values", {
 })
 
 test_that("add_timezones_to_db correctly handles sensors with end_time column", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  db <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
 
   DBI::dbWriteTable(
     db,

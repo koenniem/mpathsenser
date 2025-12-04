@@ -1,4 +1,4 @@
 utils::globalVariables(c(
-  "UNIXEPOCH",
+  "epoch",
   "overlaps" # dplyr join_by helper
 ))

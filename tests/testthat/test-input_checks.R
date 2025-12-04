@@ -47,7 +47,7 @@ test_that("check_db", {
     check_db(db, allow_null = TRUE, arg = "db"),
     "Database connection `db` is not valid."
   )
-  unlink(db@dbname)
+  unlink(db@driver@dbdir)
   expect_error(
     check_db(db, arg = "foo"),
     "Database connection `foo` is not valid."
