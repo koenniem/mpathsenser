@@ -69,11 +69,13 @@ get_data <- function(
   }
 
   if (!is.null(start_date) && maybe_date(start_date)) {
-    out <- filter(out, .data$date >= start_date)
+    out <- filter(out, .data$time >= start_date)
   }
 
   if (!is.null(end_date) && maybe_date(end_date)) {
-    out <- filter(out, .data$date <= end_date)
+    # Add one day to end_date to make sure we include all data for that date
+    end_date <- as.Date(as.character(end_date), tz = "UTC", format = "%Y-%m-%d") + 1
+    out <- filter(out, .data$time <= end_date)
   }
 
   out
@@ -110,6 +112,7 @@ first_date <- function(db, sensor, participant_id = NULL) {
   }
 
   out |>
+    mutate(date = as.Date(.data$time)) |>
     summarise(min_date = min(.data$date, na.rm = TRUE)) |>
     dplyr::pull(.data$min_date)
 }
@@ -145,6 +148,7 @@ last_date <- function(db, sensor, participant_id = NULL) {
   }
 
   out |>
+    mutate(date = as.Date(.data$time)) |>
     summarise(max_date = max(.data$date, na.rm = TRUE)) |>
     dplyr::pull(.data$max_date)
 }
@@ -631,7 +635,7 @@ moving_average <- function(
       x,
       "\") OVER (",
       "PARTITION BY \"participant_id\" ",
-      "ORDER BY epoch(CAST(\"datetime\" AS TIMESTAMP)) ",
+      "ORDER BY epoch(\"datetime\") ",
       "RANGE BETWEEN ",
       n / 2,
       " PRECEDING ",
@@ -650,7 +654,7 @@ moving_average <- function(
   # FROM
   query <- paste0(
     query,
-    " FROM (SELECT \"participant_id\", \"date\" || 'T' || \"time\" AS \"datetime\", ",
+    " FROM (SELECT \"participant_id\", \"time\" AS \"datetime\", ",
     paste0("\"", cols, "\"", collapse = ", "),
     " FROM \"",
     sensor,
@@ -668,7 +672,8 @@ moving_average <- function(
   }
 
   if (!is.null(start_date) && !is.null(end_date)) {
-    query <- paste0(query, " AND (\"date\" BETWEEN '", start_date, "' AND '", end_date, "')")
+    end_date <- as.Date(end_date) + 1
+    query <- paste0(query, " AND (\"time\" BETWEEN '", start_date, "' AND '", end_date, "')")
   }
 
   # Closing parenthesis
@@ -762,8 +767,7 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
     sensor,
     ~ {
       get_data(db, .x, participant_id) |>
-        mutate(datetime = paste(.data$date, .data$time)) |>
-        select("participant_id", "datetime")
+        select("participant_id", "time")
     }
   )
 
@@ -771,22 +775,17 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
   data <- Reduce(dplyr::union, data)
 
   # Then, calculate the gap duration
-  # For DuckDB, we use epoch() with STRPTIME to convert datetime string to timestamp
-  # Take substring of the datetime because duckdb does not handle a mix of milliseconds and no
-  # milliseconds
   data |>
-    mutate(datetime = substr(.data$datetime, 1, 19)) |>
-    mutate(datetime = strptime(.data$datetime, "%Y-%m-%d %H:%M:%S")) |>
-    dbplyr::window_order(.data$participant_id, .data$datetime) |>
+    dbplyr::window_order(.data$participant_id, .data$time) |>
     group_by(.data$participant_id) |>
-    mutate(to = lead(.data$datetime)) |>
+    mutate(to = lead(.data$time)) |>
     ungroup() |>
     mutate(
-      gap = epoch(.data$to) - epoch(.data$datetime)
+      gap = epoch(.data$to) - epoch(.data$time)
     ) |>
     filter(.data$gap >= min_gap) |>
     mutate(
-      from = .data$datetime,
+      from = .data$time,
       to = .data$to
     ) |>
     select("participant_id", "from", "to", "gap") |>

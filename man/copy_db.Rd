@@ -32,7 +32,7 @@ db2 <- create_db(tempdir(), "mydb2.db")
 DBI::dbExecute(db1, "INSERT INTO Study VALUES ('study_1', 'default')")
 DBI::dbExecute(db1, "INSERT INTO Participant VALUES ('1', 'study_1')")
 DBI::dbExecute(db1, "INSERT INTO Activity VALUES(
-               '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')")
+               '123', '1', '2024-01-01 08:00:00', '100', 'WALKING')")
 
 # Then copy the first database to the second database
 db2 <- copy_db(db1, db2)

@@ -31,7 +31,7 @@ unit_test <- function(sensor, ..., .cols = NULL, new_names = NULL, end_time = NU
   true <- tibble(
     measurement_id = "12345a",
     participant_id = "12345",
-    time = "2021-11-14 16:40:00.123",
+    time = "2021-11-14 16:40:00.123456",
     end_time = end_time,
     ...
   )
@@ -338,7 +338,7 @@ test_that("appusage", {
   true <- tibble(
     measurement_id = "12345a",
     participant_id = "12345",
-    time = "2021-11-14 16:40:00.123",
+    time = "2021-11-14 16:40:00.123456",
     end_time = "2024-01-24 20:46:40.434183",
     start = c("2024-01-24 20:16:40.434183", "2024-01-24 20:16:41.434183"),
     end = c("2024-01-24 20:46:40.434183", "2024-01-24 20:46:41.434183"),
@@ -391,7 +391,7 @@ test_that("appusage", {
   true <- tibble(
     measurement_id = "12345a",
     participant_id = "12345",
-    time = "2021-11-14 16:40:00.123",
+    time = "2021-11-14 16:40:00.123456",
     end_time = "2024-01-24 20:46:40.434183",
     start = c("2021-11-14 16:40:05.123456", "2021-11-14 16:40:05.123456"),
     end = c("2021-11-14 16:40:05.123456", "2021-11-14 16:40:05.123456"),

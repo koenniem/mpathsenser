@@ -79,7 +79,7 @@ periodic_accelerometer_fun <- function(data) {
   data$y <- lapply(data$body, function(x) x$y)
   data$z <- lapply(data$body, function(x) x$z)
   data$body <- NULL
-  data <- unnest(data, "x":"z", keep_empty = TRUE)
+  data <- unnest(data, "timestamp":"z", keep_empty = TRUE)
 
   # TODO: Consider unique ID constraint Temporary fix
   ids <- stats::ave(numeric(nrow(data)) + 1, data$id, FUN = seq_along)

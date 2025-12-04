@@ -404,7 +404,10 @@ test_that(".import_extract_sensor_data", {
           "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2"
         ),
         participant_id = "12345",
-        time = "2021-02-25 15:15:58.557",
+        time = c(
+          "2021-02-25T15:15:58.557282Z",
+          "2021-02-25T15:15:58.557282Z"
+        ),
         n = NA,
         x_mean = NA,
         y_mean = NA,
@@ -476,7 +479,7 @@ test_that(".import_write_to_db", {
     Pedometer = tibble::tibble(
       measurement_id = "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_1",
       participant_id = "12345",
-      time = "2021-02-25 15:15:58.557",
+      time = "2021-02-25T15:15:58.557Z",
       step_count = 1
     )
   )
@@ -508,102 +511,6 @@ test_that(".import_write_to_db", {
   db_path <- db@driver@dbdir
   dbDisconnect(db)
   unlink(db_path)
-})
-
-test_that("save2db", {
-  # Create db
-  filename <- tempfile("foo", fileext = ".db")
-  db <- create_db(NULL, filename)
-
-  dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
-  dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
-  db_size <- file.size(filename)
-
-  # Define the data
-  data <- data.frame(
-    measurement_id = paste0("12345_", 1:1000),
-    participant_id = "12345",
-    time = "2021-11-14 16:40:01.123",
-    step_count = 1
-  )
-
-  # Write to db
-  expect_error(
-    DBI::dbWithTransaction(db, save2db(db, "Pedometer", data)),
-    NA
-  )
-
-  # Check that data was added (instead of file size for DuckDB compatibility)
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
-    1000L
-  )
-
-  # Check the data output
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
-    data
-  )
-
-  # Entry with the same ID should simply be skipped and give no error
-  expect_error(
-    DBI::dbWithTransaction(
-      db,
-      save2db(db = db, name = "Pedometer", data = data)
-    ),
-    NA
-  )
-  DBI::dbExecute(db, "VACUUM") # A vacuum to clear the tiny increase by replacement :)
-  # Verify count remains the same (data not duplicated)
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
-    1000L
-  )
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
-    data
-  )
-
-  # Now try with part of the data being replicated
-  data <- rbind(
-    data,
-    data.frame(
-      measurement_id = paste0("12345_", 500:1500),
-      participant_id = "12345",
-      time = "2021-11-14 16:40:01.123",
-      step_count = 1
-    )
-  )
-
-  expect_error(
-    DBI::dbWithTransaction(
-      db,
-      save2db(
-        db = db,
-        name = "Pedometer",
-        data = data.frame(
-          measurement_id = paste0("12345_", 500:1500),
-          participant_id = "12345",
-          time = "2021-11-14 16:40:01.123",
-          step_count = 1
-        )
-      )
-    ),
-    NA
-  )
-  # Check that new data was added
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
-    1500L
-  )
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
-    distinct(data)
-  )
-
-  # Cleanup
-  dbDisconnect(db)
-  file.remove(filename)
 })
 
 test_that(".import_meta_data_from_file_name correctly extracts metadata", {

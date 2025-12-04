@@ -47,14 +47,15 @@ db_test <- function(sensor, true_data) {
   db <- create_db(NULL, tempfile)
   suppressMessages(import(path, db = db, sensors = sensor, batch_size = 1, recursive = FALSE))
 
-  data <- get_data(db, sensor, "12345", "2021-11-13", "2021-11-14") %>%
+  data <- get_data(db, sensor, "12345", "2021-11-13", "2021-11-14") |>
     collect()
   true <- true_data
 
   # Increased tolerance for DuckDB decimal precision differences
-  testthat::expect_equal(data, true, tolerance = 1e-6)
+  expect_equal(data, true, tolerance = 1e-6)
 
   close_db(db)
+  gc()
   unlink(tempfile)
 }
 
@@ -68,8 +69,7 @@ test_that("Accelerometer", {
         "9da62087-feb7-cd4d-2964-f33c96587863"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("13:59:59.000", "14:00:01.000"),
+      time = as.POSIXct(c("2021-11-14 13:59:59.000", "2021-11-14 14:00:01.000"), tz = "UTC"),
       end_time = c(NA_character_, NA_character_),
       n = c(NA, 298L),
       x_mean = c(NA_real_, -0.0022081288080),
@@ -128,8 +128,10 @@ test_that("Activity", {
         "5ba54e77-4bcf-c8d1-17ff-71b9ed908897"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("13:59:59", "14:00:00", "14:00:01"),
+      time = as.POSIXct(
+        c("2021-11-14 13:59:59", "2021-11-14 14:00:00", "2021-11-14 14:00:01"),
+        tz = "UTC"
+      ),
       confidence = c(NA, 100L, 99L),
       type = c(NA, "WALKING", "STILL")
     )
@@ -146,8 +148,7 @@ test_that("AirQuality", {
         "c68f94a8-1992-8ce5-0d29-8290c75679c7"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("13:59:59", "14:00:00"),
+      time = as.POSIXct(c("2021-11-14 13:59:59", "2021-11-14 14:00:00"), tz = "UTC"),
       air_quality_index = c(NA, 31L),
       air_quality_level = c(NA, "MODERATE"),
       source = c(NA, "IRCEL-CELINE - Belgian Interregional Environment Agency"),
@@ -168,8 +169,7 @@ test_that("InstalledApps", {
         paste0("c48c62ac-a738-0ee0-586d-29ab0acff25a_", 1:16)
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("13:59:59", rep("14:00:00", 16)),
+      time = as.POSIXct(c("2021-11-14 13:59:59", rep("2021-11-14 14:00:00", 16)), tz = "UTC"),
       app = c(
         NA,
         "WhatsApp",
@@ -203,8 +203,7 @@ test_that("AppUsage", {
         paste0("2e3f8f0a-9de1-f328-6a2e-29b168925179_", 1:7)
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("13:59:59", rep("14:00:00", 7)),
+      time = as.POSIXct(c("2021-11-14 13:59:59", rep("2021-11-14 14:00:00", 7)), tz = "UTC"),
       end_time = rep(NA_character_, 8),
       start = c(NA, rep("2021-11-14T14:00:00.000000Z", 7)),
       end = c(NA, rep("2021-11-14T14:30:00.000000Z", 7)),
@@ -236,8 +235,10 @@ test_that("Battery", {
         "ebd712d8-eb84-dea9-5b98-e9f16b2e0533"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:01:00", "14:02:00"),
+      time = as.POSIXct(
+        c("2021-11-14 14:00:00", "2021-11-14 14:01:00", "2021-11-14 14:02:00"),
+        tz = "UTC"
+      ),
       battery_level = c(100L, 99L, NA),
       battery_status = c("charging", "discharging", NA)
     )
@@ -254,8 +255,10 @@ test_that("Bluetooth", {
         "88cf67a2-16d0-e7cc-2be5-6296d7a0f0b3_1"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:00:00", "14:01:00"),
+      time = as.POSIXct(
+        c("2021-11-14 14:00:00", "2021-11-14 14:00:00", "2021-11-14 14:01:00"),
+        tz = "UTC"
+      ),
       start_scan = c(NA_character_, NA_character_, NA_character_),
       end_scan = c(NA_character_, NA_character_, NA_character_),
       advertisement_name = c(
@@ -291,8 +294,10 @@ test_that("Calendar", {
         "5bafebd2-3d01-2355-0ad4-5e1f697b690f_1"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:00:00", "14:01:00"),
+      time = as.POSIXct(
+        c("2021-11-14 14:00:00", "2021-11-14 14:00:00", "2021-11-14 14:01:00"),
+        tz = "UTC"
+      ),
       event_id = c("279", "262", NA),
       calendar_id = c("3", "8", NA),
       title = c(
@@ -324,8 +329,7 @@ test_that("Connectivity", {
         "2d430c2a-5b16-1dce-0e2f-c049c44e3729"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:01:00"),
+      time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
       connectivity_status = c("wifi", NA)
     )
   )
@@ -342,8 +346,10 @@ test_that("Device", {
         "138b9204-a313-96f3-89de-42bc2ac9d1e9"
       ),
       participant_id = "12345",
-      date = c("2021-11-13", "2021-11-14", "2021-11-14"),
-      time = c(rep("13:00:00", 2), "14:01:00"),
+      time = as.POSIXct(
+        c("2021-11-13 13:00:00", "2021-11-14 13:00:00", "2021-11-14 14:01:00"),
+        tz = "UTC"
+      ),
       device_id = c(rep("QKQ1.200628.002", 2), NA),
       hardware = c(rep("qcom", 2), NA),
       device_name = c(rep("gauguin", 2), NA),
@@ -367,8 +373,7 @@ test_that("Error", {
         "b1c326ff-e96b-059f-7f1b-72d3384b7222"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:01:00"),
+      time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
       message = c(
         paste(
           "AirQuality Probe Exception: SocketException: Failed host lookup:",
@@ -391,8 +396,7 @@ test_that("Gyroscope", {
         "6d8aa5b8-cd1b-c482-f678-5267c85b393b"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:01.000", "14:00:02.000"),
+      time = as.POSIXct(c("2021-11-14 14:00:01.000", "2021-11-14 14:00:02.000"), tz = "UTC"),
       x = c(NA, -1.0022081288080912509),
       y = c(NA, -2.0004500896919943741),
       z = c(NA, -3.02347734926530979)
@@ -410,8 +414,7 @@ test_that("Light", {
         "9199095d-acc1-737d-3029-5089738c6079"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:00:10"),
+      time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:00:10"), tz = "UTC"),
       end_time = c(NA_character_, NA_character_),
       mean_lux = c(353, NA),
       std_lux = c(80.2, NA),
@@ -431,8 +434,7 @@ test_that("Location", {
         "62db94d7-2155-f867-b7c4-f878681ec736"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:01:00"),
+      time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
       latitude = c(
         paste0(
           "beb3005c45cb250b9841b9aae0637fa5610c45ce206ca38494f7f74a6cbdf8566cdf0d8967e",
@@ -469,8 +471,7 @@ test_that("Memory", {
         "7e3eb79e-56b2-441d-c7ab-890ba478b923"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:01:00"),
+      time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
       free_physical_memory = c(2027336609, NA),
       free_virtual_memory = c(233377575, NA)
     )
@@ -487,8 +488,7 @@ test_that("Mobility", {
         "6b789772-18ae-ce5f-b522-a38793023e1d"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:01:00"),
+      time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
       number_of_places = c(6L, NA),
       location_variance = c(0.232154350507205752, NA),
       entropy = c(1.6472347857577631, NA),
@@ -509,8 +509,7 @@ test_that("Noise", {
         "6ab8de47-fdfd-b2bd-bba1-6b6641906835"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:01:00"),
+      time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
       end_time = c(NA_character_, NA_character_),
       mean_decibel = c(42.96355291627242, NA),
       std_decibel = c(4.971839655603458, NA),
@@ -533,8 +532,10 @@ test_that("Pedometer", {
         "af026c22-1d7f-6bb0-b492-9d705c5bdda8"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:00:01", "14:00:02"),
+      time = as.POSIXct(
+        c("2021-11-14 14:00:00", "2021-11-14 14:00:01", "2021-11-14 14:00:02"),
+        tz = "UTC"
+      ),
       step_count = c(1000L, 1001L, NA)
     )
   )
@@ -550,8 +551,7 @@ test_that("Screen", {
         "28560428-b12d-e753-f5d4-61c1d51fcd58"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:00:01"),
+      time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:00:01"), tz = "UTC"),
       screen_event = c(NA, "SCREEN_ON")
     )
   )
@@ -569,8 +569,7 @@ test_that("Weather", {
         "84f92625-1c56-fdd8-18ed-5fffa8f69e6c"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:01:00"),
+      time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
       country = c("BE", NA),
       area_name = c("Arrondissement Leuven", NA),
       weather_main = c("Clouds", NA),
@@ -605,8 +604,7 @@ test_that("Wifi", {
         "0392ed98-a2d5-fcd1-2ec5-ac13dd865f9a"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("14:00:00", "14:01:00"),
+      time = as.POSIXct(c("2021-11-14 14:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
       ssid = c(NA, "878779215c977eefd2c434d71a0e172aa19b66e1"),
       bssid = c(NA, "2f054f4cbb48bb589f40e82ac0433912d1db3931"),
       ip = c(NA, "10.415.918.389")

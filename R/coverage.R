@@ -363,8 +363,8 @@ coverage_impl <- function(
       # that hour divided by n (extract hour from timestamp, extract date for grouping)
       tmp <- tmp |>
         mutate(
-          hour = substr(.data$time, 12, 13),
-          date = substr(.data$time, 1, 10)
+          hour = strftime(.data$time, "%H"),
+          date = strftime(.data$time, "%Y-%m-%d")
         ) |>
         dplyr::count(.data$date, .data$hour) |>
         group_by(.data$hour) |>

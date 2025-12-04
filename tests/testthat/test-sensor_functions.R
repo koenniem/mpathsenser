@@ -13,8 +13,10 @@ test_that("get_data", {
         "5ba54e77-4bcf-c8d1-17ff-71b9ed908897"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("13:59:59", "14:00:00", "14:00:01"),
+      time = as.POSIXct(
+        c("2021-11-14 13:59:59", "2021-11-14 14:00:00", "2021-11-14 14:00:01"),
+        tz = "UTC"
+      ),
       confidence = c(NA, 100L, 99L),
       type = c(NA, "WALKING", "STILL")
     )
@@ -31,8 +33,7 @@ test_that("get_data", {
         "138b9204-a313-96f3-89de-42bc2ac9d1e9"
       ),
       participant_id = "12345",
-      date = "2021-11-14",
-      time = c("13:00:00", "14:01:00"),
+      time = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
       device_id = c("QKQ1.200628.002", NA),
       hardware = c("qcom", NA),
       device_name = c("gauguin", NA),
@@ -53,8 +54,7 @@ test_that("get_data", {
     tibble::tibble(
       measurement_id = "bce3c272-3e06-4c84-f533-5bbbeaaac049",
       participant_id = "12345",
-      date = "2021-11-13",
-      time = "13:00:00",
+      time = as.POSIXct("2021-11-13 13:00:00", tz = "UTC"),
       device_id = "QKQ1.200628.002",
       hardware = "qcom",
       device_name = "gauguin",
@@ -72,15 +72,15 @@ test_that("get_data", {
 
 test_that("first_date", {
   db <- create_test_db()
-  expect_equal(first_date(db, "Device"), "2021-11-13")
-  expect_equal(first_date(db, "Device", "12345"), "2021-11-13")
+  expect_equal(first_date(db, "Device"), as.Date("2021-11-13"))
+  expect_equal(first_date(db, "Device", "12345"), as.Date("2021-11-13"))
   cleanup_test_db(db)
 })
 
 test_that("last_date", {
   db <- create_test_db()
-  expect_equal(last_date(db, "Device"), "2021-11-14")
-  expect_equal(last_date(db, "Device", "12345"), "2021-11-14")
+  expect_equal(last_date(db, "Device"), as.Date("2021-11-14"))
+  expect_equal(last_date(db, "Device", "12345"), as.Date("2021-11-14"))
   cleanup_test_db(db)
 })
 
