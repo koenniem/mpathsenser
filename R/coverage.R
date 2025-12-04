@@ -326,7 +326,7 @@ coverage_impl <- function(
   data <- furrr::future_map(
     .x = sensor,
     .f = ~ {
-      tmp_db <- open_db(NULL, db_path)
+      tmp_db <- open_db(NULL, db_path, read_only = TRUE)
 
       # Extract the data for this participant and sensor
       tmp <- dplyr::tbl(tmp_db, .x) |>

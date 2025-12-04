@@ -98,7 +98,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   # Create a new db instance
   tryCatch(
     {
-      db <- dbConnect(duckdb::duckdb(), db_name)
+      db <- dbConnect(duckdb::duckdb(), db_name, read_only = FALSE)
     },
     error = function(e) {
       abort(paste0("Could not create a database in ", db_name)) # nocov
@@ -154,6 +154,9 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 #'
 #' @param path The path to the database. Use NULL to use the full path name in db_name.
 #' @param db_name The name of the database.
+#' @param read_only Whether the database should be opened in read only mode. This is useful when you
+#' want to add data to the database (e.g. with [import()]) but leads to file locking and thereby
+#' prevents multiple connections reading from the database.
 #'
 #' @seealso [close_db()] for closing a database; [copy_db()] for copying (part of) a database;
 #'   [index_db()] for indexing a database; [get_data()] for extracting data from a database.
@@ -174,7 +177,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 #' # Cleanup
 #' close_db(db2)
 #' file.remove(file.path(tempdir(), "mydb.db"))
-open_db <- function(path = getwd(), db_name = "sense.db") {
+open_db <- function(path = getwd(), db_name = "sense.db", read_only = TRUE) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
   check_arg(db_name, c("character", "integerish"), n = 1)
 
@@ -186,7 +189,7 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
   if (!file.exists(db_name)) {
     abort("There is no such file")
   }
-  db <- dbConnect(duckdb::duckdb(), db_name, read_only = TRUE)
+  db <- dbConnect(duckdb::duckdb(), db_name, read_only = read_only)
   if (!DBI::dbExistsTable(db, "Participant")) {
     dbDisconnect(db)
     abort("Sorry, this does not appear to be a mpathsenser database.")
