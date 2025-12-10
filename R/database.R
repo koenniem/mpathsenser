@@ -130,10 +130,8 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
         }
       }
 
-      script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
-      for (statement in script) {
-        dbExecute(db, statement)
-      }
+      script <- paste0(readLines(fn, warn = FALSE), collapse = "\n")
+      dbExecute(db, script)
     },
     error = function(e) {
       # nocov start
