@@ -187,7 +187,6 @@ coverage <- function(
   )
 
   # Bind all together and make factors
-  data <- bind_rows(data)
   data$measure <- factor(data$measure)
   data$measure <- factor(data$measure, levels = rev(levels(data$measure)))
 
@@ -315,90 +314,50 @@ coverage_impl <- function(
   start_date,
   end_date
 ) {
-  # Interesting bug/feature in dbplyr: If participant_id is used in the query, the index of the
-  # table is not used. Hence, we rename participant_id to p_id
-  p_id <- as.character(participant_id) # nolint
+  data <- lapply(sensor, \(name) {
+    dplyr::tbl(db, name) |>
+      filter(.data$participant_id == participant_id) |>
+      select("measurement_id", "time") |>
+      mutate(measure = name)
+  })
 
-  # Get the database path from the DuckDB connection
-  db_path <- db@driver@dbdir
+  data <- Reduce(dplyr::union, data)
 
-  # Loop over each sensor and calculate the coverage rate for that sensor
-  data <- furrr::future_map(
-    .x = sensor,
-    .f = ~ {
-      tmp_db <- open_db(NULL, db_path, read_only = TRUE)
+  # Filter by date if needed (compare timestamps with date boundaries)
+  if (!is.null(start_date) && !is.null(end_date)) {
+    start_ts <- paste0(start_date, " 00:00:00")
+    end_ts <- paste0(end_date, " 23:59:59")
+    data <- data |>
+      filter(time >= start_ts) |>
+      filter(time <= end_ts)
+  }
 
-      # Extract the data for this participant and sensor
-      tmp <- dplyr::tbl(tmp_db, .x) |>
-        filter(participant_id == p_id) |>
-        select("measurement_id", "time")
+  # Remove duplicate IDs with _ for certain sensors
+  data <- data |>
+    mutate(measurement_id = substr(.data$measurement_id, 1, 36)) |>
+    distinct()
 
-      # Filter by date if needed (compare timestamps with date boundaries)
-      if (!is.null(start_date) && !is.null(end_date)) {
-        start_ts <- paste0(start_date, " 00:00:00")
-        end_ts <- paste0(end_date, " 23:59:59")
-        tmp <- tmp |>
-          filter(time >= start_ts) |>
-          filter(time <= end_ts)
-      }
+  # Calculate the number of average measurements per hour i.e. the sum of all measurements in
+  # that hour divided by n (extract hour from timestamp, extract date for grouping)
+  data <- data |>
+    mutate(
+      hour = strftime(.data$time, "%H"),
+      date = strftime(.data$time, "%Y-%m-%d")
+    ) |>
+    dplyr::count(.data$measure, .data$date, .data$hour) |>
+    group_by(.data$measure, .data$hour) |>
+    summarise(coverage = sum(.data$n, na.rm = TRUE) / n(), .groups = "drop") |>
+    collect()
 
-      # Remove duplicate IDs with _ for certain sensors
-      # Removed Accelerometer and Gyroscope from the list, as they are already binned per second
-      if (
-        .x %in%
-          c(
-            "AppUsage",
-            "Bluetooth",
-            "Calendar",
-            "InstalledApps",
-            "TextMessage"
-          )
-      ) {
-        tmp <- tmp |>
-          mutate(measurement_id = substr(.data$measurement_id, 1, 36)) |>
-          distinct()
-      }
+  if (relative) {
+    data <- data |>
+      mutate(coverage = round(.data$coverage / frequency[.data$measure], 2))
+  }
 
-      # Calculate the number of average measurements per hour i.e. the sum of all measurements in
-      # that hour divided by n (extract hour from timestamp, extract date for grouping)
-      tmp <- tmp |>
-        mutate(
-          hour = strftime(.data$time, "%H"),
-          date = strftime(.data$time, "%Y-%m-%d")
-        ) |>
-        dplyr::count(.data$date, .data$hour) |>
-        group_by(.data$hour) |>
-        summarise(coverage = sum(.data$n, na.rm = TRUE) / n())
-
-      # Transfer the result to R's memory and ensure it's numeric
-      tmp <- tmp |>
-        collect() |>
-        mutate(
-          hour = as.numeric(.data$hour),
-          coverage = as.numeric(.data$coverage)
-        )
-
-      # Disconnect from the temporary database connection
-      dbDisconnect(tmp_db)
-
-      # Calculate the relative target frequency ratio by dividing the average number of measurements
-      # per hour by the expected number of measurements
-      if (relative) {
-        tmp <- tmp |>
-          mutate(coverage = round(.data$coverage / frequency[.x], 2))
-      }
-
-      tmp |>
-        # Pour into ggplot format
-        mutate(measure = .x) |>
-        # Fill in missing hours with 0
-        complete(hour = 0:23, measure = .x, fill = list(coverage = 0))
-    },
-    .options = furrr::furrr_options(seed = TRUE)
-  )
-
-  # Give the output list the sensor names
-  names(data) <- names(sensor)
+  # Fill missing sensor names and hours with 0
+  data <- data |>
+    mutate(hour = as.integer(hour)) |>
+    complete(hour = 0:23, measure = sensor, fill = list(coverage = 0))
 
   data
 }
