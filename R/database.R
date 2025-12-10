@@ -179,17 +179,27 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 #' file.remove(file.path(tempdir(), "mydb.db"))
 open_db <- function(path = getwd(), db_name = "sense.db", read_only = TRUE) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
-  check_arg(db_name, c("character", "integerish"), n = 1)
+
+  is_driver <- inherits(db_name, "duckdb_driver")
+  if (!is_driver) {
+    check_arg(db_name, c("character", "duckdb_driver"), n = 1)
+  }
 
   # Merge path and file name
   if (!is.null(path)) {
     db_name <- suppressWarnings(normalizePath(file.path(path, db_name)))
   }
 
-  if (!file.exists(db_name)) {
+  if (!is_driver && !file.exists(db_name)) {
     abort("There is no such file")
   }
-  db <- dbConnect(duckdb::duckdb(), db_name, read_only = read_only)
+
+  if (is_driver) {
+    db <- dbConnect(db_name, read_only = read_only)
+  } else {
+    db <- dbConnect(duckdb::duckdb(), db_name, read_only = read_only)
+  }
+
   if (!DBI::dbExistsTable(db, "Participant")) {
     dbDisconnect(db)
     abort("Sorry, this does not appear to be a mpathsenser database.")

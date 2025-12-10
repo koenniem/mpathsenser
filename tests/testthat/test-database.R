@@ -57,10 +57,10 @@ test_that("open_db", {
   file.remove(fake_db)
 
   # Test with a fresh test database
-  db <- create_test_db()
+  db <- create_test_db(path = tempfile())
   db_path <- db@driver@dbdir
   dbDisconnect(db)
-  gc() # Force garbage collection to ensure file handles are released
+  closeAllConnections()
 
   db <- open_db(NULL, db_path)
   expect_true(dbIsValid(db))
