@@ -200,7 +200,7 @@ import <- function(
     # Use this information to query the database to find out whether this file has already been
     # processed. If already processed, drop it.
     duplicates <- .import_is_duplicate(
-      db_name = db@dbname,
+      db,
       meta_data
     )
     meta_data <- meta_data[!duplicates, ]
@@ -424,35 +424,29 @@ safe_extract <- function(vec, var) {
 # Safe duplicate check before insertion
 # Check if file is already registered as processed
 # Based on the ProcessedFiles in the database.
-.import_is_duplicate <- function(db_name, meta_data) {
+.import_is_duplicate <- function(db, meta_data) {
   if (!is.data.frame(meta_data) || nrow(meta_data) == 0) {
     return(NA)
   }
 
-  # Open a database connection
-  tmp_db <- open_db(NULL, db_name)
-
-  # Find a matching query
+  # Find a matching query (use positional parameters for DuckDB)
   matches <- DBI::dbGetQuery(
-    conn = tmp_db,
+    conn = db,
     statement = paste0(
-      "SELECT COUNT(*) AS `n` FROM `ProcessedFiles` ",
-      "WHERE (`file_name` = :file_name ",
-      "AND `participant_id` = :participant_id ",
-      "AND `study_id` = :study_id)"
+      "SELECT COUNT(*) AS n FROM ProcessedFiles ",
+      "WHERE (file_name = $1 ",
+      "AND participant_id = $2 ",
+      "AND study_id = $3)"
     ),
     params = list(
-      file_name = meta_data$file_name,
-      participant_id = meta_data$participant_id,
-      study_id = meta_data$study_id
+      meta_data$file_name,
+      meta_data$participant_id,
+      meta_data$study_id
     )
   )
 
-  # Close db connection of worker
-  dbDisconnect(tmp_db)
-
   # Return whether occurrence is more than 0, i.e. whether files have already been processed
-  return(matches[, 1] > 0)
+  matches[, 1] > 0
 }
 
 # Function to map the sensor names to the ones used in the database
@@ -575,15 +569,20 @@ safe_extract <- function(vec, var) {
       participant_id = meta_data$participant_id,
       study_id = meta_data$study_id
     )
+  })
 
-    for (i in seq_along(sensor_data)) {
-      save2db(
-        db = db,
-        name = names(sensor_data)[[i]],
-        data = sensor_data[[i]]
-      )
-    }
+  for (i in seq_along(sensor_data)) {
+    dplyr::rows_insert(
+      dplyr::tbl(db, names(sensor_data)[[i]]),
+      sensor_data[[i]],
+      by = "measurement_id",
+      copy = TRUE,
+      in_place = TRUE,
+      conflict = "ignore"
+    )
+  }
 
+  DBI::dbWithTransaction(db, {
     # Add files to list of processed files
     add_processed_files(
       db = db,
@@ -594,26 +593,6 @@ safe_extract <- function(vec, var) {
   })
 }
 
-# First, try to simply add the data to the table If the measurement already exists,
-# skip that measurement
-save2db <- function(db, name, data) {
-  insert_cols <- paste0("`", colnames(data), "`", collapse = ", ")
-  cols <- paste0(":", colnames(data), collapse = ", ")
-  res <- DBI::dbSendStatement(
-    conn = db,
-    statement = paste0(
-      "INSERT OR REPLACE INTO ",
-      name,
-      " (",
-      insert_cols,
-      ") VALUES (",
-      cols,
-      ")"
-    ),
-    params = as.list(data)
-  )
-  DBI::dbClearResult(res)
-}
 
 .import_meta_data_from_file_name <- function(file_name) {
   # The file name is structured as follows:

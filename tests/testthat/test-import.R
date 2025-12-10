@@ -281,7 +281,7 @@ test_that(".import_is_duplicate", {
     participant_id = data$participant_id
   )
 
-  expect_equal(.import_is_duplicate(db@dbname, data), rep(TRUE, 4))
+  expect_equal(.import_is_duplicate(db, data), rep(TRUE, 4))
 
   data2 <- data.frame(
     study_id = c("test_study", "test_study", "foo-study", "foo-study"),
@@ -297,17 +297,17 @@ test_that(".import_is_duplicate", {
   data2 <- rbind(data[c(1, 2), ], data2)
 
   expect_equal(
-    .import_is_duplicate(db@dbname, data2),
+    .import_is_duplicate(db, data2),
     c(TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)
   )
 
-  expect_equal(.import_is_duplicate(db@dbname, data.frame()), NA)
-  expect_equal(.import_is_duplicate(db@dbname, list()), NA)
-  expect_equal(.import_is_duplicate(db@dbname, NULL), NA)
+  expect_equal(.import_is_duplicate(db, data.frame()), NA)
+  expect_equal(.import_is_duplicate(db, list()), NA)
+  expect_equal(.import_is_duplicate(db, NULL), NA)
 
   # Clean up
   dbDisconnect(db)
-  unlink(db@dbname)
+  unlink(db@driver@dbdir)
 })
 
 test_that(".import_extract_sensor_data", {
@@ -403,8 +403,10 @@ test_that(".import_extract_sensor_data", {
           "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2"
         ),
         participant_id = "12345",
-        date = "2021-02-25",
-        time = "15:15:58.557",
+        time = c(
+          "2021-02-25T15:15:58.557282Z",
+          "2021-02-25T15:15:58.557282Z"
+        ),
         n = NA,
         x_mean = NA,
         y_mean = NA,
@@ -476,8 +478,7 @@ test_that(".import_write_to_db", {
     Pedometer = tibble::tibble(
       measurement_id = "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_1",
       participant_id = "12345",
-      date = "2021-02-25",
-      time = "15:15:58.557",
+      time = "2021-02-25T15:15:58.557Z",
       step_count = 1
     )
   )
@@ -497,7 +498,7 @@ test_that(".import_write_to_db", {
   data$Pedometer$measurement_id[[2]] <- NA
   expect_error(
     .import_write_to_db(db, meta_data, data),
-    "NOT NULL constraint failed: Pedometer.measurement_id"
+    "NOT NULL constraint failed"
   )
   expect_false(
     "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2" %in%
@@ -506,107 +507,9 @@ test_that(".import_write_to_db", {
   expect_equal(nrow(DBI::dbGetQuery(db, "SELECT * FROM  Pedometer")), 1)
 
   # Clean up
+  db_path <- db@driver@dbdir
   dbDisconnect(db)
-  unlink(db@dbname)
-})
-
-test_that("save2db", {
-  # Create db
-  filename <- tempfile("foo", fileext = ".db")
-  db <- create_db(NULL, filename)
-
-  dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
-  dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
-  db_size <- file.size(filename)
-
-  # Define the data
-  data <- data.frame(
-    measurement_id = paste0("12345_", 1:1000),
-    participant_id = "12345",
-    date = "2021-11-14",
-    time = "16:40:01.123",
-    step_count = 1
-  )
-
-  # Write to db
-  expect_error(
-    DBI::dbWithTransaction(db, save2db(db, "Pedometer", data)),
-    NA
-  )
-
-  # Check if the file size increased
-  db_size2 <- file.size(filename)
-  expect_gt(db_size2, db_size)
-
-  # Check the data output
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
-    data
-  )
-
-  # Entry with the same ID should simply be skipped and give no error
-  expect_error(
-    DBI::dbWithTransaction(
-      db,
-      save2db(db = db, name = "Pedometer", data = data)
-    ),
-    NA
-  )
-  DBI::dbExecute(db, "VACUUM") # A vacuum to clear the tiny increase by replacement :)
-  db_size3 <- file.size(filename)
-  expect_equal(db_size2, db_size3)
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
-    1000L
-  )
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
-    data
-  )
-
-  # Now try with part of the data being replicated
-  data <- rbind(
-    data,
-    data.frame(
-      measurement_id = paste0("12345_", 500:1500),
-      participant_id = "12345",
-      date = "2021-11-14",
-      time = "16:40:01.123",
-      step_count = 1
-    )
-  )
-
-  expect_error(
-    DBI::dbWithTransaction(
-      db,
-      save2db(
-        db = db,
-        name = "Pedometer",
-        data = data.frame(
-          measurement_id = paste0("12345_", 500:1500),
-          participant_id = "12345",
-          date = "2021-11-14",
-          time = "16:40:01.123",
-          step_count = 1
-        )
-      )
-    ),
-    NA
-  )
-  db_size4 <- file.size(filename)
-  expect_gt(db_size4, db_size3)
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
-    1500L
-  )
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
-    distinct(data)
-  )
-
-  # Cleanup
-  dbDisconnect(db)
-  file.remove(filename)
+  unlink(db_path)
 })
 
 test_that(".import_meta_data_from_file_name correctly extracts metadata", {

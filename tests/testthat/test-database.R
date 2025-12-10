@@ -49,29 +49,30 @@ test_that("open_db", {
   expect_error(open_db(NULL, fake_db), "There is no such file")
 
   # Create a new (non-mpathsenser db)
-  db <- dbConnect(RSQLite::SQLite(), fake_db)
+  db <- dbConnect(duckdb::duckdb(), fake_db)
   dbExecute(db, "CREATE TABLE foo(bar INTEGER, PRIMARY KEY(bar));")
   dbDisconnect(db)
+  gc() # Force garbage collection to ensure file handles are released
   expect_error(open_db(NULL, fake_db), "Sorry, this does not appear to be a mpathsenser database.")
   file.remove(fake_db)
 
-  path <- system.file("testdata", package = "mpathsenser")
-  db <- open_db(path, "test.db")
+  # Test with a fresh test database
+  db <- create_test_db(path = tempfile())
+  db_path <- db@driver@dbdir
+  dbDisconnect(db)
+  closeAllConnections()
+
+  db <- open_db(NULL, db_path)
   expect_true(dbIsValid(db))
   dbDisconnect(db)
+  file.remove(db_path)
 })
 
 test_that("copy_db", {
-  test_db_name <- tempfile("test", fileext = ".db")
-  filename <- tempfile("copy", fileext = ".db")
-  file.copy(
-    from = system.file("testdata", "test.db", package = "mpathsenser"),
-    to = test_db_name,
-    overwrite = TRUE,
-    copy.mode = FALSE
-  )
+  # Create a test database
+  db <- create_test_db()
 
-  db <- open_db(NULL, test_db_name)
+  filename <- tempfile("copy", fileext = ".db")
   new_db <- create_db(NULL, filename)
 
   # Invalid sensor
@@ -80,27 +81,25 @@ test_that("copy_db", {
     "Sensor\\(s\\) foo not found."
   )
 
-  copy_db(db, new_db, sensor = "All")
+  new_db <- copy_db(db, new_db, sensor = "All")
   expect_equal(get_nrows(db), get_nrows(new_db))
   close_db(new_db)
   file.remove(filename)
 
   # Create new db and copy to it
   new_db <- create_db(NULL, filename)
-  copy_db(db, new_db, sensor = "Accelerometer")
+  new_db <- copy_db(db, new_db, sensor = "Accelerometer")
   true <- c(2L, rep(0L, 26))
   names(true) <- sensors
   expect_equal(get_nrows(new_db), true)
 
-  dbDisconnect(db)
+  cleanup_test_db(db)
   dbDisconnect(new_db)
-
-  file.remove(test_db_name)
   file.remove(filename)
 })
 
 test_that("close_db", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   expect_error(close_db(db), NA)
   expect_false(dbIsValid(db))
   expect_error(close_db(db), NA) # Invalid db
@@ -116,7 +115,7 @@ test_that("index_db", {
   db <- create_db(NULL, filename)
 
   expect_error(index_db(db), NA)
-  expect_error(index_db(db), "index idx_accelerometer already exists")
+  expect_error(index_db(db), "already exists")
 
   # Cleanup
   dbDisconnect(db)
@@ -218,45 +217,45 @@ test_that("clear_db", {
 })
 
 test_that("get_processed_files", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   res <- get_processed_files(db)
   true <- data.frame(
-    file_name = c("empty.json", "new_tests.json", "test.json"),
-    participant_id = c("N/A", "N/A", "12345"),
-    study_id = c("-1", "tests.json", "test-study")
+    file_name = c("test.json", "empty.json", "new_tests.json"),
+    participant_id = c("12345", "N/A", "N/A"),
+    study_id = c("test-study", "-1", "-1")
   )
   expect_equal(res, true)
-  dbDisconnect(db)
+  cleanup_test_db(db)
 })
 
 test_that("get_participants", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   res <- get_participants(db)
   res_lazy <- get_participants(db, lazy = TRUE)
   true <- data.frame(
-    participant_id = c("N/A", "12345"),
-    study_id = c("-1", "test-study")
+    participant_id = c("12345", "N/A"),
+    study_id = c("test-study", "-1")
   )
   expect_equal(res, true)
-  expect_s3_class(res_lazy, "tbl_SQLiteConnection")
-  dbDisconnect(db)
+  expect_s3_class(res_lazy, "tbl_duckdb_connection")
+  cleanup_test_db(db)
 })
 
 test_that("get_study", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
+  db <- create_test_db()
   res <- get_studies(db)
   res_lazy <- get_studies(db, lazy = TRUE)
   true <- data.frame(
-    study_id = c("-1", "tests.json", "test-study"),
-    data_format = c(NA, NA, "carp")
+    study_id = c("test-study", "-1"),
+    data_format = c("carp", NA)
   )
   expect_equal(res, true)
-  expect_s3_class(res_lazy, "tbl_SQLiteConnection")
-  dbDisconnect(db)
+  expect_s3_class(res_lazy, "tbl_duckdb_connection")
+  cleanup_test_db(db)
 })
 
 test_that("get_nrows", {
-  db <- open_db(system.file("testdata", package = "mpathsenser"), "test.db")
-  expect_vector(get_nrows(db), integer(), length(sensors))
-  dbDisconnect(db)
+  db <- create_test_db()
+  expect_vector(get_nrows(db), numeric(), length(sensors))
+  cleanup_test_db(db)
 })

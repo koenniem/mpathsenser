@@ -98,7 +98,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   # Create a new db instance
   tryCatch(
     {
-      db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
+      db <- dbConnect(duckdb::duckdb(), db_name, read_only = FALSE)
     },
     error = function(e) {
       abort(paste0("Could not create a database in ", db_name)) # nocov
@@ -109,10 +109,29 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
   tryCatch(
     {
       fn <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
-      script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
-      for (statement in script) {
-        dbExecute(db, statement)
+      if (fn == "") {
+        # Fall back to local inst folder when package isn't installed
+        # Try multiple candidate paths relative to different working directories
+        candidates <- c(
+          file.path(getwd(), "inst", "extdata", "dbdef.sql"),
+          file.path(getwd(), "..", "..", "inst", "extdata", "dbdef.sql"),
+          file.path(dirname(getwd()), "..", "inst", "extdata", "dbdef.sql"),
+          normalizePath(
+            file.path(getwd(), "..", "..", "inst", "extdata", "dbdef.sql"),
+            mustWork = FALSE
+          )
+        )
+        fn <- ""
+        for (candidate in candidates) {
+          if (file.exists(candidate)) {
+            fn <- candidate
+            break
+          }
+        }
       }
+
+      script <- paste0(readLines(fn, warn = FALSE), collapse = "\n")
+      dbExecute(db, script)
     },
     error = function(e) {
       # nocov start
@@ -133,6 +152,9 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 #'
 #' @param path The path to the database. Use NULL to use the full path name in db_name.
 #' @param db_name The name of the database.
+#' @param read_only Whether the database should be opened in read only mode. This is useful when you
+#' want to add data to the database (e.g. with [import()]) but leads to file locking and thereby
+#' prevents multiple connections reading from the database.
 #'
 #' @seealso [close_db()] for closing a database; [copy_db()] for copying (part of) a database;
 #'   [index_db()] for indexing a database; [get_data()] for extracting data from a database.
@@ -153,19 +175,29 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 #' # Cleanup
 #' close_db(db2)
 #' file.remove(file.path(tempdir(), "mydb.db"))
-open_db <- function(path = getwd(), db_name = "sense.db") {
+open_db <- function(path = getwd(), db_name = "sense.db", read_only = TRUE) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
-  check_arg(db_name, c("character", "integerish"), n = 1)
+
+  is_driver <- inherits(db_name, "duckdb_driver")
+  if (!is_driver) {
+    check_arg(db_name, c("character", "duckdb_driver"), n = 1)
+  }
 
   # Merge path and file name
   if (!is.null(path)) {
     db_name <- suppressWarnings(normalizePath(file.path(path, db_name)))
   }
 
-  if (!file.exists(db_name)) {
+  if (!is_driver && !file.exists(db_name)) {
     abort("There is no such file")
   }
-  db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
+
+  if (is_driver) {
+    db <- dbConnect(db_name, read_only = read_only)
+  } else {
+    db <- dbConnect(duckdb::duckdb(), db_name, read_only = read_only)
+  }
+
   if (!DBI::dbExistsTable(db, "Participant")) {
     dbDisconnect(db)
     abort("Sorry, this does not appear to be a mpathsenser database.")
@@ -202,7 +234,7 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 #' file.remove(file.path(tempdir(), "mydb.db"))
 close_db <- function(db) {
   exists <- try(db, silent = TRUE)
-  if (inherits(exists, "SQLiteConnection") && !is.null(db)) {
+  if (inherits(exists, "duckdb_connection") && !is.null(db)) {
     if (dbIsValid(db)) {
       dbDisconnect(db)
     }
@@ -239,6 +271,26 @@ index_db <- function(db) {
   tryCatch(
     {
       fn <- system.file("extdata", "indexes.sql", package = "mpathsenser")
+      if (fn == "") {
+        # Fall back to local inst folder when package isn't installed
+        # Try multiple candidate paths relative to different working directories
+        candidates <- c(
+          file.path(getwd(), "inst", "extdata", "indexes.sql"),
+          file.path(getwd(), "..", "..", "inst", "extdata", "indexes.sql"),
+          file.path(dirname(getwd()), "..", "inst", "extdata", "indexes.sql"),
+          normalizePath(
+            file.path(getwd(), "..", "..", "inst", "extdata", "indexes.sql"),
+            mustWork = FALSE
+          )
+        )
+        fn <- ""
+        for (candidate in candidates) {
+          if (file.exists(candidate)) {
+            fn <- candidate
+            break
+          }
+        }
+      }
       script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
       for (statement in script) {
         dbExecute(db, statement)
@@ -290,7 +342,8 @@ vacuum_db <- function(db) {
 #'   \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
 #'   sensors.
 #'
-#' @returns Returns `TRUE` invisibly, called for side effects.
+#' @returns Returns a connection to `target_db`. Note that this is not the same connection as the
+#' input `target_db`.
 #' @export
 #'
 #' @examples
@@ -302,10 +355,10 @@ vacuum_db <- function(db) {
 #' DBI::dbExecute(db1, "INSERT INTO Study VALUES ('study_1', 'default')")
 #' DBI::dbExecute(db1, "INSERT INTO Participant VALUES ('1', 'study_1')")
 #' DBI::dbExecute(db1, "INSERT INTO Activity VALUES(
-#'                '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')")
+#'                '123', '1', '2024-01-01 08:00:00', '100', 'WALKING')")
 #'
 #' # Then copy the first database to the second database
-#' copy_db(db1, db2)
+#' db2 <- copy_db(db1, db2)
 #'
 #' # Check that the second database has the same data as the first database
 #' get_data(db2, "Activity")
@@ -334,15 +387,22 @@ copy_db <- function(
     }
   }
 
-  # Attach new database to old database
-  dbExecute(source_db, paste0("ATTACH DATABASE '", target_db@dbname, "' AS new_db"))
+  # Get target database path - for duckdb, we access the path via the driver
+  DBI::dbDisconnect(target_db) # Disconnect to avoid locking issues
+  target_path <- target_db@driver@dbdir
 
-  # Copy participants, studies, processed_files
-  dbExecute(source_db, "INSERT OR IGNORE INTO new_db.Study SELECT * FROM Study")
-  dbExecute(source_db, "INSERT OR IGNORE INTO new_db.Participant SELECT * FROM Participant")
+  # Attach new database to old database (DuckDB syntax)
+  dbExecute(source_db, paste0("ATTACH '", target_path, "' AS new_db"))
+
+  # Copy participants, studies, processed_files (using ON CONFLICT DO NOTHING for DuckDB)
+  dbExecute(source_db, "INSERT INTO new_db.Study SELECT * FROM Study ON CONFLICT DO NOTHING")
   dbExecute(
     source_db,
-    "INSERT OR IGNORE INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles"
+    "INSERT INTO new_db.Participant SELECT * FROM Participant ON CONFLICT DO NOTHING"
+  )
+  dbExecute(
+    source_db,
+    "INSERT INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles ON CONFLICT DO NOTHING"
   )
 
   # Copy all specified sensors
@@ -350,31 +410,45 @@ copy_db <- function(
     dbExecute(
       source_db,
       paste0(
-        "INSERT OR IGNORE INTO new_db.",
+        "INSERT INTO new_db.",
         sensor[i],
         " SELECT * FROM ",
-        sensor[i]
+        sensor[i],
+        " ON CONFLICT DO NOTHING"
       )
     )
   }
 
   # Detach
-  dbExecute(source_db, "DETACH DATABASE new_db")
+  dbExecute(source_db, "DETACH new_db")
 
-  return(invisible(TRUE))
+  # Reopen the target_db
+  target_db <- dbConnect(duckdb::duckdb(), target_path)
+
+  target_db
 }
 
 #' @noRd
 add_study <- function(db, study_id, data_format) {
   check_db(db)
 
+  # Filter out NULL values in vectorized inputs
+  valid <- !is.na(study_id) & !is.null(study_id)
+  if (!any(valid)) {
+    return(0)
+  }
+
+  study_id <- study_id[valid]
+  data_format <- data_format[valid]
+
   dbExecute(
     db,
     paste(
-      "INSERT OR IGNORE INTO Study(study_id, data_format)",
-      "VALUES(:study_id, :data_format);"
+      "INSERT INTO Study(study_id, data_format)",
+      "VALUES($1, $2)",
+      "ON CONFLICT DO NOTHING;"
     ),
-    list(study_id = study_id, data_format = data_format)
+    list(study_id, data_format)
   )
 }
 
@@ -382,13 +456,23 @@ add_study <- function(db, study_id, data_format) {
 add_participant <- function(db, participant_id, study_id) {
   check_db(db)
 
+  # Filter out NULL values in vectorized inputs
+  valid <- !is.na(participant_id) & !is.null(participant_id)
+  if (!any(valid)) {
+    return(0)
+  }
+
+  participant_id <- participant_id[valid]
+  study_id <- study_id[valid]
+
   dbExecute(
     db,
     paste(
-      "INSERT OR IGNORE INTO Participant(participant_id, study_id)",
-      "VALUES(:participant_id, :study_id);"
+      "INSERT INTO Participant(participant_id, study_id)",
+      "VALUES($1, $2)",
+      "ON CONFLICT DO NOTHING;"
     ),
-    list(participant_id = participant_id, study_id = study_id)
+    list(participant_id, study_id)
   )
 }
 
@@ -396,16 +480,27 @@ add_participant <- function(db, participant_id, study_id) {
 add_processed_files <- function(db, file_name, study_id, participant_id) {
   check_db(db)
 
+  # Filter out NULL values in vectorized inputs
+  valid <- !is.na(file_name) & !is.null(file_name)
+  if (!any(valid)) {
+    return(0)
+  }
+
+  file_name <- file_name[valid]
+  study_id <- study_id[valid]
+  participant_id <- participant_id[valid]
+
   dbExecute(
     db,
     paste(
-      "INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)",
-      "VALUES(:file_name, :study_id, :participant_id);"
+      "INSERT INTO ProcessedFiles(file_name, study_id, participant_id)",
+      "VALUES($1, $2, $3)",
+      "ON CONFLICT DO NOTHING;"
     ),
     list(
-      file_name = file_name,
-      study_id = study_id,
-      participant_id = participant_id
+      file_name,
+      study_id,
+      participant_id
     )
   )
 }
@@ -413,7 +508,7 @@ add_processed_files <- function(db, file_name, study_id, participant_id) {
 #' @noRd
 clear_db <- function(db) {
   check_db(db)
-  tables <- c("Study", "Participant", "ProcessedFiles", sensors)
+  tables <- c(sensors, "ProcessedFiles", "Participant", "Study")
   res <- vapply(
     tables,
     \(x) dbExecute(db, paste0("DELETE FROM ", x, " WHERE 1;")),
@@ -582,6 +677,6 @@ get_nrows <- function(
         dplyr::count() |>
         pull(n)
     },
-    integer(1)
+    numeric(1)
   )
 }
