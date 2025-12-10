@@ -281,8 +281,7 @@ test_that(".import_is_duplicate", {
     participant_id = data$participant_id
   )
 
-  db_path <- db@driver@dbdir
-  expect_equal(.import_is_duplicate(db_path, data), rep(TRUE, 4))
+  expect_equal(.import_is_duplicate(db, data), rep(TRUE, 4))
 
   data2 <- data.frame(
     study_id = c("test_study", "test_study", "foo-study", "foo-study"),
@@ -298,17 +297,17 @@ test_that(".import_is_duplicate", {
   data2 <- rbind(data[c(1, 2), ], data2)
 
   expect_equal(
-    .import_is_duplicate(db_path, data2),
+    .import_is_duplicate(db, data2),
     c(TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)
   )
 
-  expect_equal(.import_is_duplicate(db_path, data.frame()), NA)
-  expect_equal(.import_is_duplicate(db_path, list()), NA)
-  expect_equal(.import_is_duplicate(db_path, NULL), NA)
+  expect_equal(.import_is_duplicate(db, data.frame()), NA)
+  expect_equal(.import_is_duplicate(db, list()), NA)
+  expect_equal(.import_is_duplicate(db, NULL), NA)
 
   # Clean up
   dbDisconnect(db)
-  unlink(db_path)
+  unlink(db@driver@dbdir)
 })
 
 test_that(".import_extract_sensor_data", {

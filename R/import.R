@@ -200,7 +200,7 @@ import <- function(
     # Use this information to query the database to find out whether this file has already been
     # processed. If already processed, drop it.
     duplicates <- .import_is_duplicate(
-      db_name = db@driver@dbdir,
+      db,
       meta_data
     )
     meta_data <- meta_data[!duplicates, ]
@@ -424,17 +424,14 @@ safe_extract <- function(vec, var) {
 # Safe duplicate check before insertion
 # Check if file is already registered as processed
 # Based on the ProcessedFiles in the database.
-.import_is_duplicate <- function(db_name, meta_data) {
+.import_is_duplicate <- function(db, meta_data) {
   if (!is.data.frame(meta_data) || nrow(meta_data) == 0) {
     return(NA)
   }
 
-  # Open a database connection
-  tmp_db <- open_db(NULL, db_name)
-
   # Find a matching query (use positional parameters for DuckDB)
   matches <- DBI::dbGetQuery(
-    conn = tmp_db,
+    conn = db,
     statement = paste0(
       "SELECT COUNT(*) AS n FROM ProcessedFiles ",
       "WHERE (file_name = $1 ",
@@ -448,11 +445,8 @@ safe_extract <- function(vec, var) {
     )
   )
 
-  # Close db connection of worker
-  dbDisconnect(tmp_db)
-
   # Return whether occurrence is more than 0, i.e. whether files have already been processed
-  return(matches[, 1] > 0)
+  matches[, 1] > 0
 }
 
 # Function to map the sensor names to the ones used in the database
@@ -578,12 +572,6 @@ safe_extract <- function(vec, var) {
   })
 
   for (i in seq_along(sensor_data)) {
-    # save2db(
-    #   db = db,
-    #   name = names(sensor_data)[[i]],
-    #   data = sensor_data[[i]]
-    # )
-    # browser()
     dplyr::rows_insert(
       dplyr::tbl(db, names(sensor_data)[[i]]),
       sensor_data[[i]],
