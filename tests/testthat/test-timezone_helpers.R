@@ -22,30 +22,17 @@ test_that("add_timezones_to_db aborts if Timezone table is missing", {
 
 
 test_that("add_timezones_to_db adds timezone column correctly", {
-  db <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
+  db <- create_test_db()
 
   # Create a simple timezone table
-  DBI::dbWriteTable(
+  DBI::dbAppendTable(
     db,
     "Timezone",
     data.frame(
-      participant_id = 1,
-      date = c("2024-01-01", "2024-01-02"),
-      time = c("00:00:00", "00:00:00"),
+      measurement_id = c("1", "2"),
+      participant_id = "12345",
+      time = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:00:00"), tz = "UTC"),
       timezone = c("Europe/Brussels", "America/New_York")
-    )
-  )
-
-  # Create a mock sensor table
-  DBI::dbWriteTable(
-    db,
-    "Accelerometer",
-    data.frame(
-      measurement_id = 1:4,
-      participant_id = 1,
-      date = c(rep("2024-01-01", 3), "2024-01-02"),
-      time = c("00:30:00", "12:00:00", "23:59:59", "00:00:01"),
-      stringsAsFactors = FALSE
     )
   )
 
@@ -57,7 +44,7 @@ test_that("add_timezones_to_db adds timezone column correctly", {
   expect_equal(unique(result$timezone), c("Europe/Brussels", "America/New_York"))
   expect_true(all(!is.na(result$timezone)))
 
-  DBI::dbDisconnect(db)
+  cleanup_test_db(db)
 })
 
 

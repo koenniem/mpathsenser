@@ -50,7 +50,7 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
   if (!DBI::dbExistsTable(db, "Timezone")) {
     cli::cli_abort(
       c(
-        "The table `Timezone`  does not exist in the database.",
+        "The table `Timezone` does not exist in the database.",
         i = "Check whether timezone measurements appear in your raw data.",
         i = "If there are, something went wrong when reading in the data.",
         i = "Otherwise, data may have been collected with an older version of m-Path Sense \\
@@ -62,10 +62,7 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
   # First, get the ordered timezone data and add an end timestamp based on the next observation.
   # This creates a remote tibble of timezones with start and end timestamps for each participant.
   tzs <- dplyr::tbl(db, "Timezone") |>
-    mutate(.start = paste(.data$date, .data$time)) |>
-    mutate(.start = substr(.data$.start, 1, 19)) |>
-    mutate(.start = strptime(.data$.start, "%Y-%m-%d %H:%M:%S")) |>
-    mutate(.start = epoch(.data$.start)) |>
+    mutate(.start = epoch(.data$time)) |>
     dbplyr::window_order(.data$participant_id, .data$.start) |>
     group_by(.data$participant_id) |>
     mutate(.end = lead(.data$.start)) |>
@@ -126,17 +123,12 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
     # Get the sensor data and the start time of each measurement in seconds
     sensor_data <- dplyr::tbl(db, sensor) |>
       select(-any_of("timezone")) |>
-      mutate(start_time = paste(.data$date, .data$time)) |>
-      mutate(start_time = substr(.data$start_time, 1, 19)) |>
-      mutate(start_time = strptime(.data$start_time, "%Y-%m-%d %H:%M:%S")) |>
-      mutate(start_time = epoch(.data$start_time))
+      mutate(start_time = epoch(.data$time))
 
     # Get the end time of an observation, or set it equal to start time if there is none
     # This ensure that we can use the same type of join for both scenarios
     if ("end_time" %in% colnames(sensor_data)) {
       sensor_data <- sensor_data |>
-        mutate(end_time = substr(.data$end_time, 1, 19)) |>
-        mutate(end_time = strptime(.data$end_time, "%Y-%m-%d %H:%M:%S")) |>
         mutate(end_time = epoch(.data$end_time)) |>
         mutate(end_time = ifelse(is.na(.data$end_time), .data$start_time, .data$end_time))
     } else {
