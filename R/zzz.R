@@ -10,6 +10,15 @@
     options(op_mpathsenser[toset])
   }
 
+  # blue code cli formatting class
+  cli::cli_div(
+    theme = list(
+      span.bcode = list(color = "blue"),
+      "span.bcode" = list(before = "`"),
+      "span.bcode" = list(after = "`")
+    )
+  )
+
   rlang::run_on_load()
 
   invisible(NULL)

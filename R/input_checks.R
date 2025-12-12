@@ -114,7 +114,7 @@ check_arg <- function(
     }
 
     msg <- c(
-      paste0("Argument `", arg, "` must be ", with_article(type), n, "."),
+      paste0("Argument {.arg ", arg, "} must be ", with_article(type), n, "."),
       x = paste0(
         "You supplied ",
         with_article(utils::tail(class(x), 1)),
@@ -122,7 +122,7 @@ check_arg <- function(
         "."
       )
     )
-    abort(msg, arg = arg, call = call)
+    cli::cli_abort(msg, arg = arg, call = call)
   }
 
   return(invisible(TRUE))

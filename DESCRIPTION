@@ -23,6 +23,7 @@ BugReports:
 Depends: 
     R (>= 4.2.0)
 Imports:
+    cli,
     DBI,
     dbplyr,
     dplyr,
@@ -37,7 +38,6 @@ Imports:
     tibble,
     tidyr
 Suggests: 
-    cli,
     curl,
     ggplot2,
     httr,

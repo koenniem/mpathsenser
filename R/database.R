@@ -83,9 +83,9 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
         error = function(e) abort(as.character(e))
       )
     } else {
-      abort(c(
-        paste("Database", db_name, "already exists."),
-        i = " Use overwrite = TRUE to overwrite."
+      cli::cli_abort(c(
+        paste0("Database {.file ", db_name, "} already exists."),
+        i = " Use {.code overwrite = TRUE} to overwrite."
       ))
     }
   }
@@ -101,7 +101,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
       db <- dbConnect(duckdb::duckdb(), db_name, read_only = FALSE)
     },
     error = function(e) {
-      abort(paste0("Could not create a database in ", db_name)) # nocov
+      cli::cli_abort(paste0("Could not create a database in ", db_name)) # nocov
     }
   )
 

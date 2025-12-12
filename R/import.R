@@ -15,10 +15,10 @@
 #'   means that if `batch_size` is large, many files will not be processed. Set `batch_size` to 1
 #'   for sequential (one-by-one) file processing.
 #'
-#'   Currently, only SQLite is supported as a backend. Due to its concurrency restriction, parallel
+#'   Currently, only duckdb is supported as a backend. Due to its concurrency restriction, parallel
 #'   processing works for cleaning the raw data, but not for importing it into the database. This is
-#'   because SQLite does not allow multiple processes to write to the same database at the same
-#'   time. This is a limitation of SQLite and not of this package. However, while files are
+#'   because duckdb does not allow multiple processes to write to the same database at the same
+#'   time. This is a limitation of duckdb and not of this package. However, while files are
 #'   processing individually (and in parallel if specified), writing to the database happens for the
 #'   entire batch specified by `batch_size` at once. This means that if a single file in the batch
 #'   causes an error, the entire batch is skipped. This is to ensure that the database is not left
@@ -78,7 +78,7 @@ import <- function(
   db,
   sensors = NULL,
   batch_size = 24,
-  backend = "RSQLite",
+  backend = "duckdb",
   recursive = TRUE
 ) {
   # Check arguments
