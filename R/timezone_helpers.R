@@ -182,6 +182,57 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
   invisible(TRUE)
 }
 
+add_localtime_to_db <- function(db, sensors = NULL) {
+  check_db(db)
+  check_sensors(sensors, allow_null = TRUE)
+
+  if (is.null(sensors)) {
+    sensors <- mpathsenser::sensors
+  }
+
+  # Check that the column timezone is present in all tables
+  missing_tz <- vapply(sensors, \(x) "timezone" %in% DBI::dbListFields(db, x), logical(1))
+
+  if (any(!missing_tz)) {
+    missing_tz <- names(missing_tz)[!missing_tz]
+    len_missing_tz <- length(missing_tz)
+    code <- paste0("\"", missing_tz, "\"", collapse = ", ")
+    code <- paste0("c(", code, ")")
+
+    cli_abort(c(
+      "Missing `timezone` column in {len_missing_tz} sensor table(?s).",
+      i = paste0(
+        "Please run  {.help [add_timezones_to_db()](mpathsenser::add_timezones_to_db)} \\
+        with {.bcode sensors = ",
+        code,
+        "}."
+      )
+    ))
+  }
+
+  # Install the icu extension if not yet installed
+  icu <- try(DBI::dbExecute(db, "LOAD icu;"), silent = TRUE)
+
+  if (!identical(0, icu)) {
+    DBI::dbExecute(db, "INSTALL icu")
+  }
+
+  DBI::dbWithTransaction(
+    db,
+    code = {
+      for (sensor in sensors) {
+        DBI::dbSendStatement(db, paste("ALTER TABLE", sensor, "ADD COLUMN localtime TIMESTAMPTZ;"))
+        DBI::dbSendStatement(
+          db,
+          paste("UPDATE", sensor, "SET localtime = time AT TIME ZONE timezone;")
+        )
+      }
+    }
+  )
+
+  invisible(TRUE)
+}
+
 
 #' Convert timestamps to UTC while respecting local timezones
 #'
