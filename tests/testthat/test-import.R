@@ -513,14 +513,20 @@ test_that(".import_write_to_db", {
   unlink(db@dbname)
 })
 
-test_that("save2db", {
+# Old test for save2db, adapted for .import_write_to_db()
+test_that(".import_write_to_db writes data correctly", {
   # Create db
   filename <- tempfile("foo", fileext = ".db")
   db <- create_db(NULL, filename)
 
-  dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
-  dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
   db_size <- file.size(filename)
+
+  meta_data <- data.frame(
+    study_id = "12345",
+    data_format = "mpathsenser",
+    participant_id = "12345",
+    file_name = "foo.json"
+  )
 
   # Define the data
   data <- data.frame(
@@ -532,9 +538,8 @@ test_that("save2db", {
   )
 
   # Write to db
-  expect_error(
-    DBI::dbWithTransaction(db, save2db(db, "Pedometer", data)),
-    NA
+  expect_no_error(
+    .import_write_to_db(db, meta_data = meta_data, sensor_data = list(Pedometer = data))
   )
 
   # Check if the file size increased
@@ -546,22 +551,23 @@ test_that("save2db", {
     DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
     data
   )
-
-  # Entry with the same ID should simply be skipped and give no error
-  expect_error(
-    DBI::dbWithTransaction(
-      db,
-      save2db(db = db, name = "Pedometer", data = data)
-    ),
-    NA
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
+    1000
   )
+
+  # Entry with the same participant_id, date, and time should simply be skipped and give no error
+  expect_no_error(
+    .import_write_to_db(db, meta_data = meta_data, sensor_data = list(Pedometer = data))
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
+    1000
+  )
+
   DBI::dbExecute(db, "VACUUM") # A vacuum to clear the tiny increase by replacement :)
   db_size3 <- file.size(filename)
   expect_equal(db_size2, db_size3)
-  expect_equal(
-    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
-    1000L
-  )
   expect_equal(
     DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
     data
@@ -579,22 +585,8 @@ test_that("save2db", {
     )
   )
 
-  expect_error(
-    DBI::dbWithTransaction(
-      db,
-      save2db(
-        db = db,
-        name = "Pedometer",
-        data = data.frame(
-          measurement_id = paste0("12345_", 500:1500),
-          participant_id = "12345",
-          date = "2021-11-14",
-          time = "16:40:01.123",
-          step_count = 1
-        )
-      )
-    ),
-    NA
+  expect_no_error(
+    .import_write_to_db(db = db, meta_data = meta_data, sensor_data = list(Pedometer = data))
   )
   db_size4 <- file.size(filename)
   expect_gt(db_size4, db_size3)

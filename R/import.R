@@ -283,9 +283,12 @@ import <- function(
       write_pb <- cli::cli_progress_output("Writing {n_tables} table{?s}.")
     }
     # Write all data as a single transaction, safely.
+    # Note that interrupting halfway does not rollback the transaction, in which case running
+    # `import()` again will result failed writing, as another transaction is still active while
+    # the previous one never completed and is thus still active.
     try(
-      expr = .import_write_to_db(db, meta_data, batch_data),
-      silent = TRUE
+      .import_write_to_db(db, meta_data, batch_data),
+      silent = !debug
     )
 
     # Update progress bar
@@ -623,12 +626,24 @@ safe_extract <- function(vec, var) {
     )
 
     for (i in seq_along(sensor_data)) {
-      save2db(
-        db = db,
-        name = names(sensor_data)[[i]],
-        data = sensor_data[[i]]
+      tmp_tbl <- dplyr::copy_to(
+        dest = db,
+        df = sensor_data[[i]],
+        name = "tmp_import",
+        overwrite = TRUE,
+        temporary = TRUE,
+        in_transaction = FALSE
+      )
+
+      dplyr::rows_upsert(
+        dplyr::tbl(db, names(sensor_data)[[i]]),
+        tmp_tbl,
+        by = .import_get_pk(names(sensor_data)[[i]]),
+        copy = FALSE,
+        in_place = TRUE
       )
     }
+    DBI::dbRemoveTable(db, "tmp_import", fail_if_missing = FALSE)
 
     # Add files to list of processed files
     add_processed_files(
@@ -638,27 +653,6 @@ safe_extract <- function(vec, var) {
       participant_id = meta_data$participant_id
     )
   })
-}
-
-# First, try to simply add the data to the table If the measurement already exists,
-# skip that measurement
-save2db <- function(db, name, data) {
-  insert_cols <- paste0("`", colnames(data), "`", collapse = ", ")
-  cols <- paste0(":", colnames(data), collapse = ", ")
-  res <- DBI::dbSendStatement(
-    conn = db,
-    statement = paste0(
-      "INSERT OR REPLACE INTO ",
-      name,
-      " (",
-      insert_cols,
-      ") VALUES (",
-      cols,
-      ")"
-    ),
-    params = as.list(data)
-  )
-  DBI::dbClearResult(res)
 }
 
 .import_meta_data_from_file_name <- function(file_name) {
