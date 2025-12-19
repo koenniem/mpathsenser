@@ -59,7 +59,7 @@ problems associated with improper file closure by m-Path Sense.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">fix_jsons</span><span class="op">(</span>path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, files <span class="op">=</span> <span class="cn">NULL</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">fix_jsons</span><span class="op">(</span>path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, files <span class="op">=</span> <span class="cn">NULL</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span>, .progress <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -76,6 +76,10 @@ problems associated with improper file closure by m-Path Sense.</p>
 
 <dt id="arg-recursive">recursive<a class="anchor" aria-label="anchor" href="#arg-recursive"></a></dt>
 <dd><p>Should the listing recurse into directories?</p></dd>
+
+
+<dt id="arg--progress">.progress<a class="anchor" aria-label="anchor" href="#arg--progress"></a></dt>
+<dd><p>Whether to display a progress bar.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -107,13 +111,6 @@ hand.</p>
 distribute it's computation load among multiple workers. To make use of this functionality, run
 <a href="https://rdrr.io/cran/future/man/plan.html" class="external-link"><code>future::plan("multisession")</code></a> before
 calling this function.</p>
-    </div>
-    <div class="section level2">
-    <h2 id="progress">Progress<a class="anchor" aria-label="anchor" href="#progress"></a></h2>
-    <p>You can be updated of the progress of this function by using the
-<span class="pkg">progressr</span> package. See <code>progressr</code>'s
-<a href="https://cran.r-project.org/package=progressr/vignettes/progressr-01-intro.html" class="external-link">vignette</a>
-on how to subscribe to these updates.</p>
     </div>
 
     <div class="section level2">
