@@ -104,7 +104,7 @@ check_arg <- function(
     }
 
     msg <- c(
-      paste0("Argument `", arg, "` must be ", with_article(type), n, "."),
+      paste0("Argument {.arg ", arg, "} must be ", with_article(type), n, "."),
       x = paste0(
         "You supplied ",
         with_article(utils::tail(class(x), 1)),
@@ -112,7 +112,7 @@ check_arg <- function(
         "."
       )
     )
-    abort(msg, arg = arg, call = call)
+    cli::cli_abort(msg, arg = arg, call = call)
   }
 
   return(invisible(TRUE))
@@ -142,10 +142,10 @@ check_sensors <- function(
 
   if (length(missing) > 0) {
     msg <- c(
-      paste0("Sensor(s) ", paste0("\"", missing, "\"", collapse = ", "), " could not be found."),
-      i = "See `mpathsenser::sensors` for the full list of available sensors."
+      "Sensor{?s} {.arg {missing}} could not be found.",
+      i = "See {.code mpathsenser::sensors} for the full list of available sensors."
     )
-    abort(msg, arg = arg, call = call)
+    cli::cli_abort(msg, arg = arg, call = call)
   }
 
   return(invisible(TRUE))

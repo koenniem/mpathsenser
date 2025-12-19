@@ -11,6 +11,8 @@ import(
   batch_size = 24,
   backend = "RSQLite",
   recursive = TRUE
+  recursive = TRUE,
+  .progress = TRUE,
 )
 }
 \arguments{
@@ -26,6 +28,9 @@ NULL to extract all sensor data.}
 \item{backend}{Name of the database backend that is used. Currently, only RSQLite is supported.}
 
 \item{recursive}{Should the listing recurse into directories?}
+
+\item{.progress}{Whether to display a progress bar.}
+
 }
 \value{
 A message indicating how many files were imported. If all files were imported
@@ -63,13 +68,6 @@ in an inconsistent state.
 distribute it's computation load among multiple workers. To make use of this functionality, run
 \href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
 calling this function.
-}
-
-\section{Progress}{
- You can be updated of the progress of this function by using the
-\pkg{progressr} package. See \code{progressr}'s
-\href{https://cran.r-project.org/package=progressr/vignettes/progressr-01-intro.html}{vignette}
-on how to subscribe to these updates.
 }
 
 \examples{

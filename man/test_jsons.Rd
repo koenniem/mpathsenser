@@ -4,7 +4,13 @@
 \alias{test_jsons}
 \title{Test JSON files for being in the correct format.}
 \usage{
-test_jsons(path = getwd(), files = NULL, db = NULL, recursive = TRUE)
+test_jsons(
+  path = getwd(),
+  files = NULL,
+  db = NULL,
+  recursive = TRUE,
+  .progress = TRUE
+)
 }
 \arguments{
 \item{path}{The path name of the JSON files.}
@@ -15,6 +21,8 @@ test_jsons(path = getwd(), files = NULL, db = NULL, recursive = TRUE)
 files are already in the database and check only those JSON files which are not.}
 
 \item{recursive}{Should the listing recurse into directories?}
+
+\item{.progress}{Whether to display a progress bar.}
 }
 \value{
 A message indicating whether there were any issues and a character vector of the file
@@ -28,13 +36,6 @@ names that need to be fixed. If there were no issues, an invisible empty string 
 distribute it's computation load among multiple workers. To make use of this functionality, run
 \href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
 calling this function.
-}
-
-\section{Progress}{
- You can be updated of the progress of this function by using the
-\pkg{progressr} package. See \code{progressr}'s
-\href{https://cran.r-project.org/package=progressr/vignettes/progressr-01-intro.html}{vignette}
-on how to subscribe to these updates.
 }
 
 \examples{

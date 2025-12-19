@@ -13,7 +13,8 @@ test_that("import", {
     import(
       path = path,
       db = db,
-      recursive = FALSE
+      recursive = FALSE,
+      .progress = FALSE
     ),
     "All files were successfully written to the database."
   )
@@ -23,7 +24,8 @@ test_that("import", {
     import(
       path = path,
       db = db,
-      recursive = FALSE
+      recursive = FALSE,
+      .progress = FALSE
     ),
     "No new files to process."
   )
@@ -37,7 +39,7 @@ test_that("import", {
   dir.create(temp)
   expect_error(
     import(db = db, path = temp),
-    "Can't find JSON files in .+\\."
+    "^.*Can't find any JSON files in .+$"
   )
   unlink(temp, recursive = TRUE)
   dbDisconnect(db)
@@ -49,11 +51,12 @@ test_that("import", {
   warnings_log <- capture_warnings(import(
     path = path,
     db = db2,
+    .progress = FALSE,
     recursive = TRUE # Includes broken files
   ))
   expect_match(
     warnings_log,
-    "Invalid JSON format in file broken\\/broken\\d\\.json",
+    "Invalid JSON format in file .*broken\\d\\.json",
     all = FALSE
   )
   expect_match(
@@ -99,7 +102,7 @@ test_that(".import_read_json", {
   path <- system.file("testdata", "broken", package = "mpathsenser")
   expect_warning(
     .import_read_json(path, "broken1.json"),
-    "Invalid JSON format in file broken1.json"
+    paste0("Invalid JSON format in file .*broken1.json.")
   )
   expect_equal(
     suppressWarnings(.import_read_json(path, "broken1.json")),

@@ -29,10 +29,6 @@
 #'   \href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
 #'   calling this function.
 #'
-#' @section Progress: You can be updated of the progress of this function by using the
-#'   \pkg{progressr} package. See `progressr`'s
-#'   \href{https://cran.r-project.org/package=progressr/vignettes/progressr-01-intro.html}{vignette}
-#'   on how to subscribe to these updates.
 #'
 #' @param path The path to the file directory
 #' @param db Valid database connection, typically created by [create_db()].
@@ -41,6 +37,8 @@
 #' @param batch_size The number of files that are to be processed in a single batch.
 #' @param backend Name of the database backend that is used. Currently, only RSQLite is supported.
 #' @param recursive Should the listing recurse into directories?
+#' @param .progress Whether to display a progress bar.
+#' @param debug Whether suppressed warnings and errors should be shown for debugging purposes.
 #'
 #' @seealso [create_db()] for creating a database for `import()` to use, [close_db()] for closing
 #'   this database; [index_db()] to create indices on the database for faster future processing, and
@@ -80,6 +78,8 @@ import <- function(
   batch_size = 24,
   backend = "RSQLite",
   recursive = TRUE
+  recursive = TRUE,
+  .progress = TRUE,
 ) {
   # Check arguments
   check_arg(path, type = "character", n = 1)
@@ -88,6 +88,7 @@ import <- function(
   check_arg(batch_size, "integerish", n = 1)
   check_arg(backend, "character", n = 1)
   check_arg(recursive, "logical", n = 1)
+  check_arg(.progress, "logical", n = 1)
 
   # Normalise path and check if directory exists
   path <- normalizePath(file.path(path), mustWork = FALSE)
@@ -116,7 +117,7 @@ import <- function(
     files <- files[!(files %in% processed_files$file_name)]
 
     if (length(files) == 0) {
-      inform("No new files to process.")
+      cli::cli_inform("No new files to process.")
       return(invisible(""))
     }
   }
@@ -124,9 +125,14 @@ import <- function(
   # Split the files into batches
   batches <- split(files, ceiling(seq_along(files) / batch_size))
 
-  # Display progress, if enabled
-  if (requireNamespace("progressr", quietly = TRUE)) {
-    p <- progressr::progressor(steps = length(batches))
+  # Set up a progress bar
+  if (.progress) {
+    pb <- cli::cli_progress_bar(
+      total = length(batches),
+      format = "Importing data... {cli::pb_bar} {cli::pb_current}/{cli::pb_total} batch{?es} \\
+      [{cli::pb_percent}] | {cli::pb_eta_str}"
+    )
+    cli::cli_progress_update(inc = 0, force = TRUE)
   }
 
   for (i in seq_along(batches)) {
@@ -291,7 +297,7 @@ import <- function(
   # We don't want to make a record of having tried to process this file (but we do give a warning),
   # as we want to make sure users fix and retry the file.
   if (!jsonlite::validate(file)) {
-    warn(paste0("Invalid JSON format in file ", filename[1]))
+    cli::cli_warn("Invalid JSON format in file {.file {full_path}}.")
     return(NULL)
   }
 
@@ -311,9 +317,10 @@ import <- function(
   # If reading in the file failed, provide a warning to the user and return an empty result.
   # Similar reasoning as above.
   if (inherits(possible_error, "try-error")) {
-    warn(c(
-      paste0("Invalid JSON format in file ", filename, "."),
-      i = "Try running `fix_jsons()` to resolve issues with this file."
+    cli::cli_warn(c(
+      paste0("Invalid JSON format in file {.file {filename}}."),
+      i = "Try running {.help [fix_jsons()](mpathsenser::fix_jsons)} to \\
+      resolve issues with this file."
     ))
     return(NULL)
   }

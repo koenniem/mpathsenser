@@ -200,15 +200,15 @@ test_that("check_sensors", {
   )
   expect_error(
     check_sensors("Foo", arg = "sensors"),
-    "Sensor\\(s\\) \"Foo\" could not be found."
+    ".*Sensor `Foo` could not be found\\..*"
   )
   expect_error(
     check_sensors("foo", arg = "sensors"),
-    "Sensor\\(s\\) \"foo\" could not be found."
+    ".*Sensor `foo` could not be found\\..*"
   )
   expect_error(
     check_sensors(c("foo", "bar"), arg = "sensors"),
-    "Sensor\\(s\\) \"foo\", \"bar\" could not be found."
+    ".*Sensors `foo` and `bar` could not be found\\..*"
   )
 
   expect_error(

@@ -17,7 +17,7 @@ test_that("coverage", {
   # Sensors
   expect_error(
     coverage(db, "12345", sensor = "foo"),
-    "Sensor\\(s\\) \"foo\" could not be found."
+    ".*Sensor `foo` could not be found\\..*"
   )
 
   # participant_id

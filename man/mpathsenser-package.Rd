@@ -15,8 +15,7 @@ convenience functions to aid in data processing.
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/koenniem/mpathsenser}
-  \item \url{https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser}
+  \item \url{https://koenniem.github.io/mpathsenser/}
   \item Report bugs at \url{https://github.com/koenniem/mpathsenser/issues}
 }
 

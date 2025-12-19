@@ -44,8 +44,7 @@ test_that("add_timezones_to_db adds timezone column correctly", {
       measurement_id = 1:4,
       participant_id = 1,
       date = c(rep("2024-01-01", 3), "2024-01-02"),
-      time = c("00:30:00", "12:00:00", "23:59:59", "00:00:01"),
-      stringsAsFactors = FALSE
+      time = c("00:30:00", "12:00:00", "23:59:59", "00:00:01")
     )
   )
 

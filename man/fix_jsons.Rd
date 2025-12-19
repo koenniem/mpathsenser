@@ -4,7 +4,7 @@
 \alias{fix_jsons}
 \title{Fix the end of JSON files}
 \usage{
-fix_jsons(path = getwd(), files = NULL, recursive = TRUE)
+fix_jsons(path = getwd(), files = NULL, recursive = TRUE, .progress = TRUE)
 }
 \arguments{
 \item{path}{The path name of the JSON files.}
@@ -12,6 +12,8 @@ fix_jsons(path = getwd(), files = NULL, recursive = TRUE)
 \item{files}{Alternatively, a character list of the input files}
 
 \item{recursive}{Should the listing recurse into directories?}
+
+\item{.progress}{Whether to display a progress bar.}
 }
 \value{
 A message indicating how many files were fixed, and the number of fixed files invisibly.
@@ -47,13 +49,6 @@ hand.
 distribute it's computation load among multiple workers. To make use of this functionality, run
 \href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
 calling this function.
-}
-
-\section{Progress}{
- You can be updated of the progress of this function by using the
-\pkg{progressr} package. See \code{progressr}'s
-\href{https://cran.r-project.org/package=progressr/vignettes/progressr-01-intro.html}{vignette}
-on how to subscribe to these updates.
 }
 
 \examples{

@@ -50,7 +50,7 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
   if (!DBI::dbExistsTable(db, "Timezone")) {
     cli::cli_abort(
       c(
-        "The table `Timezone`  does not exist in the database.",
+        "The table `Timezone` does not exist in the database.",
         i = "Check whether timezone measurements appear in your raw data.",
         i = "If there are, something went wrong when reading in the data.",
         i = "Otherwise, data may have been collected with an older version of m-Path Sense \\

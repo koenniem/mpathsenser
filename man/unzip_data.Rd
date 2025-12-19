@@ -4,7 +4,13 @@
 \alias{unzip_data}
 \title{Unzip m-Path Sense output}
 \usage{
-unzip_data(path = getwd(), to = NULL, overwrite = FALSE, recursive = TRUE)
+unzip_data(
+  path = getwd(),
+  to = NULL,
+  overwrite = FALSE,
+  recursive = TRUE,
+  .progress = TRUE
+)
 }
 \arguments{
 \item{path}{The path to the directory containing the zip files.}
@@ -15,6 +21,8 @@ unzip_data(path = getwd(), to = NULL, overwrite = FALSE, recursive = TRUE)
 
 \item{recursive}{Logical value indicating whether to unzip files in subdirectories as well. These
 files will then be unzipped in their respective subdirectory.}
+
+\item{.progress}{Whether to display a progress bar.}
 }
 \value{
 A message indicating how many files were unzipped.
@@ -30,13 +38,6 @@ function call.
 distribute it's computation load among multiple workers. To make use of this functionality, run
 \href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
 calling this function.
-}
-
-\section{Progress}{
- You can be updated of the progress of this function by using the
-\pkg{progressr} package. See \code{progressr}'s
-\href{https://cran.r-project.org/package=progressr/vignettes/progressr-01-intro.html}{vignette}
-on how to subscribe to these updates.
 }
 
 \examples{

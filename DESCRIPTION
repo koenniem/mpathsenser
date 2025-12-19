@@ -43,7 +43,6 @@ Suggests:
     kableExtra,
     knitr,
     lintr,
-    progressr,
     rmarkdown,
     rvest,
     sodium,
