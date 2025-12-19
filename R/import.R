@@ -549,6 +549,12 @@ safe_extract <- function(vec, var) {
     data$body <- lapply(data$body, function(x) rlang::set_names(x, "body"))
   }
 
+  # Special unpack process for Garmin sensing data
+  has_selected_garmin_sensor <- is.null(sensors) || any(grepl("garmin", tolower(sensors)))
+  if ("garminalllogsdata" %in% data$sensor && has_selected_garmin_sensor) {
+    data <- .import_extract_garmin_logs(data)
+  }
+
   # Set names in accordance with the table names
   data$sensor <- .import_map_sensor_names(data$sensor)
 
@@ -706,4 +712,123 @@ safe_extract <- function(vec, var) {
   }
 
   out
+}
+
+.import_extract_garmin_logs <- function(.data) {
+  garmin_data <- filter(.data, .data$sensor == "garminalllogsdata")
+
+  # Extract Garmin sensor data into new columns
+  garmin_data$GarminAccelerometer <- lapply(garmin_data$data, \(x) x[["accelerometer"]])
+  garmin_data$GarminActigraphy <- lapply(garmin_data$data, \(x) {
+    x[c("actigraphy1", "actigraphy2", "actigraphy3")]
+  })
+  garmin_data$GarminActigraphy <- lapply(
+    garmin_data$GarminActigraphy,
+    \(x) purrr::list_flatten(x, name_spec = "{inner}")
+  )
+
+  garmin_data$GarminBBI <- lapply(garmin_data$data, \(x) x[["bbi"]])
+  garmin_data$GarminEnhancedBBI <- lapply(garmin_data$data, \(x) x[["enhancedBbi"]])
+  garmin_data$GarminGyroscope <- lapply(garmin_data$data, \(x) x[["gyroscope"]])
+  garmin_data$GarminHeartRate <- lapply(garmin_data$data, \(x) x[["heartRate"]])
+  garmin_data$GarminMeta <- lapply(garmin_data$data, \(x) {
+    x[c("fromTime", "toTime", "entryCounts")]
+  })
+  # For the meta data, flatten the entrycounts
+  garmin_data$GarminMeta <- lapply(
+    garmin_data$GarminMeta,
+    \(x) purrr::list_flatten(x, name_spec = "{inner}")
+  )
+  garmin_data$GarminRespiration <- lapply(garmin_data$data, \(x) x[["respiration"]])
+  garmin_data$GarminSkinTemperature <- lapply(garmin_data$data, \(x) x[["skinTemperature"]])
+  garmin_data$GarminSPO2 <- lapply(garmin_data$data, \(x) x[["spo2"]])
+  garmin_data$GarminSteps <- lapply(garmin_data$data, \(x) x[["steps"]])
+  garmin_data$GarminStress <- lapply(garmin_data$data, \(x) x[["stress"]])
+  garmin_data$GarminWristStatus <- lapply(garmin_data$data, \(x) x[["wristStatus"]])
+  garmin_data$GarminZeroCrossing <- lapply(garmin_data$data, \(x) x[["zeroCrossing"]])
+
+  # Remove the extract columns from the data column
+  garmin_data$data <- lapply(garmin_data$data, \(x) {
+    purrr::discard_at(
+      x = x,
+      at = c(
+        "accelerometer",
+        "actigraphy1",
+        "actigraphy2",
+        "actigraphy3",
+        "bbi",
+        "enhancedBbi",
+        "gyroscope",
+        "heartRate",
+        "fromTime",
+        "toTime",
+        "entryCounts",
+        "respiration",
+        "skinTemperature",
+        "steps",
+        "stress",
+        "wristStatus",
+        "zeroCrossing"
+      )
+    )
+  })
+
+  # Check if the remainder is empty
+  if (any(lengths(garmin_data$data) > 0)) {
+    not_exist <- lapply(garmin_data$data, names)
+    not_exist <- unlist(not_exist, use.names = FALSE)
+    not_exist <- unique(not_exist)
+    cli::cli_warn(c(
+      "Garmin data type{?s} {.var {not_exist}} is not supported by this package.",
+      i = "Data is removed from the output."
+    ))
+  }
+
+  # Remove the remainder
+  garmin_data$data <- NULL
+
+  # Pivot the data to get a single sensor column
+  garmin_data <- garmin_data |>
+    select(-"sensor") |>
+    tidyr::pivot_longer(dplyr::starts_with("Garmin"), names_to = "sensor", values_to = "data")
+
+  # Unnest the actigraphy data as there are 3 measurement at once
+  actigraphy <- garmin_data |>
+    filter(.data$sensor == "GarminActigraphy") |>
+    unnest("data")
+
+  garmin_data <- garmin_data |>
+    filter(.data$sensor != "GarminActigraphy") |>
+    bind_rows(actigraphy)
+
+  # Remove measurements that were missing
+  garmin_data <- garmin_data |>
+    filter(!purrr::map_lgl(.data$data, is.null))
+
+  # add back to the main data
+  # the order of the rows doesn't matter in this case
+  .data |>
+    filter(.data$sensor != "garminalllogsdata") |>
+    bind_rows(garmin_data)
+}
+
+# Mapping to get the primary keys for a sensor table
+.import_get_pk <- function(sensor) {
+  pks <- switch(
+    sensor,
+    AppUsage = "app",
+    Bluetooth = "bluetooth_device_id",
+    Calendar = c("event_id", "calendar_id", "start", "end"),
+    GarminActigraphy = c("instance"),
+    InstalledApps = "app",
+    NA
+  )
+
+  if (!all(is.na(pks))) {
+    pks <- c("participant_id", "date", "time", pks)
+  } else {
+    pks <- c("participant_id", "date", "time")
+  }
+
+  pks
 }

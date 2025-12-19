@@ -380,6 +380,302 @@ unpack_sensor_data.error <- function(data, ...) {
 
 #' @export
 #' @keywords internal
+unpack_sensor_data.garminaccelerometer <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminaccelerometer", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    x = data$x,
+    y = data$y,
+    z = data$z,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminactigraphy <- function(data, ...) {
+  # data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminactigraphy", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+  data$end_time <- as.POSIXct(data$end_time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    end_time = data$end_time,
+    instance = data$instance,
+    total_energy = data$total_energy,
+    n_zero_crossing = data$n_zero_crossing,
+    time_above_threshold = data$time_above_threshold,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminbbi <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminbbi", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    bbi = data$bbi,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminenhancedbbi <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminenhancedbbi", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    bbi = data$bbi,
+    status = data$status,
+    gap_duration = data$gap_duration,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garmingyroscope <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garmingyroscope", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    x = data$x,
+    y = data$y,
+    z = data$z,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminheartrate <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminheartrate", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    bpm = data$bpm,
+    status = data$status,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminmeta <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "garminmeta", ...)
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = substr(data$time, 1, 10),
+    time = substr(data$time, 12, 26),
+    time_from = data$time_from,
+    time_to = data$time_to,
+    n_accelerometer = data$n_accelerometer,
+    n_actigraphy_1 = data$n_actigraphy_1,
+    n_actigraphy_2 = data$n_actigraphy_2,
+    n_actigraphy_3 = data$n_actigraphy_3,
+    n_bbi = data$n_bbi,
+    n_enhanced_bbi = data$n_enhanced_bbi,
+    n_gyroscope = data$n_gyroscope,
+    n_heartrate = data$n_heartrate,
+    n_respiration = data$n_respiration,
+    n_skin_temperature = data$n_skin_temperature,
+    n_spo2 = data$n_spo2,
+    n_steps = data$n_steps,
+    n_stress = data$n_stress
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminrespiration <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminrespiration", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    bpm = data$bpm,
+    status = data$status,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminskintemperature <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminskintemperature", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    temperature = data$temperature,
+    status = data$status,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminspo2 <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminspo2", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    spo2 = data$spo2,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminsteps <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminsteps", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+  data$end_time <- as.POSIXct(data$end_time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    end_time = data$end_time,
+    step_count = data$step_count,
+    total_steps = data$total_steps,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminstress <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminstress", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    stress = data$stress,
+    status = data$status,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminwriststatus <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminwriststatus", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
+unpack_sensor_data.garminzerocrossing <- function(data, ...) {
+  data <- tidyr::unnest(data, "data")
+  data <- unpack_sensor_data.default(data, "garminzerocrossing", ...)
+
+  # Convert the timestamps to ISO8601
+  data$time <- as.POSIXct(data$time / 1e3, tz = "UTC")
+  data$end_time <- as.POSIXct(data$end_time / 1e3, tz = "UTC")
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = format(data$time, "%Y-%m-%d"),
+    time = format(data$time, "%H:%M:%OS6"),
+    end_time = data$end_time,
+    total_energy = data$total_energy,
+    n_zero_crossing = data$n_zero_crossing,
+    deadband = data$deadband,
+    mac_address = data$mac_address
+  )
+}
+
+#' @export
+#' @keywords internal
 unpack_sensor_data.geofence <- function(data, ...) {
   data <- unpack_sensor_data.default(data, "geofence", ...)
 

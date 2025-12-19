@@ -219,6 +219,204 @@ message TEXT,
 PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS GarminAccelerometer
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+x REAL,
+y REAL,
+z REAL,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminActigraphy
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+end_time TEXT,
+instance TEXT,
+total_energy INTEGER,
+n_zero_crossing INTEGER,
+time_above_threshold REAL,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time, instance),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminBBI
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+bbi INTEGER,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminEnhancedBBI
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+bbi INTEGER,
+status TEXT,
+gap_duration INTEGER,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminGyroscope
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+x REAL,
+y REAL,
+z REAL,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminHeartRate
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+bpm INTEGER,
+status TEXT,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminMeta
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+time_from TEXT,
+time_to TEXT,
+n_accelerometer INTEGER,
+n_actigraphy_1 INTEGER,
+n_actigraphy_2 INTEGER,
+n_actigraphy_3 INTEGER,
+n_bbi INTEGER,
+n_enhanced_bbi INTEGER,
+n_gyroscope INTEGER,
+n_heartrate INTEGER,
+n_respiration INTEGER,
+n_skin_temperature INTEGER,
+n_spo2 INTEGER,
+n_steps INTEGER,
+n_stress INTEGER,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminRespiration
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+bpm INTEGER,
+status TEXT,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminSkinTemperature
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+temperature REAL,
+status TEXT,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminSPO2
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+spo2 INTEGER,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminSteps
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+end_time INTEGER,
+step_count INTEGER,
+total_steps INTEGER,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminStress
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+stress INTEGER,
+status TEXT,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminWristStatus
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+status TEXT,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS GarminZeroCrossing
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+end_time TEXT,
+total_energy INTEGER,
+n_zero_crossing INTEGER,
+deadband INTEGER,
+mac_address TEXT,
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 

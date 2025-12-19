@@ -18,9 +18,13 @@ CREATE INDEX IF NOT EXISTS idx_device ON Device(participant_id);
 
 CREATE INDEX IF NOT EXISTS idx_error ON Error(participant_id);
 
+CREATE INDEX IF NOT EXISTS idx_garminbbi ON GarminBBI(participant_id);
 
+CREATE INDEX IF NOT EXISTS idx_garminheartrate ON GarminHeartRate(participant_id);
 
+CREATE INDEX IF NOT EXISTS idx_garminmeta ON GarminMeta(participant_id);
 
+CREATE INDEX IF NOT EXISTS idx_garminsteps ON GarminSteps(participant_id);
 
 CREATE INDEX IF NOT EXISTS idx_garminstress ON GarminStress(participant_id);
 
@@ -78,10 +82,15 @@ CREATE INDEX IF NOT EXISTS date_device ON Device(date);
 
 CREATE INDEX IF NOT EXISTS date_error ON Error(date);
 
+CREATE INDEX IF NOT EXISTS date_garminbbi ON GarminBBI(date);
 
+CREATE INDEX IF NOT EXISTS date_garminheartrate ON GarminHeartRate(date);
 
+CREATE INDEX IF NOT EXISTS date_garminmeta ON GarminMeta(date);
 
+CREATE INDEX IF NOT EXISTS date_garminsteps ON GarminSteps(date);
 
+CREATE INDEX IF NOT EXISTS date_garminstress ON GarminStress(date);
 
 CREATE INDEX IF NOT EXISTS date_geofence ON Geofence(date);
 
@@ -137,10 +146,15 @@ CREATE INDEX IF NOT EXISTS date_idx_device ON Device(participant_id, date);
 
 CREATE INDEX IF NOT EXISTS date_idx_error ON Error(participant_id, date);
 
+CREATE INDEX IF NOT EXISTS date_idx_garminbbi ON GarminBBI(participant_id, date);
 
+CREATE INDEX IF NOT EXISTS date_idx_garminheartrate ON GarminHeartRate(participant_id, date);
 
+CREATE INDEX IF NOT EXISTS date_idx_garminmeta ON GarminMeta(participant_id, date);
 
+CREATE INDEX IF NOT EXISTS date_idx_garminsteps ON GarminSteps(participant_id, date);
 
+CREATE INDEX IF NOT EXISTS date_idx_garminstress ON GarminStress(participant_id, date);
 
 CREATE INDEX IF NOT EXISTS date_idx_geofence ON Geofence(participant_id, date);
 
