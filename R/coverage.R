@@ -116,6 +116,17 @@ coverage <- function(
     sensor <- sensors
   }
 
+  # Retain only sensors that exist in the database
+  db_sensors <- DBI::dbListTables(db)
+  if (!all(sensor %in% db_sensors)) {
+    missing <- setdiff(sensor, db_sensors)
+    cli::cli_warn(
+      "Th{?is/ese} sensor{?s} do{?es/} not exist in the database and \\
+      will be removed from the output: {.arg {missing}}."
+    )
+    sensor <- intersect(sensor, db_sensors)
+  }
+
   # Check participants
   if (!(participant_id %in% get_participants(db)$participant_id)) {
     abort("Participant_id not known.")
@@ -328,7 +339,7 @@ coverage_impl <- function(
       # Extract the data for this participant and sensor
       tmp <- dplyr::tbl(tmp_db, .x) |>
         filter(participant_id == p_id) |>
-        select("measurement_id", "time", "date")
+        select("time", "date")
 
       # Filter by date if needed
       if (!is.null(start_date) && !is.null(end_date)) {
@@ -337,26 +348,10 @@ coverage_impl <- function(
           filter(date <= end_date)
       }
 
-      # Remove duplicate IDs with _ for certain sensors
-      # Removed Accelerometer and Gyroscope from the list, as they are already binned per second
-      if (
-        .x %in%
-          c(
-            "AppUsage",
-            "Bluetooth",
-            "Calendar",
-            "InstalledApps",
-            "TextMessage"
-          )
-      ) {
-        tmp <- tmp |>
-          mutate(measurement_id = substr(.data$measurement_id, 1, 36)) |>
-          distinct()
-      }
-
       # Calculate the number of average measurements per hour i.e. the sum of all measurements in
       # that hour divided by n
       tmp <- tmp |>
+        distinct(.data$date, .data$time) |>
         mutate(hour = strftime("%H", .data$time)) |>
         # mutate(Date = date(time)) |>
         dplyr::count(.data$date, .data$hour) |>

@@ -497,10 +497,10 @@ test_that(".import_write_to_db", {
   # Test that transactions are rolled back if an error occurs
   data$Pedometer <- rbind(data$Pedometer, data$Pedometer)
   data$Pedometer$measurement_id[[1]] <- "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2"
-  data$Pedometer$measurement_id[[2]] <- NA
+  data$Pedometer$participant_id[[2]] <- NA
   expect_error(
     .import_write_to_db(db, meta_data, data),
-    "NOT NULL constraint failed: Pedometer.measurement_id"
+    "NOT NULL constraint failed: Pedometer.participant_id"
   )
   expect_false(
     "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2" %in%
@@ -527,7 +527,7 @@ test_that("save2db", {
     measurement_id = paste0("12345_", 1:1000),
     participant_id = "12345",
     date = "2021-11-14",
-    time = "16:40:01.123",
+    time = paste0("16:40:01.", 1:1000),
     step_count = 1
   )
 
@@ -574,7 +574,7 @@ test_that("save2db", {
       measurement_id = paste0("12345_", 500:1500),
       participant_id = "12345",
       date = "2021-11-14",
-      time = "16:40:01.123",
+      time = paste0("16:40:01.", 500:1500),
       step_count = 1
     )
   )

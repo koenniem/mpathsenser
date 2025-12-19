@@ -116,7 +116,6 @@ test_that("index_db", {
   db <- create_db(NULL, filename)
 
   expect_error(index_db(db), NA)
-  expect_error(index_db(db), "index idx_accelerometer already exists")
 
   # Cleanup
   dbDisconnect(db)

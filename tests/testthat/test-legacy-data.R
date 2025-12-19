@@ -43,18 +43,20 @@ gen_id <- function(uppercase = FALSE) {
 ### db_test ============
 db_test <- function(sensor, true_data) {
   path <- system.file("testdata", package = "mpathsenser")
-  tempfile <- tempfile()
-  db <- create_db(NULL, tempfile)
+  db <- create_db(NULL, ":memory:")
   suppressMessages(import(path, db = db, sensors = sensor, batch_size = 1, recursive = FALSE))
 
   data <- get_data(db, sensor, "12345", "2021-11-13", "2021-11-14") %>%
     collect()
   true <- true_data
 
+  # Make sure that they are in the same order
+  data <- dplyr::arrange(data, dplyr::pick(dplyr::everything()))
+  true <- dplyr::arrange(true, dplyr::pick(dplyr::everything()))
+
   testthat::expect_equal(data, true)
 
   close_db(db)
-  unlink(tempfile)
 }
 
 ### Accelerometer ============

@@ -32,7 +32,7 @@ unit_test <- function(sensor, ..., .cols = NULL, new_names = NULL, end_time = NU
     measurement_id = "12345a",
     participant_id = "12345",
     date = "2021-11-14",
-    time = "16:40:00.123",
+    time = "16:40:00.123456",
     end_time = end_time,
     ...
   )
@@ -68,13 +68,19 @@ unit_test <- function(sensor, ..., .cols = NULL, new_names = NULL, end_time = NU
 
   # Check that a measurement_id is present, but don't check the value
   expect_true("measurement_id" %in% colnames(res))
-  expect_type(res$measurement_id, "character")
 
-  # Test measurement_id length, but detect suffix
-  if (any(grepl("_", res$measurement_id))) {
-    expect_equal(unique(nchar(res$measurement_id)), 38) # 38 characters
+  # Check that measurement_id is a character if it is present, otherwise it's NA
+  if (all(is.na(res$measurement_id))) {
+    expect_type(res$measurement_id, "logical")
   } else {
-    expect_equal(unique(nchar(res$measurement_id)), 36) # 36 characters
+    expect_type(res$measurement_id, "character")
+
+    # Test measurement_id length, but detect suffix
+    if (any(grepl("_", res$measurement_id))) {
+      expect_equal(unique(nchar(res$measurement_id)), 38) # 38 characters
+    } else {
+      expect_equal(unique(nchar(res$measurement_id)), 36) # 36 characters
+    }
   }
 
   res$measurement_id <- "12345a" # Hardcode the value to avoid checking it
@@ -82,37 +88,6 @@ unit_test <- function(sensor, ..., .cols = NULL, new_names = NULL, end_time = NU
   true <- as.data.frame(true)
   expect_equal(res, true)
 }
-
-# rand ===========
-test_that("rand works", {
-  # Return a string of correct length
-  expect_equal(nchar(rand(10)), 10)
-  expect_equal(nchar(rand(5)), 5)
-
-  # rand handles combination of characters and numbers correctly
-  # Assuming the default behaviour includes both letters and numbers
-  sample <- rand(100)
-  expect_true(any(grepl("[a-z]", sample)) & any(grepl("[0-9]", sample)))
-
-  # rand returns only uppercase when uppercase=TRUE
-  sample <- rand(10, uppercase = TRUE)
-  expect_true(all(grepl("[A-Z0-9]", sample)))
-
-  # rand aborts when both chars and numbers are FALSE
-  expect_error(rand(10, chars = FALSE, numbers = FALSE))
-})
-
-# gen_id ==============
-test_that("gen_id works", {
-  # Return a string of correct format and length
-  id <- gen_id()
-  expect_equal(nchar(id), 36) # Format: 8-4-4-4-12 = 32 chars + 4 hyphens
-  expect_match(id, "^([a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12})$")
-
-  # gen_id returns a string with uppercase characters when uppercase=TRUE"
-  id_upper <- gen_id(uppercase = TRUE)
-  expect_match(id_upper, "^([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12})$")
-})
 
 # safe_data_frame  ===========
 test_that("safe_data_frame", {
@@ -337,10 +312,10 @@ test_that("appusage", {
   res <- unpack_sensor_data(dat)
 
   true <- tibble(
-    measurement_id = "12345a",
+    measurement_id = NA,
     participant_id = "12345",
     date = "2021-11-14",
-    time = "16:40:00.123",
+    time = "16:40:00.123456",
     end_time = "2024-01-24 20:46:40.434183",
     start = c("2024-01-24 20:16:40.434183", "2024-01-24 20:16:41.434183"),
     end = c("2024-01-24 20:46:40.434183", "2024-01-24 20:46:41.434183"),
@@ -352,9 +327,8 @@ test_that("appusage", {
 
   # Check that a measurement_id is present, but don't check the value
   expect_true("measurement_id" %in% colnames(res))
-  expect_type(res$measurement_id, "character")
-  expect_match(res$measurement_id, ".{36}") # 36 characters
-  res$measurement_id <- "12345a" # Hardcode the value to avoid checking it
+  expect_type(res$measurement_id, "logical")
+  expect_true(all(is.na(res$measurement_id)))
 
   true <- as.data.frame(true)
   expect_equal(res, true)
@@ -391,10 +365,10 @@ test_that("appusage", {
   res <- unpack_sensor_data(dat)
 
   true <- tibble(
-    measurement_id = "12345a",
+    measurement_id = NA,
     participant_id = "12345",
     date = "2021-11-14",
-    time = "16:40:00.123",
+    time = "16:40:00.123456",
     end_time = "2024-01-24 20:46:40.434183",
     start = c("2021-11-14 16:40:05.123456", "2021-11-14 16:40:05.123456"),
     end = c("2021-11-14 16:40:05.123456", "2021-11-14 16:40:05.123456"),
@@ -406,9 +380,8 @@ test_that("appusage", {
 
   # Check that a measurement_id is present, but don't check the value
   expect_true("measurement_id" %in% colnames(res))
-  expect_type(res$measurement_id, "character")
-  expect_equal(unique(nchar(res$measurement_id)), 38) # 38 characters, because of suffix
-  res$measurement_id <- "12345a" # Hardcode the value to avoid checking it
+  expect_type(res$measurement_id, "logical")
+  expect_true(all(is.na(res$measurement_id)))
 
   true <- as.data.frame(true)
   expect_equal(res, true)
@@ -447,9 +420,8 @@ test_that("appusage", {
 
   # Check that a measurement_id is present, but don't check the value
   expect_true("measurement_id" %in% colnames(res2))
-  expect_type(res2$measurement_id, "character")
-  expect_equal(unique(nchar(res2$measurement_id)), 38) # 38 characters, because of suffix
-  res2$measurement_id <- "12345a" # Hardcode the value to avoid checking it
+  expect_type(res2$measurement_id, "logical")
+  expect_true(all(is.na(res$measurement_id))) # 38 characters, because of suffix
 
   true <- as.data.frame(true)
   expect_equal(res2, true)

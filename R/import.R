@@ -93,8 +93,8 @@ import <- function(
   # Normalise path and check if directory exists
   path <- normalizePath(file.path(path), mustWork = FALSE)
   if (!dir.exists(path)) {
-    abort(c(
-      paste("Directory", path, "does not exist."),
+    cli::cli_abort(c(
+      "Directory {.path {path}} does not exist.",
       i = "Did you make a typo in the path name?"
     ))
   }
@@ -103,8 +103,8 @@ import <- function(
   files <- list.files(path = path, pattern = "*.json$", recursive = recursive)
 
   if (length(files) == 0) {
-    abort(c(
-      paste("Can't find JSON files in", path, "."),
+    cli::cli_abort(c(
+      "Can't find any JSON files in {.path {path}}.",
       i = "Did you put the JSON files in the correct directory?"
     ))
   }

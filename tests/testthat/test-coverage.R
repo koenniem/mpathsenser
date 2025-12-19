@@ -66,6 +66,38 @@ test_that("coverage", {
   dbDisconnect(db)
 })
 
+test_that("coverage takes submeasurements without measurement_id into account", {
+  # Copy the test database to a temporary path
+  tmp <- tempfile()
+  db <- create_db(NULL, tmp)
+
+  # Populate the database
+  add_study(db, "foo", NA)
+  add_participant(db, "12345", "foo")
+
+  data <- data.frame(
+    measurement_id = c("a_1", "a_2", "b"),
+    participant_id = "12345",
+    date = "2025-19-12",
+    time = c("14:58:00", "14:58:01", "14:59:00")
+  )
+  DBI::dbWriteTable(db, "Accelerometer", data, overwrite = TRUE)
+
+  with_ids <- coverage(db, "12345", relative = FALSE)
+
+  # Now remove the IDs
+  data$measurement_id <- NULL
+  DBI::dbWriteTable(db, "Accelerometer", data, overwrite = TRUE)
+  without_ids <- coverage(db, "12345", relative = FALSE)
+
+  # The count should not depend on the measurement_id
+  expect_equal(with_ids, without_ids)
+
+  # Cleanup
+  dbDisconnect(db)
+  file.remove(tmp)
+})
+
 test_that("plot.mpathsenser_coverage", {
   path <- system.file("testdata", package = "mpathsenser")
   db <- open_db(path, db_name = "test.db")

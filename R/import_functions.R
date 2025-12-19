@@ -1,34 +1,3 @@
-rand <- function(n, chars = TRUE, numbers = TRUE, uppercase = FALSE) {
-  if (!chars && !numbers) {
-    abort("You must select either letters, numbers, or both.")
-  }
-
-  data <- NULL
-  if (chars) {
-    if (uppercase) {
-      data <- c(data, LETTERS[1:6])
-    } else {
-      data <- c(data, letters[1:6])
-    }
-  }
-
-  if (numbers) {
-    data <- c(data, 0:9)
-  }
-
-  paste0(sample(data, n, TRUE), collapse = "")
-}
-
-gen_id <- function(uppercase = FALSE) {
-  res <- paste(rand(8), rand(4), rand(4), rand(4), rand(12), sep = "-")
-
-  if (uppercase) {
-    res <- toupper(res)
-  }
-
-  res
-}
-
 # Make a data frame, handling missing columns, filling with NA
 safe_data_frame <- function(...) {
   x <- suppressWarnings(list(...))
@@ -102,15 +71,6 @@ unpack_sensor_data.default <- function(data, sensor, ...) {
   data <- tidyr::unnest_wider(data, "data")
   data$data <- NULL
 
-  # Add a measurement_id column if it doesn't exist
-  if (!any(c("measurement_id", "id") %in% colnames(data))) {
-    gen_id <- Vectorize(gen_id)
-    data <- tibble(
-      measurement_id = gen_id(seq_len(nrow(data))),
-      data
-    )
-  }
-
   # Remap column names
   class(data) <- c(sensor, class(data))
   data <- alias_column_names(data)
@@ -127,7 +87,7 @@ unpack_sensor_data.accelerometer <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     end_time = data$end_time,
     n = data$n,
     x_mean = data$x_mean,
@@ -183,7 +143,7 @@ unpack_sensor_data.activity <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     confidence = data$confidence,
     type = data$type
   )
@@ -198,7 +158,7 @@ unpack_sensor_data.airquality <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     air_quality_index = data$air_quality_index,
     air_quality_level = data$air_quality_level,
     source = data$source,
@@ -231,12 +191,15 @@ unpack_sensor_data.appusage <- function(data, ...) {
   data <- alias_column_names(data)
 
   # TODO: Consider unique ID constraint Temporary fix
-  ids <- stats::ave(
-    numeric(nrow(data)) + 1,
-    data$measurement_id,
-    FUN = seq_along
-  )
-  data$measurement_id <- paste0(data$measurement_id, "_", ids)
+  # This code should no longer be called with new data, as they do not have measurement_ids
+  if ("measurement_id" %in% colnames(data)) {
+    ids <- stats::ave(
+      numeric(nrow(data)) + 1,
+      data$measurement_id,
+      FUN = seq_along
+    )
+    data$measurement_id <- paste0(data$measurement_id, "_", ids)
+  }
 
   if ("last_foreground" %in% colnames(data)) {
     data$last_foreground[grepl("1970-01", data$last_foreground)] <- NA
@@ -249,7 +212,7 @@ unpack_sensor_data.appusage <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     end_time = data$end_time,
     start = data$start,
     end = data$end,
@@ -269,7 +232,7 @@ unpack_sensor_data.battery <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     battery_level = data$battery_level,
     battery_status = data$battery_status
   )
@@ -290,18 +253,20 @@ unpack_sensor_data.bluetooth <- function(data, ...) {
   }
 
   # TODO: Consider unique ID constraint Temporary fix
-  ids <- stats::ave(
-    numeric(nrow(data)) + 1,
-    data$measurement_id,
-    FUN = seq_along
-  )
-  data$measurement_id <- paste0(data$measurement_id, "_", ids)
+  if ("measurement_id" %in% colnames(data)) {
+    ids <- stats::ave(
+      numeric(nrow(data)) + 1,
+      data$measurement_id,
+      FUN = seq_along
+    )
+    data$measurement_id <- paste0(data$measurement_id, "_", ids)
+  }
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     start_scan = data$start_scan,
     end_scan = data$end_scan,
     advertisement_name = data$advertisement_name,
@@ -330,19 +295,21 @@ unpack_sensor_data.connectivity <- function(data, ...) {
     data <- unnest(data, "connectivity_status")
 
     # TODO: Consider unique ID constraint Temporary fix
-    ids <- stats::ave(
-      numeric(nrow(data)) + 1,
-      data$measurement_id,
-      FUN = seq_along
-    )
-    data$measurement_id <- paste0(data$measurement_id, "_", ids)
+    if ("measurement_id" %in% colnames(data)) {
+      ids <- stats::ave(
+        numeric(nrow(data)) + 1,
+        data$measurement_id,
+        FUN = seq_along
+      )
+      data$measurement_id <- paste0(data$measurement_id, "_", ids)
+    }
   }
 
   safe_data_frame(
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     connectivity_status = data$connectivity_status
   )
 }
@@ -384,7 +351,7 @@ unpack_sensor_data.device <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     device_id = data$device_id,
     hardware = data$hardware,
     device_name = data$device_name,
@@ -406,7 +373,7 @@ unpack_sensor_data.error <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     message = data$message
   )
 }
@@ -420,7 +387,7 @@ unpack_sensor_data.geofence <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     center = data$center,
     dwell = data$dwell,
     name = data$name,
@@ -438,7 +405,7 @@ unpack_sensor_data.gyroscope <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     x = data$x,
     y = data$y,
     z = data$z
@@ -454,7 +421,7 @@ unpack_sensor_data.heartbeat <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     period = data$period,
     device_type = data$device_type,
     device_role_name = data$device_role_name
@@ -477,7 +444,7 @@ unpack_sensor_data.light <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     end_time = data$end_time,
     mean_lux = data$mean_lux,
     std_lux = data$std_lux,
@@ -504,7 +471,7 @@ unpack_sensor_data.location <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     latitude = data$latitude,
     longitude = data$longitude,
     altitude = data$altitude,
@@ -527,7 +494,7 @@ unpack_sensor_data.memory <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     free_physical_memory = data$free_physical_memory,
     free_virtual_memory = data$free_virtual_memory
   )
@@ -542,7 +509,7 @@ unpack_sensor_data.mpathinfo <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     connection_id = data$connection_id,
     account_code = data$account_code,
     study_name = data$study_name,
@@ -559,7 +526,7 @@ unpack_sensor_data.noise <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     end_time = data$end_time,
     mean_decibel = data$mean_decibel,
     std_decibel = data$std_decibel,
@@ -577,7 +544,7 @@ unpack_sensor_data.pedometer <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     step_count = data$step_count
   )
 }
@@ -591,7 +558,7 @@ unpack_sensor_data.screen <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     screen_event = data$screen_event
   )
 }
@@ -605,7 +572,7 @@ unpack_sensor_data.timezone <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     timezone = data$timezone
   )
 }
@@ -619,7 +586,7 @@ unpack_sensor_data.weather <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     country = data$country,
     area_name = data$area_name,
     weather_main = data$weather_main,
@@ -652,7 +619,7 @@ unpack_sensor_data.wifi <- function(data, ...) {
     measurement_id = data$measurement_id,
     participant_id = data$participant_id,
     date = substr(data$time, 1, 10),
-    time = substr(data$time, 12, 23),
+    time = substr(data$time, 12, 26),
     ssid = data$ssid,
     bssid = data$bssid,
     ip = data$ip

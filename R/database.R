@@ -211,11 +211,15 @@ close_db <- function(db) {
 
 #' Create indexes for an mpathsenser database
 #'
-#' @description `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("deprecated")`
 #'
 #'   Create indexes for an mpathsenser database on the `participant_id`, `date`, and a combination
 #'   of these variable for all the tables in the database. This will speed up queries that use these
-#'   variables in the `WHERE` clause.
+#'   variables in the `WHERE` clause. Because
+#'
+#' @section Deprecation:
+#' Because `participant_id`, `date`, and `time` are now primary keys in the database, indexes are
+#' no longer needed.
 #'
 #' @inheritParams get_data
 #'
@@ -532,7 +536,7 @@ get_studies <- function(db, lazy = FALSE) {
 #' @description `r lifecycle::badge("stable")`
 #'
 #' @param db db A database connection, as created by [create_db()].
-#' @param sensor A character vector of one or multiple vectors. Use `sensor = "All"` for all
+#' @param sensor A character vector of one or multiple vectors. Use `sensor = NULL` for all
 #'   sensors. See \link[mpathsenser]{sensors} for a list of all available sensors.
 #' @param participant_id A character string identifying a single participant. Use
 #'   [get_participants()] to retrieve all participants from the database. Leave empty to get data
@@ -563,15 +567,15 @@ get_studies <- function(db, lazy = FALSE) {
 #' }
 get_nrows <- function(
   db,
-  sensor = "All",
+  sensor = NULL,
   participant_id = NULL,
   start_date = NULL,
   end_date = NULL
 ) {
   check_db(db)
-  check_arg(sensor, "character", allow_null = TRUE)
+  check_sensors(sensor, allow_null = TRUE)
 
-  if (is.null(sensor) || sensor[[1]] == "All") {
+  if (is.null(sensor)) {
     sensor <- sensors
   }
 

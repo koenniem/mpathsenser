@@ -33,7 +33,7 @@ FOREIGN KEY (study_id) REFERENCES Study(study_id) ON DELETE CASCADE
 
 CREATE TABLE IF NOT EXISTS Accelerometer
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -80,25 +80,25 @@ y_energy REAL,
 z_energy REAL,
 avg_res_acc REAL,
 sma REAL,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Activity
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 confidence INTEGER,
 type TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS AirQuality
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -108,13 +108,13 @@ source TEXT,
 place TEXT,
 latitude BLOB,
 longitude BLOB,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS AppUsage
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -125,25 +125,25 @@ usage INTEGER,
 app TEXT,
 package_name TEXT,
 last_foreground TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time, app),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Battery
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 battery_level INTEGER,
 battery_status TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Bluetooth
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -156,13 +156,13 @@ bluetooth_device_type TEXT,
 connectable BOOLEAN,
 rssi INTEGER,
 tx_power_level INTEGER,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time, bluetooth_device_id),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Calendar
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -175,24 +175,24 @@ end TEXT,
 all_day BOOLEAN,
 location TEXT,
 attendees TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time, event_id, calendar_id, start, end),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Connectivity
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 connectivity_status TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Device
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -205,24 +205,26 @@ operating_system TEXT,
 platform TEXT,
 operating_system_version TEXT,
 sdk TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Error
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 message TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Geofence
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -231,63 +233,63 @@ dwell INTEGER,
 name TEXT,
 radius REAL,
 state TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Gyroscope
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 x REAL,
 y REAL,
 z REAL,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Heartbeat
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 period INTEGER,
 device_type TEXT,
 device_role_name TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS InstalledApps
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 app TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time, app),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Keyboard
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 body TEXT,
 end TEXT,
 start TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Light
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -296,13 +298,13 @@ mean_lux REAL,
 std_lux REAL,
 min_lux REAL,
 max_lux REAL,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Location
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -316,25 +318,25 @@ speed_accuracy REAL,
 heading REAL,
 heading_accuracy REAL,
 is_mock BOOLEAN,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Memory
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 free_physical_memory INTEGER,
 free_virtual_memory INTEGER,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Mobility
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -344,13 +346,13 @@ entropy REAL,
 normalized_entropy REAL,
 home_stay REAL,
 distance_travelled double,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Noise
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -359,24 +361,24 @@ mean_decibel REAL,
 std_decibel REAL,
 min_decibel REAL,
 max_decibel REAL,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Pedometer
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 step_count INTEGER,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS PhoneLog
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -386,24 +388,24 @@ duration INTEGER,
 formatted_number TEXT,
 name TEXT,
 number TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Screen
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 screen_event TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS TextMessage
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -415,24 +417,24 @@ is_read INTEGER,
 kind TEXT,
 size INTEGER,
 state TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Timezone
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 timezone TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Weather
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
@@ -456,19 +458,19 @@ snow_last_3hours REAL,
 temperature REAL,
 temp_min REAL,
 temp_max REAL,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS Wifi
 (
-measurement_id TEXT NOT NULL,
+measurement_id TEXT UNIQUE,
 participant_id TEXT NOT NULL,
 date TEXT NOT NULL,
 time TEXT NOT NULL,
 ssid TEXT,
 bssid TEXT,
 ip TEXT,
-PRIMARY KEY (measurement_id),
+PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
