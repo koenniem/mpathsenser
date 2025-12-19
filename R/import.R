@@ -77,9 +77,9 @@ import <- function(
   sensors = NULL,
   batch_size = 24,
   backend = "RSQLite",
-  recursive = TRUE
   recursive = TRUE,
   .progress = TRUE,
+  debug = FALSE
 ) {
   # Check arguments
   check_arg(path, type = "character", n = 1)
@@ -89,6 +89,7 @@ import <- function(
   check_arg(backend, "character", n = 1)
   check_arg(recursive, "logical", n = 1)
   check_arg(.progress, "logical", n = 1)
+  check_arg(debug, "logical", n = 1)
 
   # Normalise path and check if directory exists
   path <- normalizePath(file.path(path), mustWork = FALSE)
@@ -101,6 +102,11 @@ import <- function(
 
   # Retrieve all JSON files
   files <- list.files(path = path, pattern = "*.json$", recursive = recursive)
+
+  if (debug) {
+    len_files <- length(files)
+    cli::cli_progress_step("Found {len_files} file{?s} to process.")
+  }
 
   if (length(files) == 0) {
     cli::cli_abort(c(
@@ -115,6 +121,14 @@ import <- function(
     processed_files <- get_processed_files(db)
     # Keep files _not_ already registered in db
     files <- files[!(files %in% processed_files$file_name)]
+
+    if (debug) {
+      len_duplicates <- len_files - length(files)
+      len_files <- length(files)
+      cli::cli_progress_step(
+        "Found {len_duplicates} duplicate file{?s}. Continuing with {len_files} file{?s}."
+      )
+    }
 
     if (length(files) == 0) {
       cli::cli_inform("No new files to process.")
@@ -139,6 +153,14 @@ import <- function(
     # All the files in the batch
     batch_files <- batches[[i]]
 
+    if (debug) {
+      len_batches <- length(batches)
+      cli::cli_progress_output(cli::cli_rule(
+        left = "Starting work on {.field batch {i}} out of {len_batches}.",
+        id = ""
+      ))
+    }
+
     # Read in all the files, in parallel
     batch_data <- furrr::future_map(
       .x = batch_files,
@@ -155,6 +177,11 @@ import <- function(
     # but keep the data empty as there was no data (empty file).
     batch_na <- batch_files[is.na(batch_data)]
     batch_data <- batch_data[!is.na(batch_data)]
+
+    if (debug) {
+      len_batch_data <- length(batch_data)
+      cli::cli_progress_output("Read {len_batch_data} JSON file{?s}.")
+    }
 
     # Save the empty files in data frame to add to the meta data later
     # Meta data is what is being registered
@@ -178,6 +205,11 @@ import <- function(
     # Remove NULLs, as we want to keep these files unmarked
     # (something went wrong when reading in the data)
     batch_data <- purrr::compact(batch_data)
+
+    if (debug) {
+      len_batch_data <- length(batch_data)
+      cli::cli_progress_output("Cleaned {len_batch_data} file{?s}.")
+    }
 
     # Generate the meta data, i.e. the participant_id, study_id, and file name to be written to the
     # database later.
@@ -231,6 +263,11 @@ import <- function(
       meta_data <- bind_rows(meta_data, batch_na)
     }
 
+    if (debug) {
+      len_batch_data <- length(batch_data)
+      cli::cli_progress_output("Extracted sensor data from {len_batch_data} file{?s}.")
+    }
+
     # Interesting feature in purrr::transpose. If the names would not be explicitly set, it would
     # only take the names of the first entry of the list. So, if some sensors would be present in
     # the first entry (e.g. low sampling sensors like Device), it would disappear from the data
@@ -244,6 +281,10 @@ import <- function(
     batch_data <- purrr::compact(batch_data)
     batch_data <- lapply(batch_data, distinct) # Filter out duplicate rows (for some reason)
 
+    if (debug) {
+      n_tables <- length(batch_data)
+      write_pb <- cli::cli_progress_output("Writing {n_tables} table{?s}.")
+    }
     # Write all data as a single transaction, safely.
     try(
       expr = .import_write_to_db(db, meta_data, batch_data),
@@ -251,13 +292,17 @@ import <- function(
     )
 
     # Update progress bar
-    if (requireNamespace("progressr", quietly = TRUE)) {
-      p(sprintf("Added %g out of %g", i * batch_size, length(files)))
+    if (.progress) {
+      cli::cli_progress_update(id = pb)
     }
   }
 
   processed_files <- get_processed_files(db)
   complete <- unlist(files, use.names = FALSE) %in% processed_files$file_name
+
+  # Close the progress bar
+  cli::cli_progress_done()
+
   if (all(complete)) {
     inform("All files were successfully written to the database.")
     return(invisible(""))
@@ -500,7 +545,7 @@ safe_extract <- function(vec, var) {
   )
 }
 
-.import_extract_sensor_data <- function(data, sensors = NULL) {
+.import_extract_sensor_data <- function(data, sensors = NULL, debug = FALSE) {
   # Detect if this is a file in a legacy format
   is_legacy <- "body" %in% colnames(data)
 
@@ -563,6 +608,9 @@ safe_extract <- function(vec, var) {
       return(out)
     },
     error = function(e) {
+      if (debug) {
+        print(e)
+      }
       return(NA)
     }
   )

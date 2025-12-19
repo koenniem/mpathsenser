@@ -6,7 +6,7 @@
 \usage{
 get_nrows(
   db,
-  sensor = "All",
+  sensor = NULL,
   participant_id = NULL,
   start_date = NULL,
   end_date = NULL
@@ -15,7 +15,7 @@ get_nrows(
 \arguments{
 \item{db}{db A database connection, as created by \code{\link[=create_db]{create_db()}}.}
 
-\item{sensor}{A character vector of one or multiple vectors. Use \code{sensor = "All"} for all
+\item{sensor}{A character vector of one or multiple vectors. Use \code{sensor = NULL} for all
 sensors. See \link[mpathsenser]{sensors} for a list of all available sensors.}
 
 \item{participant_id}{A character string identifying a single participant. Use

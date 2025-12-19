@@ -10,9 +10,9 @@ import(
   sensors = NULL,
   batch_size = 24,
   backend = "RSQLite",
-  recursive = TRUE
   recursive = TRUE,
   .progress = TRUE,
+  debug = FALSE
 )
 }
 \arguments{
@@ -31,6 +31,7 @@ NULL to extract all sensor data.}
 
 \item{.progress}{Whether to display a progress bar.}
 
+\item{debug}{Whether suppressed warnings and errors should be shown for debugging purposes.}
 }
 \value{
 A message indicating how many files were imported. If all files were imported
