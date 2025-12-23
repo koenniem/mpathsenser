@@ -647,6 +647,7 @@ unpack_sensor_data.garminwriststatus <- function(data, ...) {
     participant_id = data$participant_id,
     date = format(data$time, "%Y-%m-%d"),
     time = format(data$time, "%H:%M:%OS6"),
+    status = data$status,
     mac_address = data$mac_address
   )
 }

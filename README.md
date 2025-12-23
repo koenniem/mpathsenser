@@ -73,7 +73,7 @@ db <- create_db(path = path, db_name = "some_db.db")
 Then, call `import()` to start reading in the files.
 
 ``` r
-import(path = path, db = db)
+import(path = path, db = db, .progress = FALSE)
 #> All files were successfully written to the database.
 ```
 
@@ -124,14 +124,28 @@ databases, as every tables in the database needs to be queried.
 
 ``` r
 get_nrows(db)
-#> Accelerometer    AirQuality      Activity      AppUsage       Battery     Bluetooth      Calendar 
-#>         75680             0             2           386             0          1103            98 
-#>  Connectivity        Device         Error      Geofence     Gyroscope     Heartbeat InstalledApps 
-#>            40            12             1             0         26509             0          1236 
-#>      Keyboard         Light      Location        Memory      Mobility         Noise     Pedometer 
-#>             0           538            37            84             0             0          4099 
-#>      PhoneLog        Screen   TextMessage      Timezone       Weather          Wifi 
-#>             0           358             0             0            35            84
+#>         Accelerometer              Activity            AirQuality              AppUsage 
+#>                 48352                     2                     0                   386 
+#>               Battery             Bluetooth              Calendar          Connectivity 
+#>                     0                  1103                    98                    35 
+#>                Device                 Error   GarminAccelerometer      GarminActigraphy 
+#>                    12                     1                     0                     0 
+#>             GarminBBI     GarminEnhancedBBI       GarminGyroscope       GarminHeartRate 
+#>                     0                     0                     0                     0 
+#>            GarminMeta     GarminRespiration GarminSkinTemperature            GarminSPO2 
+#>                     0                     0                     0                     0 
+#>           GarminSteps          GarminStress     GarminWristStatus    GarminZeroCrossing 
+#>                     0                     0                     0                     0 
+#>              Geofence             Gyroscope             Heartbeat         InstalledApps 
+#>                     0                 18542                     0                  1224 
+#>              Keyboard                 Light              Location                Memory 
+#>                     0                   538                    37                    84 
+#>              Mobility                 Noise             Pedometer              PhoneLog 
+#>                     0                     0                  2511                     0 
+#>                Screen           TextMessage              Timezone               Weather 
+#>                   332                     0                     0                    35 
+#>                  Wifi 
+#>                    84
 ```
 
 Now let’s find out how to actually retrieve data from the database.
@@ -150,14 +164,14 @@ get_data(
   end_date = "2022-06-15" # An optional end date, in the format YYYY-MM-DD
 )
 #> # Source:   SQL [?? x 5]
-#> # Database: sqlite 3.51.0 [C:\Users\u0134047\AppData\Local\Temp\RtmpsbzfUd\readme\some_db.db]
+#> # Database: sqlite 3.51.0 [C:\Users\u0134047\AppData\Local\Temp\RtmpIrwLkU\readme\some_db.db]
 #>   measurement_id                       participant_id date       time     step_count
 #>   <chr>                                <chr>          <chr>      <chr>         <int>
-#> 1 ce16d410-ebc5-11ec-a276-bfb1e065589a 2784           2022-06-14 09:38:54     119131
-#> 2 ce659050-ebc5-11ec-a235-b1fd6433d9e2 2784           2022-06-14 09:38:54     119132
-#> 3 ceb64860-ebc5-11ec-8f07-93c1927f71b2 2784           2022-06-14 09:38:55     119133
-#> 4 cf133570-ebc5-11ec-bf61-85f33d53f14d 2784           2022-06-14 09:38:55     119134
-#> 5 cfb47e80-ebc5-11ec-b17b-85bcc3b36c13 2784           2022-06-14 09:38:56     119136
+#> 1 fd1a1310-ebc2-11ec-9b71-3ba318669196 2784           2022-06-14 09:18:44     118532
+#> 2 d1847900-ebc4-11ec-879d-b5caf642e57d 2784           2022-06-14 09:31:50     118540
+#> 3 e6214460-ebc4-11ec-a49f-29d5cd426d5e 2784           2022-06-14 09:32:24     118546
+#> 4 e6982210-ebc4-11ec-adf0-bd5a8a64c663 2784           2022-06-14 09:32:25     118547
+#> 5 e70c1990-ebc4-11ec-b4e1-7bbba2cce9b4 2784           2022-06-14 09:32:26     118548
 #> # ℹ more rows
 ```
 

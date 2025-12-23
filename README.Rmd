@@ -100,7 +100,7 @@ db <- create_db(path = path, db_name = "some_db.db")
 Then, call `import()` to start reading in the files.
 
 ```{r}
-import(path = path, db = db)
+import(path = path, db = db, .progress = FALSE)
 ```
 If everything went correctly, there should be a message that all files were successfully written to the database. Otherwise `import()` return a character vector containing the files that failed to be imported. Note that files only need to be imported once, and that new files can be added to the database by calling `import()` again using the same database. Files that were processed previously will be skipped.
 

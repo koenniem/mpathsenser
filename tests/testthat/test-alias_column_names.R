@@ -10,7 +10,7 @@ test_alias_column_names <- function(names, sensor) {
   colnames(res)
 }
 
-generic_test <- function(sensor) {
+generic_test <- function(sensor, time = "start_time") {
   # An invalid name is returned unchanged
   expect_equal(
     test_alias_column_names("foo", sensor),
@@ -19,7 +19,7 @@ generic_test <- function(sensor) {
 
   # Check multiple inputs
   expect_equal(
-    test_alias_column_names(c("id", "start_time"), sensor),
+    test_alias_column_names(c("id", time), sensor),
     c("measurement_id", "time")
   )
 
@@ -41,7 +41,7 @@ generic_test <- function(sensor) {
     "measurement_id"
   )
   expect_equal(
-    test_alias_column_names("start_time", sensor),
+    test_alias_column_names(time, sensor),
     "time"
   )
 }
@@ -262,4 +262,342 @@ test_that("alias_column_names.weather", {
 # Wifi ============
 test_that("alias_column_names.wifi", {
   generic_test("Wifi")
+})
+
+# GarminAccelerometer ==========
+test_that("alias_column_names.garminaccelerometer", {
+  generic_test("GarminAccelerometer", "timestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("xValue", "GarminAccelerometer"),
+    "x"
+  )
+  expect_equal(
+    test_alias_column_names("yValue", "GarminAccelerometer"),
+    "y"
+  )
+  expect_equal(
+    test_alias_column_names("zValue", "GarminAccelerometer"),
+    "z"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminAccelerometer"),
+    "mac_address"
+  )
+})
+
+# GarminActigraphy ==========
+test_that("alias_column_names.garminactigraphy", {
+  generic_test("GarminActigraphy", "startTimestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("startTimestamp", "GarminActigraphy"),
+    "time"
+  )
+  expect_equal(
+    test_alias_column_names("endTimestamp", "GarminActigraphy"),
+    "end_time"
+  )
+  expect_equal(
+    test_alias_column_names("totalEnergy", "GarminActigraphy"),
+    "total_energy"
+  )
+  expect_equal(
+    test_alias_column_names("zeroCrossingCount", "GarminActigraphy"),
+    "n_zero_crossing"
+  )
+  expect_equal(
+    test_alias_column_names("timeAboveThreshold", "GarminActigraphy"),
+    "time_above_threshold"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminActigraphy"),
+    "mac_address"
+  )
+})
+
+# GarminBBI ==========
+test_that("alias_column_names.garminbbi", {
+  generic_test("GarminBBI", "timestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("timestamp", "GarminBBI"),
+    "time"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminBBI"),
+    "mac_address"
+  )
+})
+
+# GarminEnhancedBBI ==========
+test_that("alias_column_names.garminenhancedbbi", {
+  generic_test("GarminEnhancedBBI", "timestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("timestamp", "GarminEnhancedBBI"),
+    "time"
+  )
+  expect_equal(
+    test_alias_column_names("gapDuration", "GarminEnhancedBBI"),
+    "gap_duration"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminEnhancedBBI"),
+    "mac_address"
+  )
+})
+
+# GarminGyroscope ==========
+test_that("alias_column_names.garmingyroscope", {
+  generic_test("GarminGyroscope", "timestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("xValue", "GarminGyroscope"),
+    "x"
+  )
+  expect_equal(
+    test_alias_column_names("yValue", "GarminGyroscope"),
+    "y"
+  )
+  expect_equal(
+    test_alias_column_names("zValue", "GarminGyroscope"),
+    "z"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminGyroscope"),
+    "mac_address"
+  )
+})
+
+# GarminHeartRate ==========
+test_that("alias_column_names.garminheartrate", {
+  generic_test("GarminHeartRate", "timestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("timestamp", "GarminHeartRate"),
+    "time"
+  )
+  expect_equal(
+    test_alias_column_names("beatsPerMinute", "GarminHeartRate"),
+    "bpm"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminHeartRate"),
+    "mac_address"
+  )
+})
+
+# GarminMeta ==========
+test_that("alias_column_names.garminmeta", {
+  generic_test("GarminMeta")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("fromTime", "GarminMeta"),
+    "time_from"
+  )
+  expect_equal(
+    test_alias_column_names("toTime", "GarminMeta"),
+    "time_to"
+  )
+  expect_equal(
+    test_alias_column_names("accelerometer", "GarminMeta"),
+    "n_accelerometer"
+  )
+  expect_equal(
+    test_alias_column_names("actigraphy1", "GarminMeta"),
+    "n_actigraphy_1"
+  )
+  expect_equal(
+    test_alias_column_names("actigraphy2", "GarminMeta"),
+    "n_actigraphy_2"
+  )
+  expect_equal(
+    test_alias_column_names("actigraphy3", "GarminMeta"),
+    "n_actigraphy_3"
+  )
+  expect_equal(
+    test_alias_column_names("bbi", "GarminMeta"),
+    "n_bbi"
+  )
+  expect_equal(
+    test_alias_column_names("enhancedBbi", "GarminMeta"),
+    "n_enhanced_bbi"
+  )
+  expect_equal(
+    test_alias_column_names("gyroscope", "GarminMeta"),
+    "n_gyroscope"
+  )
+  expect_equal(
+    test_alias_column_names("heartRate", "GarminMeta"),
+    "n_heartrate"
+  )
+  expect_equal(
+    test_alias_column_names("respiration", "GarminMeta"),
+    "n_respiration"
+  )
+  expect_equal(
+    test_alias_column_names("skinTemperature", "GarminMeta"),
+    "n_skin_temperature"
+  )
+  expect_equal(
+    test_alias_column_names("spo2", "GarminMeta"),
+    "n_spo2"
+  )
+  expect_equal(
+    test_alias_column_names("steps", "GarminMeta"),
+    "n_steps"
+  )
+  expect_equal(
+    test_alias_column_names("stress", "GarminMeta"),
+    "n_stress"
+  )
+})
+
+# GarminRespiration ==========
+test_that("alias_column_names.garminrespiration", {
+  generic_test("GarminRespiration", "timestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("timestamp", "GarminRespiration"),
+    "time"
+  )
+  expect_equal(
+    test_alias_column_names("breathsPerMinute", "GarminRespiration"),
+    "bpm"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminRespiration"),
+    "mac_address"
+  )
+})
+
+# GarminSkinTemperature ==========
+test_that("alias_column_names.garminskintemperature", {
+  generic_test("GarminSkinTemperature", "timestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("timestamp", "GarminSkinTemperature"),
+    "time"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminSkinTemperature"),
+    "mac_address"
+  )
+})
+
+# GarminSPO2 ==========
+test_that("alias_column_names.garminspo2", {
+  generic_test("GarminSPO2", "timestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("timestamp", "GarminSPO2"),
+    "time"
+  )
+  expect_equal(
+    test_alias_column_names("spo2Reading", "GarminSPO2"),
+    "spo2"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminSPO2"),
+    "mac_address"
+  )
+})
+
+# GarminSteps ==========
+test_that("alias_column_names.garminsteps", {
+  generic_test("GarminSteps", "startTimestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("startTimestamp", "GarminSteps"),
+    "time"
+  )
+  expect_equal(
+    test_alias_column_names("endTimestamp", "GarminSteps"),
+    "end_time"
+  )
+  expect_equal(
+    test_alias_column_names("stepCount", "GarminSteps"),
+    "step_count"
+  )
+  expect_equal(
+    test_alias_column_names("totalSteps", "GarminSteps"),
+    "total_steps"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminSteps"),
+    "mac_address"
+  )
+})
+
+# GarminStress ==========
+test_that("alias_column_names.garminstress", {
+  generic_test("GarminStress", "timestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("timestamp", "GarminStress"),
+    "time"
+  )
+  expect_equal(
+    test_alias_column_names("stressScore", "GarminStress"),
+    "stress"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminStress"),
+    "mac_address"
+  )
+})
+
+# GarminWristStatus ==========
+test_that("alias_column_names.garminwriststatus", {
+  generic_test("GarminWristStatus", "timestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("timestamp", "GarminWristStatus"),
+    "time"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminWristStatus"),
+    "mac_address"
+  )
+})
+
+# GarminZeroCrossing ==========
+test_that("alias_column_names.garminzerocrossing", {
+  generic_test("GarminZeroCrossing", "startTimestamp")
+
+  # Other names
+  expect_equal(
+    test_alias_column_names("startTimestamp", "GarminZeroCrossing"),
+    "time"
+  )
+  expect_equal(
+    test_alias_column_names("endTimestamp", "GarminZeroCrossing"),
+    "end_time"
+  )
+  expect_equal(
+    test_alias_column_names("zeroCrossingCount", "GarminZeroCrossing"),
+    "n_zero_crossing"
+  )
+  expect_equal(
+    test_alias_column_names("totalEnergy", "GarminZeroCrossing"),
+    "total_energy"
+  )
+  expect_equal(
+    test_alias_column_names("macAddress", "GarminZeroCrossing"),
+    "mac_address"
+  )
 })

@@ -38,14 +38,92 @@ unit_test <- function(sensor, ..., .cols = NULL, new_names = NULL, end_time = NU
   )
 
   # If there is a list column containing data, unlist it first
+  # Except for Garmin data, which follows a different procudure
   which_list <- colnames(true)[purrr::map_lgl(true, is.list)]
-  if (length(which_list) > 0) {
+  if (length(which_list) > 0 && !grepl("garmin", sensor)) {
     first_element <- true[[which_list]][[1]]
     if (is.list(first_element) || is.null(first_element)) {
       true <- tidyr::unnest_wider(true, all_of(which_list))
     } else {
       true <- unnest(true, all_of(which_list))
     }
+  }
+
+  # Procedure for Garmin data: If there is a list column with timestamp, remove it as this is
+  # used for generating the time itself
+  if (grepl("garmin", sensor)) {
+    true <- select(true, -dplyr::any_of(c("timestamp", "startTimestamp", "endTimestamp")))
+  }
+
+  # Replace different-styled column names
+  if (!is.null(new_names)) {
+    colnames <- colnames(true)
+    colnames[colnames %in% new_names] <- names(new_names)
+    colnames(true) <- colnames
+  }
+
+  # Make sure all columns are present
+  if (!is.null(.cols)) {
+    missing <- setdiff(.cols, colnames(true))
+    if (length(missing) > 0) {
+      true[, missing] <- NA
+    }
+  }
+
+  # Make sure columns are in the same order
+  true <- dplyr::relocate(true, any_of(colnames(res)))
+
+  # Check that a measurement_id is present, but don't check the value
+  expect_true("measurement_id" %in% colnames(res))
+
+  # Check that measurement_id is a character if it is present, otherwise it's NA
+  if (all(is.na(res$measurement_id))) {
+    expect_type(res$measurement_id, "logical")
+  } else {
+    expect_type(res$measurement_id, "character")
+
+    # Test measurement_id length, but detect suffix
+    if (any(grepl("_", res$measurement_id))) {
+      expect_equal(unique(nchar(res$measurement_id)), 38) # 38 characters
+    } else {
+      expect_equal(unique(nchar(res$measurement_id)), 36) # 36 characters
+    }
+  }
+
+  res$measurement_id <- "12345a" # Hardcode the value to avoid checking it
+
+  true <- as.data.frame(true)
+  expect_equal(res, true)
+}
+
+unit_test_garmin <- function(sensor, ..., .cols = NULL, new_names = NULL, end_time = NULL) {
+  # Define the input
+  dat <- common_data(
+    sensor,
+    list(
+      data = ...
+    ),
+    end_time = end_time
+  )
+
+  # Execute the sensor function based on its name
+  class(dat) <- c(tolower(sensor), class(dat))
+  res <- unpack_sensor_data(dat)
+
+  true <- tibble(
+    measurement_id = "12345a",
+    participant_id = "12345",
+    date = "2021-11-14",
+    time = "16:40:00.123456",
+    end_time = end_time,
+    data = list(...)
+  )
+  true <- tidyr::unnest_wider(true, "data")
+
+  # Procedure for Garmin data: If there is a list column with timestamp, remove it as this is
+  # used for generating the time itself
+  if (grepl("garmin", sensor)) {
+    true <- select(true, -dplyr::any_of(c("timestamp", "startTimestamp", "endTimestamp")))
   }
 
   # Replace different-styled column names
@@ -1023,5 +1101,431 @@ test_that("wifi", {
   unit_test(
     "wifi",
     .cols = col_names
+  )
+})
+
+# GarminAccelerometer ============
+test_that("garminaccelerometer", {
+  .cols <- c("x", "y", "z", "mac_address")
+  new_names <- c(
+    x = "xValue",
+    y = "yValue",
+    z = "zValue",
+    mac_address = "macAddress"
+  )
+
+  # empty test
+  unit_test_garmin(
+    "garminaccelerometer",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456
+    )
+  )
+
+  # Single observation
+  unit_test_garmin(
+    "garminaccelerometer",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      x = 0.1,
+      y = 0.2,
+      z = 0.3,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminActigraphy ============
+test_that("garminactigraphy", {
+  .cols <- c("instance", "total_energy", "n_zero_crossing", "time_above_threshold", "mac_address")
+  new_names <- c(
+    instance = "instance",
+    total_energy = "totalEnergy",
+    n_zero_crossing = "zeroCrossingCount",
+    time_above_threshold = "timeAboveThreshold",
+    mac_address = "macAddress"
+  )
+
+  unit_test(
+    "garminactigraphy",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    startTimestamp = 1.636908e+12 + 123.456,
+    endTimestamp = 1.636908e+12 + 5123.456
+  )
+
+  unit_test(
+    "garminactigraphy",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    startTimestamp = 1.636908e+12 + 123.456,
+    endTimestamp = 1.636908e+12 + 5123.456,
+    instance = "Actigraphy1",
+    total_energy = 100.5,
+    n_zero_crossing = 50,
+    time_above_threshold = 30.5,
+    mac_address = "AA:BB:CC:DD:EE:FF"
+  )
+})
+
+# GarminBBI ============
+test_that("garminbbi", {
+  .cols <- c("bbi", "mac_address")
+  new_names <- c(mac_address = "macAddress")
+
+  unit_test_garmin(
+    "garminbbi",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminbbi",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      bbi = 850,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminEnhancedBBI ============
+test_that("garminenhancedbbi", {
+  .cols <- c("bbi", "status", "gap_duration", "mac_address")
+  new_names <- c(
+    gap_duration = "gapDuration",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminenhancedbbi",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminenhancedbbi",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      bbi = 850,
+      status = "VALID",
+      gap_duration = 0,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminGyroscope ============
+test_that("garmingyroscope", {
+  .cols <- c("x", "y", "z", "mac_address")
+  new_names <- c(
+    x = "xValue",
+    y = "yValue",
+    z = "zValue",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garmingyroscope",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garmingyroscope",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      x = 0.1,
+      y = 0.2,
+      z = 0.3,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminHeartRate ============
+test_that("garminheartrate", {
+  .cols <- c("bpm", "status", "mac_address")
+  new_names <- c(
+    bpm = "beatsPerMinute",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminheartrate",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminheartrate",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      bpm = 75,
+      status = "VALID",
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminMeta ============
+test_that("garminmeta", {
+  col_names <- c(
+    "time_from",
+    "time_to",
+    "n_accelerometer",
+    "n_actigraphy_1",
+    "n_actigraphy_2",
+    "n_actigraphy_3",
+    "n_bbi",
+    "n_enhanced_bbi",
+    "n_gyroscope",
+    "n_heartrate",
+    "n_respiration",
+    "n_skin_temperature",
+    "n_spo2",
+    "n_steps",
+    "n_stress"
+  )
+
+  new_names <- c(
+    time_from = "fromTime",
+    time_to = "toTime",
+    n_accelerometer = "accelerometer",
+    n_actigraphy_1 = "actigraphy1",
+    n_actigraphy_2 = "actigraphy2",
+    n_actigraphy_3 = "actigraphy3",
+    n_bbi = "bbi",
+    n_enhanced_bbi = "enhancedBbi",
+    n_gyroscope = "gyroscope",
+    n_heartrate = "heartRate",
+    n_respiration = "respiration",
+    n_skin_temperature = "skinTemperature",
+    n_spo2 = "spo2",
+    n_steps = "steps",
+    n_stress = "stress"
+  )
+
+  unit_test(
+    "garminmeta",
+    .cols = col_names
+  )
+
+  unit_test(
+    "garminmeta",
+    .cols = col_names,
+    time_from = "2021-11-14 16:00:00",
+    time_to = "2021-11-14 17:00:00",
+    n_accelerometer = 100,
+    n_actigraphy_1 = 10,
+    n_actigraphy_2 = 10,
+    n_actigraphy_3 = 10,
+    n_bbi = 50,
+    n_enhanced_bbi = 50,
+    n_gyroscope = 100,
+    n_heartrate = 60,
+    n_respiration = 60,
+    n_skin_temperature = 60,
+    n_spo2 = 60,
+    n_steps = 10,
+    n_stress = 60
+  )
+})
+
+# GarminRespiration ============
+test_that("garminrespiration", {
+  .cols <- c("bpm", "status", "mac_address")
+  new_names <- c(
+    bpm = "breathsPerMinute",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminrespiration",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminrespiration",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      bpm = 16,
+      status = "VALID",
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminSkinTemperature ============
+test_that("garminskintemperature", {
+  .cols <- c("temperature", "status", "mac_address")
+  new_names <- c(mac_address = "macAddress")
+
+  unit_test_garmin(
+    "garminskintemperature",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminskintemperature",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      temperature = 36.5,
+      status = "VALID",
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminSPO2 ============
+test_that("garminspo2", {
+  .cols <- c("spo2", "mac_address")
+  new_names <- c(
+    spo2 = "spo2Reading",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminspo2",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminspo2",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      spo2 = 98,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminSteps ============
+test_that("garminsteps", {
+  .cols <- c("step_count", "total_steps", "mac_address")
+  new_names <- c(
+    step_count = "stepCount",
+    total_steps = "totalSteps",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminsteps",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    list(
+      startTimestamp = 1.636908e+12 + 123.456,
+      endTimestamp = 1.636908e+12 + 5123.456
+    )
+  )
+
+  unit_test_garmin(
+    "garminsteps",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    list(
+      startTimestamp = 1.636908e+12 + 123.456,
+      endTimestamp = 1.636908e+12 + 5123.456,
+      step_count = 50,
+      total_steps = 5000,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminStress ============
+test_that("garminstress", {
+  .cols <- c("stress", "status", "mac_address")
+  new_names <- c(
+    stress = "stressScore",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminstress",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminstress",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      stress = 30,
+      status = "VALID",
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminWristStatus ============
+test_that("garminwriststatus", {
+  .cols <- c("status", "mac_address")
+  new_names <- c(status = "status", mac_address = "macAddress")
+
+  unit_test_garmin(
+    "garminwriststatus",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456
+    )
+  )
+
+  unit_test_garmin(
+    "garminwriststatus",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      status = "ON_WRIST",
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminZeroCrossing ============
+test_that("garminzerocrossing", {
+  .cols <- c("total_energy", "n_zero_crossing", "deadband", "mac_address")
+  new_names <- c(
+    total_energy = "totalEnergy",
+    n_zero_crossing = "zeroCrossingCount",
+    deadband = "deadband",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminzerocrossing",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    list(
+      startTimestamp = 1.636908e+12 + 123.456,
+      endTimestamp = 1.636908e+12 + 5123.456
+    )
+  )
+
+  unit_test_garmin(
+    "garminzerocrossing",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    list(
+      startTimestamp = 1.636908e+12 + 123.456,
+      endTimestamp = 1.636908e+12 + 5123.456,
+      total_energy = 100.5,
+      n_zero_crossing = 50,
+      deadband = 2,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
   )
 })

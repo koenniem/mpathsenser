@@ -285,7 +285,7 @@ alias_column_names.garminaccelerometer <- function(data, ...) {
 #' @keywords internal
 alias_column_names.garminactigraphy <- function(data, ...) {
   data |>
-    select(-"end_time") |>
+    select(-dplyr::any_of("end_time")) |>
     dplyr::rename_with(
       .fn = \(colnames) {
         dplyr::case_match(
@@ -481,7 +481,7 @@ alias_column_names.garminspo2 <- function(data, ...) {
 #' @keywords internal
 alias_column_names.garminsteps <- function(data, ...) {
   data |>
-    select(-"end_time") |>
+    select(-dplyr::any_of("end_time")) |>
     dplyr::rename_with(
       .fn = \(colnames) {
         dplyr::case_match(
@@ -543,7 +543,7 @@ alias_column_names.garminwriststatus <- function(data, ...) {
 #' @keywords internal
 alias_column_names.garminzerocrossing <- function(data, ...) {
   data |>
-    select(-"end_time") |>
+    select(-dplyr::any_of("end_time")) |>
     dplyr::rename_with(
       .fn = \(colnames) {
         dplyr::case_match(
