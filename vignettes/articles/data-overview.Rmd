@@ -9,11 +9,14 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
+
+```{=html}
 <script>
 $(document).ready(function(){
-    $('[data-toggle="popover"]').popover(); 
+    $('[data-toggle="popover"]').popover();
 });
 </script>
+```
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
@@ -52,16 +55,20 @@ pop <- spec_popover(
 
 This vignette provides an overview of the data stored in an `mpathsenser` database by `import()`. The database scheme is shown below.
 
-```{r database scheme, echo=FALSE, fig.cap="Figure 1: `mpathsenser` database scheme.", out.width = '100%'}
-knitr::include_graphics("https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/raw/master/inst/extdata/mpathsenser_db.png")
+```{r database scheme, echo=FALSE, fig.cap="Figure 1: `mpathsenser` database scheme. The underlined fields constitute the primary key of the table.", out.width = '100%'}
+knitr::include_graphics("https://github.com/koenniem/mpathsenser/blob/master/inst/extdata/mpathsenser_db.png?raw=true")
 ```
 
-As can be seen in the scheme, the database can be divided into roughly two parts: meta-data and sensor-specific data. Meta-data stores data about the study itself, the participants, and the processed files. On the other hand, sensor-specific tables store the values from the sensors, which are linked to the meta-data. 
+As can be seen in Figure 1, the database can be divided into roughly two parts: meta-data and sensor-specific data. Meta-data stores data about the study itself, the participants, and the processed files. On the other hand, sensor-specific tables store the values from the sensors, which are linked to the meta-data.
 
-The tables below describes what meta-data is collected for every sensor. Sensor-specific collected data is provided in the subsequent tables.
+The tables below describes what meta-data is collected for every sensor. Sensor-specific collected data is provided in the subsequent tables. Tables for Garmin direct sensing are provided in a separate section.
+
+Note that primary keys are [underlined]{.underline} in the tables below.
 
 ## Meta-data
+
 ### Study
+
 This table contains information about the study itself. The data from this table can be accessed using `get_studies()`.
 
 ```{r study-table, echo=FALSE}
@@ -70,105 +77,117 @@ tribble(
   "study_id", "character", "ID of the study.",
   "data_format", "character", "Name indicating which data format is used."
 ) |>
-  kbl(booktabs = TRUE) |>
+  mutate(Variable = cell_spec(Variable, underline = Variable == "study_id")) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Participant
+
 This table contains information about the participants. The data from this table can be accessed using `get_participants()`.
+
 ```{r participant-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "participant_id", "character", "Unique ID of the participant.",
-  "study_id", "character", "ID of the study."
+  ~Variable        , ~Type       , ~Description                    ,
+  "participant_id" , "character" , "Unique ID of the participant." ,
+  "study_id"       , "character" , "ID of the study."
 ) |>
-  kbl(booktabs = TRUE) |>
+  mutate(Variable = cell_spec(Variable, underline = Variable == "participant_id")) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### ProcessedFiles
+
 This table is not normally needed for users of this package, but is essential to `import()` as it keeps tracks of which files have already been imported. The data from this table can be accessed using `get_processed_files()`.
 
 ```{r processedfiles-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "file_name", "character", "Name of the JSON file containing the raw data.",
-  "participant_id", "character", "Unique ID of the participant.",
-  "study_id", "character", "ID of the study."
+  ~Variable        , ~Type       , ~Description                                     ,
+  "file_name"      , "character" , "Name of the JSON file containing the raw data." ,
+  "participant_id" , "character" , "Unique ID of the participant."                  ,
+  "study_id"       , "character" , "ID of the study."
 ) |>
-  kbl(booktabs = TRUE) |>
+  mutate(Variable = cell_spec(Variable, underline = Variable == "file_name")) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ## Sensor-specific tables
+
 The tables below describe the data collected for each sensor. The data from these tables can be accessed using `get_data()`.
 
 ### Accelerometer
+
 ```{r accelerometer-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters.",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "x (deprecated, removed from db)", "double", "Acceleration force along the x axis (including gravity) measured in $m/s^2$. When the device is held upright facing the user, positive values mean the device is moving to the right and negative mean it is moving to the left.",
-  "y (deprecated, removed from db)", "double", "Acceleration force along the y axis (including gravity) measured in $m/s^2$. When the device is held upright facing the user, positive values mean the device is moving towards the sky and negative mean it is moving towards the ground.",
-  "z (deprecated, removed from db)", "double", "Acceleration force along the z axis (including gravity) measured in $m/s^2$. This uses a right-handed coordinate system. So when the device is held upright and facing the user, positive values mean the device is moving towards the user and negative mean it is moving away from them.",
-  "x_mean", "double", "Mean value of the acceleration force along the x axis over a specific time window.",
-  "y_mean", "double", "Mean value of the acceleration force along the y axis over a specific time window.",
-  "z_mean", "double", "Mean value of the acceleration force along the z axis over a specific time window.",
-  "x_median", "double", "Median value of the acceleration force along the x axis over a specific time window.",
-  "y_median", "double", "Median value of the acceleration force along the y axis over a specific time window.",
-  "z_median", "double", "Median value of the acceleration force along the z axis over a specific time window.",
-  "x_std", "double", "Standard deviation of the acceleration force along the x axis over a specific time window.",
-  "y_std", "double", "Standard deviation of the acceleration force along the y axis over a specific time window.",
-  "z_std", "double", "Standard deviation of the acceleration force along the z axis over a specific time window.",
-  "x_aad", "double", "Average absolute deviation of the acceleration force along the x axis over a specific time window.",
-  "y_aad", "double", "Average absolute deviation of the acceleration force along the y axis over a specific time window.",
-  "z_aad", "double", "Average absolute deviation of the acceleration force along the z axis over a specific time window.",
-  "x_min", "double", "Minimum value of the acceleration force along the x axis over a specific time window.",
-  "y_min", "double", "Minimum value of the acceleration force along the y axis over a specific time window.",
-  "z_min", "double", "Minimum value of the acceleration force along the z axis over a specific time window.",
-  "x_max", "double", "Maximum value of the acceleration force along the x axis over a specific time window.",
-  "y_max", "double", "Maximum value of the acceleration force along the y axis over a specific time window.",
-  "z_max", "double", "Maximum value of the acceleration force along the z axis over a specific time window.",
-  "x_max_min_diff", "double", "Difference between the maximum and minimum values of the acceleration force along the x axis over a specific time window.",
-  "y_max_min_diff", "double", "Difference between the maximum and minimum values of the acceleration force along the y axis over a specific time window.",
-  "z_max_min_diff", "double", "Difference between the maximum and minimum values of the acceleration force along the z axis over a specific time window.",
-  "x_mad", "double", "Median absolute deviation of the acceleration force along the x axis over a specific time window.",
-  "y_mad", "double", "Median absolute deviation of the acceleration force along the y axis over a specific time window.",
-  "z_mad", "double", "Median absolute deviation of the acceleration force along the z axis over a specific time window.",
-  "x_iqr", "double", "Interquartile range of the acceleration force along the x axis over a specific time window.",
-  "y_iqr", "double", "Interquartile range of the acceleration force along the y axis over a specific time window.",
-  "z_iqr", "double", "Interquartile range of the acceleration force along the z axis over a specific time window.",
-  "x_neg_n", "double", "Number of negative values in the acceleration force along the x axis over a specific time window.",
-  "y_neg_n", "double", "Number of negative values in the acceleration force along the y axis over a specific time window.",
-  "z_neg_n", "double", "Number of negative values in the acceleration force along the z axis over a specific time window.",
-  "x_pos_n", "double", "Number of positive values in the acceleration force along the x axis over a specific time window.",
-  "y_pos_n", "double", "Number of positive values in the acceleration force along the y axis over a specific time window.",
-  "z_pos_n", "double", "Number of positive values in the acceleration force along the z axis over a specific time window.",
-  "x_above_mean", "double", "Number of values above the mean in the acceleration force along the x axis over a specific time window.",
-  "y_above_mean", "double", "Number of values above the mean in the acceleration force along the y axis over a specific time window.",
-  "z_above_mean", "double", "Number of values above the mean in the acceleration force along the z axis over a specific time window.",
-  "x_energy", "double", "Energy of the signal along the x axis is computed by taking the mean of sum of squares of the values in a window in that particular axis.",
-  "y_energy", "double", "Energy of the signal along the y axis is computed by taking the mean of sum of squares of the values in a window in that particular axis.",
-  "z_energy", "double", "Energy of the signal along the z axis is computed by taking the mean of sum of squares of the values in a window in that particular axis.",
-  "avg_res_acc", "double", "Average resultant acceleration over the window is computed by taking average of the square roots of the values in each of the three axis squared and added together.",
-  "sma", "double", "Signal magnitude area is defined as the sum of absolute values of the three axis averaged over a window."
+  ~Variable                         , ~Type       , ~Description                                                                                                                                                                                                                                                                                 ,
+  "measurement_id"                  , "character" , "Uniquely generated measurement ID. Currently not present in the data."                                                                                                                                                                                                                      ,
+  "participant_id"                  , "character" , "Unique ID of the participant."                                                                                                                                                                                                                                                              ,
+  "date"                            , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                                                                                                                                     ,
+  "time"                            , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                         ,
+  "x (deprecated, removed from db)" , "double"    , "Acceleration force along the x axis (including gravity) measured in $m/s^2$. When the device is held upright facing the user, positive values mean the device is moving to the right and negative mean it is moving to the left."                                                           ,
+  "y (deprecated, removed from db)" , "double"    , "Acceleration force along the y axis (including gravity) measured in $m/s^2$. When the device is held upright facing the user, positive values mean the device is moving towards the sky and negative mean it is moving towards the ground."                                                 ,
+  "z (deprecated, removed from db)" , "double"    , "Acceleration force along the z axis (including gravity) measured in $m/s^2$. This uses a right-handed coordinate system. So when the device is held upright and facing the user, positive values mean the device is moving towards the user and negative mean it is moving away from them." ,
+  "x_mean"                          , "double"    , "Mean value of the acceleration force along the x axis over a specific time window."                                                                                                                                                                                                         ,
+  "y_mean"                          , "double"    , "Mean value of the acceleration force along the y axis over a specific time window."                                                                                                                                                                                                         ,
+  "z_mean"                          , "double"    , "Mean value of the acceleration force along the z axis over a specific time window."                                                                                                                                                                                                         ,
+  "x_median"                        , "double"    , "Median value of the acceleration force along the x axis over a specific time window."                                                                                                                                                                                                       ,
+  "y_median"                        , "double"    , "Median value of the acceleration force along the y axis over a specific time window."                                                                                                                                                                                                       ,
+  "z_median"                        , "double"    , "Median value of the acceleration force along the z axis over a specific time window."                                                                                                                                                                                                       ,
+  "x_std"                           , "double"    , "Standard deviation of the acceleration force along the x axis over a specific time window."                                                                                                                                                                                                 ,
+  "y_std"                           , "double"    , "Standard deviation of the acceleration force along the y axis over a specific time window."                                                                                                                                                                                                 ,
+  "z_std"                           , "double"    , "Standard deviation of the acceleration force along the z axis over a specific time window."                                                                                                                                                                                                 ,
+  "x_aad"                           , "double"    , "Average absolute deviation of the acceleration force along the x axis over a specific time window."                                                                                                                                                                                         ,
+  "y_aad"                           , "double"    , "Average absolute deviation of the acceleration force along the y axis over a specific time window."                                                                                                                                                                                         ,
+  "z_aad"                           , "double"    , "Average absolute deviation of the acceleration force along the z axis over a specific time window."                                                                                                                                                                                         ,
+  "x_min"                           , "double"    , "Minimum value of the acceleration force along the x axis over a specific time window."                                                                                                                                                                                                      ,
+  "y_min"                           , "double"    , "Minimum value of the acceleration force along the y axis over a specific time window."                                                                                                                                                                                                      ,
+  "z_min"                           , "double"    , "Minimum value of the acceleration force along the z axis over a specific time window."                                                                                                                                                                                                      ,
+  "x_max"                           , "double"    , "Maximum value of the acceleration force along the x axis over a specific time window."                                                                                                                                                                                                      ,
+  "y_max"                           , "double"    , "Maximum value of the acceleration force along the y axis over a specific time window."                                                                                                                                                                                                      ,
+  "z_max"                           , "double"    , "Maximum value of the acceleration force along the z axis over a specific time window."                                                                                                                                                                                                      ,
+  "x_max_min_diff"                  , "double"    , "Difference between the maximum and minimum values of the acceleration force along the x axis over a specific time window."                                                                                                                                                                  ,
+  "y_max_min_diff"                  , "double"    , "Difference between the maximum and minimum values of the acceleration force along the y axis over a specific time window."                                                                                                                                                                  ,
+  "z_max_min_diff"                  , "double"    , "Difference between the maximum and minimum values of the acceleration force along the z axis over a specific time window."                                                                                                                                                                  ,
+  "x_mad"                           , "double"    , "Median absolute deviation of the acceleration force along the x axis over a specific time window."                                                                                                                                                                                          ,
+  "y_mad"                           , "double"    , "Median absolute deviation of the acceleration force along the y axis over a specific time window."                                                                                                                                                                                          ,
+  "z_mad"                           , "double"    , "Median absolute deviation of the acceleration force along the z axis over a specific time window."                                                                                                                                                                                          ,
+  "x_iqr"                           , "double"    , "Interquartile range of the acceleration force along the x axis over a specific time window."                                                                                                                                                                                                ,
+  "y_iqr"                           , "double"    , "Interquartile range of the acceleration force along the y axis over a specific time window."                                                                                                                                                                                                ,
+  "z_iqr"                           , "double"    , "Interquartile range of the acceleration force along the z axis over a specific time window."                                                                                                                                                                                                ,
+  "x_neg_n"                         , "double"    , "Number of negative values in the acceleration force along the x axis over a specific time window."                                                                                                                                                                                          ,
+  "y_neg_n"                         , "double"    , "Number of negative values in the acceleration force along the y axis over a specific time window."                                                                                                                                                                                          ,
+  "z_neg_n"                         , "double"    , "Number of negative values in the acceleration force along the z axis over a specific time window."                                                                                                                                                                                          ,
+  "x_pos_n"                         , "double"    , "Number of positive values in the acceleration force along the x axis over a specific time window."                                                                                                                                                                                          ,
+  "y_pos_n"                         , "double"    , "Number of positive values in the acceleration force along the y axis over a specific time window."                                                                                                                                                                                          ,
+  "z_pos_n"                         , "double"    , "Number of positive values in the acceleration force along the z axis over a specific time window."                                                                                                                                                                                          ,
+  "x_above_mean"                    , "double"    , "Number of values above the mean in the acceleration force along the x axis over a specific time window."                                                                                                                                                                                    ,
+  "y_above_mean"                    , "double"    , "Number of values above the mean in the acceleration force along the y axis over a specific time window."                                                                                                                                                                                    ,
+  "z_above_mean"                    , "double"    , "Number of values above the mean in the acceleration force along the z axis over a specific time window."                                                                                                                                                                                    ,
+  "x_energy"                        , "double"    , "Energy of the signal along the x axis is computed by taking the mean of sum of squares of the values in a window in that particular axis."                                                                                                                                                  ,
+  "y_energy"                        , "double"    , "Energy of the signal along the y axis is computed by taking the mean of sum of squares of the values in a window in that particular axis."                                                                                                                                                  ,
+  "z_energy"                        , "double"    , "Energy of the signal along the z axis is computed by taking the mean of sum of squares of the values in a window in that particular axis."                                                                                                                                                  ,
+  "avg_res_acc"                     , "double"    , "Average resultant acceleration over the window is computed by taking average of the square roots of the values in each of the three axis squared and added together."                                                                                                                       ,
+  "sma"                             , "double"    , "Signal magnitude area is defined as the sum of absolute values of the three axis averaged over a window."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style() |>
   column_spec(1, color = c(rep("auto", 4), rep("red", 3), rep("auto", 41)))
 ```
 
 ### Activity
+
 ```{r activity-table, echo=FALSE}
 tribble(
   ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters.",
+  "measurement_id", "character", "Uniquely generated measurement ID. Currently not present in the data.",
   "participant_id", "character", "Unique ID of the participant.",
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
+  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000.",
   "confidence", "integer", "Acceleration force along the x axis (including gravity) measured in m/s^2.",
   "type", "character", "Type of activity recognized. Possible types of activities are:
   <ul>
@@ -181,18 +200,22 @@ tribble(
 	<li> TILTING - The device angle relative to gravity changed significantly.
   </ul>"
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### AirQuality
+
 ```{r airquality-table, echo=FALSE}
 tribble(
   ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters.",
+  "measurement_id", "character", "Uniquely generated measurement ID. Currently not present in the data.",
   "participant_id", "character", "Unique ID of the participant.",
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
+  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000.",
   "air_quality_index", "integer", "A score of the current air quality index. ",
   "air_quality_level", "character", "Air quality categorisation from EPA:
   <style type='text/css'>
@@ -250,54 +273,69 @@ tribble(
   "longitude", "variable", "Longitude of the monitoring station."
 ) |>
   mutate(Type = ifelse(Type == "variable", cell_spec(Type, popover = pop), Type)) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style() |>
   column_spec(3, extra_css = "word-break: break-all;")
 ```
 
 ### AppUsage
+
 ```{r appusage-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. Because each record contains a single app but one measurement contains multiple apps, apps within the same measurement share the same measurement_id but added with a suffix “_” and a number starting from 1.",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "end_time", "character", "The end time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "start", "character", "Start time of the of sampling window of this app, represented as an ISO 8601 date. This can vary slightly from the general start time.",
-  "end", "character", "End time of the of sampling window of this app, represented as an ISO 8601 date. This can vary slightly from the general end time.",
-  "usage", "integer", "A map of names of apps and their cumulative usage in seconds.",
-  "app", "character", "The last part of the application package name. For instance, “com.facebook.katana” would become “katana”.",
-  "package_name", "character", "The full application package name.",
-  "last_foreground", "character", "The time at which the application was last in the foreground. If the app had not yet been in the foreground, this is NA. Represented as an ISO 8601 date."
+  ~Variable         , ~Type       , ~Description                                                                                                                                                                                                                                                                               ,
+  "measurement_id"  , "character" , "Uniquely generated measurement ID. Currently not present in the data. Because each record contains a single app but one measurement contains multiple apps, apps within the same measurement share the same measurement_id but added with a suffix “_” and a number starting from 1." ,
+  "participant_id"  , "character" , "Unique ID of the participant."                                                                                                                                                                                                                                                            ,
+  "date"            , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                                                                                                                                   ,
+  "time"            , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                       ,
+  "end_time"        , "character" , "The end time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                         ,
+  "start"           , "character" , "Start time of the of sampling window of this app, represented as an ISO 8601 date. This can vary slightly from the general start time."                                                                                                                                                   ,
+  "end"             , "character" , "End time of the of sampling window of this app, represented as an ISO 8601 date. This can vary slightly from the general end time."                                                                                                                                                       ,
+  "usage"           , "integer"   , "A map of names of apps and their cumulative usage in seconds."                                                                                                                                                                                                                            ,
+  "app"             , "character" , "The last part of the application package name. For instance, “com.facebook.katana” would become “katana”."                                                                                                                                                                        ,
+  "package_name"    , "character" , "The full application package name."                                                                                                                                                                                                                                                       ,
+  "last_foreground" , "character" , "The time at which the application was last in the foreground. If the app had not yet been in the foreground, this is NA. Represented as an ISO 8601 date."
 ) |>
-  kbl(booktabs = TRUE) |>
+  mutate(
+    Variable = cell_spec(
+      Variable,
+      underline = Variable %in% c("participant_id", "date", "time", "app")
+    )
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Battery
+
 ```{r battery-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters.",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "battery_level", "integer", "The battery level in percent.",
-  "battery_status", "character", "The charging status of the battery: Full, charging, discharging, unknown."
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."              ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "battery_level"  , "integer"   , "The battery level in percent."                                                      ,
+  "battery_status" , "character" , "The charging status of the battery: Full, charging, discharging, unknown."
 ) |>
-  kbl(booktabs = TRUE) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Bluetooth
+
 ```{r bluetooth-table, echo=FALSE}
 tribble(
   ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. Because each record contains a Bluetooth device but one measurement contains devices, records within the same measurement share the same measurement_id but added with a suffix “_” and a number starting from 1.",
+  "measurement_id", "character", "Uniquely generated measurement ID. Currently not present in the data. Because each record contains a Bluetooth device but one measurement contains devices, records within the same measurement share the same measurement_id but added with a suffix “_” and a number starting from 1.",
   "participant_id", "character", "Unique ID of the participant.",
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
+  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000.",
   "start_scan", "character", "The time at which the scan started. Represented as an ISO 8601 date.",
   "end_scan", "character", "The time at which the scan ended. Represented as an ISO 8601 date.",
   "advertisement_name", "character", "The bluetooth advertising name of the device.",
@@ -314,42 +352,57 @@ tribble(
   "rssi", "integer", "The Received Signal Strength Indicator (RSSI) signal strength to the device in decibels referenced to one milliwatt (dBm) ranging from 0 to -100.",
   "tx_power_level", "integer", "The power level of the device in percentage."
 ) |>
+  mutate(
+    Variable = cell_spec(
+      Variable,
+      underline = Variable %in% c("participant_id", "date", "time", "bluetooth_device_id")
+    )
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Calendar
+
 This sensor was deprecated but for historical reasons is preserved in `mpathsenser`.
 
 ```{r calendar-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. Because each record contains an event but one measurement contains multiple events, events within the same measurement share the same measurement_id but added with a suffix “_” and a number starting from 1.",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "event_id", "character", "The unique identifier for this event.",
-  "calendar_id", "character", "The identifier of the calendar that this event is associated with.",
-  "title", "character", "The title of this event.",
-  "description", "character", "The description for this event.",
-  "start", "character", "Indicates when the event starts. Represented as an ISO 8601 date.",
-  "end", "character", "Indicates when the event ends. Represented as an ISO 8601 date.",
-  "all_day", "boolean", "Indicates if this is an all-day event.",
-  "location", "character", "The location of this event.",
-  "attendees", "character", "A list of attendees' name for this event. If multiple attendees are present, then these are separate by a comma."
+  ~Variable        , ~Type       , ~Description                                                                                                                                                                                                                                                                               ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. Because each record contains an event but one measurement contains multiple events, events within the same measurement share the same measurement_id but added with a suffix “_” and a number starting from 1." ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                                                                                                                                                                                                            ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                                                                                                                                   ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                       ,
+  "event_id"       , "character" , "The unique identifier for this event."                                                                                                                                                                                                                                                    ,
+  "calendar_id"    , "character" , "The identifier of the calendar that this event is associated with."                                                                                                                                                                                                                       ,
+  "title"          , "character" , "The title of this event."                                                                                                                                                                                                                                                                 ,
+  "description"    , "character" , "The description for this event."                                                                                                                                                                                                                                                          ,
+  "start"          , "character" , "Indicates when the event starts. Represented as an ISO 8601 date."                                                                                                                                                                                                                        ,
+  "end"            , "character" , "Indicates when the event ends. Represented as an ISO 8601 date."                                                                                                                                                                                                                          ,
+  "all_day"        , "boolean"   , "Indicates if this is an all-day event."                                                                                                                                                                                                                                                   ,
+  "location"       , "character" , "The location of this event."                                                                                                                                                                                                                                                              ,
+  "attendees"      , "character" , "A list of attendees' name for this event. If multiple attendees are present, then these are separate by a comma."
 ) |>
+  mutate(
+    Variable = cell_spec(
+      Variable,
+      underline = Variable %in%
+        c("participant_id", "date", "time", "event_id", "calendar_id", "start", "end")
+    )
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Connectivity
+
 ```{r connectivity-table, echo=FALSE}
 tribble(
   ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters.",
+  "measurement_id", "character", "Uniquely generated measurement ID. Currently not present in the data.",
   "participant_id", "character", "Unique ID of the participant.",
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
+  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000.",
   "connectivity_status", "character", "The status of the connectivity. One of the following values:
   <ul>
     <li> bluetooth: Device connected via Bluetooth
@@ -361,234 +414,292 @@ tribble(
     <li> unknown (error)
   </ul>"
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Device
+
 ```{r device-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters.",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "device_id", "character", "An identifier that is unique to the particular device on which this data was collected. Note that this ID will change if the user performs a factory reset on their device.",
-  "hardware", "character", "The hardware type from which this data was collected (e.g. 'iPhone 7,1' for iPhone 6 Plus).",
-  "device_name", "character", "Device name as specified by the OS.",
-  "device_manufacturer", "character", "Device manufacturer as specified by the OS.",
-  "device_model", "character", "Device model as specified by the OS.",
-  "operating_system", "character", "Device OS as specified by the OS.",
-  "platform", "character", "The platform type from which this Datum was collected. Either Android or iOS.",
-  "operating_system_version", "character", "The version of the operating system.",
-  "sdk", "character", "The version of the Sofware Development Kit (SDK) of Android or the iOS (Darwin) kernel."
+  ~Variable                  , ~Type       , ~Description                                                                                                                                                                  ,
+  "measurement_id"           , "character" , "Uniquely generated measurement ID. Currently not present in the data."                                                                                                       ,
+  "participant_id"           , "character" , "Unique ID of the participant."                                                                                                                                               ,
+  "date"                     , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                      ,
+  "time"                     , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                          ,
+  "device_id"                , "character" , "An identifier that is unique to the particular device on which this data was collected. Note that this ID will change if the user performs a factory reset on their device." ,
+  "hardware"                 , "character" , "The hardware type from which this data was collected (e.g. 'iPhone 7,1' for iPhone 6 Plus)."                                                                                 ,
+  "device_name"              , "character" , "Device name as specified by the OS."                                                                                                                                         ,
+  "device_manufacturer"      , "character" , "Device manufacturer as specified by the OS."                                                                                                                                 ,
+  "device_model"             , "character" , "Device model as specified by the OS."                                                                                                                                        ,
+  "operating_system"         , "character" , "Device OS as specified by the OS."                                                                                                                                           ,
+  "platform"                 , "character" , "The platform type from which this Datum was collected. Either Android or iOS."                                                                                               ,
+  "operating_system_version" , "character" , "The version of the operating system."                                                                                                                                        ,
+  "sdk"                      , "character" , "The version of the Sofware Development Kit (SDK) of Android or the iOS (Darwin) kernel."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Error
+
 This sensor was deprecated but for historical reasons is preserved in `mpathsenser`.
 
 ```{r error-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters.",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "message", "character", "An error message from a sensor."
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."              ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "message"        , "character" , "An error message from a sensor."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Geofence
+
 This sensor type has not yet been implemented in m-Path Sense, but is included here for completeness.
 
 ```{r geofence-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters.",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "center", "character", "The centre of the geofence as a GPS location.",
-  "dwell", "integer", "The dwell time of this geofence in milliseconds. If an object is located inside this geofence for more than a pre-specified number of milliseconds, the dwell event is fired.",
-  "name", "character", "The name of this geofence.",
-  "radius", "double", "The radius of the geofence in meters.",
-  "state", "character", "The possible states of a geofence event: enter, exit, dwell."
+  ~Variable        , ~Type       , ~Description                                                                                                                                                                    ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."                                                                                                         ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                                                                                                 ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                        ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                            ,
+  "center"         , "character" , "The centre of the geofence as a GPS location."                                                                                                                                 ,
+  "dwell"          , "integer"   , "The dwell time of this geofence in milliseconds. If an object is located inside this geofence for more than a pre-specified number of milliseconds, the dwell event is fired." ,
+  "name"           , "character" , "The name of this geofence."                                                                                                                                                    ,
+  "radius"         , "double"    , "The radius of the geofence in meters."                                                                                                                                         ,
+  "state"          , "character" , "The possible states of a geofence event: enter, exit, dwell."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Gyroscope
+
 ```{r gyroscope-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters.",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "x", "double", "Rate of rotation around the x axis measured in rad/s. When the device is held upright, this can also be thought of as describing 'pitch'. The top of the device will tilt towards or away from the user as this value changes.",
-  "y", "double", "Rate of rotation around the y axis measured in rad/s. When the device is held upright, this can also be thought of as describing 'yaw'. The lengthwise edge of the device will rotate towards or away from the user as this value changes.",
-  "z", "double", "Rate of rotation around the z axis measured in rad/s. When the device is held upright, this can also be thought of as describing 'roll'. When this changes the face of the device should remain facing forward, but the orientation will change from portrait to landscape and so on."
+  ~Variable        , ~Type       , ~Description                                                                                                                                                                                                                                                                            ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."                                                                                                                                                                                                                 ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                                                                                                                                                                                                         ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                                                                                                                                ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                    ,
+  "x"              , "double"    , "Rate of rotation around the x axis measured in rad/s. When the device is held upright, this can also be thought of as describing 'pitch'. The top of the device will tilt towards or away from the user as this value changes."                                                        ,
+  "y"              , "double"    , "Rate of rotation around the y axis measured in rad/s. When the device is held upright, this can also be thought of as describing 'yaw'. The lengthwise edge of the device will rotate towards or away from the user as this value changes."                                            ,
+  "z"              , "double"    , "Rate of rotation around the z axis measured in rad/s. When the device is held upright, this can also be thought of as describing 'roll'. When this changes the face of the device should remain facing forward, but the orientation will change from portrait to landscape and so on."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Heartbeat
+
+The `Heartbeat` sensor is not so much a sensor, but rather a signal that is sent to the m-Path server to let it know that it is still active. If such a signal was not received after a certain period of time (configurable), a notification is sent to the phone that data collection has stopped and that the app should be reopened. Note that even if a heartbeat is present, it does not guarantee that data can actually be collected.
+
 ```{r heartbeat-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters.",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "period", "integer", "The period of heartbeats per minute. Defaults to 5 minutes.",
-  "device_type", "character", "The type of device.",
-  "device_role_name", "character", "The role name of the device in the protocol."
+  ~Variable          , ~Type       , ~Description                                                                         ,
+  "measurement_id"   , "character" , "Uniquely generated measurement ID. Currently not present in the data."              ,
+  "participant_id"   , "character" , "Unique ID of the participant."                                                      ,
+  "date"             , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"             , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "period"           , "integer"   , "The period of heartbeats per minute. Defaults to 5 minutes."                        ,
+  "device_type"      , "character" , "The type of device."                                                                ,
+  "device_role_name" , "character" , "The role name of the device in the protocol."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### InstalledApps
-_Deprecated_ due to package visibility constraints (see https://developer.android.com/training/package-visibility), the apps’ use of the permission needed to collect this information is subject to approval from the Google Play Store.
+
+*Deprecated* due to package visibility constraints (see https://developer.android.com/training/package-visibility), the apps’ use of the permission needed to collect this information is subject to approval from the Google Play Store.
+
 ```{r installedapps-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. Because each record contains a single app but a measurement contains multiple apps, apps within the same measurement share the same measurement_id but added with a suffix “_” and a number starting from 1.",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "Installed apps", "character", "The name of an installed app."
+  ~Variable        , ~Type       , ~Description                                                                                                                                                                                                                                                                             ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. Because each record contains a single app but a measurement contains multiple apps, apps within the same measurement share the same measurement_id but added with a suffix “_” and a number starting from 1." ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                                                                                                                                                                                                          ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                                                                                                                                 ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                     ,
+  "Installed apps" , "character" , "The name of an installed app."
 ) |>
+  mutate(
+    Variable = cell_spec(
+      Variable,
+      underline = Variable %in% c("participant_id", "date", "time", "app")
+    )
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Keyboard
+
 This sensor type has not yet been implemented in m-Path Sense, but is included here for completeness.
 
 ```{r keyboard-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. ",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "start", "character", "Timestamp of when the first key is pressed. Represented as an ISO 8601 date.",
-  "end", "character", "Timestamp of when the last key is pressed. Represented as an ISO 8601 date.",
-  "body", "character", "The text body of the typed message."
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. "             ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "start"          , "character" , "Timestamp of when the first key is pressed. Represented as an ISO 8601 date."       ,
+  "end"            , "character" , "Timestamp of when the last key is pressed. Represented as an ISO 8601 date."        ,
+  "body"           , "character" , "The text body of the typed message."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Light
+
 ```{r light-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. ",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "end_time", "character", "The time at which the sample of the data ended, represented as an ISO 8601 date.",
-  "mean_lux", "double", "The average light intensity of the sample in lux.",
-  "std_lux", "double", "The standard deviation of the light intensity of the sample in lux.",
-  "min_lux", "double", "The minimum light intensity of the sample in lux.",
-  "max_lux", "double", "The maximum light intensity of the sample in lux."
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. "             ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "end_time"       , "character" , "The time at which the sample of the data ended, represented as an ISO 8601 date."   ,
+  "mean_lux"       , "double"    , "The average light intensity of the sample in lux."                                  ,
+  "std_lux"        , "double"    , "The standard deviation of the light intensity of the sample in lux."                ,
+  "min_lux"        , "double"    , "The minimum light intensity of the sample in lux."                                  ,
+  "max_lux"        , "double"    , "The maximum light intensity of the sample in lux."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Location
+
 ```{r location-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. ",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "latitude", "variable", "The latitude of this position in degrees normalized to the interval -90.0 to +90.0 (both inclusive).",
-  "longitude", "variable", "The longitude of the position in degrees normalized to the interval -180 (exclusive) to +180 (inclusive).",
-  "altitude", "double", "Altitude in meters above the WGS 84 reference ellipsoid. The altitude is not available on all devices. In these cases the returned value is 0.0.",
-  "accuracy", "double", "The estimated horizontal accuracy of the position, radial, in meters.",
-  "vertical_accuracy", "double", "Estimated vertical accuracy of this location, in meters.",
-  "speed", "double", "The speed at which the devices is traveling in meters per second over ground. The speed is not on all devices. In these cases the returned value is 0.0.",
-  "speed_accuracy", "double", "The estimated speed accuracy of this position, in meters per second. The speed accuracy is not on all devices. In these cases the returned value is 0.0.",
-  "heading", "double", "The heading in which the device is traveling in degrees. Only available on Android. The heading is not on all devices. In these cases the returned value is 0.0.",
-  "heading_accuracy", "double", "The estimated bearing accuracy of this location, in degrees. Only available on Android.",
-  "is_mock", "boolean", "Is the location currently mocked. Always false on iOS."
+  ~Variable           , ~Type       , ~Description                                                                                                                                                       ,
+  "measurement_id"    , "character" , "Uniquely generated measurement ID. Currently not present in the data. "                                                                                           ,
+  "participant_id"    , "character" , "Unique ID of the participant."                                                                                                                                    ,
+  "date"              , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                           ,
+  "time"              , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                               ,
+  "latitude"          , "variable"  , "The latitude of this position in degrees normalized to the interval -90.0 to +90.0 (both inclusive)."                                                             ,
+  "longitude"         , "variable"  , "The longitude of the position in degrees normalized to the interval -180 (exclusive) to +180 (inclusive)."                                                        ,
+  "altitude"          , "double"    , "Altitude in meters above the WGS 84 reference ellipsoid. The altitude is not available on all devices. In these cases the returned value is 0.0."                 ,
+  "accuracy"          , "double"    , "The estimated horizontal accuracy of the position, radial, in meters."                                                                                            ,
+  "vertical_accuracy" , "double"    , "Estimated vertical accuracy of this location, in meters."                                                                                                         ,
+  "speed"             , "double"    , "The speed at which the devices is traveling in meters per second over ground. The speed is not on all devices. In these cases the returned value is 0.0."         ,
+  "speed_accuracy"    , "double"    , "The estimated speed accuracy of this position, in meters per second. The speed accuracy is not on all devices. In these cases the returned value is 0.0."         ,
+  "heading"           , "double"    , "The heading in which the device is traveling in degrees. Only available on Android. The heading is not on all devices. In these cases the returned value is 0.0." ,
+  "heading_accuracy"  , "double"    , "The estimated bearing accuracy of this location, in degrees. Only available on Android."                                                                          ,
+  "is_mock"           , "boolean"   , "Is the location currently mocked. Always false on iOS."
 ) |>
   mutate(Type = ifelse(Type == "variable", cell_spec(Type, popover = pop), Type)) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Memory
+
 ```{r memory-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. ",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "free_physical_memory", "double", "Amount of free physical memory in bytes.",
-  "free_virtual_memory", "double", "Amount of free virtual memory in bytes."
+  ~Variable              , ~Type       , ~Description                                                                         ,
+  "measurement_id"       , "character" , "Uniquely generated measurement ID. Currently not present in the data. "             ,
+  "participant_id"       , "character" , "Unique ID of the participant."                                                      ,
+  "date"                 , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"                 , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "free_physical_memory" , "double"    , "Amount of free physical memory in bytes."                                           ,
+  "free_virtual_memory"  , "double"    , "Amount of free virtual memory in bytes."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Noise
+
 This sensor has currently been removed from m-Path Sense due to sampling issues. Moreover, background sampling capabilities have been restricted by both Android and iOS due to privacy concerns.
 
 ```{r noise-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. ",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "end_time", "character", "The time at which the sample of the data ended, represented as an ISO 8601 date.",
-  "mean_decibel", "double", "Mean decibel of sampling window.",
-  "std_decibel", "double", "Standard deviation (in decibel) of sampling window.",
-  "min_decibel", "double", "Minimum decibel of sampling window.",
-  "max_decibel", "double", "Maximum decibel of sampling window."
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. "             ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "end_time"       , "character" , "The time at which the sample of the data ended, represented as an ISO 8601 date."   ,
+  "mean_decibel"   , "double"    , "Mean decibel of sampling window."                                                   ,
+  "std_decibel"    , "double"    , "Standard deviation (in decibel) of sampling window."                                ,
+  "min_decibel"    , "double"    , "Minimum decibel of sampling window."                                                ,
+  "max_decibel"    , "double"    , "Maximum decibel of sampling window."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Pedometer
+
 ```{r pedometer-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. ",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "step_count", "integer", "Cumulative number of steps as measured by the phone’s operating system since the last reboot."
+  ~Variable        , ~Type       , ~Description                                                                                      ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. "                          ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                   ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                          ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."              ,
+  "step_count"     , "integer"   , "Cumulative number of steps as measured by the phone’s operating system since the last reboot."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### PhoneLog
+
 This sensor was removed from m-Path Sense because Google Play does not allow apps to access the call log anymore. This is due to privacy concerns.
 
 ```{r phonelog-table, echo=FALSE}
 tribble(
   ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. ",
+  "measurement_id", "character", "Uniquely generated measurement ID. Currently not present in the data. ",
   "participant_id", "character", "Unique ID of the participant.",
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
+  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000.",
   "call_type", "character", "Type of call:
   <ul>
     <li> answered_externally </li>
@@ -606,18 +717,22 @@ tribble(
   "name", "character", "The name of the caller (if available).",
   "number", "character", "The phone number"
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Screen
+
 ```{r screen-table, echo=FALSE}
 tribble(
   ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. ",
+  "measurement_id", "character", "Uniquely generated measurement ID. Currently not present in the data. ",
   "participant_id", "character", "Unique ID of the participant.",
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
+  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000.",
   "screen_event", "character", "Whenever a screen change occurs, one of three states:
   <ul>
     <li> SCREEN_ON </li>
@@ -625,20 +740,24 @@ tribble(
     <li> SCREEN_UNLOCKED </li>
   </ul>"
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### TextMessage
+
 This sensor was removed from m-Path Sense because Google Play does not allow apps to access text messages anymore. This is due to privacy concerns.
 
 ```{r textmessage-table, echo=FALSE}
 tribble(
   ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters.",
+  "measurement_id", "character", "Uniquely generated measurement ID. Currently not present in the data.",
   "participant_id", "character", "Unique ID of the participant.",
   "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
+  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000.",
   "address", "character", "The receiver address of this message.",
   "body", "character", "The text body of this message.",
   "text_date", "character", "The date this message was created.",
@@ -660,71 +779,393 @@ tribble(
     <li> sent </li>
   </ul>"
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Timezone
+
 ```{r timezone-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. ",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "timezone", "character", "The current time zone of the device. See <a href='https://en.wikipedia.org/wiki/List_of_tz_database_time_zones'>https://en.wikipedia.org/wiki/List_of_tz_database_time_zones</a>"
+  ~Variable        , ~Type       , ~Description                                                                                                                                                                       ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. "                                                                                                           ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                                                                                                    ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                           ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                               ,
+  "timezone"       , "character" , "The current time zone of the device. See <a href='https://en.wikipedia.org/wiki/List_of_tz_database_time_zones'>https://en.wikipedia.org/wiki/List_of_tz_database_time_zones</a>"
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style() |>
   column_spec(3, extra_css = "word-break: break-all;")
 ```
 
 ### Weather
+
 ```{r weather-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. ",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "country", "character", "Abbreviation of the country. For instance, Belgium is “BE”.",
-  "area_name", "character", "City name.",
-  "weather_main", "character", "Group of weather parameters (Rain, Snow, Clouds etc.)",
-  "weather_description", "character", "Weather condition within the group.",
-  "sunrise", "character", "Sunrise time. Represented as an ISO 8601 date.",
-  "sunset", "character", "Sunset time. Represented as an ISO 8601 date.",
-  "Latitude", "variable", "The latitude of this position in degrees normalized to the interval -90.0 to +90.0 (both inclusive).",
-  "Longitude", "variable", "The longitude of the position in degrees normalized to the interval -180 (exclusive) to +180 (inclusive).",
-  "pressure", "integer", "Atmospheric pressure on the sea level in hPa.",
-  "wind_speed", "double", "Wind speed in metres per second. ",
-  "wind_degree", "double", "Wind direction in degrees (meteorological). ",
-  "humidity", "integer", "Humidity in percentage.",
-  "cloudiness", "integer", "Cloudiness in percentage.",
-  "rain_last_hour", "double", "Rain volume for the last 1 hour in millimetres.",
-  "rain_last_3hours", "double", "Rain volume for the last 3 hours in millimetres.",
-  "snow_last_hour", "double", "Snow volume for the last 1 hour in millimetres.",
-  "snow_last_3hours", "double", "Snow volume for the last 3 hours in millimetres.",
-  "temperature", "double", "Temperature in Celsius.",
-  "temp_min", "double", "Minimum temperature in Celsius at the moment. This is minimal currently observed temperature (within large megalopolises and urban areas).",
-  "temp_max", "double", "Maximum temperature in Celsius at the moment. This is maximal currently observed temperature (within large megalopolises and urban areas)."
+  ~Variable             , ~Type       , ~Description                                                                                                                                 ,
+  "measurement_id"      , "character" , "Uniquely generated measurement ID. Currently not present in the data. "                                                                     ,
+  "participant_id"      , "character" , "Unique ID of the participant."                                                                                                              ,
+  "date"                , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                     ,
+  "time"                , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                         ,
+  "country"             , "character" , "Abbreviation of the country. For instance, Belgium is “BE”."                                                                            ,
+  "area_name"           , "character" , "City name."                                                                                                                                 ,
+  "weather_main"        , "character" , "Group of weather parameters (Rain, Snow, Clouds etc.)"                                                                                      ,
+  "weather_description" , "character" , "Weather condition within the group."                                                                                                        ,
+  "sunrise"             , "character" , "Sunrise time. Represented as an ISO 8601 date."                                                                                             ,
+  "sunset"              , "character" , "Sunset time. Represented as an ISO 8601 date."                                                                                              ,
+  "Latitude"            , "variable"  , "The latitude of this position in degrees normalized to the interval -90.0 to +90.0 (both inclusive)."                                       ,
+  "Longitude"           , "variable"  , "The longitude of the position in degrees normalized to the interval -180 (exclusive) to +180 (inclusive)."                                  ,
+  "pressure"            , "integer"   , "Atmospheric pressure on the sea level in hPa."                                                                                              ,
+  "wind_speed"          , "double"    , "Wind speed in metres per second. "                                                                                                          ,
+  "wind_degree"         , "double"    , "Wind direction in degrees (meteorological). "                                                                                               ,
+  "humidity"            , "integer"   , "Humidity in percentage."                                                                                                                    ,
+  "cloudiness"          , "integer"   , "Cloudiness in percentage."                                                                                                                  ,
+  "rain_last_hour"      , "double"    , "Rain volume for the last 1 hour in millimetres."                                                                                            ,
+  "rain_last_3hours"    , "double"    , "Rain volume for the last 3 hours in millimetres."                                                                                           ,
+  "snow_last_hour"      , "double"    , "Snow volume for the last 1 hour in millimetres."                                                                                            ,
+  "snow_last_3hours"    , "double"    , "Snow volume for the last 3 hours in millimetres."                                                                                           ,
+  "temperature"         , "double"    , "Temperature in Celsius."                                                                                                                    ,
+  "temp_min"            , "double"    , "Minimum temperature in Celsius at the moment. This is minimal currently observed temperature (within large megalopolises and urban areas)." ,
+  "temp_max"            , "double"    , "Maximum temperature in Celsius at the moment. This is maximal currently observed temperature (within large megalopolises and urban areas)."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   mutate(Type = ifelse(Type == "variable", cell_spec(Type, popover = pop), Type)) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
 
 ### Wifi
+
 ```{r wifi-table, echo=FALSE}
 tribble(
-  ~Variable, ~Type, ~Description,
-  "measurement_id", "character", "Uniquely generated measurement ID. Currently a string of 36 in the format of 8-4-4-4-12 characters. ",
-  "participant_id", "character", "Unique ID of the participant.",
-  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
-  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000.",
-  "ssid", "character", "Wi-Fi service set ID (SSID) of the connected network.",
-  "bssid", "character", "Basic service set identifier (BSSID) of the connected network.",
-  "ip", "character", "The internet protocol (IP) address of the connected network."
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. "             ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "ssid"           , "character" , "Wi-Fi service set ID (SSID) of the connected network."                              ,
+  "bssid"          , "character" , "Basic service set identifier (BSSID) of the connected network."                     ,
+  "ip"             , "character" , "The internet protocol (IP) address of the connected network."
 ) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+## Garmin sensor tables
+
+The following tables describe data collected from Garmin wearable devices as they are represented in the mpathsenser. These sensors provide high-resolution physiological and movement data. See also the [m-Path manual](https://manual.m-path.io/knowledge-base/wearables-garmin-direct-integration/#garmin-measurement-types) for more information on the raw data.
+
+### GarminAccelerometer
+
+```{r garminaccelerometer-table, echo=FALSE}
+tribble(
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."              ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "x"              , "double"    , "Acceleration force along the x axis measured in milli-g (gravitational force)."     ,
+  "y"              , "double"    , "Acceleration force along the y axis measured in milli-g (gravitational force)."     ,
+  "z"              , "double"    , "Acceleration force along the z axis measured in milli-g (gravitational force)."     ,
+  "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminActigraphy
+
+```{r garminactigraphy-table, echo=FALSE}
+tribble(
+  ~Variable              , ~Type       , ~Description                                                                                              ,
+  "measurement_id"       , "character" , "Uniquely generated measurement ID. Currently not present in the data."                                   ,
+  "participant_id"       , "character" , "Unique ID of the participant."                                                                           ,
+  "date"                 , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                  ,
+  "time"                 , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                      ,
+  "end_time"             , "character" , "The end time of the measurement. Represented as an ISO 8601 date."                                       ,
+  "instance"             , "character" , "Instance identifier for the actigraphy measurement (e.g., 'Actigraphy1', 'Actigraphy2', 'Actigraphy3')." ,
+  "total_energy"         , "integer"   , "Accumulated magnitude of acceleration during the measurement period."                                    ,
+  "n_zero_crossing"      , "integer"   , "Number of zero crossings detected during the measurement period."                                        ,
+  "time_above_threshold" , "double"    , "Time in seconds spent above the configured activity threshold."                                          ,
+  "mac_address"          , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(
+      Variable,
+      underline = Variable %in% c("participant_id", "date", "time", "instance")
+    )
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminBBI
+
+```{r garminbbi-table, echo=FALSE}
+tribble(
+  ~Variable        , ~Type       , ~Description                                                                                      ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."                           ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                   ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                          ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."              ,
+  "bbi"            , "integer"   , "Beat-to-beat interval in milliseconds. This represents the time between consecutive heartbeats." ,
+  "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminEnhancedBBI
+
+```{r garminenhancedbbi-table, echo=FALSE}
+tribble(
+  ~Variable        , ~Type       , ~Description                                                                                      ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."                           ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                   ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                          ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."              ,
+  "bbi"            , "integer"   , "Beat-to-beat interval in milliseconds. This represents the time between consecutive heartbeats." ,
+  "status"         , "character" , "Status of the BBI measurement (e.g., 'highConfidence', 'lowConfidence')."                        ,
+  "gap_duration"   , "integer"   , "Duration of any gap in the BBI measurement in milliseconds."                                     ,
+  "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminGyroscope
+
+```{r garmingyroscope-table, echo=FALSE}
+tribble(
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."              ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "x"              , "double"    , "Rate of rotation around the x axis measured in degrees per second."                 ,
+  "y"              , "double"    , "Rate of rotation around the y axis measured in degrees per second."                 ,
+  "z"              , "double"    , "Rate of rotation around the z axis measured in degrees per second."                 ,
+  "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminHeartRate
+
+```{r garminheartrate-table, echo=FALSE}
+tribble(
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."              ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "bpm"            , "integer"   , "Heart rate in beats per minute."                                                    ,
+  "status"         , "character" , "Status of the heart rate measurement (e.g., 'LOCKED', 'SEARCHING')."                ,
+  "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminMeta
+
+Garmin direct sensing data is by default pulled to the phone at most every 2 minutes. However, every timestamp in the Garmin tables represents the time of the actual underlying measurement, not the time at which it is pulled to the phone. This table provides information of the moments data is pulled to the phone, along with counts of the number of measurements collected for each sensor type during that period.
+
+```{r garminmeta-table, echo=FALSE}
+tribble(
+  ~Variable            , ~Type       , ~Description                                                                         ,
+  "measurement_id"     , "character" , "Uniquely generated measurement ID. Currently not present in the data."              ,
+  "participant_id"     , "character" , "Unique ID of the participant."                                                      ,
+  "date"               , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"               , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "time_from"          , "character" , "Start time of the metadata collection period. Represented as an ISO 8601 date."     ,
+  "time_to"            , "character" , "End time of the metadata collection period. Represented as an ISO 8601 date."       ,
+  "n_accelerometer"    , "integer"   , "Number of accelerometer measurements collected during this period."                 ,
+  "n_actigraphy_1"     , "integer"   , "Number of actigraphy measurements from instance 1 collected during this period."    ,
+  "n_actigraphy_2"     , "integer"   , "Number of actigraphy measurements from instance 2 collected during this period."    ,
+  "n_actigraphy_3"     , "integer"   , "Number of actigraphy measurements from instance 3 collected during this period."    ,
+  "n_bbi"              , "integer"   , "Number of BBI measurements collected during this period."                           ,
+  "n_enhanced_bbi"     , "integer"   , "Number of enhanced BBI measurements collected during this period."                  ,
+  "n_gyroscope"        , "integer"   , "Number of gyroscope measurements collected during this period."                     ,
+  "n_heartrate"        , "integer"   , "Number of heart rate measurements collected during this period."                    ,
+  "n_respiration"      , "integer"   , "Number of respiration measurements collected during this period."                   ,
+  "n_skin_temperature" , "integer"   , "Number of skin temperature measurements collected during this period."              ,
+  "n_spo2"             , "integer"   , "Number of SpO2 measurements collected during this period."                          ,
+  "n_steps"            , "integer"   , "Number of step measurements collected during this period."                          ,
+  "n_stress"           , "integer"   , "Number of stress measurements collected during this period."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminRespiration
+
+```{r garminrespiration-table, echo=FALSE}
+tribble(
+  ~Variable        , ~Type       , ~Description                                                                           ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."                ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                        ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."               ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."   ,
+  "bpm"            , "integer"   , "Respiration rate in breaths per minute. Will show as 0.0 if unavailable, see status." ,
+  "status"         , "character" , "Status of the respiration measurement."                                               ,
+  "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminSkinTemperature
+
+```{r garminskintemperature-table, echo=FALSE}
+tribble(
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."              ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "temperature"    , "double"    , "Skin temperature in degrees Celsius (0-65°C, 0.0 if unavailable)."                 ,
+  "status"         , "character" , "Status of the temperature measurement."                                             ,
+  "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminSPO2
+
+```{r garminspo2-table, echo=FALSE}
+tribble(
+  ~Variable        , ~Type       , ~Description                                                                                          ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."                               ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                       ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                              ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                  ,
+  "spo2"           , "integer"   , "Blood oxygen saturation level in percentage (0%-100%, ≤25% indicates resting, 0% if unavailable)." ,
+  "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminSteps
+
+```{r garminsteps-table, echo=FALSE}
+tribble(
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."              ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "end_time"       , "integer"   , "The end time of the measurement. Represented as an ISO 8601 date."                  ,
+  "step_count"     , "integer"   , "Number of steps taken during the measurement period."                               ,
+  "total_steps"    , "integer"   , "Cumulative total number of steps since the last reset (generally at midnight)."     ,
+  "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminStress
+
+```{r garminstress-table, echo=FALSE}
+tribble(
+  ~Variable        , ~Type       , ~Description                                                                         ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."              ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
+  "stress"         , "integer"   , "Stress level score. Higher values indicate higher stress levels."                   ,
+  "status"         , "character" , "Status of the stress measurement (e.g., 'valid', 'offWrist', 'largeMotion')."       ,
+  "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminWristStatus
+
+```{r garminwriststatus-table, echo=FALSE}
+tribble(
+  ~Variable        , ~Type       , ~Description                                                                                       ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."                            ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                    ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                           ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."               ,
+  "status"         , "character" , "Status indicating whether the device is being worn on the wrist (e.g., 'ON_WRIST', 'OFF_WRIST')." ,
+  "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
+### GarminZeroCrossing
+
+```{r garminzerocrossing-table, echo=FALSE}
+tribble(
+  ~Variable         , ~Type       , ~Description                                                                                              ,
+  "measurement_id"  , "character" , "Uniquely generated measurement ID. Currently not present in the data."                                   ,
+  "participant_id"  , "character" , "Unique ID of the participant."                                                                           ,
+  "date"            , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                  ,
+  "time"            , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                      ,
+  "end_time"        , "character" , "The end time of the measurement. Represented as an ISO 8601 date."                                       ,
+  "total_energy"    , "integer"   , "Total energy expenditure during the measurement period."                                                 ,
+  "n_zero_crossing" , "integer"   , "Number of zero crossings across the average total acceleration detected during the measurement period."  ,
+  "deadband"        , "integer"   , "Deadband (threshold) value required for a zero crossing to count, in milli-g. Defaults to 0 if not set." ,
+  "mac_address"     , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
+) |>
+  mutate(
+    Variable = cell_spec(Variable, underline = Variable %in% c("participant_id", "date", "time"))
+  ) |>
   kbl(booktabs = TRUE, escape = FALSE) |>
   table_style()
 ```
