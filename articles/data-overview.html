@@ -88,24 +88,27 @@
     
 <script>
 $(document).ready(function(){
-    $('[data-toggle="popover"]').popover(); 
+    $('[data-toggle="popover"]').popover();
 });
 </script><p>This vignette provides an overview of the data stored in an
 <code>mpathsenser</code> database by <code><a href="../reference/import.html">import()</a></code>. The database
 scheme is shown below.</p>
 <div class="figure">
-<img src="https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser/-/raw/master/inst/extdata/mpathsenser_db.png" class="r-plt" alt="Figure 1: `mpathsenser` database scheme." width="100%"><p class="caption">
-Figure 1: <code>mpathsenser</code> database scheme.
+<img src="https://github.com/koenniem/mpathsenser/blob/master/inst/extdata/mpathsenser_db.png?raw=true" class="r-plt" alt="Figure 1: `mpathsenser` database scheme. The underlined fields constitute the primary key of the table." width="100%"><p class="caption">
+Figure 1: <code>mpathsenser</code> database scheme. The underlined
+fields constitute the primary key of the table.
 </p>
 </div>
-<p>As can be seen in the scheme, the database can be divided into
-roughly two parts: meta-data and sensor-specific data. Meta-data stores
-data about the study itself, the participants, and the processed files.
-On the other hand, sensor-specific tables store the values from the
+<p>As can be seen in Figure 1, the database can be divided into roughly
+two parts: meta-data and sensor-specific data. Meta-data stores data
+about the study itself, the participants, and the processed files. On
+the other hand, sensor-specific tables store the values from the
 sensors, which are linked to the meta-data.</p>
 <p>The tables below describes what meta-data is collected for every
 sensor. Sensor-specific collected data is provided in the subsequent
-tables.</p>
+tables. Tables for Garmin direct sensing are provided in a separate
+section.</p>
+<p>Note that primary keys are <u>underlined</u> in the tables below.</p>
 <div class="section level2">
 <h2 id="meta-data">Meta-data<a class="anchor" aria-label="anchor" href="#meta-data"></a>
 </h2>
@@ -129,7 +132,7 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-study_id
+<span style="    text-decoration: underline; ">study_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -140,7 +143,7 @@ ID of the study.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-data_format
+<span style="     ">data_format</span>
 </td>
 <td style="text-align:left;">
 character
@@ -155,8 +158,8 @@ Name indicating which data format is used.
 <div class="section level3">
 <h3 id="participant">Participant<a class="anchor" aria-label="anchor" href="#participant"></a>
 </h3>
-This table contains information about the participants. The data from
-this table can be accessed using <code><a href="../reference/get_participants.html">get_participants()</a></code>.
+<p>This table contains information about the participants. The data from
+this table can be accessed using <code><a href="../reference/get_participants.html">get_participants()</a></code>.</p>
 <table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
 <thead><tr>
 <th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
@@ -172,7 +175,7 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -183,7 +186,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-study_id
+<span style="     ">study_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -217,7 +220,7 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-file_name
+<span style="    text-decoration: underline; ">file_name</span>
 </td>
 <td style="text-align:left;">
 character
@@ -228,7 +231,7 @@ Name of the JSON file containing the raw data.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="     ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -239,7 +242,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-study_id
+<span style="     ">study_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -276,19 +279,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -299,7 +301,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -310,19 +312,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: red !important;">
-x (deprecated, removed from db)
+<span style="     ">x (deprecated, removed from db)</span>
 </td>
 <td style="text-align:left;">
 double
@@ -337,7 +339,7 @@ left.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: red !important;">
-y (deprecated, removed from db)
+<span style="     ">y (deprecated, removed from db)</span>
 </td>
 <td style="text-align:left;">
 double
@@ -352,7 +354,7 @@ towards the ground.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: red !important;">
-z (deprecated, removed from db)
+<span style="     ">z (deprecated, removed from db)</span>
 </td>
 <td style="text-align:left;">
 double
@@ -367,7 +369,7 @@ towards the user and negative mean it is moving away from them.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_mean
+<span style="     ">x_mean</span>
 </td>
 <td style="text-align:left;">
 double
@@ -379,7 +381,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_mean
+<span style="     ">y_mean</span>
 </td>
 <td style="text-align:left;">
 double
@@ -391,7 +393,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_mean
+<span style="     ">z_mean</span>
 </td>
 <td style="text-align:left;">
 double
@@ -403,7 +405,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_median
+<span style="     ">x_median</span>
 </td>
 <td style="text-align:left;">
 double
@@ -415,7 +417,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_median
+<span style="     ">y_median</span>
 </td>
 <td style="text-align:left;">
 double
@@ -427,7 +429,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_median
+<span style="     ">z_median</span>
 </td>
 <td style="text-align:left;">
 double
@@ -439,7 +441,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_std
+<span style="     ">x_std</span>
 </td>
 <td style="text-align:left;">
 double
@@ -451,7 +453,7 @@ specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_std
+<span style="     ">y_std</span>
 </td>
 <td style="text-align:left;">
 double
@@ -463,7 +465,7 @@ specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_std
+<span style="     ">z_std</span>
 </td>
 <td style="text-align:left;">
 double
@@ -475,7 +477,7 @@ specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_aad
+<span style="     ">x_aad</span>
 </td>
 <td style="text-align:left;">
 double
@@ -487,7 +489,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_aad
+<span style="     ">y_aad</span>
 </td>
 <td style="text-align:left;">
 double
@@ -499,7 +501,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_aad
+<span style="     ">z_aad</span>
 </td>
 <td style="text-align:left;">
 double
@@ -511,7 +513,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_min
+<span style="     ">x_min</span>
 </td>
 <td style="text-align:left;">
 double
@@ -523,7 +525,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_min
+<span style="     ">y_min</span>
 </td>
 <td style="text-align:left;">
 double
@@ -535,7 +537,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_min
+<span style="     ">z_min</span>
 </td>
 <td style="text-align:left;">
 double
@@ -547,7 +549,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_max
+<span style="     ">x_max</span>
 </td>
 <td style="text-align:left;">
 double
@@ -559,7 +561,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_max
+<span style="     ">y_max</span>
 </td>
 <td style="text-align:left;">
 double
@@ -571,7 +573,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_max
+<span style="     ">z_max</span>
 </td>
 <td style="text-align:left;">
 double
@@ -583,7 +585,7 @@ time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_max_min_diff
+<span style="     ">x_max_min_diff</span>
 </td>
 <td style="text-align:left;">
 double
@@ -595,7 +597,7 @@ force along the x axis over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_max_min_diff
+<span style="     ">y_max_min_diff</span>
 </td>
 <td style="text-align:left;">
 double
@@ -607,7 +609,7 @@ force along the y axis over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_max_min_diff
+<span style="     ">z_max_min_diff</span>
 </td>
 <td style="text-align:left;">
 double
@@ -619,7 +621,7 @@ force along the z axis over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_mad
+<span style="     ">x_mad</span>
 </td>
 <td style="text-align:left;">
 double
@@ -631,7 +633,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_mad
+<span style="     ">y_mad</span>
 </td>
 <td style="text-align:left;">
 double
@@ -643,7 +645,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_mad
+<span style="     ">z_mad</span>
 </td>
 <td style="text-align:left;">
 double
@@ -655,7 +657,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_iqr
+<span style="     ">x_iqr</span>
 </td>
 <td style="text-align:left;">
 double
@@ -667,7 +669,7 @@ specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_iqr
+<span style="     ">y_iqr</span>
 </td>
 <td style="text-align:left;">
 double
@@ -679,7 +681,7 @@ specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_iqr
+<span style="     ">z_iqr</span>
 </td>
 <td style="text-align:left;">
 double
@@ -691,7 +693,7 @@ specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_neg_n
+<span style="     ">x_neg_n</span>
 </td>
 <td style="text-align:left;">
 double
@@ -703,7 +705,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_neg_n
+<span style="     ">y_neg_n</span>
 </td>
 <td style="text-align:left;">
 double
@@ -715,7 +717,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_neg_n
+<span style="     ">z_neg_n</span>
 </td>
 <td style="text-align:left;">
 double
@@ -727,7 +729,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_pos_n
+<span style="     ">x_pos_n</span>
 </td>
 <td style="text-align:left;">
 double
@@ -739,7 +741,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_pos_n
+<span style="     ">y_pos_n</span>
 </td>
 <td style="text-align:left;">
 double
@@ -751,7 +753,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_pos_n
+<span style="     ">z_pos_n</span>
 </td>
 <td style="text-align:left;">
 double
@@ -763,7 +765,7 @@ over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_above_mean
+<span style="     ">x_above_mean</span>
 </td>
 <td style="text-align:left;">
 double
@@ -775,7 +777,7 @@ axis over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_above_mean
+<span style="     ">y_above_mean</span>
 </td>
 <td style="text-align:left;">
 double
@@ -787,7 +789,7 @@ axis over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_above_mean
+<span style="     ">z_above_mean</span>
 </td>
 <td style="text-align:left;">
 double
@@ -799,7 +801,7 @@ axis over a specific time window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-x_energy
+<span style="     ">x_energy</span>
 </td>
 <td style="text-align:left;">
 double
@@ -811,7 +813,7 @@ sum of squares of the values in a window in that particular axis.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-y_energy
+<span style="     ">y_energy</span>
 </td>
 <td style="text-align:left;">
 double
@@ -823,7 +825,7 @@ sum of squares of the values in a window in that particular axis.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-z_energy
+<span style="     ">z_energy</span>
 </td>
 <td style="text-align:left;">
 double
@@ -835,7 +837,7 @@ sum of squares of the values in a window in that particular axis.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-avg_res_acc
+<span style="     ">avg_res_acc</span>
 </td>
 <td style="text-align:left;">
 double
@@ -848,7 +850,7 @@ squared and added together.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';color: auto !important;">
-sma
+<span style="     ">sma</span>
 </td>
 <td style="text-align:left;">
 double
@@ -879,19 +881,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -902,7 +903,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -913,19 +914,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-confidence
+<span style="     ">confidence</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -937,7 +938,7 @@ m/s^2.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-type
+<span style="     ">type</span>
 </td>
 <td style="text-align:left;">
 character
@@ -990,19 +991,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;word-break: break-all;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1013,7 +1013,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1024,19 +1024,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;word-break: break-all;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-air_quality_index
+<span style="     ">air_quality_index</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -1047,7 +1047,7 @@ A score of the current air quality index.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-air_quality_level
+<span style="     ">air_quality_level</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1135,7 +1135,7 @@ https://en.wikipedia.org/wiki/Air_quality_index#United_States</a>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-place
+<span style="     ">place</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1146,7 +1146,7 @@ Name of the monitoring station.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-latitude
+<span style="     ">latitude</span>
 </td>
 <td style="text-align:left;">
 <span style="     " data-toggle="popover" data-container="body" data-trigger="hover" data-placement="top" data-content="The type variable refers to the BLOB type in SQLite, which means that any type of data may be held by this field. This is commonly done when the original data type may be encrypted and is therefore text-based, while the original values are not.">variable</span>
@@ -1157,7 +1157,7 @@ Latitude of the monitoring station.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-longitude
+<span style="     ">longitude</span>
 </td>
 <td style="text-align:left;">
 <span style="     " data-toggle="popover" data-container="body" data-trigger="hover" data-placement="top" data-content="The type variable refers to the BLOB type in SQLite, which means that any type of data may be held by this field. This is commonly done when the original data type may be encrypted and is therefore text-based, while the original values are not.">variable</span>
@@ -1187,22 +1187,21 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters. Because each record contains a single
-app but one measurement contains multiple apps, apps within the same
-measurement share the same measurement_id but added with a suffix “_”
-and a number starting from 1.
+Uniquely generated measurement ID. Currently not present in the data.
+Because each record contains a single app but one measurement contains
+multiple apps, apps within the same measurement share the same
+measurement_id but added with a suffix “_” and a number starting from 1.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1213,7 +1212,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1224,31 +1223,31 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-end_time
+<span style="     ">end_time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The end time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-start
+<span style="     ">start</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1260,7 +1259,7 @@ Start time of the of sampling window of this app, represented as an ISO
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-end
+<span style="     ">end</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1272,7 +1271,7 @@ End time of the of sampling window of this app, represented as an ISO
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-usage
+<span style="     ">usage</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -1283,7 +1282,7 @@ A map of names of apps and their cumulative usage in seconds.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-app
+<span style="    text-decoration: underline; ">app</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1295,7 +1294,7 @@ The last part of the application package name. For instance,
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-package_name
+<span style="     ">package_name</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1306,7 +1305,7 @@ The full application package name.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-last_foreground
+<span style="     ">last_foreground</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1338,19 +1337,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1361,7 +1359,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1372,19 +1370,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-battery_level
+<span style="     ">battery_level</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -1395,7 +1393,7 @@ The battery level in percent.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-battery_status
+<span style="     ">battery_status</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1426,22 +1424,21 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters. Because each record contains a
-Bluetooth device but one measurement contains devices, records within
-the same measurement share the same measurement_id but added with a
-suffix “_” and a number starting from 1.
+Uniquely generated measurement ID. Currently not present in the data.
+Because each record contains a Bluetooth device but one measurement
+contains devices, records within the same measurement share the same
+measurement_id but added with a suffix “_” and a number starting from 1.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1452,7 +1449,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1463,19 +1460,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-start_scan
+<span style="     ">start_scan</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1486,7 +1483,7 @@ The time at which the scan started. Represented as an ISO 8601 date.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-end_scan
+<span style="     ">end_scan</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1497,7 +1494,7 @@ The time at which the scan ended. Represented as an ISO 8601 date.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-advertisement_name
+<span style="     ">advertisement_name</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1508,7 +1505,7 @@ The bluetooth advertising name of the device.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-bluetooth_device_id
+<span style="    text-decoration: underline; ">bluetooth_device_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1519,7 +1516,7 @@ The bluetooth id of the nearby device.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-bluetooth_device_name
+<span style="     ">bluetooth_device_name</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1530,7 +1527,7 @@ The bluetooth name of the nearby device.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-bluetooth_device_type
+<span style="     ">bluetooth_device_type</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1555,7 +1552,7 @@ unknown
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-connectable
+<span style="     ">connectable</span>
 </td>
 <td style="text-align:left;">
 boolean
@@ -1567,7 +1564,7 @@ represented as an integer where ‘0’ denotes false and ‘1’ denotes true.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-rssi
+<span style="     ">rssi</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -1580,7 +1577,7 @@ device in decibels referenced to one milliwatt (dBm) ranging from 0 to
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-tx_power_level
+<span style="     ">tx_power_level</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -1612,22 +1609,21 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters. Because each record contains an event
-but one measurement contains multiple events, events within the same
-measurement share the same measurement_id but added with a suffix “_”
-and a number starting from 1.
+Uniquely generated measurement ID. Currently not present in the data.
+Because each record contains an event but one measurement contains
+multiple events, events within the same measurement share the same
+measurement_id but added with a suffix “_” and a number starting from 1.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1638,7 +1634,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1649,19 +1645,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-event_id
+<span style="    text-decoration: underline; ">event_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1672,7 +1668,7 @@ The unique identifier for this event.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-calendar_id
+<span style="    text-decoration: underline; ">calendar_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1683,7 +1679,7 @@ The identifier of the calendar that this event is associated with.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-title
+<span style="     ">title</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1694,7 +1690,7 @@ The title of this event.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-description
+<span style="     ">description</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1705,7 +1701,7 @@ The description for this event.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-start
+<span style="    text-decoration: underline; ">start</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1716,7 +1712,7 @@ Indicates when the event starts. Represented as an ISO 8601 date.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-end
+<span style="    text-decoration: underline; ">end</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1727,7 +1723,7 @@ Indicates when the event ends. Represented as an ISO 8601 date.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-all_day
+<span style="     ">all_day</span>
 </td>
 <td style="text-align:left;">
 boolean
@@ -1738,7 +1734,7 @@ Indicates if this is an all-day event.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-location
+<span style="     ">location</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1749,7 +1745,7 @@ The location of this event.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-attendees
+<span style="     ">attendees</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1780,19 +1776,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1803,7 +1798,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1814,19 +1809,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-connectivity_status
+<span style="     ">connectivity_status</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1879,19 +1874,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1902,7 +1896,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1913,19 +1907,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-device_id
+<span style="     ">device_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1938,7 +1932,7 @@ factory reset on their device.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-hardware
+<span style="     ">hardware</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1950,7 +1944,7 @@ for iPhone 6 Plus).
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-device_name
+<span style="     ">device_name</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1961,7 +1955,7 @@ Device name as specified by the OS.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-device_manufacturer
+<span style="     ">device_manufacturer</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1972,7 +1966,7 @@ Device manufacturer as specified by the OS.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-device_model
+<span style="     ">device_model</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1983,7 +1977,7 @@ Device model as specified by the OS.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-operating_system
+<span style="     ">operating_system</span>
 </td>
 <td style="text-align:left;">
 character
@@ -1994,7 +1988,7 @@ Device OS as specified by the OS.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-platform
+<span style="     ">platform</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2006,7 +2000,7 @@ iOS.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-operating_system_version
+<span style="     ">operating_system_version</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2017,7 +2011,7 @@ The version of the operating system.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-sdk
+<span style="     ">sdk</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2050,19 +2044,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2073,7 +2066,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2084,19 +2077,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-message
+<span style="     ">message</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2128,19 +2121,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2151,7 +2143,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2162,19 +2154,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-center
+<span style="     ">center</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2185,7 +2177,7 @@ The centre of the geofence as a GPS location.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-dwell
+<span style="     ">dwell</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -2198,7 +2190,7 @@ milliseconds, the dwell event is fired.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-name
+<span style="     ">name</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2209,7 +2201,7 @@ The name of this geofence.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-radius
+<span style="     ">radius</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2220,7 +2212,7 @@ The radius of the geofence in meters.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-state
+<span style="     ">state</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2250,19 +2242,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2273,7 +2264,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2284,19 +2275,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-x
+<span style="     ">x</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2310,7 +2301,7 @@ changes.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-y
+<span style="     ">y</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2324,7 +2315,7 @@ as this value changes.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-z
+<span style="     ">z</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2342,6 +2333,13 @@ the orientation will change from portrait to landscape and so on.
 <div class="section level3">
 <h3 id="heartbeat">Heartbeat<a class="anchor" aria-label="anchor" href="#heartbeat"></a>
 </h3>
+<p>The <code>Heartbeat</code> sensor is not so much a sensor, but rather
+a signal that is sent to the m-Path server to let it know that it is
+still active. If such a signal was not received after a certain period
+of time (configurable), a notification is sent to the phone that data
+collection has stopped and that the app should be reopened. Note that
+even if a heartbeat is present, it does not guarantee that data can
+actually be collected.</p>
 <table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
 <thead><tr>
 <th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
@@ -2357,19 +2355,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2380,7 +2377,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2391,19 +2388,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-period
+<span style="     ">period</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -2414,7 +2411,7 @@ The period of heartbeats per minute. Defaults to 5 minutes.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-device_type
+<span style="     ">device_type</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2425,7 +2422,7 @@ The type of device.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-device_role_name
+<span style="     ">device_role_name</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2440,9 +2437,9 @@ The role name of the device in the protocol.
 <div class="section level3">
 <h3 id="installedapps">InstalledApps<a class="anchor" aria-label="anchor" href="#installedapps"></a>
 </h3>
-<em>Deprecated</em> due to package visibility constraints (see <a href="https://developer.android.com/training/package-visibility" class="external-link uri">https://developer.android.com/training/package-visibility</a>),
+<p><em>Deprecated</em> due to package visibility constraints (see <a href="https://developer.android.com/training/package-visibility" class="external-link uri">https://developer.android.com/training/package-visibility</a>),
 the apps’ use of the permission needed to collect this information is
-subject to approval from the Google Play Store.
+subject to approval from the Google Play Store.</p>
 <table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
 <thead><tr>
 <th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
@@ -2458,22 +2455,21 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters. Because each record contains a single
-app but a measurement contains multiple apps, apps within the same
-measurement share the same measurement_id but added with a suffix “_”
-and a number starting from 1.
+Uniquely generated measurement ID. Currently not present in the data.
+Because each record contains a single app but a measurement contains
+multiple apps, apps within the same measurement share the same
+measurement_id but added with a suffix “_” and a number starting from 1.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2484,7 +2480,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2495,19 +2491,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-Installed apps
+<span style="     ">Installed apps</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2539,19 +2535,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2562,7 +2557,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2573,19 +2568,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-start
+<span style="     ">start</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2597,7 +2592,7 @@ date.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-end
+<span style="     ">end</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2609,7 +2604,7 @@ date.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-body
+<span style="     ">body</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2639,19 +2634,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2662,7 +2656,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2673,19 +2667,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-end_time
+<span style="     ">end_time</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2697,7 +2691,7 @@ The time at which the sample of the data ended, represented as an ISO
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-mean_lux
+<span style="     ">mean_lux</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2708,7 +2702,7 @@ The average light intensity of the sample in lux.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-std_lux
+<span style="     ">std_lux</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2719,7 +2713,7 @@ The standard deviation of the light intensity of the sample in lux.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-min_lux
+<span style="     ">min_lux</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2730,7 +2724,7 @@ The minimum light intensity of the sample in lux.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-max_lux
+<span style="     ">max_lux</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2760,19 +2754,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2783,7 +2776,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2794,19 +2787,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-latitude
+<span style="     ">latitude</span>
 </td>
 <td style="text-align:left;">
 <span style="     " data-toggle="popover" data-container="body" data-trigger="hover" data-placement="top" data-content="The type variable refers to the BLOB type in SQLite, which means that any type of data may be held by this field. This is commonly done when the original data type may be encrypted and is therefore text-based, while the original values are not.">variable</span>
@@ -2818,7 +2811,7 @@ The latitude of this position in degrees normalized to the interval
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-longitude
+<span style="     ">longitude</span>
 </td>
 <td style="text-align:left;">
 <span style="     " data-toggle="popover" data-container="body" data-trigger="hover" data-placement="top" data-content="The type variable refers to the BLOB type in SQLite, which means that any type of data may be held by this field. This is commonly done when the original data type may be encrypted and is therefore text-based, while the original values are not.">variable</span>
@@ -2830,7 +2823,7 @@ The longitude of the position in degrees normalized to the interval -180
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-altitude
+<span style="     ">altitude</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2842,7 +2835,7 @@ not available on all devices. In these cases the returned value is 0.0.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-accuracy
+<span style="     ">accuracy</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2853,7 +2846,7 @@ The estimated horizontal accuracy of the position, radial, in meters.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-vertical_accuracy
+<span style="     ">vertical_accuracy</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2864,7 +2857,7 @@ Estimated vertical accuracy of this location, in meters.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-speed
+<span style="     ">speed</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2877,7 +2870,7 @@ value is 0.0.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-speed_accuracy
+<span style="     ">speed_accuracy</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2890,7 +2883,7 @@ is 0.0.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-heading
+<span style="     ">heading</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2903,7 +2896,7 @@ returned value is 0.0.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-heading_accuracy
+<span style="     ">heading_accuracy</span>
 </td>
 <td style="text-align:left;">
 double
@@ -2915,7 +2908,7 @@ available on Android.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-is_mock
+<span style="     ">is_mock</span>
 </td>
 <td style="text-align:left;">
 boolean
@@ -2945,19 +2938,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2968,7 +2960,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -2979,19 +2971,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-free_physical_memory
+<span style="     ">free_physical_memory</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3002,7 +2994,7 @@ Amount of free physical memory in bytes.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-free_virtual_memory
+<span style="     ">free_virtual_memory</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3035,19 +3027,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3058,7 +3049,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3069,19 +3060,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-end_time
+<span style="     ">end_time</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3093,7 +3084,7 @@ The time at which the sample of the data ended, represented as an ISO
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-mean_decibel
+<span style="     ">mean_decibel</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3104,7 +3095,7 @@ Mean decibel of sampling window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-std_decibel
+<span style="     ">std_decibel</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3115,7 +3106,7 @@ Standard deviation (in decibel) of sampling window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-min_decibel
+<span style="     ">min_decibel</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3126,7 +3117,7 @@ Minimum decibel of sampling window.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-max_decibel
+<span style="     ">max_decibel</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3156,19 +3147,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3179,7 +3169,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3190,19 +3180,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-step_count
+<span style="     ">step_count</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -3236,19 +3226,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3259,7 +3248,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3270,19 +3259,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-call_type
+<span style="     ">call_type</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3319,7 +3308,7 @@ unknown
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-datetime
+<span style="     ">datetime</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3330,7 +3319,7 @@ Date &amp; Time of the call.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-duration
+<span style="     ">duration</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -3341,7 +3330,7 @@ Duration of call in microseconds.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-formatted_number
+<span style="     ">formatted_number</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3352,7 +3341,7 @@ The formatted version of the phone number (if available).
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-name
+<span style="     ">name</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3363,7 +3352,7 @@ The name of the caller (if available).
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-number
+<span style="     ">number</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3393,19 +3382,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3416,7 +3404,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3427,19 +3415,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-screen_event
+<span style="     ">screen_event</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3483,19 +3471,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3506,7 +3493,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3517,19 +3504,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-address
+<span style="     ">address</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3540,7 +3527,7 @@ The receiver address of this message.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-body
+<span style="     ">body</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3551,7 +3538,7 @@ The text body of this message.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-text_date
+<span style="     ">text_date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3562,7 +3549,7 @@ The date this message was created.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date_sent
+<span style="     ">date_sent</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3573,7 +3560,7 @@ The date this message was sent.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-is_read
+<span style="     ">is_read</span>
 </td>
 <td style="text-align:left;">
 boolean
@@ -3584,7 +3571,7 @@ Whether the message is read by the user.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-kind
+<span style="     ">kind</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3606,7 +3593,7 @@ sent
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-size
+<span style="     ">size</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -3617,7 +3604,7 @@ The size in bytes of the body of the message.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-state
+<span style="     ">state</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3664,19 +3651,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;word-break: break-all;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3687,7 +3673,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3698,19 +3684,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;word-break: break-all;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-timezone
+<span style="     ">timezone</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3741,19 +3727,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3764,7 +3749,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3775,19 +3760,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-country
+<span style="     ">country</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3798,7 +3783,7 @@ Abbreviation of the country. For instance, Belgium is “BE”.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-area_name
+<span style="     ">area_name</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3809,7 +3794,7 @@ City name.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-weather_main
+<span style="     ">weather_main</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3820,7 +3805,7 @@ Group of weather parameters (Rain, Snow, Clouds etc.)
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-weather_description
+<span style="     ">weather_description</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3831,7 +3816,7 @@ Weather condition within the group.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-sunrise
+<span style="     ">sunrise</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3842,7 +3827,7 @@ Sunrise time. Represented as an ISO 8601 date.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-sunset
+<span style="     ">sunset</span>
 </td>
 <td style="text-align:left;">
 character
@@ -3853,7 +3838,7 @@ Sunset time. Represented as an ISO 8601 date.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-Latitude
+<span style="     ">Latitude</span>
 </td>
 <td style="text-align:left;">
 <span style="     " data-toggle="popover" data-container="body" data-trigger="hover" data-placement="top" data-content="The type variable refers to the BLOB type in SQLite, which means that any type of data may be held by this field. This is commonly done when the original data type may be encrypted and is therefore text-based, while the original values are not.">variable</span>
@@ -3865,7 +3850,7 @@ The latitude of this position in degrees normalized to the interval
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-Longitude
+<span style="     ">Longitude</span>
 </td>
 <td style="text-align:left;">
 <span style="     " data-toggle="popover" data-container="body" data-trigger="hover" data-placement="top" data-content="The type variable refers to the BLOB type in SQLite, which means that any type of data may be held by this field. This is commonly done when the original data type may be encrypted and is therefore text-based, while the original values are not.">variable</span>
@@ -3877,7 +3862,7 @@ The longitude of the position in degrees normalized to the interval -180
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-pressure
+<span style="     ">pressure</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -3888,7 +3873,7 @@ Atmospheric pressure on the sea level in hPa.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-wind_speed
+<span style="     ">wind_speed</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3899,7 +3884,7 @@ Wind speed in metres per second.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-wind_degree
+<span style="     ">wind_degree</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3910,7 +3895,7 @@ Wind direction in degrees (meteorological).
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-humidity
+<span style="     ">humidity</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -3921,7 +3906,7 @@ Humidity in percentage.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-cloudiness
+<span style="     ">cloudiness</span>
 </td>
 <td style="text-align:left;">
 integer
@@ -3932,7 +3917,7 @@ Cloudiness in percentage.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-rain_last_hour
+<span style="     ">rain_last_hour</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3943,7 +3928,7 @@ Rain volume for the last 1 hour in millimetres.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-rain_last_3hours
+<span style="     ">rain_last_3hours</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3954,7 +3939,7 @@ Rain volume for the last 3 hours in millimetres.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-snow_last_hour
+<span style="     ">snow_last_hour</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3965,7 +3950,7 @@ Snow volume for the last 1 hour in millimetres.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-snow_last_3hours
+<span style="     ">snow_last_3hours</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3976,7 +3961,7 @@ Snow volume for the last 3 hours in millimetres.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-temperature
+<span style="     ">temperature</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3987,7 +3972,7 @@ Temperature in Celsius.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-temp_min
+<span style="     ">temp_min</span>
 </td>
 <td style="text-align:left;">
 double
@@ -3999,7 +3984,7 @@ observed temperature (within large megalopolises and urban areas).
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-temp_max
+<span style="     ">temp_max</span>
 </td>
 <td style="text-align:left;">
 double
@@ -4030,19 +4015,18 @@ Description
 <tbody>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-measurement_id
+<span style="     ">measurement_id</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
-Uniquely generated measurement ID. Currently a string of 36 in the
-format of 8-4-4-4-12 characters.
+Uniquely generated measurement ID. Currently not present in the data.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-participant_id
+<span style="    text-decoration: underline; ">participant_id</span>
 </td>
 <td style="text-align:left;">
 character
@@ -4053,7 +4037,7 @@ Unique ID of the participant.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-date
+<span style="    text-decoration: underline; ">date</span>
 </td>
 <td style="text-align:left;">
 character
@@ -4064,19 +4048,19 @@ The date of the measurement. Represented as a character as YYYY-MM-DD.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-time
+<span style="    text-decoration: underline; ">time</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The start time of the measurement. Represented in 24-hour time as
-00:00:00.000.
+00:00:00.000000.
 </td>
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-ssid
+<span style="     ">ssid</span>
 </td>
 <td style="text-align:left;">
 character
@@ -4087,7 +4071,7 @@ Wi-Fi service set ID (SSID) of the connected network.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-bssid
+<span style="     ">bssid</span>
 </td>
 <td style="text-align:left;">
 character
@@ -4098,13 +4082,1601 @@ Basic service set identifier (BSSID) of the connected network.
 </tr>
 <tr>
 <td style="text-align:left;font-family: 'Courier New';">
-ip
+<span style="     ">ip</span>
 </td>
 <td style="text-align:left;">
 character
 </td>
 <td style="text-align:left;">
 The internet protocol (IP) address of the connected network.
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level2">
+<h2 id="garmin-sensor-tables">Garmin sensor tables<a class="anchor" aria-label="anchor" href="#garmin-sensor-tables"></a>
+</h2>
+<p>The following tables describe data collected from Garmin wearable
+devices as they are represented in the mpathsenser. These sensors
+provide high-resolution physiological and movement data. See also the <a href="https://manual.m-path.io/knowledge-base/wearables-garmin-direct-integration/#garmin-measurement-types" class="external-link">m-Path
+manual</a> for more information on the raw data.</p>
+<div class="section level3">
+<h3 id="garminaccelerometer">GarminAccelerometer<a class="anchor" aria-label="anchor" href="#garminaccelerometer"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">x</span>
+</td>
+<td style="text-align:left;">
+double
+</td>
+<td style="text-align:left;">
+Acceleration force along the x axis measured in milli-g (gravitational
+force).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">y</span>
+</td>
+<td style="text-align:left;">
+double
+</td>
+<td style="text-align:left;">
+Acceleration force along the y axis measured in milli-g (gravitational
+force).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">z</span>
+</td>
+<td style="text-align:left;">
+double
+</td>
+<td style="text-align:left;">
+Acceleration force along the z axis measured in milli-g (gravitational
+force).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminactigraphy">GarminActigraphy<a class="anchor" aria-label="anchor" href="#garminactigraphy"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">end_time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The end time of the measurement. Represented as an ISO 8601 date.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">instance</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Instance identifier for the actigraphy measurement (e.g., ‘Actigraphy1’,
+‘Actigraphy2’, ‘Actigraphy3’).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">total_energy</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Accumulated magnitude of acceleration during the measurement period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_zero_crossing</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of zero crossings detected during the measurement period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">time_above_threshold</span>
+</td>
+<td style="text-align:left;">
+double
+</td>
+<td style="text-align:left;">
+Time in seconds spent above the configured activity threshold.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminbbi">GarminBBI<a class="anchor" aria-label="anchor" href="#garminbbi"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">bbi</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Beat-to-beat interval in milliseconds. This represents the time between
+consecutive heartbeats.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminenhancedbbi">GarminEnhancedBBI<a class="anchor" aria-label="anchor" href="#garminenhancedbbi"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">bbi</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Beat-to-beat interval in milliseconds. This represents the time between
+consecutive heartbeats.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">status</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Status of the BBI measurement (e.g., ‘highConfidence’, ‘lowConfidence’).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">gap_duration</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Duration of any gap in the BBI measurement in milliseconds.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garmingyroscope">GarminGyroscope<a class="anchor" aria-label="anchor" href="#garmingyroscope"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">x</span>
+</td>
+<td style="text-align:left;">
+double
+</td>
+<td style="text-align:left;">
+Rate of rotation around the x axis measured in degrees per second.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">y</span>
+</td>
+<td style="text-align:left;">
+double
+</td>
+<td style="text-align:left;">
+Rate of rotation around the y axis measured in degrees per second.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">z</span>
+</td>
+<td style="text-align:left;">
+double
+</td>
+<td style="text-align:left;">
+Rate of rotation around the z axis measured in degrees per second.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminheartrate">GarminHeartRate<a class="anchor" aria-label="anchor" href="#garminheartrate"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">bpm</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Heart rate in beats per minute.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">status</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Status of the heart rate measurement (e.g., ‘LOCKED’, ‘SEARCHING’).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminmeta">GarminMeta<a class="anchor" aria-label="anchor" href="#garminmeta"></a>
+</h3>
+<p>Garmin direct sensing data is by default pulled to the phone at most
+every 2 minutes. However, every timestamp in the Garmin tables
+represents the time of the actual underlying measurement, not the time
+at which it is pulled to the phone. This table provides information of
+the moments data is pulled to the phone, along with counts of the number
+of measurements collected for each sensor type during that period.</p>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">time_from</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Start time of the metadata collection period. Represented as an ISO 8601
+date.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">time_to</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+End time of the metadata collection period. Represented as an ISO 8601
+date.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_accelerometer</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of accelerometer measurements collected during this period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_actigraphy_1</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of actigraphy measurements from instance 1 collected during this
+period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_actigraphy_2</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of actigraphy measurements from instance 2 collected during this
+period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_actigraphy_3</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of actigraphy measurements from instance 3 collected during this
+period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_bbi</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of BBI measurements collected during this period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_enhanced_bbi</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of enhanced BBI measurements collected during this period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_gyroscope</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of gyroscope measurements collected during this period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_heartrate</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of heart rate measurements collected during this period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_respiration</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of respiration measurements collected during this period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_skin_temperature</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of skin temperature measurements collected during this period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_spo2</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of SpO2 measurements collected during this period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_steps</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of step measurements collected during this period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_stress</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of stress measurements collected during this period.
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminrespiration">GarminRespiration<a class="anchor" aria-label="anchor" href="#garminrespiration"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">bpm</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Respiration rate in breaths per minute. Will show as 0.0 if unavailable,
+see status.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">status</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Status of the respiration measurement.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminskintemperature">GarminSkinTemperature<a class="anchor" aria-label="anchor" href="#garminskintemperature"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">temperature</span>
+</td>
+<td style="text-align:left;">
+double
+</td>
+<td style="text-align:left;">
+Skin temperature in degrees Celsius (0-65°C, 0.0 if unavailable).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">status</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Status of the temperature measurement.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminspo2">GarminSPO2<a class="anchor" aria-label="anchor" href="#garminspo2"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">spo2</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Blood oxygen saturation level in percentage (0%-100%, ≤25% indicates
+resting, 0% if unavailable).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminsteps">GarminSteps<a class="anchor" aria-label="anchor" href="#garminsteps"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">end_time</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+The end time of the measurement. Represented as an ISO 8601 date.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">step_count</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of steps taken during the measurement period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">total_steps</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Cumulative total number of steps since the last reset (generally at
+midnight).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminstress">GarminStress<a class="anchor" aria-label="anchor" href="#garminstress"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">stress</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Stress level score. Higher values indicate higher stress levels.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">status</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Status of the stress measurement (e.g., ‘valid’, ‘offWrist’,
+‘largeMotion’).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminwriststatus">GarminWristStatus<a class="anchor" aria-label="anchor" href="#garminwriststatus"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">status</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Status indicating whether the device is being worn on the wrist (e.g.,
+‘ON_WRIST’, ‘OFF_WRIST’).
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="garminzerocrossing">GarminZeroCrossing<a class="anchor" aria-label="anchor" href="#garminzerocrossing"></a>
+</h3>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">end_time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The end time of the measurement. Represented as an ISO 8601 date.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">total_energy</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Total energy expenditure during the measurement period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">n_zero_crossing</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Number of zero crossings across the average total acceleration detected
+during the measurement period.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">deadband</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+Deadband (threshold) value required for a zero crossing to count, in
+milli-g. Defaults to 0 if not set.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">mac_address</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+MAC address of the Garmin device (Android) or UUID (iOS).
 </td>
 </tr>
 </tbody>
