@@ -88,7 +88,7 @@ test_that("copy_db", {
   # Create new db and copy to it
   new_db <- create_db(NULL, filename)
   copy_db(db, new_db, sensor = "Accelerometer")
-  true <- c(2L, rep(0L, length(sensors) - 1))
+  true <- c(3L, rep(0L, length(sensors) - 1))
   names(true) <- sensors
   expect_equal(get_nrows(new_db), true)
 
@@ -221,8 +221,8 @@ test_that("get_processed_files", {
   res <- get_processed_files(db)
   true <- data.frame(
     file_name = c("empty.json", "new_tests.json", "test.json"),
-    participant_id = c("N/A", "N/A", "12345"),
-    study_id = c("-1", "-1", "test-study")
+    participant_id = c("N/A", "12345", "12345"),
+    study_id = c("-1", "DemoStudy", "test-study")
   )
   expect_equal(res, true)
   dbDisconnect(db)
@@ -234,7 +234,7 @@ test_that("get_participants", {
   res_lazy <- get_participants(db, lazy = TRUE)
   true <- data.frame(
     participant_id = c("N/A", "12345"),
-    study_id = c("-1", "test-study")
+    study_id = c("-1", "DemoStudy")
   )
   expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_SQLiteConnection")
@@ -246,8 +246,8 @@ test_that("get_study", {
   res <- get_studies(db)
   res_lazy <- get_studies(db, lazy = TRUE)
   true <- data.frame(
-    study_id = c("-1", "test-study"),
-    data_format = c(NA, "carp")
+    study_id = c("-1", "DemoStudy", "test-study"),
+    data_format = c(NA, "cams 1.0.0", "carp")
   )
   expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_SQLiteConnection")
