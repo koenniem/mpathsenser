@@ -145,7 +145,7 @@ alias_column_names.appusage <- function(data, ...) {
           c("timestamp", "start_time") ~ "time",
           c("startDate", "start_date") ~ "start",
           c("endDate", "end_date") ~ "end",
-          c("appName", "app_name") ~ "app",
+          c("appName", "app_name", "name") ~ "app",
           c("packageName") ~ "package_name",
           c("lastForeground") ~ "last_foreground",
           .default = colnames,
