@@ -920,6 +920,39 @@ test_that("memory", {
   )
 })
 
+# mpathinfo =========
+test_that("mpathinfo", {
+  .cols = c("connection_id", "account_code", "study_name", "sense_version")
+
+  unit_test(
+    "mpathinfo",
+    .cols = .cols
+  )
+
+  unit_test(
+    "mpathinfo",
+    .cols = .cols,
+    connection_id = "conn123",
+    account_code = "acc456",
+    study_name = "Study A",
+    sense_version = 6
+  )
+
+  unit_test(
+    "mpathinfo",
+    .cols = .cols,    new_names = c(
+      connection_id = "connectionId",
+      account_code = "accountCode",
+      study_name = "studyName",
+      sense_version = "senseVersion"
+    ),
+    connectionId = "conn123",
+    accountCode = "acc456",
+    studyName = "Study A",
+    senseVersion = 6
+  )
+})
+
 # Noise ========
 test_that("noise", {
   .cols <- c("mean_decibel", "std_decibel", "min_decibel", "max_decibel")

@@ -263,7 +263,7 @@ index_db <- function(db) {
       }
     },
     error = function(e) {
-      abort(as.character(e))
+      abort(as.character(e)) # nocov
     }
   )
 

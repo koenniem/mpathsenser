@@ -211,6 +211,29 @@ test_that("alias_column_names.memory", {
 })
 
 # Noise =========
+test_that("alias_column_names.mpathinfo", {
+  generic_test("mpathinfo")
+
+  # Other tests
+  expect_equal(
+    test_alias_column_names("connectionId", "mpathinfo"),
+    "connection_id"
+  )
+  expect_equal(
+    test_alias_column_names("accountCode", "mpathinfo"),
+    "account_code"
+  )
+  expect_equal(
+    test_alias_column_names("studyName", "mpathinfo"),
+    "study_name"
+  )
+  expect_equal(
+    test_alias_column_names("senseVersion", "mpathinfo"),
+    "sense_version"
+  )
+})
+
+# Noise =========
 test_that("alias_column_names.noise", {
   generic_test("Noise")
 

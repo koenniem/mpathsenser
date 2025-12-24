@@ -64,6 +64,21 @@ test_that("coverage", {
 
   # Cleanup
   dbDisconnect(db)
+
+  # Check sensors that do not exist in the database, but is a valid sensor name
+  tmp <- tempfile()
+  file.copy(system.file("testdata", "test.db", package = "mpathsenser"), tmp)
+  db <- open_db(NULL, tmp)
+  DBI::dbRemoveTable(db, "Accelerometer")
+  expect_warning(
+    coverage(db, "12345", sensor = c("Accelerometer", "Gyroscope")),
+    paste0(
+      "This sensor does not exist in the database and will be removed from the output: ",
+      "`Accelerometer`."
+    )
+  )
+  close_db(db)
+  file.remove(tmp)
 })
 
 test_that("coverage takes submeasurements without measurement_id into account", {

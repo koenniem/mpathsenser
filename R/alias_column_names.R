@@ -704,7 +704,7 @@ alias_column_names.mpathinfo <- function(data, ...) {
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
           c("connectionId") ~ "connection_id",
-          c("accountCode") ~ "accountCode",
+          c("accountCode") ~ "account_code",
           c("studyName") ~ "study_name",
           c("senseVersion") ~ "sense_version",
           .default = colnames,
