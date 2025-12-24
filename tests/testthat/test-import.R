@@ -604,6 +604,71 @@ test_that(".import_write_to_db writes data correctly", {
   file.remove(filename)
 })
 
+test_that(".import_meta_data_from_mpathinfo", {
+  test_data <- list(
+    list(
+      sensorStartTime = 1765889440388567,
+      data = list(
+        `__type` = "dk.cachet.carp.accelerometer",
+        x = 0.0,
+        y = 0.0,
+        z = 9.81
+      )
+    ),
+    list(
+      sensorStartTime = 1765889440388567,
+      data = list(
+        `__type` = "dk.cachet.carp.activity",
+        activityType = "walking",
+        confidence = 0.9
+      )
+    ),
+    list(
+      sensorStartTime = 1765889440388567,
+      data = list(
+        `__type` = "dk.cachet.carp.mpathinfo",
+        connectionId = 23456,
+        accountCode = "abcd1",
+        studyName = "DemoStudy",
+        senseVersion = 6
+      )
+    )
+  )
+
+  res <- .import_meta_data_from_mpathinfo(test_data, file_name = "foo.json")
+  expect_s3_class(res, "tbl_df")
+  expect_equal(ncol(res), 3)
+  expect_equal(
+    res,
+    tibble::tibble(
+      study_id = "DemoStudy",
+      participant_id = "23456",
+      file_name = "foo.json"
+    )
+  )
+
+  # Check double entry warning
+  test_data <- append(test_data, test_data[3])
+  expect_warning(
+    res <- .import_meta_data_from_mpathinfo(test_data, file_name = "foo.json"),
+    "^.*Multiple `mpathinfo` entries found in file:.+$"
+  )
+
+  # Test fallback
+  test_data[[4]] <- NULL
+  test_data[[3]] <- NULL
+
+  res <- .import_meta_data_from_mpathinfo(test_data, file_name = "foo.json")
+  expect_equal(
+    res,
+    tibble::tibble(
+      study_id = "-1",
+      participant_id = "N/A",
+      file_name = "foo.json"
+    )
+  )
+})
+
 test_that(".import_meta_data_from_file_name correctly extracts metadata", {
   file_names <- c(
     "1234_studyA_participant1_m_Path_sense_2023-01-01_12-34-56.json",

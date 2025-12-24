@@ -442,7 +442,7 @@ safe_extract <- function(vec, var) {
 
 # New clean function for the new file format as of CARP 1.0.0
 .import_clean_new <- function(data, file_name) {
-  meta <- .import_meta_data_from_file_name(file_name)
+  meta <- .import_meta_data_from_mpathinfo(data, file_name)
   meta$file_name <- NULL
 
   data <- tibble(
@@ -659,6 +659,34 @@ safe_extract <- function(vec, var) {
       participant_id = meta_data$participant_id
     )
   })
+}
+
+.import_meta_data_from_mpathinfo <- function(data, file_name) {
+  # Only keep mpathinfo entry
+  has_info <- purrr::map_lgl(data, \(x) x[["data"]][["__type"]] == "dk.cachet.carp.mpathinfo")
+
+  # No mpathinfo found
+  if (!any(has_info)) {
+    # Try fallback to file name
+    return(.import_meta_data_from_file_name(file_name))
+  }
+
+  if (sum(has_info) > 1) {
+    cli::cli_warn(c(
+      "Multiple `mpathinfo` entries found in file: {.file {file_name}}.",
+      i = "Using the first occurrence."
+    ))
+  }
+
+  data <- data[has_info][[1]]
+
+  # Return the same structure as .import_meta_data_from_file_name()
+  # Future versions could include senseVersion and accountCode
+  tibble(
+    study_id = data$data[["studyName"]] %||% "-1",
+    participant_id = as.character(data$data[["connectionId"]]) %||% "N/A",
+    file_name = file_name
+  )
 }
 
 .import_meta_data_from_file_name <- function(file_name) {
