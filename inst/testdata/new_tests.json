@@ -1,3 +1,474 @@
 [
-
+    {
+        "sensorStartTime": 1765888652322187,
+        "sensorEndTime": 1765888787319006,
+        "data": {
+            "__type": "dk.cachet.carp.accelerationfeatures",
+            "count": 673,
+            "xMean": -0.1393,
+            "yMean": -0.4194,
+            "zMean": -0.0719,
+            "xStd": 1.2418,
+            "yStd": 1.88,
+            "zStd": 2.4653,
+            "xAad": 1.0247,
+            "yAad": 1.6331,
+            "zAad": 1.9447,
+            "xMin": -3.0428,
+            "yMin": -6.9259,
+            "zMin": -6.4376,
+            "xMax": 2.9984,
+            "yMax": 4.8714,
+            "zMax": 4.84,
+            "xMaxMinDiff": 6.477,
+            "yMaxMinDiff": 11.0295,
+            "zMaxMinDiff": 10.7313,
+            "xMedian": -0.0023,
+            "yMedian": -0.0135,
+            "zMedian": -0.2482,
+            "xMad": 0.8556,
+            "yMad": 1.2119,
+            "zMad": 1.8867,
+            "xIqr": 1.6344,
+            "yIqr": 2.2751,
+            "zIqr": 3.9234,
+            "xNegCount": 334,
+            "yNegCount": 339,
+            "zNegCount": 365,
+            "xPosCount": 327,
+            "yPosCount": 319,
+            "zPosCount": 301,
+            "xAboveMean": 357,
+            "yAboveMean": 382,
+            "zAboveMean": 322,
+            "xEnergy": 1.3283,
+            "yEnergy": 4.0747,
+            "zEnergy": 5.9975,
+            "avgResultAcceleration": 3.0844,
+            "signalMagnitudeArea": 4.5653
+        }
+    },
+    {
+        "sensorStartTime": 1765888910031904,
+        "data": {
+            "__type": "dk.cachet.carp.activity",
+            "confidence": 70,
+            "type": "WALKING"
+        }
+    },
+    {
+        "sensorStartTime": 1765888652323280,
+        "sensorEndTime": 1765889155888309,
+        "data": {
+            "__type": "dk.cachet.carp.appusage",
+            "start": "2025-12-16T15:54:31Z",
+            "end": "2025-12-16T16:02:54Z",
+            "usage": {
+                "io.m_Path_Sense.kuleuven": {
+                    "name": "kuleuven",
+                    "packageName": "io.m_Path_Sense.kuleuven",
+                    "usage": 55000000,
+                    "startDate": "2025-12-16T01:40:33",
+                    "endDate": "2025-12-16T16:50:14",
+                    "lastForeground": "2025-12-16T16:31:04"
+                },
+                "com.spotify.music": {
+                    "name": "music",
+                    "packageName": "com.spotify.music",
+                    "usage": 11000000,
+                    "startDate": "2025-12-16T01:40:33",
+                    "endDate": "2025-12-16T16:50:53",
+                    "lastForeground": "2025-12-16T16:50:53"
+                },
+                "com.whatsapp": {
+                    "name": "whatsapp",
+                    "packageName": "com.whatsapp",
+                    "usage": 139000000,
+                    "startDate": "2025-12-16T01:40:33",
+                    "endDate": "2025-12-16T16:53:42",
+                    "lastForeground": "2025-12-16T13:30:59"
+                }
+            }
+        }
+    },
+    {
+        "sensorStartTime": 1765888714943520,
+        "data": {
+            "__type": "dk.cachet.carp.batterystate",
+            "batteryLevel": 25,
+            "batteryStatus": "charging"
+        }
+    },
+    {
+        "sensorStartTime": 1765913013695276,
+        "data": {
+            "__type": "dk.cachet.carp.bluetooth",
+            "startScan": "2025-12-16T20:23:22.458165",
+            "endScan": "2025-12-16T20:23:32.460703",
+            "scanResult": [
+                {
+                    "advertisementName": "TestB1",
+                    "bluetoothDeviceId": "00",
+                    "bluetoothDeviceName": "TestB1",
+                    "connectable": true,
+                    "txPowerLevel": -4,
+                    "rssi": -72
+                }
+            ]
+        }
+    },
+    {
+        "sensorStartTime": 1765888553152757,
+        "data": {
+            "__type": "dk.cachet.carp.connectivity",
+            "connectivityStatus": [
+                "wifi"
+            ]
+        }
+    },
+    {
+        "sensorStartTime": 1765888200755631,
+        "data": {
+            "__type": "dk.cachet.carp.deviceinformation",
+            "platform": "Android",
+            "deviceId": "UKQ1.231108.001",
+            "hardware": "xchip",
+            "deviceName": "XPHONE-DEV",
+            "deviceManufacturer": "XPhone",
+            "deviceModel": "XP1234",
+            "operatingSystem": "REL",
+            "deviceData": {
+                "product": "CPH2663EEA",
+                "supportedAbis": [
+                    "arm64-v8a"
+                ],
+                "serialNumber": "unknown",
+                "displayMetrics": {
+                    "xDpi": 449.942,
+                    "widthPx": 1080,
+                    "heightPx": 2414,
+                    "yDpi": 451.338
+                },
+                "supported32BitAbis": [],
+                "display": "CPH2663_16.0.1.301(EX01)",
+                "type": "user",
+                "isPhysicalDevice": true,
+                "version": {
+                    "baseOS": "",
+                    "securityPatch": "2025-11-01",
+                    "sdkInt": 34,
+                    "release": "16",
+                    "codename": "REL",
+                    "previewSdkInt": 0,
+                    "incremental": "U.R4T2.a1a83f_16e546a_16e5468"
+                },
+                "systemFeatures": [
+                    "com.oplus.software.children_space_google_play_exp",
+                    "android.hardware.sensor.proximity"
+                ],
+                "manufacturer": "OnePlus",
+                "tags": "release-keys",
+                "supported64BitAbis": [
+                    "arm64-v8a"
+                ],
+                "bootloader": "unknown",
+                "fingerprint": "XPhone/XP1234/XPHONE-DEV:16/FAKE.FINGERPRINT:user/release-keys",
+                "host": "kvm-slave-build-s-system-07633194",
+                "model": "XP1234",
+                "id": "UKQ1.231108.001",
+                "brand": "XPhone",
+                "device": "XPHONE-DEV",
+                "board": "pineapple",
+                "hardware": "xchip"
+            }
+        }
+    },
+    {
+        "sensorStartTime": 1765889155597422,
+        "data": {
+            "__type": "dk.cachet.carp.heartbeat",
+            "period": 1,
+            "deviceType": "dk.cachet.carp.common.application.devices.GarminDevice",
+            "deviceRoleName": "garminSmartwatch"
+        }
+    },
+    {
+        "sensorStartTime": 1765901528566862,
+        "data": {
+            "__type": "dk.cachet.carp.garminalllogsdata",
+            "fromTime": "2025-12-16T17:09:48.313",
+            "toTime": "2025-12-16T17:11:58.163900",
+            "entryCounts": {
+                "heartRate": 26,
+                "stress": 2,
+                "steps": 5,
+                "bbi": 162,
+                "enhancedBbi": 160,
+                "respiration": 0,
+                "spo2": 0,
+                "accelerometer": 2200,
+                "gyroscope": 0,
+                "wristStatus": 1,
+                "zeroCrossing": 0,
+                "skinTemperature": 0,
+                "actigraphy1": 2,
+                "actigraphy2": 2,
+                "actigraphy3": 2
+            },
+            "heartRate": [
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902625567,
+                    "beatsPerMinute": 76,
+                    "status": "locked"
+                },
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902630567,
+                    "beatsPerMinute": 74,
+                    "status": "locked"
+                }
+            ],
+            "stress": [
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902651567,
+                    "stressScore": 40,
+                    "status": "valid"
+                },
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902711567,
+                    "stressScore": 23,
+                    "status": "valid"
+                }
+            ],
+            "steps": [
+                {
+                    "macAddress": "00",
+                    "startTimestamp": 1765902704567,
+                    "endTimestamp": 1765902711567,
+                    "stepCount": -1,
+                    "totalSteps": 122
+                },
+                {
+                    "macAddress": "00",
+                    "startTimestamp": 1765902714567,
+                    "endTimestamp": 1765902721567,
+                    "stepCount": 3,
+                    "totalSteps": 119
+                }
+            ],
+            "bbi": [
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902622680,
+                    "bbi": 763
+                },
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902623455,
+                    "bbi": 775
+                }
+            ],
+            "enhancedBbi": [
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902622598,
+                    "status": "lowConfidence",
+                    "bbi": 992,
+                    "gapDuration": 0
+                },
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902623457,
+                    "status": "lowConfidence",
+                    "bbi": 859,
+                    "gapDuration": 0
+                }
+            ],
+            "accelerometer": [
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902623559,
+                    "xValue": 113.3744,
+                    "yValue": 437.6353,
+                    "zValue": -906.8707
+                },
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902623599,
+                    "xValue": 118.0369,
+                    "yValue": 440.0922,
+                    "zValue": -873.2643
+                }
+            ],
+            "wristStatus": [
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765903998567,
+                    "status": "ON_WRIST"
+                }
+            ],
+            "actigraphy1": [
+                {
+                    "macAddress": "00",
+                    "startTimestamp": 1765902704567,
+                    "endTimestamp": 1765902711567,
+                    "instance": "ACTIGRAPHY_1",
+                    "totalEnergy": 1488289.81,
+                    "zeroCrossingCount": 0,
+                    "timeAboveThreshold": 58.1096
+                },
+                {
+                    "macAddress": "00",
+                    "startTimestamp": 1765902714567,
+                    "endTimestamp": 1765902721567,
+                    "instance": "ACTIGRAPHY_1",
+                    "totalEnergy": 1591059.3688,
+                    "zeroCrossingCount": 0,
+                    "timeAboveThreshold": 59.7624
+                }
+            ],
+            "actigraphy2": [
+                {
+                    "macAddress": "00",
+                    "startTimestamp": 1765902704567,
+                    "endTimestamp": 1765902711567,
+                    "instance": "ACTIGRAPHY_2",
+                    "totalEnergy": 1465987.1425,
+                    "zeroCrossingCount": 0,
+                    "timeAboveThreshold": 59.9254
+                },
+                {
+                    "macAddress": "00",
+                    "startTimestamp": 1765902714567,
+                    "endTimestamp": 1765902721567,
+                    "instance": "ACTIGRAPHY_2",
+                    "totalEnergy": 1567243.3409,
+                    "zeroCrossingCount": 0,
+                    "timeAboveThreshold": 60.2099
+                }
+            ],
+            "actigraphy3": [
+                {
+                    "macAddress": "00",
+                    "startTimestamp": 1765902704567,
+                    "endTimestamp": 1765902711567,
+                    "instance": "ACTIGRAPHY_3",
+                    "totalEnergy": 1616289.0334,
+                    "zeroCrossingCount": 0,
+                    "timeAboveThreshold": 58.7958
+                },
+                {
+                    "macAddress": "00",
+                    "startTimestamp": 1765902714567,
+                    "endTimestamp": 1765902721567,
+                    "instance": "ACTIGRAPHY_3",
+                    "totalEnergy": 1501789.1451,
+                    "zeroCrossingCount": 0,
+                    "timeAboveThreshold": 60.7411
+                }
+            ]
+        }
+    },
+    {
+        "sensorStartTime": 1765888708814321,
+        "data": {
+            "__type": "dk.cachet.carp.location",
+            "latitude": 50.8771,
+            "longitude": 4.7071,
+            "altitude": 76.9304,
+            "accuracy": 87.8121,
+            "verticalAccuracy": 1.2556,
+            "speed": 0.0023,
+            "speedAccuracy": 1.5604,
+            "heading": -0.0065,
+            "headingAccuracy": 45.5136,
+            "time": "2025-12-16T16:49:25",
+            "isMock": false,
+            "elapsedRealtimeNanos": 618215086000000,
+            "elapsedRealtimeUncertaintyNanos": 0
+        }
+    },
+    {
+        "sensorStartTime": 1765888793632197,
+        "sensorEndTime": 1765888804382454,
+        "data": {
+            "__type": "dk.cachet.carp.ambientlight",
+            "meanLux": 42,
+            "stdLux": 13,
+            "minLux": 112,
+            "maxLux": 1
+        }
+    },
+    {
+        "sensorStartTime": 1765888793725243,
+        "data": {
+            "__type": "dk.cachet.carp.freememory",
+            "freePhysicalMemory": 459444220,
+            "freeVirtualMemory": 3978772477
+        }
+    },
+    {
+        "sensorStartTime": 1765889440388567,
+        "data": {
+            "__type": "dk.cachet.carp.mpathinfo",
+            "connectionId": 12345,
+            "accountCode": "abcd1",
+            "studyName": "DemoStudy",
+            "senseVersion": 6
+        }
+    },
+    {
+        "sensorStartTime": 1765888958964548,
+        "data": {
+            "__type": "dk.cachet.carp.screenevent",
+            "screenEvent": "SCREEN_OFF"
+        }
+    },
+    {
+        "sensorStartTime": 1765888672413745,
+        "data": {
+            "__type": "dk.cachet.carp.stepcount",
+            "steps": 18987
+        }
+    },
+    {
+        "sensorStartTime": 1765888793629864,
+        "data": {
+            "__type": "dk.cachet.carp.timezone",
+            "timezone": "Europe/Brussels"
+        }
+    },
+    {
+        "sensorStartTime": 1765887007102776,
+        "data": {
+            "__type": "dk.cachet.carp.weather",
+            "country": "BE",
+            "areaName": "Arrondissement Leuven",
+            "weatherMain": "Clouds",
+            "weatherDescription": "broken clouds",
+            "date": "2025-12-16T16:21:05",
+            "sunrise": "2025-12-16T11:49:12",
+            "sunset": "2025-12-16T19:46:33",
+            "latitude": 50.875,
+            "longitude": 4.7051,
+            "pressure": 938.0049,
+            "windSpeed": 4.9169,
+            "windDegree": 173.3675,
+            "humidity": 59.9144,
+            "cloudiness": 73.6322,
+            "temperature": 12.4227,
+            "tempMin": 11.8243,
+            "tempMax": 14.1581
+        }
+    },
+    {
+        "sensorStartTime": 1765888793748160,
+        "data": {
+            "__type": "dk.cachet.carp.wifi",
+            "ip": "10.12.34.56"
+        }
+    }
 ]

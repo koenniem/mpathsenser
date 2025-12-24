@@ -1,50 +1,24 @@
-# Test that the output of test.db is equal to test.json
-
-rand <- function(n, chars = TRUE, numbers = TRUE, uppercase = FALSE) {
-  data <- NULL
-
-  if (!chars && !numbers) {
-    abort("Select either letters, numbers, or both.")
-  }
-
-  if (chars) {
-    if (uppercase) {
-      data <- c(data, LETTERS[1:6])
-    } else {
-      data <- c(data, letters[1:6])
-    }
-  }
-
-  if (numbers) {
-    data <- c(data, 0:9)
-  }
-
-  paste(sample(data, n, TRUE), collapse = "")
-}
-
-gen_id <- function(uppercase = FALSE) {
-  if (uppercase) {
-    paste0(
-      rand(8, uppercase = TRUE),
-      "-",
-      rand(4, uppercase = TRUE),
-      "-",
-      rand(4, uppercase = TRUE),
-      "-",
-      rand(4, uppercase = TRUE),
-      "-",
-      rand(12, uppercase = TRUE)
-    )
-  } else {
-    paste0(rand(8), "-", rand(4), "-", rand(4), "-", rand(4), "-", rand(12))
-  }
-}
-
+# Test that the output of imported data is equal to their raw values (manually encoded)
 ### db_test ============
 db_test <- function(sensor, true_data) {
   path <- system.file("testdata", package = "mpathsenser")
   db <- create_db(NULL, ":memory:")
-  suppressMessages(import(path, db = db, sensors = sensor, batch_size = 1, recursive = FALSE))
+
+  # Only read in legacy data so log all other files as already processed
+  files <- list.files(path, recursive = FALSE)
+  files <- setdiff(files, "test.json")
+  add_study(db, study_id = "foo", data_format = "foo")
+  add_participant(db, "23456", "foo")
+  add_processed_files(
+    db,
+    file_name = files[!grepl(sensor, files)],
+    study_id = rep("foo", length(files)),
+    participant_id = rep("23456", length(files))
+  )
+
+  suppressMessages(
+    import(path, db = db, sensors = sensor, batch_size = 1, recursive = FALSE)
+  )
 
   data <- get_data(db, sensor, "12345", "2021-11-13", "2021-11-14") %>%
     collect()
@@ -434,20 +408,8 @@ test_that("Location", {
       participant_id = "12345",
       date = "2021-11-14",
       time = c("14:00:00", "14:01:00"),
-      latitude = c(
-        paste0(
-          "beb3005c45cb250b9841b9aae0637fa5610c45ce206ca38494f7f74a6cbdf8566cdf0d8967e",
-          "9422bb857a4d87c2e6c08d85f162525a8f9d6a72a8"
-        ),
-        NA
-      ),
-      longitude = c(
-        paste0(
-          "8a4f368c36ab8e6e9dcbca9d7ef88a313f48e841e77746c54f1ca5b1887cd56f123d8ba36e",
-          "92465e5483ebbd335b242ff8fade5b31a43e20dd851"
-        ),
-        NA
-      ),
+      latitude = c(50.12345678, NA),
+      longitude = c(4.123456789, NA),
       altitude = c(71.7784264646543, NA),
       accuracy = c(22.1168141708386, NA),
       vertical_accuracy = rep(NA_real_, 2),
