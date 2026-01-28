@@ -372,13 +372,10 @@ import <- function(
 
   # Check if it is not an empty file Skip this file if empty, but add it to the list of
   # processed file to register this incident and to avoid having to do it again
-  if (
-    length(data) == 0 ||
-      identical(data, list()) ||
-      identical(data, list(list())) ||
-      identical(data, list(structure(list(), names = character(0)))) ||
-      is.null(unlist(data, use.names = FALSE))
-  ) {
+  # Protect against NULL, not lists, empty lists, and lists of empty lists
+  # Do not use unlist() to recursively check empty lists, because this is very costly for large
+  # data files.
+  if (is.null(data) || !is.list(data) || length(data) == 0 || lengths(data[1]) == 0) {
     return(NA)
   }
 
@@ -793,6 +790,7 @@ safe_extract <- function(vec, var) {
         "entryCounts",
         "respiration",
         "skinTemperature",
+        "spo2",
         "steps",
         "stress",
         "wristStatus",
@@ -831,7 +829,8 @@ safe_extract <- function(vec, var) {
 
   # Remove measurements that were missing
   garmin_data <- garmin_data |>
-    filter(!purrr::map_lgl(.data$data, is.null))
+    filter(!purrr::map_lgl(.data$data, is.null)) |>
+    filter(!purrr::map_lgl(.data$data, \(x) length(x) == 0))
 
   # add back to the main data
   # the order of the rows doesn't matter in this case
