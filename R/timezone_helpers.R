@@ -113,10 +113,8 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
       if (n_missing == 0) {
         next
       }
-    }
-
-    # Add a new column for timezone if it does not yet exist
-    if (!("timezone" %in% DBI::dbListFields(db, sensor))) {
+    } else {
+      # Add a new column for timezone if it does not yet exist
       DBI::dbExecute(db, paste("ALTER TABLE", sensor, "ADD COLUMN timezone TEXT"))
     }
 
@@ -157,14 +155,19 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
           na.rm = TRUE
         )
       ) |>
-      dplyr::slice_max(.data$overlap_time, by = c("measurement_id", "participant_id")) |>
-      select("measurement_id", "timezone")
+      dplyr::slice_max(
+        order_by = .data$overlap_time,
+        n = 1,
+        with_ties = FALSE,
+        by = .import_get_pk(sensor)
+      ) |>
+      select(all_of(.import_get_pk(sensor)), "timezone")
 
     # Add the new timezone column to the data
     dplyr::rows_update(
       dplyr::tbl(db, sensor),
       updata,
-      by = "measurement_id",
+      by = .import_get_pk(sensor),
       in_place = TRUE,
       unmatched = "ignore"
     )
