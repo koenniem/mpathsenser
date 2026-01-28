@@ -940,7 +940,8 @@ test_that("mpathinfo", {
 
   unit_test(
     "mpathinfo",
-    .cols = .cols,    new_names = c(
+    .cols = .cols,
+    new_names = c(
       connection_id = "connectionId",
       account_code = "accountCode",
       study_name = "studyName",
@@ -1324,7 +1325,9 @@ test_that("garminmeta", {
     "n_skin_temperature",
     "n_spo2",
     "n_steps",
-    "n_stress"
+    "n_stress",
+    "n_wrist_status",
+    "n_zero_crossing"
   )
 
   new_names <- c(
@@ -1342,7 +1345,9 @@ test_that("garminmeta", {
     n_skin_temperature = "skinTemperature",
     n_spo2 = "spo2",
     n_steps = "steps",
-    n_stress = "stress"
+    n_stress = "stress",
+    n_wrist_status = "wristStatus",
+    n_zero_crossing = "zeroCrossing"
   )
 
   unit_test(
@@ -1367,7 +1372,9 @@ test_that("garminmeta", {
     n_skin_temperature = 60,
     n_spo2 = 60,
     n_steps = 10,
-    n_stress = 60
+    n_stress = 60,
+    n_wrist_status = 10,
+    n_zero_crossing = 10
   )
 })
 

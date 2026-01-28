@@ -324,6 +324,8 @@ n_skin_temperature INTEGER,
 n_spo2 INTEGER,
 n_steps INTEGER,
 n_stress INTEGER,
+n_wrist_status INTEGER,
+n_zero_crossing INTEGER,
 PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );

@@ -528,7 +528,9 @@ unpack_sensor_data.garminmeta <- function(data, ...) {
     n_skin_temperature = data$n_skin_temperature,
     n_spo2 = data$n_spo2,
     n_steps = data$n_steps,
-    n_stress = data$n_stress
+    n_stress = data$n_stress,
+    n_wrist_status = data$n_wrist_status,
+    n_zero_crossing = data$n_zero_crossing
   )
 }
 

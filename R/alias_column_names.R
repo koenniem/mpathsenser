@@ -411,6 +411,8 @@ alias_column_names.garminmeta <- function(data, ...) {
           c("spo2") ~ "n_spo2",
           c("steps") ~ "n_steps",
           c("stress") ~ "n_stress",
+          c("wristStatus") ~ "n_wrist_status",
+          c("zeroCrossing") ~ "n_zero_crossing",
           .default = colnames,
           .ptype = character()
         )
