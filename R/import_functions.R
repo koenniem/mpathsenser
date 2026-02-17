@@ -337,7 +337,6 @@ unpack_sensor_data.device <- function(data, ...) {
       data$device_data,
       \(x) purrr::pluck(x, "utsname", "release", .default = NA)
     )
-
     # Use iOS values if Android values are missing
     # If the other turns out to be missing as well, it doesn't matter which one we use
     osv <- if (all(is.na(android_osv))) ios_osv else android_osv
@@ -345,6 +344,13 @@ unpack_sensor_data.device <- function(data, ...) {
 
     data$operating_system_version <- osv
     data$sdk <- sdk
+  }
+
+  # Ensure that sdk is a character, otherwise this may lead to an error later when batch_size > 1
+  # and sdk is a character in one ifle but an integer in another, bind_rows() will fail to combine
+  # them.
+  if ("sdk" %in% colnames(data)) {
+    data$sdk <- as.character(data$sdk)
   }
 
   safe_data_frame(

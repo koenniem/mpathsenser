@@ -705,6 +705,31 @@ test_that("device", {
     sdk = "1.0.0",
     new_names = new_names
   )
+
+  # Test that SDK with combined integer and character always returns character
+  sdk_dat <- bind_rows(
+    common_data(
+      sensor = "device",
+      list(
+        device_id = "abc",
+        hardware = "Android",
+        sdk = "1.0.0"
+      )
+    ),
+    common_data(
+      sensor = "device",
+      list(
+        device_id = "def",
+        hardware = "iPhone",
+        sdk = 15
+      )
+    )
+  )
+
+  # Execute the sensor function based on its name
+  class(sdk_dat) <- c("device", class(sdk_dat))
+  sdk_res <- unpack_sensor_data(sdk_dat)
+  expect_type(sdk_res$sdk, "character")
 })
 
 # Error ========
