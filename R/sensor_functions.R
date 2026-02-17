@@ -858,8 +858,8 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
   if (!is.null(by)) {
     err <- try(
       {
-        select(data, dplyr::all_of({{ by }}))
-        select(gaps, dplyr::all_of({{ by }}))
+        select(data, all_of({{ by }}))
+        select(gaps, all_of({{ by }}))
       },
       silent = TRUE
     )

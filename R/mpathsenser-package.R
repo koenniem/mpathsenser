@@ -13,6 +13,7 @@
 #' @importFrom DBI dbIsValid
 #' @importFrom dbplyr window_order
 #' @importFrom dplyr across
+#' @importFrom dplyr all_of
 #' @importFrom dplyr any_of
 #' @importFrom dplyr arrange
 #' @importFrom dplyr bind_rows

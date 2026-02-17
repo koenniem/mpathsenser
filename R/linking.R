@@ -49,7 +49,7 @@ link_impl <- function(
   # Match sensing data with ESM using a left join
   data <- data |>
     dplyr::left_join(y, by = by, multiple = "all", relationship = "many-to-many") |>
-    mutate(across(dplyr::all_of(y_time), as.integer, .names = ".y_time")) |>
+    mutate(across(all_of(y_time), as.integer, .names = ".y_time")) |>
     tidyr::drop_na(".start_time", ".end_time")
 
   # The main data, i.e. data exactly within the interval
@@ -58,7 +58,7 @@ link_impl <- function(
     arrange(across(c({{ by }}, ".y_time"))) |>
     select(-".y_time") |>
     nest({{ name }} := !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
-    select(dplyr::all_of(c(".row_id", name)))
+    select(all_of(c(".row_id", name)))
 
   # Merge back with original data
   # Bug: if this happens after merging data_before and data_after, they would be lost in the case
@@ -80,7 +80,7 @@ link_impl <- function(
       group_by(.data$.row_id) |>
       dplyr::slice_max(order_by = .data$.y_time, n = 1, with_ties = TRUE) |>
       ungroup() |>
-      mutate(across(dplyr::all_of(y_time), .names = "original_time")) |>
+      mutate(across(all_of(y_time), .names = "original_time")) |>
       mutate({{ y_time }} := lubridate::as_datetime(.data$.start_time, tz = tz)) |>
       select(-".y_time") |>
       nest(data_before = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
@@ -111,7 +111,7 @@ link_impl <- function(
       group_by(.data$.row_id) |>
       dplyr::slice_min(order_by = .data$.y_time, n = 1, with_ties = TRUE) |>
       ungroup() |>
-      mutate(across(dplyr::all_of(y_time), .names = "original_time")) |>
+      mutate(across(all_of(y_time), .names = "original_time")) |>
       mutate({{ y_time }} := lubridate::as_datetime(.data$.end_time, tz = tz)) |>
       select(-".y_time") |>
       nest(data_after = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
@@ -142,7 +142,7 @@ link_impl <- function(
     if (nrow(data_main) > 0) {
       # Add column original_time in cases where it's missing
       for (i in seq_len(nrow(data_main))) {
-        if (!any("original_time" == colnames(pull(data_main, dplyr::all_of(name))[[i]]))) {
+        if (!any("original_time" == colnames(pull(data_main, all_of(name))[[i]]))) {
           data_main$data[[i]]$original_time <- as.POSIXct(NA, tz = tz)
         }
       }
@@ -950,7 +950,7 @@ bin_data <- function(
 
     # Regroup after reframe
     if (length(groups) > 0) {
-      out <- group_by(out, dplyr::pick(dplyr::all_of(groups)))
+      out <- group_by(out, dplyr::pick(all_of(groups)))
     }
   } else {
     out <- out |>
