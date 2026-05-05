@@ -1053,21 +1053,29 @@ A score of the current air quality index.
 character
 </td>
 <td style="text-align:left;word-break: break-all;">
-Air quality categorisation from EPA:
-<style type="text/css">
-  .tg  {border-collapse:collapse;border-spacing:0;}
-  .tg td{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
-    overflow:hidden;padding:10px 5px;word-break:normal;}
-  .tg th{border-color:black;border-style:solid;border-width:1px;font-family:Arial, sans-serif;font-size:14px;
-    font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
-  .tg .tg-pe9c{background-color:#ff0000;color:#ffffff;text-align:left;vertical-align:top}
-  .tg .tg-o7xn{background-color:#7030a0;color:#ffffff;text-align:left;vertical-align:top}
-  .tg .tg-7a9u{background-color:#c5e0b3;color:#000000;text-align:left;vertical-align:top}
-  .tg .tg-n203{background-color:#c00000;color:#ffffff;text-align:left;vertical-align:top}
-  .tg .tg-htfj{background-color:#f7caac;color:#000000;text-align:left;vertical-align:top}
-  .tg .tg-d1y8{background-color:#d0cece;color:#000000;text-align:left;vertical-align:top}
-  .tg .tg-hc68{background-color:#ffe599;color:#000000;text-align:left;vertical-align:top}
-  </style>
+Air quality categorisation from EPA: <style type="text/css"> .tg
+{border-collapse:collapse;border-spacing:0;} .tg
+td{border-color:black;border-style:solid;border-width:1px;font-family:Arial,
+sans-serif;font-size:14px; overflow:hidden;padding:10px
+5px;word-break:normal;} .tg
+th{border-color:black;border-style:solid;border-width:1px;font-family:Arial,
+sans-serif;font-size:14px;
+font-weight:normal;overflow:hidden;padding:10px 5px;word-break:normal;}
+.tg
+.tg-pe9c{background-color:#ff0000;color:#ffffff;text-align:left;vertical-align:top}
+.tg
+.tg-o7xn{background-color:#7030a0;color:#ffffff;text-align:left;vertical-align:top}
+.tg
+.tg-7a9u{background-color:#c5e0b3;color:#000000;text-align:left;vertical-align:top}
+.tg
+.tg-n203{background-color:#c00000;color:#ffffff;text-align:left;vertical-align:top}
+.tg
+.tg-htfj{background-color:#f7caac;color:#000000;text-align:left;vertical-align:top}
+.tg
+.tg-d1y8{background-color:#d0cece;color:#000000;text-align:left;vertical-align:top}
+.tg
+.tg-hc68{background-color:#ffe599;color:#000000;text-align:left;vertical-align:top}
+</style>
 <table class="table tg">
 <thead><tr>
 <th class="tg-d1y8" style="NAposition: sticky; top:0; background-color: #FFFFFF;">
@@ -1584,6 +1592,167 @@ integer
 </td>
 <td style="text-align:left;">
 The power level of the device in percentage.
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="bluetoothbeacon">BluetoothBeacon<a class="anchor" aria-label="anchor" href="#bluetoothbeacon"></a>
+</h3>
+<p>Resulting from a specific Bluetooth scan. See the relevant <a href="https://m-path.io/manual/knowledge-base/bluetooth-triggers-beacon/" class="external-link">m-Path
+manual page</a>.</p>
+<table class="table table table-striped table-bordered" style="margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Variable
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Type
+</th>
+<th style="text-align:left;position: sticky; top:0; background-color: #FFFFFF;color: white !important;background-color: rgba(0, 113, 255, 255) !important;">
+Description
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">measurement_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Uniquely generated measurement ID. Currently not present in the data.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">participant_id</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+Unique ID of the participant.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">date</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The date of the measurement. Represented as a character as YYYY-MM-DD.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">time</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The start time of the measurement. Represented in 24-hour time as
+00:00:00.000000.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">region</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The name of the region (beacon region) in which the beacon was detected.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="    text-decoration: underline; ">uuid</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+The universally unique identifier (UUID) of the beacon.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">rssi</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+The Received Signal Strength Indicator (RSSI) signal strength to the
+beacon in decibels referenced to one milliwatt (dBm) ranging from 0 to
+-100.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">major</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+The major value of the beacon, used to group beacons within a region.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">minor</span>
+</td>
+<td style="text-align:left;">
+integer
+</td>
+<td style="text-align:left;">
+The minor value of the beacon, used to identify individual beacons
+within a group.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">accuracy</span>
+</td>
+<td style="text-align:left;">
+double
+</td>
+<td style="text-align:left;">
+The accuracy of the proximity measurement in metres. A negative value
+indicates that the accuracy could not be determined.
+</td>
+</tr>
+<tr>
+<td style="text-align:left;font-family: 'Courier New';">
+<span style="     ">proximity</span>
+</td>
+<td style="text-align:left;">
+character
+</td>
+<td style="text-align:left;">
+An estimate of the proximity of the beacon:
+<ul>
+<li>
+immediate: The beacon is very close.
+</li>
+<li>
+near: The beacon is relatively close.
+</li>
+<li>
+far: The beacon is far away.
+</li>
+<li>
+unknown: The proximity could not be determined.
+</li>
+</ul>
 </td>
 </tr>
 </tbody>
