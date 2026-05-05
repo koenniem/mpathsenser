@@ -17,6 +17,7 @@ sensors <- c(
   "AppUsage",
   "Battery",
   "Bluetooth",
+  "BluetoothBeacon",
   "Calendar",
   "Connectivity",
   "Device",

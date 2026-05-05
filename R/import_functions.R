@@ -281,6 +281,35 @@ unpack_sensor_data.bluetooth <- function(data, ...) {
 
 #' @export
 #' @keywords internal
+unpack_sensor_data.bluetoothbeacon <- function(data, ...) {
+  data <- unpack_sensor_data.default(data, "bluetoothbeacon", ...)
+
+  if ("scan_result" %in% colnames(data) && !all(is.na(data$scan_result))) {
+    data$scan_result <- lapply(data$scan_result, bind_rows)
+    data <- unnest(data, "scan_result", keep_empty = TRUE)
+
+    # Remap column names again, now with unnested data
+    class(data) <- c("bluetoothbeacon", class(data))
+    data <- alias_column_names(data)
+  }
+
+  safe_data_frame(
+    measurement_id = data$measurement_id,
+    participant_id = data$participant_id,
+    date = substr(data$time, 1, 10),
+    time = substr(data$time, 12, 26),
+    region = data$region,
+    uuid = data$uuid,
+    rssi = data$rssi,
+    major = data$major,
+    minor = data$minor,
+    accuracy = data$accuracy,
+    proximity = data$proximity
+  )
+}
+
+#' @export
+#' @keywords internal
 unpack_sensor_data.connectivity <- function(data, ...) {
   data <- unpack_sensor_data.default(data, "connectivity", ...)
 

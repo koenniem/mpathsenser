@@ -203,6 +203,31 @@ alias_column_names.bluetooth <- function(data, ...) {
 
 #' @export
 #' @keywords internal
+alias_column_names.bluetoothbeacon <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        dplyr::case_match(
+          colnames,
+          c("scanResult", "scanResults") ~ "scan_result",
+          c("id") ~ "measurement_id",
+          c("timestamp", "start_time") ~ "time",
+          c("region") ~ "region",
+          c("uuid") ~ "uuid",
+          c("rssi") ~ "rssi",
+          c("major") ~ "major",
+          c("minor") ~ "minor",
+          c("accuracy") ~ "accuracy",
+          c("proximity") ~ "proximity",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
 alias_column_names.connectivity <- function(data, ...) {
   data |>
     dplyr::rename_with(

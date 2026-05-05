@@ -536,3 +536,21 @@ test_that("Wifi (new_tests)", {
     expect_true(is.na(d$bssid))
   })
 })
+
+### BluetoothBeacon ====
+test_that("BluetoothBeacon (new_tests)", {
+  db_test_new("BluetoothBeacon", function(d, db) {
+    expect_equal(nrow(d), 1)
+    expect_equal(d$participant_id, "12345")
+    expect_equal(d$date, "2025-12-16")
+    expect_equal(d$time, "12:40:00")
+    expect_true(is.na(d$measurement_id))
+    expect_equal(d$region, "LocationA")
+    expect_equal(d$uuid, "FDA50693-A4E2-4FB1-AFCF-C6EB07647825")
+    expect_equal(d$rssi, -73L)
+    expect_equal(d$major, 10L)
+    expect_equal(d$minor, 12L)
+    expect_equal(d$accuracy, 7.54, tolerance = 1e-4)
+    expect_equal(d$proximity, "far")
+  })
+})

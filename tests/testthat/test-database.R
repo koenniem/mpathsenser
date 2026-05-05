@@ -1,7 +1,7 @@
 # Tests for database.R
 
 test_that("sensors-vec", {
-  expect_vector(sensors, character(), size = 41)
+  expect_vector(sensors, character(), size = 42)
 })
 
 test_that("create_db", {

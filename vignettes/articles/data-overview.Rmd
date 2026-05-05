@@ -285,17 +285,17 @@ tribble(
 
 ```{r appusage-table, echo=FALSE}
 tribble(
-  ~Variable         , ~Type       , ~Description                                                                                                                                                                                                                                                                               ,
+  ~Variable         , ~Type       , ~Description                                                                                                                                                                                                                                                                           ,
   "measurement_id"  , "character" , "Uniquely generated measurement ID. Currently not present in the data. Because each record contains a single app but one measurement contains multiple apps, apps within the same measurement share the same measurement_id but added with a suffix “_” and a number starting from 1." ,
-  "participant_id"  , "character" , "Unique ID of the participant."                                                                                                                                                                                                                                                            ,
-  "date"            , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                                                                                                                                   ,
-  "time"            , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                       ,
-  "end_time"        , "character" , "The end time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                         ,
-  "start"           , "character" , "Start time of the of sampling window of this app, represented as an ISO 8601 date. This can vary slightly from the general start time."                                                                                                                                                   ,
-  "end"             , "character" , "End time of the of sampling window of this app, represented as an ISO 8601 date. This can vary slightly from the general end time."                                                                                                                                                       ,
-  "usage"           , "integer"   , "A map of names of apps and their cumulative usage in seconds."                                                                                                                                                                                                                            ,
-  "app"             , "character" , "The last part of the application package name. For instance, “com.facebook.katana” would become “katana”."                                                                                                                                                                        ,
-  "package_name"    , "character" , "The full application package name."                                                                                                                                                                                                                                                       ,
+  "participant_id"  , "character" , "Unique ID of the participant."                                                                                                                                                                                                                                                        ,
+  "date"            , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                                                                                                                               ,
+  "time"            , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                   ,
+  "end_time"        , "character" , "The end time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                     ,
+  "start"           , "character" , "Start time of the of sampling window of this app, represented as an ISO 8601 date. This can vary slightly from the general start time."                                                                                                                                               ,
+  "end"             , "character" , "End time of the of sampling window of this app, represented as an ISO 8601 date. This can vary slightly from the general end time."                                                                                                                                                   ,
+  "usage"           , "integer"   , "A map of names of apps and their cumulative usage in seconds."                                                                                                                                                                                                                        ,
+  "app"             , "character" , "The last part of the application package name. For instance, “com.facebook.katana” would become “katana”."                                                                                                                                                                            ,
+  "package_name"    , "character" , "The full application package name."                                                                                                                                                                                                                                                   ,
   "last_foreground" , "character" , "The time at which the application was last in the foreground. If the app had not yet been in the foreground, this is NA. Represented as an ISO 8601 date."
 ) |>
   mutate(
@@ -362,25 +362,59 @@ tribble(
   table_style()
 ```
 
+### BluetoothBeacon
+Resulting from a specific Bluetooth scan. See the relevant [m-Path manual page](https://m-path.io/manual/knowledge-base/bluetooth-triggers-beacon/).
+
+```{r bluetoothbeacon-table, echo=FALSE}
+tribble(
+  ~Variable, ~Type, ~Description,
+  "measurement_id", "character", "Uniquely generated measurement ID. Currently not present in the data.",
+  "participant_id", "character", "Unique ID of the participant.",
+  "date", "character", "The date of the measurement. Represented as a character as YYYY-MM-DD.",
+  "time", "character", "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000.",
+  "region", "character", "The name of the region (beacon region) in which the beacon was detected.",
+  "uuid", "character", "The universally unique identifier (UUID) of the beacon.",
+  "rssi", "integer", "The Received Signal Strength Indicator (RSSI) signal strength to the beacon in decibels referenced to one milliwatt (dBm) ranging from 0 to -100.",
+  "major", "integer", "The major value of the beacon, used to group beacons within a region.",
+  "minor", "integer", "The minor value of the beacon, used to identify individual beacons within a group.",
+  "accuracy", "double", "The accuracy of the proximity measurement in metres. A negative value indicates that the accuracy could not be determined.",
+  "proximity", "character", "An estimate of the proximity of the beacon:
+  <ul>
+    <li> immediate: The beacon is very close.
+    <li> near: The beacon is relatively close.
+    <li> far: The beacon is far away.
+    <li> unknown: The proximity could not be determined.
+  </ul>"
+) |>
+  mutate(
+    Variable = cell_spec(
+      Variable,
+      underline = Variable %in% c("participant_id", "date", "time", "uuid")
+    )
+  ) |>
+  kbl(booktabs = TRUE, escape = FALSE) |>
+  table_style()
+```
+
 ### Calendar
 
 This sensor was deprecated but for historical reasons is preserved in `mpathsenser`.
 
 ```{r calendar-table, echo=FALSE}
 tribble(
-  ~Variable        , ~Type       , ~Description                                                                                                                                                                                                                                                                               ,
+  ~Variable        , ~Type       , ~Description                                                                                                                                                                                                                                                                           ,
   "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. Because each record contains an event but one measurement contains multiple events, events within the same measurement share the same measurement_id but added with a suffix “_” and a number starting from 1." ,
-  "participant_id" , "character" , "Unique ID of the participant."                                                                                                                                                                                                                                                            ,
-  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                                                                                                                                   ,
-  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                       ,
-  "event_id"       , "character" , "The unique identifier for this event."                                                                                                                                                                                                                                                    ,
-  "calendar_id"    , "character" , "The identifier of the calendar that this event is associated with."                                                                                                                                                                                                                       ,
-  "title"          , "character" , "The title of this event."                                                                                                                                                                                                                                                                 ,
-  "description"    , "character" , "The description for this event."                                                                                                                                                                                                                                                          ,
-  "start"          , "character" , "Indicates when the event starts. Represented as an ISO 8601 date."                                                                                                                                                                                                                        ,
-  "end"            , "character" , "Indicates when the event ends. Represented as an ISO 8601 date."                                                                                                                                                                                                                          ,
-  "all_day"        , "boolean"   , "Indicates if this is an all-day event."                                                                                                                                                                                                                                                   ,
-  "location"       , "character" , "The location of this event."                                                                                                                                                                                                                                                              ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                                                                                                                                                                                                        ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                                                                                                                               ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                   ,
+  "event_id"       , "character" , "The unique identifier for this event."                                                                                                                                                                                                                                                ,
+  "calendar_id"    , "character" , "The identifier of the calendar that this event is associated with."                                                                                                                                                                                                                   ,
+  "title"          , "character" , "The title of this event."                                                                                                                                                                                                                                                             ,
+  "description"    , "character" , "The description for this event."                                                                                                                                                                                                                                                      ,
+  "start"          , "character" , "Indicates when the event starts. Represented as an ISO 8601 date."                                                                                                                                                                                                                    ,
+  "end"            , "character" , "Indicates when the event ends. Represented as an ISO 8601 date."                                                                                                                                                                                                                      ,
+  "all_day"        , "boolean"   , "Indicates if this is an all-day event."                                                                                                                                                                                                                                               ,
+  "location"       , "character" , "The location of this event."                                                                                                                                                                                                                                                          ,
   "attendees"      , "character" , "A list of attendees' name for this event. If multiple attendees are present, then these are separate by a comma."
 ) |>
   mutate(
@@ -539,11 +573,11 @@ tribble(
 
 ```{r installedapps-table, echo=FALSE}
 tribble(
-  ~Variable        , ~Type       , ~Description                                                                                                                                                                                                                                                                             ,
+  ~Variable        , ~Type       , ~Description                                                                                                                                                                                                                                                                         ,
   "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. Because each record contains a single app but a measurement contains multiple apps, apps within the same measurement share the same measurement_id but added with a suffix “_” and a number starting from 1." ,
-  "participant_id" , "character" , "Unique ID of the participant."                                                                                                                                                                                                                                                          ,
-  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                                                                                                                                 ,
-  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                     ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                                                                                                                                                                                                      ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                                                                                                                                                             ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                                                                                                                                                                 ,
   "Installed apps" , "character" , "The name of an installed app."
 ) |>
   mutate(
@@ -675,11 +709,11 @@ tribble(
 
 ```{r pedometer-table, echo=FALSE}
 tribble(
-  ~Variable        , ~Type       , ~Description                                                                                      ,
-  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. "                          ,
-  "participant_id" , "character" , "Unique ID of the participant."                                                                   ,
-  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                          ,
-  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."              ,
+  ~Variable        , ~Type       , ~Description                                                                                    ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data. "                        ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                 ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                        ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."            ,
   "step_count"     , "integer"   , "Cumulative number of steps as measured by the phone’s operating system since the last reboot."
 ) |>
   mutate(
@@ -814,7 +848,7 @@ tribble(
   "participant_id"      , "character" , "Unique ID of the participant."                                                                                                              ,
   "date"                , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                                                                     ,
   "time"                , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                                                         ,
-  "country"             , "character" , "Abbreviation of the country. For instance, Belgium is “BE”."                                                                            ,
+  "country"             , "character" , "Abbreviation of the country. For instance, Belgium is “BE”."                                                                                ,
   "area_name"           , "character" , "City name."                                                                                                                                 ,
   "weather_main"        , "character" , "Group of weather parameters (Rain, Snow, Clouds etc.)"                                                                                      ,
   "weather_description" , "character" , "Weather condition within the group."                                                                                                        ,
@@ -1058,7 +1092,7 @@ tribble(
   "participant_id" , "character" , "Unique ID of the participant."                                                      ,
   "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."             ,
   "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000." ,
-  "temperature"    , "double"    , "Skin temperature in degrees Celsius (0-65°C, 0.0 if unavailable)."                 ,
+  "temperature"    , "double"    , "Skin temperature in degrees Celsius (0-65°C, 0.0 if unavailable)."                  ,
   "status"         , "character" , "Status of the temperature measurement."                                             ,
   "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
 ) |>
@@ -1073,11 +1107,11 @@ tribble(
 
 ```{r garminspo2-table, echo=FALSE}
 tribble(
-  ~Variable        , ~Type       , ~Description                                                                                          ,
-  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."                               ,
-  "participant_id" , "character" , "Unique ID of the participant."                                                                       ,
-  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                              ,
-  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                  ,
+  ~Variable        , ~Type       , ~Description                                                                                        ,
+  "measurement_id" , "character" , "Uniquely generated measurement ID. Currently not present in the data."                             ,
+  "participant_id" , "character" , "Unique ID of the participant."                                                                     ,
+  "date"           , "character" , "The date of the measurement. Represented as a character as YYYY-MM-DD."                            ,
+  "time"           , "character" , "The start time of the measurement. Represented in 24-hour time as 00:00:00.000000."                ,
   "spo2"           , "integer"   , "Blood oxygen saturation level in percentage (0%-100%, ≤25% indicates resting, 0% if unavailable)." ,
   "mac_address"    , "character" , "MAC address of the Garmin device (Android) or UUID (iOS)."
 ) |>

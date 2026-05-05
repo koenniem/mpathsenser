@@ -100,6 +100,23 @@
         }
     },
     {
+        "sensorStartTime": 1765888800000000,
+        "data": {
+            "__type": "dk.cachet.carp.beacondata",
+            "region": "LocationA",
+            "scanResult": [
+                {
+                    "uuid": "FDA50693-A4E2-4FB1-AFCF-C6EB07647825",
+                    "rssi": -73,
+                    "major": 10,
+                    "minor": 12,
+                    "accuracy": 7.54,
+                    "proximity": "far"
+                }
+            ]
+        }
+    },
+    {
         "sensorStartTime": 1765913013695276,
         "data": {
             "__type": "dk.cachet.carp.bluetooth",

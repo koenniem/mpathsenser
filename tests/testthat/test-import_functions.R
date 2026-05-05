@@ -609,6 +609,77 @@ test_that("bluetooth", {
   )
 })
 
+# BluetoothBeacon ===============
+test_that("bluetoothbeacon", {
+  # Helper: build raw bluetoothbeacon data in the new cams format
+  make_beacon_dat <- function(...) {
+    dat <- tibble::tibble(
+      study_id = "test-study",
+      participant_id = "12345",
+      data_format = "cams 1.0.0",
+      start_time = "2021-11-14 16:40:00.123456",
+      sensor = "bluetoothbeacon",
+      data = list(list(...))
+    )
+    class(dat) <- c("bluetoothbeacon", class(dat))
+    dat
+  }
+
+  # --- No scan_result ---
+  dat <- make_beacon_dat(region = "LocationA")
+  res <- unpack_sensor_data(dat)
+  expect_true("measurement_id" %in% colnames(res))
+  expect_type(res$measurement_id, "logical")
+  expect_equal(res$participant_id, "12345")
+  expect_equal(res$date, "2021-11-14")
+  expect_equal(res$time, "16:40:00.123456")
+  expect_equal(res$region, "LocationA")
+  expect_true(is.na(res$uuid))
+  expect_true(is.na(res$rssi))
+
+  # --- scan_result is NULL ---
+  dat <- make_beacon_dat(region = "LocationA", scanResult = list(NULL))
+  res <- unpack_sensor_data(dat)
+  expect_true("measurement_id" %in% colnames(res))
+  expect_equal(res$region, "LocationA")
+  expect_true(is.na(res$uuid))
+
+  # --- scan_result with one entry (snake_case column names) ---
+  dat <- make_beacon_dat(
+    region = "LocationA",
+    scanResult = list(list(
+      uuid = "FDA50693-A4E2-4FB1-AFCF-C6EB07647825",
+      rssi = -73L,
+      major = 10L,
+      minor = 12L,
+      accuracy = 7.54,
+      proximity = "far"
+    ))
+  )
+  res <- unpack_sensor_data(dat)
+  expect_equal(nrow(res), 1)
+  expect_equal(res$region, "LocationA")
+  expect_equal(res$uuid, "FDA50693-A4E2-4FB1-AFCF-C6EB07647825")
+  expect_equal(res$rssi, -73L)
+  expect_equal(res$major, 10L)
+  expect_equal(res$minor, 12L)
+  expect_equal(res$accuracy, 7.54, tolerance = 1e-4)
+  expect_equal(res$proximity, "far")
+
+  # --- Multiple scan results ---
+  dat <- make_beacon_dat(
+    region = "LocationA",
+    scanResult = list(
+      list(uuid = "AAA", rssi = -50L, major = 1L, minor = 2L, accuracy = 1.0, proximity = "near"),
+      list(uuid = "BBB", rssi = -80L, major = 3L, minor = 4L, accuracy = 5.0, proximity = "far")
+    )
+  )
+  res <- unpack_sensor_data(dat)
+  expect_equal(nrow(res), 2)
+  expect_true(all(res$region == "LocationA"))
+  expect_equal(sort(res$uuid), c("AAA", "BBB"))
+})
+
 # Connectivity ============
 test_that("connectivity", {
   unit_test(

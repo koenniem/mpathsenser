@@ -511,6 +511,7 @@ safe_extract <- function(vec, var) {
     c("app_usage", "appusage") ~ "AppUsage",
     c("battery", "batterystate") ~ "Battery",
     "bluetooth" ~ "Bluetooth",
+    "beacondata" ~ "BluetoothBeacon",
     "calendar" ~ "Calendar",
     "connectivity" ~ "Connectivity",
     c("device", "deviceinformation") ~ "Device",
@@ -598,7 +599,7 @@ safe_extract <- function(vec, var) {
           tolower(names(data)),
           SIMPLIFY = FALSE
         )
-        out <- lapply(data, unpack_sensor_data)
+        out <- purrr::map(data, unpack_sensor_data)
       }
 
       names(out) <- names
@@ -845,6 +846,7 @@ safe_extract <- function(vec, var) {
     sensor,
     AppUsage = "app",
     Bluetooth = "bluetooth_device_id",
+    BluetoothBeacon = "uuid",
     Calendar = c("event_id", "calendar_id", "start", "end"),
     GarminActigraphy = c("instance"),
     InstalledApps = "app",

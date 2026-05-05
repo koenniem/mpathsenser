@@ -674,3 +674,20 @@ ip TEXT,
 PRIMARY KEY (participant_id, date, time),
 FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS BluetoothBeacon
+(
+measurement_id TEXT UNIQUE,
+participant_id TEXT NOT NULL,
+date TEXT NOT NULL,
+time TEXT NOT NULL,
+region TEXT,
+uuid TEXT,
+rssi INTEGER,
+major INTEGER,
+minor INTEGER,
+accuracy REAL,
+proximity TEXT,
+PRIMARY KEY (participant_id, date, time, uuid),
+FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+);
