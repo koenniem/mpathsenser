@@ -40,7 +40,7 @@ This is useful for various functions in this package that work with a lazy tibbl
 functions such as \code{\link[dplyr:filter]{dplyr::filter()}} or \code{\link[dplyr:mutate]{dplyr::mutate()}} before pulling the data into R. These
 functions will be executed in-database, and will therefore be much faster than having to first
 pull all data into R and then possibly removing a large part of it. Importantly, data can
-pulled into R using \code{\link[dplyr:compute]{dplyr::collect()}}.
+pulled into R using \code{\link[dplyr:collect]{dplyr::collect()}}.
 }
 \examples{
 \dontrun{

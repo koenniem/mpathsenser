@@ -7,13 +7,13 @@
 with_localtime(x, tz)
 }
 \arguments{
-\item{x}{A vector of timestamps, either as \code{\link[lubridate:posix_utils]{lubridate::POSIXct}} or character strings.}
+\item{x}{A vector of timestamps, either as \code{\link[base:POSIXct]{base::POSIXct}} or character strings.}
 
 \item{tz}{A character vector of timezones corresponding to each element in \code{x}. If all elements
 share the same timezone, a single value can be supplied.}
 }
 \value{
-A \code{\link[lubridate:posix_utils]{lubridate::POSIXct}} vector in UTC.
+A \code{\link[base:POSIXct]{base::POSIXct}} vector in UTC.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}

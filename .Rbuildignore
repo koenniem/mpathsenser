@@ -30,3 +30,5 @@
 ^vignettes/articles$
 ^[.]?air[.]toml$
 ^\.vscode$
+^\.positai$
+^\.claude$

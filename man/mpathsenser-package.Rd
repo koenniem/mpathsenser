@@ -23,6 +23,11 @@ Useful links:
 \author{
 \strong{Maintainer}: Koen Niemeijer \email{koen.niemeijer@kuleuven.be} (\href{https://orcid.org/0000-0002-0816-534X}{ORCID})
 
+Authors:
+\itemize{
+  \item Koen Niemeijer \email{koen.niemeijer@kuleuven.be} (\href{https://orcid.org/0000-0002-0816-534X}{ORCID})
+}
+
 Other contributors:
 \itemize{
   \item Kristof Meers \email{kristof.meers@kuleuven.be} (\href{https://orcid.org/0000-0002-9610-7712}{ORCID}) [contributor]

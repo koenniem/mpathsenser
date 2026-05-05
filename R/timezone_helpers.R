@@ -195,11 +195,11 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
 #' represent them in a single vector with their own time zone. To this end, this function converts
 #' each timestamp to its local time, and then force UTC as a time zone for all values.
 #'
-#' @param x A vector of timestamps, either as [`POSIXct`] or character strings.
+#' @param x A vector of timestamps, either as [`base::POSIXct`] or character strings.
 #' @param tz  A character vector of timezones corresponding to each element in `x`. If all elements
 #'   share the same timezone, a single value can be supplied.
 #'
-#' @returns A [`POSIXct`] vector in UTC.
+#' @returns A [`base::POSIXct`] vector in UTC.
 #' @export
 #'
 #' @examples
