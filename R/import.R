@@ -162,10 +162,9 @@ import <- function(
     }
 
     # Read in all the files, in parallel
-    batch_data <- furrr::future_map(
+    batch_data <- future_map(
       .x = batch_files,
-      .f = ~ .import_read_json(path, .x),
-      .options = furrr::furrr_options(seed = TRUE)
+      .f = ~ .import_read_json(path, .x)
     )
     names(batch_data) <- batch_files
 
@@ -195,11 +194,10 @@ import <- function(
     }
 
     # Clean the lists to be in a dataframe format
-    batch_data <- furrr::future_map2(
+    batch_data <- future_map2(
       .x = batch_data,
       .y = names(batch_data),
-      .f = .import_clean,
-      .options = furrr::furrr_options(seed = TRUE)
+      .f = .import_clean
     )
 
     # Remove NULLs, as we want to keep these files unmarked
@@ -242,10 +240,9 @@ import <- function(
     batch_data <- batch_data[names(batch_data) %in% meta_data[["id"]]]
 
     # Extract the sensor data
-    batch_data <- furrr::future_map(
+    batch_data <- future_map(
       .x = batch_data,
-      .f = ~ .import_extract_sensor_data(.x, sensors, debug = debug),
-      .options = furrr::furrr_options(seed = TRUE)
+      .f = ~ .import_extract_sensor_data(.x, sensors, debug = debug)
     )
 
     # To do: Use mpathinfo to generate new metadata

@@ -336,7 +336,7 @@ coverage_impl <- function(
   p_id <- as.character(participant_id) # nolint
 
   # Loop over each sensor and calculate the coverage rate for that sensor
-  data <- furrr::future_map(
+  data <- future_map(
     .x = sensor,
     .f = ~ {
       tmp_db <- open_db(NULL, db@dbname)

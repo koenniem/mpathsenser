@@ -119,7 +119,7 @@ fix_jsons <- function(
     n_fixed <- 0L
 
     if (jsonfiles[1] != "") {
-      n_fixed <- furrr::future_map_int(
+      n_fixed <- future_map_int(
         .x = jsonfiles,
         .f = fix_jsons_impl,
         .progress = .progress
@@ -307,7 +307,7 @@ test_jsons <- function(
     jsonfiles <- jsonfiles[!(jsonfiles %in% processed_files$file_name)]
   }
 
-  missing <- furrr::future_map_lgl(
+  missing <- future_map_lgl(
     .x = jsonfiles,
     .f = \(x) {
       str <- readLines(x, warn = FALSE, skipNul = TRUE)
@@ -317,7 +317,6 @@ test_jsons <- function(
       }
       jsonlite::validate(str)
     },
-    .options = furrr::furrr_options(seed = TRUE),
     .progress = .progress
   )
 
@@ -378,7 +377,7 @@ unzip_data <- function(
     # Find all dirs
     dirs <- list.dirs(path = path, recursive = TRUE)
 
-    unzipped_files <- furrr::future_map_int(
+    unzipped_files <- future_map_int(
       .x = dirs,
       .f = \(x) {
         if (is.null(to)) {
@@ -427,4 +426,53 @@ unzip_impl <- function(path, to, overwrite) {
   })
 
   length(unlist(res))
+}
+
+# Internal wrappers around furrr/purrr for optional parallel support.
+# When 'furrr' is installed (listed in Suggests), parallel computation is
+# automatically used via the active future plan. When 'furrr' is not
+# available, falls back to sequential purrr equivalents.
+# Enable parallelism with:  future::plan("multisession")
+future_map <- function(.x, .f, ..., .options = furrr::furrr_options(), .progress = FALSE) {
+  rlang::check_dots_empty()
+  if (ensure_suggested_package("furrr")) {
+    furrr::future_map(.x, .f, ..., .options = .options, .progress = .progress)
+  } else {
+    purrr::map(.x, .f, ..., .progress = .progress)
+  }
+}
+
+future_map2 <- function(.x, .y, .f, ..., .options = furrr::furrr_options(), .progress = FALSE) {
+  rlang::check_dots_empty()
+  if (ensure_suggested_package("furrr")) {
+    furrr::future_map2(.x, .y, .f, ..., .options = .options, .progress = .progress)
+  } else {
+    purrr::map2(.x, .y, .f, ...)
+  }
+}
+
+future_map_int <- function(.x, .f, ..., .options = furrr::furrr_options(), .progress = FALSE) {
+  rlang::check_dots_empty()
+  if (ensure_suggested_package("furrr")) {
+    furrr::future_map_int(.x, .f, ..., .options = .options, .progress = .progress)
+  } else {
+    purrr::map_int(.x, .f, ...)
+  }
+}
+
+future_map_lgl <- function(.x, .f, ..., .options = furrr::furrr_options(), .progress = FALSE) {
+  rlang::check_dots_empty()
+  if (ensure_suggested_package("furrr")) {
+    furrr::future_map_lgl(.x, .f, ..., .options = .options, .progress = .progress)
+  } else {
+    purrr::map_lgl(.x, .f, ...)
+  }
+}
+
+recode_values <- function(.x, ..., .default = NULL, .ptype = NULL) {
+  if (utils::packageVersion("dplyr") >= "1.2.0") {
+    dplyr::recode_values(.x, ..., default = .default, ptype = .ptype)
+  } else {
+    dplyr::case_match(.x, ..., .default = .default, .ptype = .ptype)
+  }
 }

@@ -22,14 +22,14 @@ BugReports:
 Depends: 
     R (>= 4.2.0)
 Imports:
+    cli,
     DBI,
     dbplyr,
-    dplyr,
-    furrr,
+    dplyr (>= 1.1.0),
     jsonlite,
     lifecycle,
     lubridate,
-    purrr,
+    purrr (>= 1.0.0),
     rlang,
     RSQLite,
     stats,
@@ -37,6 +37,7 @@ Imports:
     tidyr
 Suggests: 
     curl,
+    furrr,
     ggplot2,
     httr,
     kableExtra,

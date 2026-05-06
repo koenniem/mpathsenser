@@ -437,7 +437,7 @@ link <- function(
 
   # Do not perform matching when x and y are identical
   if (identical(x, y) || isTRUE(all.equal(x, y))) {
-    abort("`x` and `y` are identical.")
+    cli_abort("{.arg x} and {.arg y} are identical.")
   }
 
   # Get the start_time, end_time, and y_time as characters and check their validity
@@ -634,22 +634,22 @@ link_gaps <- function(
 
   # Check for time column in data
   if (!("time" %in% colnames(data))) {
-    abort("Column `time` must be present in `data`")
+    cli_abort("Column {.code time} must be present in {.arg data}.")
   }
   # Check for time column
   if (!("from" %in% colnames(gaps) && "to" %in% colnames(gaps))) {
-    abort("Column `from` and `to` must be present in `gaps`.")
+    cli_abort("Column {.code from} and {.code to} must be present in {.arg gaps}.")
   }
   if (!lubridate::is.POSIXct(data$time)) {
-    abort("Column `time` in `data` must be a POSIXct.")
+    cli_abort("Column {.code time} in {.arg data} must be a POSIXct.")
   }
 
   # Check that gap or gap_data is not already present in data
   if ("gap" %in% colnames(data)) {
-    abort("column 'gap' should not already be present in data")
+    cli_abort("Column {.code gap} must not already be present in {.arg data}.")
   }
   if (raw_data && "gap_data" %in% colnames(data)) {
-    abort("column 'gap_data' should not already be present in data")
+    cli_abort("Column {.code gap_data} must not already be present in {.arg data}.")
   }
 
   # Calculate the start and end time of the interval (in seconds) of each row in data
@@ -900,9 +900,9 @@ bin_data <- function(
   } else if (is.numeric(by) && !fixed) {
     by_duration <- by
   } else {
-    abort(paste(
-      "`by` must be one of 'sec', 'min', 'hour', or 'day',",
-      "or a numeric value if `fixed = FALSE`."
+    cli_abort(c(
+      "{.arg by} must be one of {.val sec}, {.val min}, {.val hour}, or {.val day},",
+      i = "Or a numeric value when {.code fixed = FALSE}."
     ))
   }
 
@@ -936,8 +936,6 @@ bin_data <- function(
     distinct() |>
     drop_na("bin_start")
 
-  if (utils::packageVersion("dplyr") >= "1.1.0") {
-    # nocov start
     groups <- dplyr::group_vars(out)
     out <- out |>
       dplyr::reframe(
@@ -952,16 +950,6 @@ bin_data <- function(
     if (length(groups) > 0) {
       out <- group_by(out, dplyr::pick(all_of(groups)))
     }
-  } else {
-    out <- out |>
-      summarise(
-        bin_start = seq.POSIXt(
-          from = min(.data$bin_start, na.rm = TRUE),
-          to = max(.data$bin_start, na.rm = TRUE) + by_duration,
-          by = by_duration
-        )
-      )
-  } # nocov end
 
   if (by == "day") {
     out <- out |>
