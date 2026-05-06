@@ -135,8 +135,8 @@ fix_jsons <- function(
 fix_jsons_impl <- function(file) {
   # Read the file in binary mode, so it doesn't stop reading when encountering illegal ASCIIs
   con <- file(file, open = "rb", blocking = TRUE)
+  on.exit(close(con), add = TRUE)
   lines <- readLines(con, warn = FALSE, skipNul = TRUE)
-  close(con)
   res <- 0L
 
   # Are there any illegal characters in the file? If so, remove these before parsing.
@@ -173,9 +173,9 @@ fix_illegal_ascii <- function(file, lines) {
 
   # Write it to file
   con <- file(file, open = "wb", blocking = TRUE)
+  on.exit(close(con), add = TRUE)
   write(lines, file, append = FALSE)
   flush(con)
-  close(con)
   lines
 }
 

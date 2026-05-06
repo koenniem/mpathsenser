@@ -501,7 +501,7 @@ safe_extract <- function(vec, var) {
 .import_map_sensor_names <- function(names) {
   names <- trimws(names)
   lower_names <- tolower(names)
-  dplyr::case_match(
+  recode_values(
     lower_names,
     c("accelerometer", "accelerationfeatures", "averageaccelerometer") ~
       "Accelerometer",

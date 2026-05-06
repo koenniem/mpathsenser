@@ -371,9 +371,6 @@ coverage_impl <- function(
           coverage = as.numeric(.data$coverage)
         )
 
-      # Disconnect from the temporary database connection
-      dbDisconnect(tmp_db)
-
       # Calculate the relative target frequency ratio by dividing the average number of measurements
       # per hour by the expected number of measurements
       if (relative) {

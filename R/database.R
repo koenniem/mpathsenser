@@ -216,8 +216,10 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 #' # Cleanup
 #' file.remove(file.path(tempdir(), "mydb.db"))
 close_db <- function(db) {
-  exists <- try(db, silent = TRUE)
-  if (inherits(exists, "SQLiteConnection") && !is.null(db)) {
+  if (!exists(deparse(substitute(db)), envir = parent.frame())) {
+    return(invisible(NULL))
+  }
+  if (inherits(db, "SQLiteConnection") && !is.null(db)) {
     if (dbIsValid(db)) {
       dbDisconnect(db)
     }
