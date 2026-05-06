@@ -425,7 +425,9 @@ link <- function(
 
   # Check that not end_time and any offset are used at the same time
   if (!missing(end_time) && (!missing(offset_before) || !missing(offset_after))) {
-    abort("`end_time` and `offset_before` or `offset_after` cannot be used at the same time.")
+    cli_abort(
+      "{.arg end_time} cannot be combined with {.arg offset_before} or {.arg offset_after}."
+    )
   }
 
   # Check offsets if end_time is not missing

@@ -10,6 +10,7 @@ ensure_suggested_package <- function(name, call = rlang::caller_env()) {
       call = call
     )
   }
+  invisible(TRUE)
 }
 
 check_db <- function(
