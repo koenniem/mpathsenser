@@ -47,8 +47,7 @@ Suggests:
     rvest,
     sodium,
     spelling,
-    testthat (>= 3.0.0),
-    vroom
+    testthat (>= 3.0.0)
 VignetteBuilder: 
     knitr
 Config/testthat/edition: 3

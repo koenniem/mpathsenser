@@ -87,7 +87,6 @@ fix_jsons <- function(
   recursive = TRUE,
   .progress = TRUE
 ) {
-  ensure_suggested_package("vroom")
 
   check_arg(path, "character", n = 1, allow_null = TRUE)
   check_arg(files, "character", allow_null = TRUE)
