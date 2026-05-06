@@ -308,8 +308,8 @@ vacuum_db <- function(db) {
 #' @param target_db A mpathsenser database connection where the data will be transferred to.
 #'   [create_db()] to create a new database.
 #' @param sensor A character vector containing one or multiple sensors. See
-#'   \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
-#'   sensors.
+#'   \code{\link[mpathsenser]{sensors}} for a list of available sensors. Defaults to `NULL`, which
+#'   means all available sensors.
 #'
 #' @returns Returns `TRUE` invisibly, called for side effects.
 #' @export
@@ -339,20 +339,14 @@ vacuum_db <- function(db) {
 copy_db <- function(
   source_db,
   target_db,
-  sensor = "All"
+  sensor = NULL
 ) {
   check_db(source_db, arg = "source_db")
   check_db(target_db, arg = "target_db")
-  check_arg(sensor, "character")
+  check_sensors(sensor, allow_null = TRUE, arg = "sensor")
 
-  # Check sensors
-  if (length(sensor) == 1 && sensor == "All") {
+  if (is.null(sensor)) {
     sensor <- sensors
-  } else {
-    missing <- sensor[!(sensor %in% sensors)]
-    if (length(missing) != 0) {
-      abort(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
-    }
   }
 
   # Attach new database to old database

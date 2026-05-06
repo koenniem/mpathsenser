@@ -340,6 +340,7 @@ coverage_impl <- function(
     .x = sensor,
     .f = ~ {
       tmp_db <- open_db(NULL, db@dbname)
+      on.exit(dbDisconnect(tmp_db), add = TRUE)
 
       # Extract the data for this participant and sensor
       tmp <- dplyr::tbl(tmp_db, .x) |>
