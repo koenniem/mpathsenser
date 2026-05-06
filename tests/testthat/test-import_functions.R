@@ -1612,22 +1612,18 @@ test_that("garminwriststatus", {
   .cols <- c("status", "mac_address")
   new_names <- c(status = "status", mac_address = "macAddress")
 
-  unit_test_garmin(
+  unit_test(
     "garminwriststatus",
     .cols = .cols,
-    list(
-      timestamp = 1.636908e+12 + 123.456
-    )
+    timestamp = 1.636908e+12 + 123.456
   )
 
-  unit_test_garmin(
+  unit_test(
     "garminwriststatus",
     .cols = .cols,
-    list(
-      timestamp = 1.636908e+12 + 123.456,
-      status = "ON_WRIST",
-      mac_address = "AA:BB:CC:DD:EE:FF"
-    )
+    timestamp = 1.636908e+12 + 123.456,
+    status = "ON_WRIST",
+    mac_address = "AA:BB:CC:DD:EE:FF"
   )
 })
 

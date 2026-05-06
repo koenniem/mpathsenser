@@ -168,13 +168,15 @@ import <- function(
     )
     names(batch_data) <- batch_files
 
+    # For the files marked as NA, register the study, participant_id, and the file name,
+    # but keep the data empty as there was no data (empty file).
+    batch_na <- batch_files[is.na(batch_data)]
+
     # Remove NULLs, as we want to keep these files unmarked
     # (something went wrong when reading in the data)
     batch_data <- purrr::compact(batch_data)
 
-    # For the files marked as NA, register the study, participant_id, and the file name,
-    # but keep the data empty as there was no data (empty file).
-    batch_na <- batch_files[is.na(batch_data)]
+    # Keep non-null non-NA files for further processing
     batch_data <- batch_data[!is.na(batch_data)]
 
     if (debug) {
@@ -273,7 +275,8 @@ import <- function(
     )
     batch_data <- lapply(batch_data, bind_rows)
     batch_data <- purrr::compact(batch_data)
-    batch_data <- lapply(batch_data, distinct) # Filter out duplicate rows (for some reason)
+    # Filter out duplicate rows (for some reason)
+    batch_data <- lapply(batch_data, function(x) if (anyDuplicated(x)) distinct(x) else x)
 
     if (debug) {
       n_tables <- length(batch_data)
@@ -742,35 +745,55 @@ safe_extract <- function(vec, var) {
 .import_extract_garmin_logs <- function(.data) {
   garmin_data <- filter(.data, .data$sensor == "garminalllogsdata")
 
-  # Extract Garmin sensor data into new columns
-  garmin_data$GarminAccelerometer <- lapply(garmin_data$data, \(x) x[["accelerometer"]])
-  garmin_data$GarminActigraphy <- lapply(garmin_data$data, \(x) {
-    x[c("actigraphy1", "actigraphy2", "actigraphy3")]
+  garmin_cols <- lapply(garmin_data$data, \(x) {
+    list(
+      GarminAccelerometer = x[["accelerometer"]],
+      GarminActigraphy = x[c("actigraphy1", "actigraphy2", "actigraphy3")],
+      GarminBBI = x[["bbi"]],
+      GarminEnhancedBBI = x[["enhancedBbi"]],
+      GarminGyroscope = x[["gyroscope"]],
+      GarminHeartRate = x[["heartRate"]],
+      GarminMeta = x[c("fromTime", "toTime", "entryCounts")],
+      GarminRespiration = x[["respiration"]],
+      GarminSkinTemperature = x[["skinTemperature"]],
+      GarminSPO2 = x[["spo2"]],
+      GarminSteps = x[["steps"]],
+      GarminStress = x[["stress"]],
+      GarminWristStatus = x[["wristStatus"]],
+      GarminZeroCrossing = x[["zeroCrossing"]]
+    )
   })
+  garmin_data[names(garmin_cols[[1]])] <- purrr::list_transpose(garmin_cols)
+
+  # Extract Garmin sensor data into new columns
+  # garmin_data$GarminAccelerometer <- lapply(garmin_data$data, \(x) x[["accelerometer"]])
+  # garmin_data$GarminActigraphy <- lapply(garmin_data$data, \(x) {
+  #   x[c("actigraphy1", "actigraphy2", "actigraphy3")]
+  # })
   garmin_data$GarminActigraphy <- lapply(
     garmin_data$GarminActigraphy,
     \(x) purrr::list_flatten(x, name_spec = "{inner}")
   )
 
-  garmin_data$GarminBBI <- lapply(garmin_data$data, \(x) x[["bbi"]])
-  garmin_data$GarminEnhancedBBI <- lapply(garmin_data$data, \(x) x[["enhancedBbi"]])
-  garmin_data$GarminGyroscope <- lapply(garmin_data$data, \(x) x[["gyroscope"]])
-  garmin_data$GarminHeartRate <- lapply(garmin_data$data, \(x) x[["heartRate"]])
-  garmin_data$GarminMeta <- lapply(garmin_data$data, \(x) {
-    x[c("fromTime", "toTime", "entryCounts")]
-  })
+  # garmin_data$GarminBBI <- lapply(garmin_data$data, \(x) x[["bbi"]])
+  # garmin_data$GarminEnhancedBBI <- lapply(garmin_data$data, \(x) x[["enhancedBbi"]])
+  # garmin_data$GarminGyroscope <- lapply(garmin_data$data, \(x) x[["gyroscope"]])
+  # garmin_data$GarminHeartRate <- lapply(garmin_data$data, \(x) x[["heartRate"]])
+  # garmin_data$GarminMeta <- lapply(garmin_data$data, \(x) {
+  #   x[c("fromTime", "toTime", "entryCounts")]
+  # })
   # For the meta data, flatten the entrycounts
   garmin_data$GarminMeta <- lapply(
     garmin_data$GarminMeta,
     \(x) purrr::list_flatten(x, name_spec = "{inner}")
   )
-  garmin_data$GarminRespiration <- lapply(garmin_data$data, \(x) x[["respiration"]])
-  garmin_data$GarminSkinTemperature <- lapply(garmin_data$data, \(x) x[["skinTemperature"]])
-  garmin_data$GarminSPO2 <- lapply(garmin_data$data, \(x) x[["spo2"]])
-  garmin_data$GarminSteps <- lapply(garmin_data$data, \(x) x[["steps"]])
-  garmin_data$GarminStress <- lapply(garmin_data$data, \(x) x[["stress"]])
-  garmin_data$GarminWristStatus <- lapply(garmin_data$data, \(x) x[["wristStatus"]])
-  garmin_data$GarminZeroCrossing <- lapply(garmin_data$data, \(x) x[["zeroCrossing"]])
+  # garmin_data$GarminRespiration <- lapply(garmin_data$data, \(x) x[["respiration"]])
+  # garmin_data$GarminSkinTemperature <- lapply(garmin_data$data, \(x) x[["skinTemperature"]])
+  # garmin_data$GarminSPO2 <- lapply(garmin_data$data, \(x) x[["spo2"]])
+  # garmin_data$GarminSteps <- lapply(garmin_data$data, \(x) x[["steps"]])
+  # garmin_data$GarminStress <- lapply(garmin_data$data, \(x) x[["stress"]])
+  # garmin_data$GarminWristStatus <- lapply(garmin_data$data, \(x) x[["wristStatus"]])
+  # garmin_data$GarminZeroCrossing <- lapply(garmin_data$data, \(x) x[["zeroCrossing"]])
 
   # Remove the extract columns from the data column
   garmin_data$data <- lapply(garmin_data$data, \(x) {

@@ -12,26 +12,19 @@ safe_data_frame <- function(...) {
   x
 }
 
+
 safe_tibble <- function(...) {
   x <- suppressWarnings(list(...))
   x <- lapply(x, function(x) {
-    if (is.null(x)) {
+    if (is.null(x) || (is.list(x) && length(x[[1]]) == 0)) {
       NA
     } else {
       x
     }
   })
-  x <- lapply(x, function(x) {
-    if (length(x[[1]]) == 0) {
-      NA
-    } else {
-      x
-    }
-  }) # lists
   x <- tibble::as_tibble(x)
   x
 }
-
 
 #' Unpack raw sensor data
 #'
@@ -673,7 +666,7 @@ unpack_sensor_data.garminstress <- function(data, ...) {
 #' @export
 #' @keywords internal
 unpack_sensor_data.garminwriststatus <- function(data, ...) {
-  data <- tidyr::unnest(data, "data")
+  # data <- tidyr::unnest(data, "data")
   data <- unpack_sensor_data.default(data, "garminwriststatus", ...)
 
   # Convert the timestamps to ISO8601

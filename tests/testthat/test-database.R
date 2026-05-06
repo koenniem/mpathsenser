@@ -78,7 +78,7 @@ test_that("copy_db", {
     "Sensor `foo` could not be found."
   )
 
-  copy_db(db, new_db, sensor = "All")
+  copy_db(db, new_db, sensor = NULL)
   expect_equal(get_nrows(db), get_nrows(new_db))
   close_db(new_db)
   file.remove(filename)

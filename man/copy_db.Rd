@@ -4,7 +4,7 @@
 \alias{copy_db}
 \title{Copy (a subset of) a database to another database}
 \usage{
-copy_db(source_db, target_db, sensor = "All")
+copy_db(source_db, target_db, sensor = NULL)
 }
 \arguments{
 \item{source_db}{A mpathsenser database connection from where the data will be transferred.}
@@ -13,8 +13,8 @@ copy_db(source_db, target_db, sensor = "All")
 \code{\link[=create_db]{create_db()}} to create a new database.}
 
 \item{sensor}{A character vector containing one or multiple sensors. See
-\code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
-sensors.}
+\code{\link[mpathsenser]{sensors}} for a list of available sensors. Defaults to \code{NULL}, which
+means all available sensors.}
 }
 \value{
 Returns \code{TRUE} invisibly, called for side effects.

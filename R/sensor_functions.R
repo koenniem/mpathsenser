@@ -129,7 +129,7 @@ first_date <- function(db, sensor, participant_id = NULL) {
 #' @examples
 #' \dontrun{
 #' db <- open_db()
-#' first_date(db, "Accelerometer", "12345")
+#' last_date(db, "Accelerometer", "12345")
 #' }
 last_date <- function(db, sensor, participant_id = NULL) {
   check_db(db)

@@ -108,7 +108,7 @@ coverage <- function(
   check_db(db)
   check_arg(participant_id, type = c("character"), n = 1)
   check_sensors(sensor, allow_null = TRUE)
-  check_arg(frequency, type = "double")
+  check_arg(frequency, type = "numeric")
   check_arg(relative, "logical", n = 1)
 
   # Check sensors

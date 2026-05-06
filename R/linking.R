@@ -695,12 +695,12 @@ link_gaps <- function(
       from = as.POSIXct(
         vector(mode = "double"),
         origin = "1970-01-01",
-        tz = attr(gaps$from, "tzone")
+        tz = lubridate::tz(gaps$from)
       ),
       to = as.POSIXct(
         vector(mode = "double"),
         origin = "1970-01-01",
-        tz = attr(gaps$from, "tzone")
+        tz = lubridate::tz(gaps$to)
       ),
       gap = integer(0)
     )
@@ -938,20 +938,20 @@ bin_data <- function(
     distinct() |>
     drop_na("bin_start")
 
-    groups <- dplyr::group_vars(out)
-    out <- out |>
-      dplyr::reframe(
-        bin_start = seq.POSIXt(
-          from = min(.data$bin_start, na.rm = TRUE),
-          to = max(.data$bin_start, na.rm = TRUE) + by_duration,
-          by = by_duration
-        )
+  groups <- dplyr::group_vars(out)
+  out <- out |>
+    dplyr::reframe(
+      bin_start = seq.POSIXt(
+        from = min(.data$bin_start, na.rm = TRUE),
+        to = max(.data$bin_start, na.rm = TRUE) + by_duration,
+        by = by_duration
       )
+    )
 
-    # Regroup after reframe
-    if (length(groups) > 0) {
-      out <- group_by(out, dplyr::pick(all_of(groups)))
-    }
+  # Regroup after reframe
+  if (length(groups) > 0) {
+    out <- group_by(out, dplyr::pick(all_of(groups)))
+  }
 
   if (by == "day") {
     out <- out |>
