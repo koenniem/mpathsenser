@@ -27,10 +27,10 @@ ccopy <- function(from, to, recursive = TRUE) {
   copy <- setdiff(from_list, to_list)
 
   if (length(copy) == 0) {
-    return(inform("No files left to copy"))
+    return(cli_inform("No files left to copy."))
   }
 
-  inform(paste0("Copying ", length(copy), " files."))
+  cli_inform("Copying {length(copy)} file{?s}.")
   to_copy <- file.path(from, copy)
   invisible(do.call(
     file.copy,
@@ -94,7 +94,7 @@ fix_jsons <- function(
   check_arg(recursive, "logical", n = 1)
 
   if (is.null(path) && is.null(files)) {
-    abort("`path` and `files` cannot be NULL at the same time.")
+    cli_abort("{.arg path} and {.arg files} cannot both be {.code NULL}.")
   }
 
   # Find all JSON files that are _not_ zipped Thus, make sure you didn't unzip them yet,
@@ -126,10 +126,10 @@ fix_jsons <- function(
       )
     }
   } else {
-    abort("No JSON files found.")
+    cli_abort("No JSON files found.")
   }
 
-  inform(paste0("Fixed ", sum(n_fixed), " files"))
+  cli_inform("Fixed {sum(n_fixed)} file{?s}.")
   return(invisible(sum(n_fixed)))
 }
 
@@ -283,7 +283,7 @@ test_jsons <- function(
   check_arg(recursive, "logical", n = 1)
 
   if (is.null(path) && is.null(files)) {
-    abort("`path` and `files` cannot be NULL at the same time.")
+    cli_abort("{.arg path} and {.arg files} cannot both be {.code NULL}.")
   }
 
   # Find all JSON files that are _not_ zipped Thus, make sure you didn't unzip them yet,
@@ -323,10 +323,10 @@ test_jsons <- function(
 
   jsonfiles <- jsonfiles[!missing]
   if (length(jsonfiles) == 0) {
-    inform("No issues found.")
+    cli_inform("No issues found.")
     return(invisible(""))
   } else {
-    warn("There were issues in some files")
+    cli_warn("There were issues in some files")
     return(normalizePath(jsonfiles))
   }
 }
@@ -399,9 +399,9 @@ unzip_data <- function(
   }
 
   if (unzipped_files > 0) {
-    inform(paste("Unzipped", unzipped_files, "files."))
+    cli_inform("Unzipped {unzipped_files} file{?s}.")
   } else {
-    inform("No files found to unzip.")
+    cli_inform("No files to unzip.")
   }
 }
 
@@ -422,7 +422,7 @@ unzip_impl <- function(path, to, overwrite) {
           exdir = to
         )))
       },
-      error = function(e) warn(paste0("Failed to unzip", x))
+      error = function(e) cli_warn(paste0("Failed to unzip", x))
     )
   })
 

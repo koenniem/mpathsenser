@@ -249,7 +249,7 @@ test_that("add_gaps", {
   # Test by
   expect_error(
     add_gaps(dat, gaps, by = "confidence"),
-    "Column\\(s\\) \"confidence\" must be present in both `data` and `gaps`."
+    "Column `confidence` must be present in both `data` and `gaps`."
   )
 
   # Define the true data

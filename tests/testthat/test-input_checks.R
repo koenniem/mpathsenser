@@ -6,7 +6,7 @@ test_that("ensure_suggested_package", {
 
   expect_error(
     ensure_suggested_package("foo"),
-    "Package `foo` is needed for this function to work."
+    "Package foo is needed for this function to work."
   )
 })
 
@@ -220,11 +220,11 @@ test_that("check_sensors", {
 test_that("check_offset", {
   expect_error(
     check_offset(TRUE, 0),
-    "`offset_before` must be a character vector, numeric vector, or a period."
+    "`offset_before` must be a character, numeric, or period."
   )
   expect_error(
     check_offset(0, offset_after = TRUE),
-    "`offset_after` must be a character vector, numeric vector, or a period."
+    "`offset_after` must be a character, numeric, or period."
   )
   expect_error(
     check_offset(offset_before = "1800", 0),
@@ -234,7 +234,7 @@ test_that("check_offset", {
   )
   expect_error(
     check_offset(0, 0),
-    "`offset_before` and `offset_after` cannot be 0 or NULL at the same time."
+    "`offset_before` and `offset_after` cannot both be 0 or NULL."
   )
   expect_warning(
     check_offset(offset_before = -1800, 0),

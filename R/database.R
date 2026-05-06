@@ -94,20 +94,20 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
     if (overwrite) {
       tryCatch(
         file.remove(db_name),
-        warning = function(e) abort(as.character(e)),
-        error = function(e) abort(as.character(e))
+        warning = function(e) cli_abort(conditionMessage(e)),
+        error = function(e) cli_abort(conditionMessage(e))
       )
     } else {
-      abort(c(
-        paste("Database", db_name, "already exists."),
-        i = " Use overwrite = TRUE to overwrite."
+      cli_abort(c(
+        "Database {.path {db_name}} already exists.",
+        i = "Use {.code overwrite = TRUE} to overwrite."
       ))
     }
   }
 
   # Check if path exists
   if (!dir.exists(dirname(db_name))) {
-    abort(paste0("Directory ", dirname(db_name), " does not exist."))
+    cli_abort("Directory {.path {dirname(db_name)}} does not exist.")
   }
 
   # Create a new db instance
@@ -116,7 +116,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
       db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
     },
     error = function(e) {
-      abort(paste0("Could not create a database in ", db_name)) # nocov
+      cli_abort("Could not create a database at {.path {db_name}}.") # nocov
     }
   )
 
@@ -132,9 +132,9 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
     error = function(e) {
       # nocov start
       dbDisconnect(db)
-      abort(c(
+      cli_abort(c(
         "Database definition file not found. The package is probably corrupted.",
-        i = "Please reinstall mpathsenser using `install.packages(\"mpathsenser\")`"
+        i = "Please reinstall {.pkg mpathsenser} using {.code install.packages(\"mpathsenser\")}"
       )) # nocov end
     }
   )
@@ -178,12 +178,12 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
   }
 
   if (!file.exists(db_name)) {
-    abort("There is no such file")
+    cli_abort("There is no database at {.path {db_name}}.")
   }
   db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
   if (!DBI::dbExistsTable(db, "Participant")) {
     dbDisconnect(db)
-    abort("Sorry, this does not appear to be a mpathsenser database.")
+    cli_abort("The file {.path {db_name}} does not appear to be an {.pkg mpathsenser} database.")
   }
   return(db)
 }
@@ -264,7 +264,7 @@ index_db <- function(db) {
       }
     },
     error = function(e) {
-      abort(as.character(e)) # nocov
+      cli_abort(conditionMessage(e)) # nocov
     }
   )
 

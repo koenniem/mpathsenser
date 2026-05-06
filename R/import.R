@@ -94,7 +94,7 @@ import <- function(
   # Normalise path and check if directory exists
   path <- normalizePath(file.path(path), mustWork = FALSE)
   if (!dir.exists(path)) {
-    cli::cli_abort(c(
+    cli_abort(c(
       "Directory {.path {path}} does not exist.",
       i = "Did you make a typo in the path name?"
     ))
@@ -109,7 +109,7 @@ import <- function(
   }
 
   if (length(files) == 0) {
-    cli::cli_abort(c(
+    cli_abort(c(
       "Can't find any JSON files in {.path {path}}.",
       i = "Did you put the JSON files in the correct directory?"
     ))
@@ -131,7 +131,7 @@ import <- function(
     }
 
     if (length(files) == 0) {
-      cli::cli_inform("No new files to process.")
+      cli_inform("No new files to process.")
       return(invisible(""))
     }
   }
@@ -304,10 +304,12 @@ import <- function(
   cli::cli_progress_done()
 
   if (all(complete)) {
-    inform("All files were successfully written to the database.")
+    cli_inform(
+      "All {length(unlist(files))} file{?s} {?was/were} successfully written to the database."
+    )
     return(invisible(""))
   } else {
-    warn("Some files could not be written to the database.")
+    cli_warn("Some files could not be written to the database.")
     return(files[!complete])
   }
 }
@@ -324,7 +326,7 @@ import <- function(
   }
 
   if (!file.exists(full_path)) {
-    warn(paste(filename, "does not exist."))
+    cli_warn(paste(filename, "does not exist."))
     return(NA)
   }
 
@@ -342,7 +344,7 @@ import <- function(
   # We don't want to make a record of having tried to process this file (but we do give a warning),
   # as we want to make sure users fix and retry the file.
   if (!jsonlite::validate(file)) {
-    cli::cli_warn("Invalid JSON format in file {.file {full_path}}.")
+    cli_warn("Invalid JSON format in file {.file {full_path}}.")
     return(NULL)
   }
 
@@ -362,7 +364,7 @@ import <- function(
   # If reading in the file failed, provide a warning to the user and return an empty result.
   # Similar reasoning as above.
   if (inherits(possible_error, "try-error")) {
-    cli::cli_warn(c(
+    cli_warn(c(
       paste0("Invalid JSON format in file {.file {filename}}."),
       i = "Try running {.help [fix_jsons()](mpathsenser::fix_jsons)} to \\
       resolve issues with this file."
@@ -577,7 +579,7 @@ safe_extract <- function(vec, var) {
   if (any(!(setdiff(names, "mpathinfo") %in% mpathsenser::sensors))) {
     not_exist <- names[!(names %in% mpathsenser::sensors)]
     not_exist <- setdiff(not_exist, "mpathinfo")
-    warn(c(
+    cli_warn(c(
       paste0("Sensor '", not_exist, "' is not supported by this package."),
       i = "Data from this sensor is removed from the output."
     ))
@@ -670,7 +672,7 @@ safe_extract <- function(vec, var) {
   }
 
   if (sum(has_info) > 1) {
-    cli::cli_warn(c(
+    cli_warn(c(
       "Multiple `mpathinfo` entries found in file: {.file {file_name}}.",
       i = "Using the first occurrence."
     ))
@@ -805,7 +807,7 @@ safe_extract <- function(vec, var) {
     not_exist <- lapply(garmin_data$data, names)
     not_exist <- unlist(not_exist, use.names = FALSE)
     not_exist <- unique(not_exist)
-    cli::cli_warn(c(
+    cli_warn(c(
       "Garmin data type{?s} {.var {not_exist}} is not supported by this package.",
       i = "Data is removed from the output."
     ))

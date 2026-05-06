@@ -373,7 +373,7 @@ installedapps_fun <- function(data) {
 }
 
 keyboard_fun <- function(data) {
-  warn("Function for implementing keyboard data currently not implemented.")
+  cli_warn("Function for implementing keyboard data currently not implemented.")
   return(NULL)
 }
 

@@ -865,11 +865,9 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
     )
 
     if (inherits(err, "try-error")) {
-      abort(paste0(
-        "Column(s) ",
-        paste0("\"", by, "\"", collapse = ", "),
-        " must be present in both `data` and `gaps`."
-      ))
+      cli_abort(
+        "Column{?s} {.code {by}} must be present in both {.arg data} and {.arg gaps}."
+      )
     }
 
     # Remove gaps that do not occur in the data based on the `by` column

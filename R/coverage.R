@@ -120,7 +120,7 @@ coverage <- function(
   db_sensors <- DBI::dbListTables(db)
   if (!all(sensor %in% db_sensors)) {
     missing <- setdiff(sensor, db_sensors)
-    cli::cli_warn(
+    cli_warn(
       "Th{?is/ese} sensor{?s} do{?es/} not exist in the database and \\
       will be removed from the output: {.arg {missing}}."
     )
@@ -129,12 +129,12 @@ coverage <- function(
 
   # Check participants
   if (!(participant_id %in% get_participants(db)$participant_id)) {
-    abort("Participant_id not known.")
+    cli_abort("{.val {participant_id}} is not a known participant.")
   }
 
   # Check frequency
   if (!relative && !is.numeric(frequency) || is.null(names(frequency))) {
-    abort("Frequency must be a named numeric vector")
+    cli_abort("{.arg frequency} must be a named numeric vector.")
   }
 
   # Old plot argument
@@ -152,7 +152,10 @@ coverage <- function(
   } else if (is.null(offset) || (tolower(offset) == "none")) {
     offset <- NULL
   } else {
-    abort("Argument offset must be either 'None', 1 day, or 2, 3, 4, ... days.")
+    cli_abort(c(
+      "{.arg offset} must be {.val None}, or a day specification like {.val 1 day}.",
+      i = "For example: {.val 1 day}, {.val 2 days}, etc."
+    ))
   }
 
   # Helper function for checking if a string is convertible to date
@@ -166,7 +169,7 @@ coverage <- function(
 
   # Check start_date, end_date
   if ((!is.null(start_date) && !is.null(end_date)) && !is.null(offset)) {
-    warn(c(
+    cli_warn(c(
       "Argument start_date/end_date and offset cannot be present at the same time. ",
       i = "Ignoring the offset argument."
     ))
@@ -175,7 +178,9 @@ coverage <- function(
     !(is.null(start_date) || convert2date(start_date)) ||
       !(is.null(end_date) || convert2date(end_date))
   ) {
-    abort("start_date and end_date must be NULL, a character string, or date.")
+    cli_abort(
+      "{.arg start_date} and {.arg end_date} must be {.code NULL}, a date string, or a {.cls Date}."
+    )
   }
 
   # Retain only frequencies that appear in the sensor list

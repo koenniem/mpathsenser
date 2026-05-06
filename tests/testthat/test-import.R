@@ -16,7 +16,7 @@ test_that("import", {
       recursive = FALSE,
       .progress = FALSE
     ),
-    "All files were successfully written to the database."
+    "All \\d files were successfully written to the database."
   )
 
   # Test whether no new files need to be processed
@@ -117,7 +117,7 @@ test_that("import", {
   )
   expect_match(
     debug_msgs,
-    "All files were successfully written to the database.",
+    "All \\d files were successfully written to the database.",
     all = FALSE
   )
   dbDisconnect(db)

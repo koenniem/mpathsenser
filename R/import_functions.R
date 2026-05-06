@@ -765,7 +765,7 @@ unpack_sensor_data.heartbeat <- function(data, ...) {
 #' @export
 #' @keywords internal
 unpack_sensor_data.keyboard <- function(data, ...) {
-  warn("Function for implementing keyboard data currently not implemented.")
+  cli_warn("Function for implementing keyboard data currently not implemented.")
   return(NULL)
 }
 

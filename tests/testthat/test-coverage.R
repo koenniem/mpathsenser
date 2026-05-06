@@ -21,32 +21,32 @@ test_that("coverage", {
   )
 
   # participant_id
-  expect_error(coverage(db, "-1"), "Participant_id not known.")
+  expect_error(coverage(db, "foo"), "\\\"foo\\\".* is not a known participant")
 
   # Frequency
   expect_error(
     coverage(db, "12345", frequency = c(1, 2, 3)),
-    "Frequency must be a named numeric vector"
+    "`frequency` must be a named numeric vector"
   )
   expect_error(
     coverage(db, "12345", frequency = c(1, 2, 3), relative = FALSE),
-    "Frequency must be a named numeric vector"
+    "`frequency` must be a named numeric vector"
   )
   tmp_freq <- freq
   names(tmp_freq) <- NULL
   expect_error(
     coverage(db, "12345", frequency = tmp_freq),
-    "Frequency must be a named numeric vector"
+    "`frequency` must be a named numeric vector"
   )
 
   # start_date and end_date
   expect_error(
     coverage(db, "12345", start_date = 1, end_date = 2),
-    "start_date and end_date must be NULL, a character string, or date."
+    "`start_date` and `end_date` must be `NULL`, a date string, or a .*<Date>"
   )
   expect_error(
     coverage(db, "12345", start_date = "foo", end_date = "bar"),
-    "start_date and end_date must be NULL, a character string, or date."
+    "`start_date` and `end_date` must be `NULL`, a date string, or a .*<Date>"
   )
 
   # Offset
@@ -59,7 +59,7 @@ test_that("coverage", {
   )
   expect_error(
     coverage(db, "12345", offset = "foo"),
-    "Argument offset must be either \\'None\\', 1 day, or 2, 3, 4, \\.\\.\\. days\\."
+    "`offset` must be .*\\\"None\\\".*, or a day specification like .*\\\"1 day\\\".*"
   )
 
   # Cleanup

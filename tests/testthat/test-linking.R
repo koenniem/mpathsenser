@@ -134,7 +134,7 @@ test_that("link", {
         y_time = time,
         offset_before = 1800
       ),
-    "`end_time` and `offset_before` or `offset_after` cannot be used at the same time."
+    "`end_time` cannot be combined with `offset_before` or `offset_after`."
   )
 
   # Test split argument
@@ -690,7 +690,7 @@ test_that("link_gaps", {
       offset_before = 1800L,
       raw_data = TRUE
     ),
-    "column 'gap' should not already be present in data"
+    "Column `gap` must not already be present in `data`."
   )
 
   expect_error(
@@ -701,7 +701,7 @@ test_that("link_gaps", {
       offset_before = 1800L,
       raw_data = TRUE
     ),
-    "column 'gap_data' should not already be present in data"
+    "Column `gap_data` must not already be present in `data`."
   )
 
   expect_error(
@@ -1172,7 +1172,7 @@ test_that("bin_data", {
       end_time = lead,
       by = TRUE
     ),
-    "`by` must be one of 'sec', 'min', 'hour', or 'day', or a numeric value if `fixed = FALSE`."
+    "`by` must be one of \"sec\", \"min\", \"hour\", or \"day\""
   )
   expect_error(
     data %>%

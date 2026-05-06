@@ -58,10 +58,10 @@ decrypt_gps <- function(data, key, ignore = ":") {
 
   # Custom key check: Either raw and length 32, or a character vector
   if (!(is.raw(key) && length(key) == 32) && !is.character(key)) {
-    abort(c(
-      "`key` must be either a hexadecimal string or a binary vector.",
-      i = "Try to use `sodium::hex2bin(key)` or `sodium::bin2hex(key)`",
-      x = "Steer clear of `charToRaw(key)`, as this delivers an incorrect key format."
+    cli_abort(c(
+      "{.arg key} must be either a hexadecimal string or a binary vector.",
+      i = "Try {.code sodium::hex2bin(key)} or {.code sodium::bin2hex(key)}.",
+      x = "Avoid {.code charToRaw(key)}: it produces an incorrect key format."
     ))
   }
 
@@ -70,9 +70,9 @@ decrypt_gps <- function(data, key, ignore = ":") {
   }
 
   data <- data |>
-    furrr::future_map(sodium::hex2bin, ignore = ignore) |>
-    furrr::future_map(sodium::simple_decrypt, key = key) |>
-    furrr::future_map(rawToChar) |>
+    future_map(\(x) sodium::hex2bin(x, ignore = ignore)) |>
+    future_map(\(x) sodium::simple_decrypt(x, key = key)) |>
+    future_map(rawToChar) |>
     unlist(recursive = FALSE) |>
     as.double()
 
