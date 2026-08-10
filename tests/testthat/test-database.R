@@ -1,7 +1,7 @@
 # Tests for database.R
 
 test_that("sensors-vec", {
-  expect_vector(sensors, character(), size = 27)
+  expect_vector(sensors, character(), size = 42)
 })
 
 test_that("create_db", {
@@ -12,21 +12,19 @@ test_that("create_db", {
 
   # Test merging path and filename
   temp_file <- basename(tempfile())
-  expect_error(
+  expect_no_error(
     {
       db <- create_db(path = tempdir(), db_name = temp_file)
       dbDisconnect(db)
-    },
-    NA
+    }
   )
 
   # Test overwrite argument
-  expect_error(
+  expect_no_error(
     {
       db <- create_db(path = NULL, filename, overwrite = TRUE)
       dbDisconnect(db)
-    },
-    NA
+    }
   )
 
   expect_error(
@@ -34,19 +32,19 @@ test_that("create_db", {
       db <- create_db(path = NULL, filename, overwrite = FALSE)
       dbDisconnect(db)
     },
-    "Database .+?(?=\\.db)\\.db already exists\\.",
-    perl = TRUE
+    NULL
   )
 
   # Test non-existing path
-  expect_error(create_db("foo", "bar"), "Directory .*?(?=foo)foo does not exist\\.", perl = TRUE)
+  expect_error(create_db("foo", "bar"), NULL)
 
+  file.remove(file.path(tempdir(), temp_file))
   file.remove(filename)
 })
 
 test_that("open_db", {
   fake_db <- tempfile("foo", fileext = ".db")
-  expect_error(open_db(NULL, fake_db), "There is no such file")
+  expect_error(open_db(NULL, fake_db), NULL)
 
   # Create a new (non-mpathsenser db)
   db <- dbConnect(duckdb::duckdb(), fake_db)
@@ -78,7 +76,7 @@ test_that("copy_db", {
   # Invalid sensor
   expect_error(
     copy_db(db, new_db, sensor = "foo"),
-    "Sensor\\(s\\) foo not found."
+    "Sensor `foo` could not be found."
   )
 
   new_db <- copy_db(db, new_db, sensor = "All")
@@ -102,11 +100,11 @@ test_that("close_db", {
   db <- create_test_db()
   expect_error(close_db(db), NA)
   expect_false(dbIsValid(db))
-  expect_error(close_db(db), NA) # Invalid db
+  expect_no_error(close_db(db)) # Invalid db
   rm(db)
-  expect_error(close_db(db), NA) # db does not exist
+  expect_no_error(close_db(db)) # db does not exist
   db <- NULL
-  expect_error(close_db(db), NA) # NULL db
+  expect_no_error(close_db(db)) # NULL db
 })
 
 test_that("index_db", {

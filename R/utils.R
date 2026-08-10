@@ -27,10 +27,10 @@ ccopy <- function(from, to, recursive = TRUE) {
   copy <- setdiff(from_list, to_list)
 
   if (length(copy) == 0) {
-    return(inform("No files left to copy"))
+    return(cli_inform("No files left to copy."))
   }
 
-  inform(paste0("Copying ", length(copy), " files."))
+  cli_inform("Copying {length(copy)} file{?s}.")
   to_copy <- file.path(from, copy)
   invisible(do.call(
     file.copy,
@@ -68,11 +68,10 @@ ccopy <- function(from, to, recursive = TRUE) {
 #'
 #' @inheritSection import Parallel
 #'
-#' @inheritSection import Progress
-#'
 #' @param path The path name of the JSON files.
 #' @param files Alternatively, a character list of the input files
 #' @param recursive Should the listing recurse into directories?
+#' @inheritParams import
 #'
 #' @return A message indicating how many files were fixed, and the number of fixed files invisibly.
 #' @export
@@ -85,16 +84,16 @@ ccopy <- function(from, to, recursive = TRUE) {
 fix_jsons <- function(
   path = getwd(),
   files = NULL,
-  recursive = TRUE
+  recursive = TRUE,
+  .progress = TRUE
 ) {
-  ensure_suggested_package("vroom")
 
   check_arg(path, "character", n = 1, allow_null = TRUE)
   check_arg(files, "character", allow_null = TRUE)
   check_arg(recursive, "logical", n = 1)
 
   if (is.null(path) && is.null(files)) {
-    abort("`path` and `files` cannot be NULL at the same time.")
+    cli_abort("{.arg path} and {.arg files} cannot both be {.code NULL}.")
   }
 
   # Find all JSON files that are _not_ zipped Thus, make sure you didn't unzip them yet,
@@ -119,58 +118,49 @@ fix_jsons <- function(
     n_fixed <- 0L
 
     if (jsonfiles[1] != "") {
-      n_fixed <- fix_jsons_impl(jsonfiles)
+      n_fixed <- future_map_int(
+        .x = jsonfiles,
+        .f = fix_jsons_impl,
+        .progress = .progress
+      )
     }
   } else {
-    abort("No JSON files found.")
+    cli_abort("No JSON files found.")
   }
 
-  inform(paste0("Fixed ", sum(n_fixed), " files"))
+  cli_inform("Fixed {sum(n_fixed)} file{?s}.")
   return(invisible(sum(n_fixed)))
 }
 
-fix_jsons_impl <- function(jsonfiles) {
-  if (requireNamespace("progressr", quietly = TRUE)) {
-    p <- progressr::progressor(steps = length(jsonfiles)) # nolint
+fix_jsons_impl <- function(file) {
+  # Read the file in binary mode, so it doesn't stop reading when encountering illegal ASCIIs
+  con <- file(file, open = "rb", blocking = TRUE)
+  on.exit(close(con), add = TRUE)
+  lines <- readLines(con, warn = FALSE, skipNul = TRUE)
+  res <- 0L
+
+  # Are there any illegal characters in the file? If so, remove these before parsing.
+  illegal_ascii <- any(grepl("[^ -~]", lines))
+  if (illegal_ascii) {
+    lines <- fix_illegal_ascii(file, lines)
+    res <- 1L
   }
 
-  furrr::future_map_int(
-    jsonfiles,
-    ~ {
-      if (requireNamespace("progressr", quietly = TRUE)) {
-        p()
-      }
+  if (length(lines) == 0) {
+    return(res)
+  } else if (length(lines) > 2) {
+    eof <- lines[(length(lines) - 2):length(lines)]
+  } else {
+    eof <- character(3)
+    eof[seq_along(lines)] <- lines
+  }
 
-      # Read the file in binary mode, so it doesn't stop reading when encountering illegal ASCIIs
-      con <- file(.x, open = "rb", blocking = TRUE)
-      lines <- readLines(con, warn = FALSE, skipNul = TRUE)
-      close(con)
-      res <- 0L
-
-      # Are there any illegal characters in the file? If so, remove these before parsing.
-      illegal_ascii <- any(grepl("[^ -~]", lines))
-      if (illegal_ascii) {
-        lines <- fix_illegal_ascii(.x, lines)
-        res <- 1L
-      }
-
-      if (length(lines) == 0) {
-        return(res)
-      } else if (length(lines) > 2) {
-        eof <- lines[(length(lines) - 2):length(lines)]
-      } else {
-        eof <- character(3)
-        eof[seq_along(lines)] <- lines
-      }
-
-      res <- res + fix_eof(.x, eof, lines)
-      if (res != 0) {
-        return(1L)
-      } else {
-        return(0L)
-      }
-    }
-  )
+  res <- res + fix_eof(file, eof, lines)
+  if (res != 0) {
+    return(1L)
+  } else {
+    return(0L)
+  }
 }
 
 fix_illegal_ascii <- function(file, lines) {
@@ -183,9 +173,9 @@ fix_illegal_ascii <- function(file, lines) {
 
   # Write it to file
   con <- file(file, open = "wb", blocking = TRUE)
+  on.exit(close(con), add = TRUE)
   write(lines, file, append = FALSE)
   flush(con)
-  close(con)
   lines
 }
 
@@ -255,13 +245,12 @@ fix_eof <- function(file, eof, lines) {
 #'
 #' @inheritSection import Parallel
 #'
-#' @inheritSection import Progress
-#'
 #' @param path The path name of the JSON files.
 #' @param files Alternatively, a character list of the input files.
 #' @param db A mpathsenser database connection (optional). If provided, will be used to check which
 #'   files are already in the database and check only those JSON files which are not.
 #' @param recursive Should the listing recurse into directories?
+#' @inheritParams import
 #'
 #' @return A message indicating whether there were any issues and a character vector of the file
 #'   names that need to be fixed. If there were no issues, an invisible empty string is returned.
@@ -285,14 +274,15 @@ test_jsons <- function(
   path = getwd(),
   files = NULL,
   db = NULL,
-  recursive = TRUE
+  recursive = TRUE,
+  .progress = TRUE
 ) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
   check_arg(files, "character", allow_null = TRUE)
   check_arg(recursive, "logical", n = 1)
 
   if (is.null(path) && is.null(files)) {
-    abort("`path` and `files` cannot be NULL at the same time.")
+    cli_abort("{.arg path} and {.arg files} cannot both be {.code NULL}.")
   }
 
   # Find all JSON files that are _not_ zipped Thus, make sure you didn't unzip them yet,
@@ -316,32 +306,25 @@ test_jsons <- function(
     jsonfiles <- jsonfiles[!(jsonfiles %in% processed_files$file_name)]
   }
 
-  if (requireNamespace("progressr", quietly = TRUE)) {
-    p <- progressr::progressor(steps = length(jsonfiles)) # nolint
-  }
-
-  missing <- furrr::future_map_lgl(
-    jsonfiles,
-    ~ {
-      if (requireNamespace("progressr", quietly = TRUE)) {
-        p()
-      }
-      str <- readLines(.x, warn = FALSE, skipNul = TRUE)
+  missing <- future_map_lgl(
+    .x = jsonfiles,
+    .f = \(x) {
+      str <- readLines(x, warn = FALSE, skipNul = TRUE)
       if (length(str) == 0) {
         # empty file
         return(TRUE)
       }
       jsonlite::validate(str)
     },
-    .options = furrr::furrr_options(seed = TRUE)
+    .progress = .progress
   )
 
   jsonfiles <- jsonfiles[!missing]
   if (length(jsonfiles) == 0) {
-    inform("No issues found.")
+    cli_inform("No issues found.")
     return(invisible(""))
   } else {
-    warn("There were issues in some files")
+    cli_warn("There were issues in some files")
     return(normalizePath(jsonfiles))
   }
 }
@@ -355,13 +338,12 @@ test_jsons <- function(
 #'
 #' @inheritSection import Parallel
 #'
-#' @inheritSection import Progress
-#'
 #' @param path The path to the directory containing the zip files.
 #' @param to The output path.
 #' @param overwrite Logical value whether you want to overwrite already existing zip files.
 #' @param recursive Logical value indicating whether to unzip files in subdirectories as well. These
 #'   files will then be unzipped in their respective subdirectory.
+#' @inheritParams import
 #'
 #' @return A message indicating how many files were unzipped.
 #' @export
@@ -381,7 +363,8 @@ unzip_data <- function(
   path = getwd(),
   to = NULL,
   overwrite = FALSE,
-  recursive = TRUE
+  recursive = TRUE,
+  .progress = TRUE
 ) {
   check_arg(path, "character", n = 1)
   check_arg(to, "character", allow_null = TRUE, n = 1)
@@ -393,23 +376,16 @@ unzip_data <- function(
     # Find all dirs
     dirs <- list.dirs(path = path, recursive = TRUE)
 
-    if (requireNamespace("progressr", quietly = TRUE)) {
-      p <- progressr::progressor(steps = length(dirs)) # nolint
-    }
-
-    unzipped_files <- furrr::future_map_int(
-      dirs,
-      ~ {
-        if (requireNamespace("progressr", quietly = TRUE)) {
-          p()
-        }
-
+    unzipped_files <- future_map_int(
+      .x = dirs,
+      .f = \(x) {
         if (is.null(to)) {
-          to <- .x
+          to <- x
         }
 
-        unzip_impl(.x, to, overwrite)
-      }
+        unzip_impl(x, to, overwrite)
+      },
+      .progress = .progress
     )
     unzipped_files <- sum(unzipped_files)
   } else {
@@ -421,9 +397,9 @@ unzip_data <- function(
   }
 
   if (unzipped_files > 0) {
-    inform(paste("Unzipped", unzipped_files, "files."))
+    cli_inform("Unzipped {unzipped_files} file{?s}.")
   } else {
-    inform("No files found to unzip.")
+    cli_inform("No files to unzip.")
   }
 }
 
@@ -444,9 +420,58 @@ unzip_impl <- function(path, to, overwrite) {
           exdir = to
         )))
       },
-      error = function(e) warn(paste0("Failed to unzip", x))
+      error = function(e) cli_warn(paste0("Failed to unzip", x))
     )
   })
 
   length(unlist(res))
+}
+
+# Internal wrappers around furrr/purrr for optional parallel support.
+# When 'furrr' is installed (listed in Suggests), parallel computation is
+# automatically used via the active future plan. When 'furrr' is not
+# available, falls back to sequential purrr equivalents.
+# Enable parallelism with:  future::plan("multisession")
+future_map <- function(.x, .f, ..., .options = furrr::furrr_options(), .progress = FALSE) {
+  rlang::check_dots_empty()
+  if (ensure_suggested_package("furrr")) {
+    furrr::future_map(.x, .f, ..., .options = .options, .progress = .progress)
+  } else {
+    purrr::map(.x, .f, ..., .progress = .progress)
+  }
+}
+
+future_map2 <- function(.x, .y, .f, ..., .options = furrr::furrr_options(), .progress = FALSE) {
+  rlang::check_dots_empty()
+  if (ensure_suggested_package("furrr")) {
+    furrr::future_map2(.x, .y, .f, ..., .options = .options, .progress = .progress)
+  } else {
+    purrr::map2(.x, .y, .f, ...)
+  }
+}
+
+future_map_int <- function(.x, .f, ..., .options = furrr::furrr_options(), .progress = FALSE) {
+  rlang::check_dots_empty()
+  if (ensure_suggested_package("furrr")) {
+    furrr::future_map_int(.x, .f, ..., .options = .options, .progress = .progress)
+  } else {
+    purrr::map_int(.x, .f, ...)
+  }
+}
+
+future_map_lgl <- function(.x, .f, ..., .options = furrr::furrr_options(), .progress = FALSE) {
+  rlang::check_dots_empty()
+  if (ensure_suggested_package("furrr")) {
+    furrr::future_map_lgl(.x, .f, ..., .options = .options, .progress = .progress)
+  } else {
+    purrr::map_lgl(.x, .f, ...)
+  }
+}
+
+recode_values <- function(.x, ..., .default = NULL, .ptype = NULL) {
+  if (utils::packageVersion("dplyr") >= "1.2.0") {
+    dplyr::recode_values(.x, ..., default = .default, ptype = .ptype)
+  } else {
+    dplyr::case_match(.x, ..., .default = .default, .ptype = .ptype)
+  }
 }

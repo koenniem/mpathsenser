@@ -44,7 +44,7 @@ alias_column_names.accelerometer <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -103,7 +103,7 @@ alias_column_names.activity <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -120,7 +120,7 @@ alias_column_names.airquality <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -139,13 +139,13 @@ alias_column_names.appusage <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
           c("startDate", "start_date") ~ "start",
           c("endDate", "end_date") ~ "end",
-          c("appName", "app_name") ~ "app",
+          c("appName", "app_name", "name") ~ "app",
           c("packageName") ~ "package_name",
           c("lastForeground") ~ "last_foreground",
           .default = colnames,
@@ -161,7 +161,7 @@ alias_column_names.battery <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -180,7 +180,7 @@ alias_column_names.bluetooth <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("scanResult", "scanResults") ~ "scan_result",
           c("id") ~ "measurement_id",
@@ -203,11 +203,36 @@ alias_column_names.bluetooth <- function(data, ...) {
 
 #' @export
 #' @keywords internal
+alias_column_names.bluetoothbeacon <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("scanResult", "scanResults") ~ "scan_result",
+          c("id") ~ "measurement_id",
+          c("timestamp", "start_time") ~ "time",
+          c("region") ~ "region",
+          c("uuid") ~ "uuid",
+          c("rssi") ~ "rssi",
+          c("major") ~ "major",
+          c("minor") ~ "minor",
+          c("accuracy") ~ "accuracy",
+          c("proximity") ~ "proximity",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
 alias_column_names.connectivity <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -225,7 +250,7 @@ alias_column_names.device <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -249,10 +274,314 @@ alias_column_names.error <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminaccelerometer <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("timestamp") ~ "time",
+          c("xValue") ~ "x",
+          c("yValue") ~ "y",
+          c("zValue") ~ "z",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminactigraphy <- function(data, ...) {
+  data |>
+    select(-dplyr::any_of("end_time")) |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("startTimestamp") ~ "time",
+          c("endTimestamp") ~ "end_time",
+          c("instance") ~ "instance",
+          c("totalEnergy") ~ "total_energy",
+          c("zeroCrossingCount") ~ "n_zero_crossing",
+          c("timeAboveThreshold") ~ "time_above_threshold",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminbbi <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("timestamp") ~ "time",
+          c("bbi") ~ "bbi",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminenhancedbbi <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("timestamp") ~ "time",
+          c("bbi") ~ "bbi",
+          c("status") ~ "status",
+          c("gapDuration") ~ "gap_duration",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garmingyroscope <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("timestamp") ~ "time",
+          c("xValue") ~ "x",
+          c("yValue") ~ "y",
+          c("zValue") ~ "z",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminheartrate <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("timestamp") ~ "time",
+          c("beatsPerMinute") ~ "bpm",
+          c("status") ~ "status",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminmeta <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("timestamp", "start_time") ~ "time",
+          c("fromTime") ~ "time_from",
+          c("toTime") ~ "time_to",
+          c("accelerometer") ~ "n_accelerometer",
+          c("actigraphy1") ~ "n_actigraphy_1",
+          c("actigraphy2") ~ "n_actigraphy_2",
+          c("actigraphy3") ~ "n_actigraphy_3",
+          c("bbi") ~ "n_bbi",
+          c("enhancedBbi") ~ "n_enhanced_bbi",
+          c("gyroscope") ~ "n_gyroscope",
+          c("heartRate") ~ "n_heartrate",
+          c("respiration") ~ "n_respiration",
+          c("skinTemperature") ~ "n_skin_temperature",
+          c("spo2") ~ "n_spo2",
+          c("steps") ~ "n_steps",
+          c("stress") ~ "n_stress",
+          c("wristStatus") ~ "n_wrist_status",
+          c("zeroCrossing") ~ "n_zero_crossing",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminrespiration <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("timestamp") ~ "time",
+          c("breathsPerMinute") ~ "bpm",
+          c("status") ~ "status",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminskintemperature <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("timestamp") ~ "time",
+          c("temperature") ~ "temperature",
+          c("status") ~ "status",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminspo2 <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("timestamp") ~ "time",
+          c("spo2Reading") ~ "spo2",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminsteps <- function(data, ...) {
+  data |>
+    select(-dplyr::any_of("end_time")) |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("startTimestamp") ~ "time",
+          c("endTimestamp") ~ "end_time",
+          c("stepCount") ~ "step_count",
+          c("totalSteps") ~ "total_steps",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminstress <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("timestamp") ~ "time",
+          c("endTimestamp") ~ "end_time",
+          c("stressScore") ~ "stress",
+          c("status") ~ "status",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminwriststatus <- function(data, ...) {
+  data |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("timestamp") ~ "time",
+          c("status") ~ "status",
+          c("macAddress") ~ "mac_address",
+          .default = colnames,
+          .ptype = character()
+        )
+      }
+    )
+}
+
+#' @export
+#' @keywords internal
+alias_column_names.garminzerocrossing <- function(data, ...) {
+  data |>
+    select(-dplyr::any_of("end_time")) |>
+    dplyr::rename_with(
+      .fn = \(colnames) {
+        recode_values(
+          colnames,
+          c("id") ~ "measurement_id",
+          c("startTimestamp") ~ "time",
+          c("endTimestamp") ~ "end_time",
+          c("zeroCrossingCount") ~ "n_zero_crossing",
+          c("totalEnergy") ~ "total_energy",
+          c("deadband") ~ "deadband",
+          c("macAddress") ~ "mac_address",
           .default = colnames,
           .ptype = character()
         )
@@ -266,7 +595,7 @@ alias_column_names.geofence <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -283,7 +612,7 @@ alias_column_names.gyroscope <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -300,7 +629,7 @@ alias_column_names.heartbeat <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -319,7 +648,7 @@ alias_column_names.keyboard <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -336,7 +665,7 @@ alias_column_names.light <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -357,7 +686,7 @@ alias_column_names.location <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -378,7 +707,7 @@ alias_column_names.memory <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -397,12 +726,12 @@ alias_column_names.mpathinfo <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
           c("connectionId") ~ "connection_id",
-          c("accountCode") ~ "accountCode",
+          c("accountCode") ~ "account_code",
           c("studyName") ~ "study_name",
           c("senseVersion") ~ "sense_version",
           .default = colnames,
@@ -418,7 +747,7 @@ alias_column_names.noise <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -439,7 +768,7 @@ alias_column_names.pedometer <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -457,7 +786,7 @@ alias_column_names.screen <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -475,7 +804,7 @@ alias_column_names.timezone <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -492,7 +821,7 @@ alias_column_names.weather <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",
@@ -520,7 +849,7 @@ alias_column_names.wifi <- function(data, ...) {
   data |>
     dplyr::rename_with(
       .fn = \(colnames) {
-        dplyr::case_match(
+        recode_values(
           colnames,
           c("id") ~ "measurement_id",
           c("timestamp", "start_time") ~ "time",

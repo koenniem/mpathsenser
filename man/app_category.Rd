@@ -4,7 +4,7 @@
 \alias{app_category}
 \title{Find the category of an app on the Google Play Store}
 \usage{
-app_category(name, num = 1, rate_limit = 5, exact = TRUE)
+app_category(name, num = 1, rate_limit = 5, exact = TRUE, .progress = TRUE)
 }
 \arguments{
 \item{name}{The name of the app to search for.}
@@ -20,6 +20,8 @@ exactly equal to the last part of the selected package from the search results. 
 \code{exact} is \code{TRUE}, it interacts with \code{num} in the sense that it no longer selects
 the top search result but instead the top search result that matches the last part of the package
 name.}
+
+\item{.progress}{Whether to display a progress bar.}
 }
 \value{
 A list containing the following fields:

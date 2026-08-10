@@ -1,4 +1,4 @@
-url: https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser
+url: https://koenniem.github.io/mpathsenser/
 lang: en
 llm-docs: false
 
@@ -19,16 +19,12 @@ authors:
 navbar:
   structure:
     left:  [intro, reference, articles, tutorials, news]
-    right: [lightswitch, search, cran, github, gitlab]
+    right: [lightswitch, search, cran, github]
   components:
     cran:
       icon: fab fa-r-project
       href: https://cloud.r-project.org/package=mpathsenser
       aria-label: View on CRAN
-    gitlab:
-      icon: fa-gitlab
-      href: https://gitlab.kuleuven.be/ppw-okpiv/researchers/u0134047/mpathsenser
-      aria-label: Gitlab
     github:
       icon: fa-github
       href: https://github.com/koenniem/mpathsenser
@@ -36,7 +32,7 @@ navbar:
 
 repo:
   url:
-    home: https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser/
+    home: https://koenniem.github.io/mpathsenser
     source: https://github.com/koenniem/mpathsenser/tree/master
     issue: https://github.com/koenniem/mpathsenser/issues
     branch: master

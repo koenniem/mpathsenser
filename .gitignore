@@ -12,3 +12,4 @@ inst/extdata/*.drawio*
 revdep/
 /doc/
 /Meta/
+.positai

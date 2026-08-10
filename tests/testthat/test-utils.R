@@ -11,7 +11,7 @@ test_that("ccopy", {
   utils::zip(zipfile, system.file("testdata", "test.json", package = "mpathsenser"), flags = "-q")
 
   expect_message(ccopy(zip_dir, zip_dir), "No files left to copy")
-  expect_message(ccopy(zip_dir, tempdir()), "Copying 1 files\\.")
+  expect_message(ccopy(zip_dir, tempdir()), "Copying 1 file\\.")
 
   # Get the correct file name in the temp directory and remove
   zipfile <- list.files(path = zip_dir)[1]
@@ -23,7 +23,7 @@ test_that("fix_jsons", {
   # Path to the test data folder
   path <- system.file("testdata", "broken/", package = "mpathsenser")
 
-  # Path to the etst files
+  # Path to the test files
   files <- list.files(path, pattern = ".json")
 
   # Set up temporary directory for copying the broken files to
@@ -44,7 +44,7 @@ test_that("fix_jsons", {
   # Test arguments
   expect_error(
     fix_jsons(path = NULL, files = NULL),
-    "`path` and `files` cannot be NULL at the same time."
+    "`path` and `files` cannot both be `NULL`."
   )
 
   # With path argument
@@ -145,7 +145,7 @@ test_that("test_jsons", {
   # Test arguments
   expect_error(
     test_jsons(path = NULL, files = NULL),
-    "`path` and `files` cannot be NULL at the same time."
+    "`path` and `files` cannot both be `NULL`."
   )
 
   # Test output type if errors are found
@@ -187,17 +187,17 @@ test_that("unzip_data", {
 
   expect_message(
     unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE),
-    "Unzipped 1 files."
+    "Unzipped 1 file."
   )
 
   expect_message(
     unzip_data(zip_dir, recursive = TRUE, overwrite = FALSE),
-    "No files found to unzip."
+    "No files to unzip."
   )
 
   expect_message(
     unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE),
-    "Unzipped 1 files."
+    "Unzipped 1 file."
   )
 
   # Try a mixture of zip and json files
@@ -208,7 +208,7 @@ test_that("unzip_data", {
   )
   expect_message(
     unzip_data(zip_dir, recursive = FALSE, overwrite = TRUE),
-    "Unzipped 1 files."
+    "Unzipped 1 file."
   )
 
   # Get the correct file name in the temp directory and remove

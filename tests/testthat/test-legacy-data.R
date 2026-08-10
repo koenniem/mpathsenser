@@ -1,51 +1,24 @@
-# Test that the output of test.db is equal to test.json
-
-rand <- function(n, chars = TRUE, numbers = TRUE, uppercase = FALSE) {
-  data <- NULL
-
-  if (!chars && !numbers) {
-    abort("Select either letters, numbers, or both.")
-  }
-
-  if (chars) {
-    if (uppercase) {
-      data <- c(data, LETTERS[1:6])
-    } else {
-      data <- c(data, letters[1:6])
-    }
-  }
-
-  if (numbers) {
-    data <- c(data, 0:9)
-  }
-
-  paste(sample(data, n, TRUE), collapse = "")
-}
-
-gen_id <- function(uppercase = FALSE) {
-  if (uppercase) {
-    paste0(
-      rand(8, uppercase = TRUE),
-      "-",
-      rand(4, uppercase = TRUE),
-      "-",
-      rand(4, uppercase = TRUE),
-      "-",
-      rand(4, uppercase = TRUE),
-      "-",
-      rand(12, uppercase = TRUE)
-    )
-  } else {
-    paste0(rand(8), "-", rand(4), "-", rand(4), "-", rand(4), "-", rand(12))
-  }
-}
-
+# Test that the output of imported data is equal to their raw values (manually encoded)
 ### db_test ============
 db_test <- function(sensor, true_data) {
   path <- system.file("testdata", package = "mpathsenser")
-  tempfile <- tempfile()
-  db <- create_db(NULL, tempfile)
-  suppressMessages(import(path, db = db, sensors = sensor, batch_size = 1, recursive = FALSE))
+  db <- create_db(NULL, ":memory:")
+
+  # Only read in legacy data so log all other files as already processed
+  files <- list.files(path, recursive = FALSE)
+  files <- setdiff(files, "test.json")
+  add_study(db, study_id = "foo", data_format = "foo")
+  add_participant(db, "23456", "foo")
+  add_processed_files(
+    db,
+    file_name = files[!grepl(sensor, files)],
+    study_id = rep("foo", length(files)),
+    participant_id = rep("23456", length(files))
+  )
+
+  suppressMessages(
+    import(path, db = db, sensors = sensor, batch_size = 1, recursive = FALSE)
+  )
 
   data <- get_data(db, sensor, "12345", "2021-11-13", "2021-11-14") |>
     collect()

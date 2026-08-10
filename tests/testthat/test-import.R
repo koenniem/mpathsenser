@@ -13,9 +13,10 @@ test_that("import", {
     import(
       path = path,
       db = db,
-      recursive = FALSE
+      recursive = FALSE,
+      .progress = FALSE
     ),
-    "All files were successfully written to the database."
+    "All \\d files were successfully written to the database."
   )
 
   # Test whether no new files need to be processed
@@ -23,7 +24,8 @@ test_that("import", {
     import(
       path = path,
       db = db,
-      recursive = FALSE
+      recursive = FALSE,
+      .progress = FALSE
     ),
     "No new files to process."
   )
@@ -37,7 +39,7 @@ test_that("import", {
   dir.create(temp)
   expect_error(
     import(db = db, path = temp),
-    "Can't find JSON files in .+\\."
+    "^.*Can't find any JSON files in .+$"
   )
   unlink(temp, recursive = TRUE)
   dbDisconnect(db)
@@ -49,11 +51,12 @@ test_that("import", {
   warnings_log <- capture_warnings(import(
     path = path,
     db = db2,
+    .progress = FALSE,
     recursive = TRUE # Includes broken files
   ))
   expect_match(
     warnings_log,
-    "Invalid JSON format in file broken\\/broken\\d\\.json",
+    "Invalid JSON format in file .*broken\\d\\.json",
     all = FALSE
   )
   expect_match(
@@ -62,6 +65,62 @@ test_that("import", {
     all = FALSE
   )
   dbDisconnect(db2)
+  file.remove(filename)
+
+  # Test again with debug, just to see that it works
+  # Path to test files
+  path <- system.file("testdata", package = "mpathsenser")
+
+  # Create db
+  filename <- tempfile("test", fileext = ".db")
+  db <- create_db(NULL, filename)
+
+  # Import the data
+  debug_msgs <- capture_messages(
+    import(
+      path = path,
+      db = db,
+      recursive = FALSE,
+      debug = TRUE,
+      .progress = FALSE
+    )
+  )
+  expect_match(
+    debug_msgs,
+    "^.*Found \\d files to process..*$",
+    all = FALSE
+  )
+  expect_match(
+    debug_msgs,
+    "^.*Found 0 duplicate files\\. Continuing with \\d files\\..$",
+    all = FALSE
+  )
+  expect_match(
+    debug_msgs,
+    "^.*Read \\d JSON files\\..$",
+    all = FALSE
+  )
+  expect_match(
+    debug_msgs,
+    "^.*Cleaned \\d files\\..$",
+    all = FALSE
+  )
+  expect_match(
+    debug_msgs,
+    "^.*Extracted sensor data from \\d files\\..$",
+    all = FALSE
+  )
+  expect_match(
+    debug_msgs,
+    "^.*Writing \\d* tables\\..$",
+    all = FALSE
+  )
+  expect_match(
+    debug_msgs,
+    "All \\d files were successfully written to the database.",
+    all = FALSE
+  )
+  dbDisconnect(db)
   file.remove(filename)
 })
 
@@ -99,7 +158,7 @@ test_that(".import_read_json", {
   path <- system.file("testdata", "broken", package = "mpathsenser")
   expect_warning(
     .import_read_json(path, "broken1.json"),
-    "Invalid JSON format in file broken1.json"
+    paste0("Invalid JSON format in file .*broken1.json.")
   )
   expect_equal(
     suppressWarnings(.import_read_json(path, "broken1.json")),
@@ -495,7 +554,7 @@ test_that(".import_write_to_db", {
   # Test that transactions are rolled back if an error occurs
   data$Pedometer <- rbind(data$Pedometer, data$Pedometer)
   data$Pedometer$measurement_id[[1]] <- "5d0ac8d0-777c-11eb-bf47-ed3b61db1e5e_2"
-  data$Pedometer$measurement_id[[2]] <- NA
+  data$Pedometer$participant_id[[2]] <- NA
   expect_error(
     .import_write_to_db(db, meta_data, data),
     "NOT NULL constraint failed"
@@ -509,7 +568,163 @@ test_that(".import_write_to_db", {
   # Clean up
   db_path <- db@driver@dbdir
   dbDisconnect(db)
-  unlink(db_path)
+  unlink(db@dbname)
+})
+
+# Old test for save2db, adapted for .import_write_to_db()
+test_that(".import_write_to_db writes data correctly", {
+  # Create db
+  filename <- tempfile("foo", fileext = ".db")
+  db <- create_db(NULL, filename)
+
+  db_size <- file.size(filename)
+
+  meta_data <- data.frame(
+    study_id = "12345",
+    data_format = "mpathsenser",
+    participant_id = "12345",
+    file_name = "foo.json"
+  )
+
+  # Define the data
+  data <- data.frame(
+    measurement_id = paste0("12345_", 1:1000),
+    participant_id = "12345",
+    date = "2021-11-14",
+    time = paste0("16:40:01.", 1:1000),
+    step_count = 1
+  )
+
+  # Write to db
+  expect_no_error(
+    .import_write_to_db(db, meta_data = meta_data, sensor_data = list(Pedometer = data))
+  )
+
+  # Check if the file size increased
+  db_size2 <- file.size(filename)
+  expect_gt(db_size2, db_size)
+
+  # Check the data output
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
+    data
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
+    1000
+  )
+
+  # Entry with the same participant_id, date, and time should simply be skipped and give no error
+  expect_no_error(
+    .import_write_to_db(db, meta_data = meta_data, sensor_data = list(Pedometer = data))
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
+    1000
+  )
+
+  DBI::dbExecute(db, "VACUUM") # A vacuum to clear the tiny increase by replacement :)
+  db_size3 <- file.size(filename)
+  expect_equal(db_size2, db_size3)
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
+    data
+  )
+
+  # Now try with part of the data being replicated
+  data <- rbind(
+    data,
+    data.frame(
+      measurement_id = paste0("12345_", 500:1500),
+      participant_id = "12345",
+      date = "2021-11-14",
+      time = paste0("16:40:01.", 500:1500),
+      step_count = 1
+    )
+  )
+
+  expect_no_error(
+    .import_write_to_db(db = db, meta_data = meta_data, sensor_data = list(Pedometer = data))
+  )
+  db_size4 <- file.size(filename)
+  expect_gt(db_size4, db_size3)
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
+    1500L
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT * FROM Pedometer"),
+    distinct(data)
+  )
+
+  # Cleanup
+  dbDisconnect(db)
+  file.remove(filename)
+})
+
+test_that(".import_meta_data_from_mpathinfo", {
+  test_data <- list(
+    list(
+      sensorStartTime = 1765889440388567,
+      data = list(
+        `__type` = "dk.cachet.carp.accelerometer",
+        x = 0.0,
+        y = 0.0,
+        z = 9.81
+      )
+    ),
+    list(
+      sensorStartTime = 1765889440388567,
+      data = list(
+        `__type` = "dk.cachet.carp.activity",
+        activityType = "walking",
+        confidence = 0.9
+      )
+    ),
+    list(
+      sensorStartTime = 1765889440388567,
+      data = list(
+        `__type` = "dk.cachet.carp.mpathinfo",
+        connectionId = 23456,
+        accountCode = "abcd1",
+        studyName = "DemoStudy",
+        senseVersion = 6
+      )
+    )
+  )
+
+  res <- .import_meta_data_from_mpathinfo(test_data, file_name = "foo.json")
+  expect_s3_class(res, "tbl_df")
+  expect_equal(ncol(res), 3)
+  expect_equal(
+    res,
+    tibble::tibble(
+      study_id = "DemoStudy",
+      participant_id = "23456",
+      file_name = "foo.json"
+    )
+  )
+
+  # Check double entry warning
+  test_data <- append(test_data, test_data[3])
+  expect_warning(
+    res <- .import_meta_data_from_mpathinfo(test_data, file_name = "foo.json"),
+    "^.*Multiple `mpathinfo` entries found in file:.+$"
+  )
+
+  # Test fallback
+  test_data[[4]] <- NULL
+  test_data[[3]] <- NULL
+
+  res <- .import_meta_data_from_mpathinfo(test_data, file_name = "foo.json")
+  expect_equal(
+    res,
+    tibble::tibble(
+      study_id = "-1",
+      participant_id = "N/A",
+      file_name = "foo.json"
+    )
+  )
 })
 
 test_that(".import_meta_data_from_file_name correctly extracts metadata", {
@@ -566,4 +781,469 @@ test_that(".import_meta_data_from_file_name handles completely incorrect file na
   expect_equal(res$study_id, rep("-1", 3))
   expect_equal(res$participant_id, rep("N/A", 3))
   expect_equal(res$file_name, c(NA, "foo", "foo_bar"))
+})
+
+# Tests for .import_extract_garmin_logs
+
+test_that(".import_extract_garmin_logs extracts all Garmin sensor types", {
+  # Create mock data with garminalllogsdata
+  mock_data <- tibble(
+    participant_id = "12345",
+    study_id = "foo",
+    date = "2025-12-16",
+    time = "16:30:00.000000",
+    start_time = "2025-12-16T16:30:00Z",
+    sensor = c("Device", "garminalllogsdata", "Activity"),
+    data = list(
+      list(name = "Device Data"),
+      list(
+        accelerometer = list(x = 1, y = 2, z = 3),
+        bbi = list(value = 763),
+        enhancedBbi = list(status = "ok"),
+        gyroscope = list(x = 0.1, y = 0.2),
+        heartRate = list(bpm = 76),
+        actigraphy1 = list(energy = 100),
+        actigraphy2 = list(energy = 110),
+        actigraphy3 = list(energy = 120),
+        respiration = list(rate = 15),
+        skinTemperature = list(temp = 37.5),
+        spo2 = list(value = 98),
+        steps = list(count = 42),
+        stress = list(level = 40),
+        wristStatus = list(status = "ON_WRIST"),
+        zeroCrossing = list(value = 5),
+        fromTime = 1765902600000,
+        toTime = 1765902700000,
+        entryCounts = list(
+          heartRate = 26,
+          stress = 2,
+          steps = 5,
+          bbi = 162,
+          enhancedBbi = 160,
+          respiration = 0,
+          spo2 = 0,
+          accelerometer = 2200,
+          gyroscope = 0,
+          skinTemperature = 0,
+          actigraphy1 = 2,
+          actigraphy2 = 2,
+          actigraphy3 = 2
+        )
+      ),
+      list(name = "Activity Data")
+    )
+  )
+
+  result <- .import_extract_garmin_logs(mock_data)
+
+  # Check that result is a tibble
+  expect_s3_class(result, "tbl_df")
+
+  # Check that non-Garmin sensors are preserved
+  expect_true(any(result$sensor == "Device"))
+  expect_true(any(result$sensor == "Activity"))
+
+  # Check that all Garmin sensor types are present
+  garmin_sensors <- c(
+    "GarminAccelerometer",
+    "GarminBBI",
+    "GarminEnhancedBBI",
+    "GarminGyroscope",
+    "GarminHeartRate",
+    "GarminActigraphy",
+    "GarminRespiration",
+    "GarminSkinTemperature",
+    "GarminSPO2",
+    "GarminSteps",
+    "GarminStress",
+    "GarminWristStatus",
+    "GarminZeroCrossing",
+    "GarminMeta"
+  )
+
+  for (sensor in garmin_sensors) {
+    expect_true(
+      any(result$sensor == sensor),
+      label = paste("Garmin sensor", sensor, "should be present")
+    )
+  }
+})
+
+test_that(".import_extract_garmin_logs handles missing Garmin data gracefully", {
+  # Create mock data with garminalllogsdata but some null values
+  mock_data <- tibble(
+    participant_id = "12345",
+    study_id = "foo",
+    date = "2025-12-16",
+    time = "16:30:00.000000",
+    start_time = "2025-12-16T16:30:00Z",
+    sensor = c("Device", "garminalllogsdata"),
+    data = list(
+      list(name = "Device Data"),
+      list(
+        accelerometer = NULL,
+        bbi = list(value = 763),
+        enhancedBbi = NULL,
+        gyroscope = NULL,
+        heartRate = list(bpm = 76),
+        actigraphy1 = NULL,
+        actigraphy2 = NULL,
+        actigraphy3 = NULL,
+        respiration = NULL,
+        skinTemperature = NULL,
+        spo2 = NULL,
+        steps = list(count = 42),
+        stress = NULL,
+        wristStatus = list(status = "ON_WRIST"),
+        zeroCrossing = NULL,
+        fromTime = 1765902600000,
+        toTime = 1765902700000,
+        entryCounts = list(
+          heartRate = 26,
+          stress = 0,
+          steps = 1,
+          bbi = 162,
+          enhancedBbi = 0,
+          respiration = 0,
+          spo2 = 0,
+          accelerometer = 0,
+          gyroscope = 0,
+          skinTemperature = 0,
+          actigraphy1 = 0,
+          actigraphy2 = 0,
+          actigraphy3 = 0
+        )
+      )
+    )
+  )
+
+  result <- .import_extract_garmin_logs(mock_data)
+
+  # Non-Garmin sensors should be preserved
+  expect_true(any(result$sensor == "Device"))
+
+  # Garmin sensors with data should be present
+  expect_true(any(result$sensor == "GarminBBI"))
+  expect_true(any(result$sensor == "GarminHeartRate"))
+  expect_true(any(result$sensor == "GarminSteps"))
+  expect_true(any(result$sensor == "GarminWristStatus"))
+  expect_true(any(result$sensor == "GarminMeta"))
+
+  # Garmin sensors with NULL data should not be present
+  expect_false(any(result$sensor == "GarminAccelerometer"))
+  expect_false(any(result$sensor == "GarminEnhancedBBI"))
+  expect_false(any(result$sensor == "GarminGyroscope"))
+  expect_false(any(result$sensor == "GarminRespiration"))
+  expect_false(any(result$sensor == "GarminSkinTemperature"))
+  expect_false(any(result$sensor == "GarminSPO2"))
+  expect_false(any(result$sensor == "GarminZeroCrossing"))
+})
+
+test_that(".import_extract_garmin_logs removes garminalllogsdata sensor", {
+  # Create mock data with garminalllogsdata
+  mock_data <- tibble(
+    participant_id = "12345",
+    study_id = "foo",
+    date = "2025-12-16",
+    time = "16:30:00.000000",
+    start_time = "2025-12-16T16:30:00Z",
+    sensor = c("Device", "garminalllogsdata"),
+    data = list(
+      list(name = "Device Data"),
+      list(
+        accelerometer = list(x = 1),
+        bbi = NULL,
+        enhancedBbi = NULL,
+        gyroscope = NULL,
+        heartRate = NULL,
+        actigraphy1 = NULL,
+        actigraphy2 = NULL,
+        actigraphy3 = NULL,
+        respiration = NULL,
+        skinTemperature = NULL,
+        spo2 = NULL,
+        steps = NULL,
+        stress = NULL,
+        wristStatus = NULL,
+        zeroCrossing = NULL,
+        fromTime = 1765902600000,
+        toTime = 1765902700000,
+        entryCounts = list(accelerometer = 10)
+      )
+    )
+  )
+
+  result <- .import_extract_garmin_logs(mock_data)
+
+  # The garminalllogsdata sensor should be removed
+  expect_false(any(result$sensor == "garminalllogsdata"))
+
+  # Other sensors should remain
+  expect_true(any(result$sensor == "Device"))
+})
+
+test_that(".import_extract_garmin_logs unpacks actigraphy correctly", {
+  # Create mock data with actigraphy data
+  mock_data <- tibble(
+    participant_id = "12345",
+    study_id = "foo",
+    date = "2025-12-16",
+    time = "16:30:00.000000",
+    start_time = "2025-12-16T16:30:00Z",
+    sensor = "garminalllogsdata",
+    data = list(
+      list(
+        accelerometer = NULL,
+        bbi = NULL,
+        enhancedBbi = NULL,
+        gyroscope = NULL,
+        heartRate = NULL,
+        actigraphy1 = list(
+          instance = "ACTIGRAPHY_1",
+          energy = 100,
+          threshold = 50
+        ),
+        actigraphy2 = list(
+          instance = "ACTIGRAPHY_2",
+          energy = 110,
+          threshold = 55
+        ),
+        actigraphy3 = list(
+          instance = "ACTIGRAPHY_3",
+          energy = 120,
+          threshold = 60
+        ),
+        respiration = NULL,
+        skinTemperature = NULL,
+        spo2 = NULL,
+        steps = NULL,
+        stress = NULL,
+        wristStatus = NULL,
+        zeroCrossing = NULL,
+        fromTime = 1765902600000,
+        toTime = 1765902700000,
+        entryCounts = list(
+          actigraphy1 = 2,
+          actigraphy2 = 2,
+          actigraphy3 = 2
+        )
+      )
+    )
+  )
+
+  result <- .import_extract_garmin_logs(mock_data)
+
+  # Check that actigraphy data is present and unnested
+  actigraphy_rows <- result |>
+    filter(.data$sensor == "GarminActigraphy")
+
+  # After unnesting, should have multiple rows for actigraphy
+  expect_true(nrow(actigraphy_rows) > 0)
+
+  # Check that the data column is no longer a list after unnesting
+  expect_false(inherits(actigraphy_rows$data[[1]], "list"))
+})
+
+test_that(".import_extract_garmin_logs preserves participant metadata", {
+  # Create mock data
+  mock_data <- tibble(
+    participant_id = "test_participant",
+    study_id = "test_study",
+    date = "2025-12-16",
+    time = "16:30:00.000000",
+    start_time = "2025-12-16T16:30:00Z",
+    sensor = "garminalllogsdata",
+    data = list(
+      list(
+        accelerometer = list(x = 1),
+        bbi = NULL,
+        enhancedBbi = NULL,
+        gyroscope = NULL,
+        heartRate = NULL,
+        actigraphy1 = NULL,
+        actigraphy2 = NULL,
+        actigraphy3 = NULL,
+        respiration = NULL,
+        skinTemperature = NULL,
+        spo2 = NULL,
+        steps = NULL,
+        stress = NULL,
+        wristStatus = NULL,
+        zeroCrossing = NULL,
+        fromTime = 1765902600000,
+        toTime = 1765902700000,
+        entryCounts = list(accelerometer = 10)
+      )
+    )
+  )
+
+  result <- .import_extract_garmin_logs(mock_data)
+
+  # Check that metadata is preserved for all Garmin sensors
+  garmin_rows <- result |>
+    filter(grepl("^Garmin", .data$sensor))
+
+  expect_true(all(garmin_rows$participant_id == "test_participant"))
+  expect_true(all(garmin_rows$study_id == "test_study"))
+  expect_true(all(garmin_rows$date == "2025-12-16"))
+})
+
+test_that(".import_extract_garmin_logs handles multiple rows correctly", {
+  # Create mock data with multiple rows
+  mock_data <- tibble(
+    participant_id = c("user1", "user2"),
+    study_id = c("study1", "study2"),
+    date = c("2025-12-16", "2025-12-17"),
+    time = c("16:30:00.000000", "17:30:00.000000"),
+    start_time = c("2025-12-16T16:30:00Z", "2025-12-17T17:30:00Z"),
+    sensor = c("garminalllogsdata", "garminalllogsdata"),
+    data = list(
+      list(
+        accelerometer = list(x = 1, y = 2),
+        bbi = NULL,
+        enhancedBbi = NULL,
+        gyroscope = NULL,
+        heartRate = list(bpm = 70),
+        actigraphy1 = NULL,
+        actigraphy2 = NULL,
+        actigraphy3 = NULL,
+        respiration = NULL,
+        skinTemperature = NULL,
+        spo2 = NULL,
+        steps = NULL,
+        stress = NULL,
+        wristStatus = NULL,
+        zeroCrossing = NULL,
+        fromTime = 1765902600000,
+        toTime = 1765902700000,
+        entryCounts = list(
+          accelerometer = 100,
+          heartRate = 10
+        )
+      ),
+      list(
+        accelerometer = list(x = 3, y = 4),
+        bbi = NULL,
+        enhancedBbi = NULL,
+        gyroscope = NULL,
+        heartRate = list(bpm = 75),
+        actigraphy1 = NULL,
+        actigraphy2 = NULL,
+        actigraphy3 = NULL,
+        respiration = NULL,
+        skinTemperature = NULL,
+        spo2 = NULL,
+        steps = NULL,
+        stress = NULL,
+        wristStatus = NULL,
+        zeroCrossing = NULL,
+        fromTime = 1765989000000,
+        toTime = 1765989100000,
+        entryCounts = list(
+          accelerometer = 100,
+          heartRate = 10
+        )
+      )
+    )
+  )
+
+  result <- .import_extract_garmin_logs(mock_data)
+
+  # Check that both users' data are present
+  expect_true(any(result$participant_id == "user1"))
+  expect_true(any(result$participant_id == "user2"))
+
+  # Check that each user has their respective data
+  user1_data <- result |> filter(.data$participant_id == "user1")
+  user2_data <- result |> filter(.data$participant_id == "user2")
+
+  expect_true(any(user1_data$sensor == "GarminAccelerometer"))
+  expect_true(any(user2_data$sensor == "GarminAccelerometer"))
+})
+
+test_that(".import_extract_garmin_logs removes unsupported sensor types with warning", {
+  # Create mock data with unsupported Garmin sensor type
+  mock_data <- tibble(
+    participant_id = "12345",
+    study_id = "foo",
+    date = "2025-12-16",
+    time = "16:30:00.000000",
+    start_time = "2025-12-16T16:30:00Z",
+    sensor = "garminalllogsdata",
+    data = list(
+      list(
+        accelerometer = list(x = 1),
+        bbi = NULL,
+        enhancedBbi = NULL,
+        gyroscope = NULL,
+        heartRate = NULL,
+        actigraphy1 = NULL,
+        actigraphy2 = NULL,
+        actigraphy3 = NULL,
+        respiration = NULL,
+        skinTemperature = NULL,
+        spo2 = NULL,
+        steps = NULL,
+        stress = NULL,
+        wristStatus = NULL,
+        zeroCrossing = NULL,
+        unsupported_sensor = list(value = 999),
+        fromTime = 1765902600000,
+        toTime = 1765902700000,
+        entryCounts = list(accelerometer = 10)
+      )
+    )
+  )
+
+  expect_warning(
+    .import_extract_garmin_logs(mock_data),
+    "Garmin data type.*is not supported"
+  )
+})
+
+test_that(".import_extract_garmin_logs preserves non-garminalllogsdata rows", {
+  # Create mock data with multiple sensor types
+  mock_data <- tibble(
+    participant_id = c("12345", "12345", "12345"),
+    study_id = c("foo", "foo", "foo"),
+    date = c("2025-12-16", "2025-12-16", "2025-12-16"),
+    time = c("16:30:00.000000", "16:31:00.000000", "16:32:00.000000"),
+    start_time = c("2025-12-16T16:30:00Z", "2025-12-16T16:31:00Z", "2025-12-16T16:32:00Z"),
+    sensor = c("Device", "garminalllogsdata", "Activity"),
+    data = list(
+      list(manufacturer = "Apple"),
+      list(
+        accelerometer = list(x = 1),
+        bbi = NULL,
+        enhancedBbi = NULL,
+        gyroscope = NULL,
+        heartRate = NULL,
+        actigraphy1 = NULL,
+        actigraphy2 = NULL,
+        actigraphy3 = NULL,
+        respiration = NULL,
+        skinTemperature = NULL,
+        spo2 = NULL,
+        steps = NULL,
+        stress = NULL,
+        wristStatus = NULL,
+        zeroCrossing = NULL,
+        fromTime = 1765902600000,
+        toTime = 1765902700000,
+        entryCounts = list(accelerometer = 10)
+      ),
+      list(type = "WALKING")
+    )
+  )
+
+  result <- .import_extract_garmin_logs(mock_data)
+
+  # Non-Garmin sensors should be preserved exactly
+  device_row <- result |> filter(.data$sensor == "Device")
+  activity_row <- result |> filter(.data$sensor == "Activity")
+
+  expect_equal(nrow(device_row), 1)
+  expect_equal(nrow(activity_row), 1)
+  expect_equal(device_row$time, "16:30:00.000000")
+  expect_equal(activity_row$time, "16:32:00.000000")
 })

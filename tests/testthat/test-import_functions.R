@@ -37,14 +37,21 @@ unit_test <- function(sensor, ..., .cols = NULL, new_names = NULL, end_time = NU
   )
 
   # If there is a list column containing data, unlist it first
+  # Except for Garmin data, which follows a different procudure
   which_list <- colnames(true)[purrr::map_lgl(true, is.list)]
-  if (length(which_list) > 0) {
+  if (length(which_list) > 0 && !grepl("garmin", sensor)) {
     first_element <- true[[which_list]][[1]]
     if (is.list(first_element) || is.null(first_element)) {
       true <- tidyr::unnest_wider(true, all_of(which_list))
     } else {
       true <- unnest(true, all_of(which_list))
     }
+  }
+
+  # Procedure for Garmin data: If there is a list column with timestamp, remove it as this is
+  # used for generating the time itself
+  if (grepl("garmin", sensor)) {
+    true <- select(true, -dplyr::any_of(c("timestamp", "startTimestamp", "endTimestamp")))
   }
 
   # Replace different-styled column names
@@ -67,13 +74,19 @@ unit_test <- function(sensor, ..., .cols = NULL, new_names = NULL, end_time = NU
 
   # Check that a measurement_id is present, but don't check the value
   expect_true("measurement_id" %in% colnames(res))
-  expect_type(res$measurement_id, "character")
 
-  # Test measurement_id length, but detect suffix
-  if (any(grepl("_", res$measurement_id))) {
-    expect_equal(unique(nchar(res$measurement_id)), 38) # 38 characters
+  # Check that measurement_id is a character if it is present, otherwise it's NA
+  if (all(is.na(res$measurement_id))) {
+    expect_type(res$measurement_id, "logical")
   } else {
-    expect_equal(unique(nchar(res$measurement_id)), 36) # 36 characters
+    expect_type(res$measurement_id, "character")
+
+    # Test measurement_id length, but detect suffix
+    if (any(grepl("_", res$measurement_id))) {
+      expect_equal(unique(nchar(res$measurement_id)), 38) # 38 characters
+    } else {
+      expect_equal(unique(nchar(res$measurement_id)), 36) # 36 characters
+    }
   }
 
   res$measurement_id <- "12345a" # Hardcode the value to avoid checking it
@@ -82,36 +95,76 @@ unit_test <- function(sensor, ..., .cols = NULL, new_names = NULL, end_time = NU
   expect_equal(res, true)
 }
 
-# rand ===========
-test_that("rand works", {
-  # Return a string of correct length
-  expect_equal(nchar(rand(10)), 10)
-  expect_equal(nchar(rand(5)), 5)
+unit_test_garmin <- function(sensor, ..., .cols = NULL, new_names = NULL, end_time = NULL) {
+  # Define the input
+  dat <- common_data(
+    sensor,
+    list(
+      data = ...
+    ),
+    end_time = end_time
+  )
 
-  # rand handles combination of characters and numbers correctly
-  # Assuming the default behaviour includes both letters and numbers
-  sample <- rand(100)
-  expect_true(any(grepl("[a-z]", sample)) & any(grepl("[0-9]", sample)))
+  # Execute the sensor function based on its name
+  class(dat) <- c(tolower(sensor), class(dat))
+  res <- unpack_sensor_data(dat)
 
-  # rand returns only uppercase when uppercase=TRUE
-  sample <- rand(10, uppercase = TRUE)
-  expect_true(all(grepl("[A-Z0-9]", sample)))
+  true <- tibble(
+    measurement_id = "12345a",
+    participant_id = "12345",
+    date = "2021-11-14",
+    time = "16:40:00.123456",
+    end_time = end_time,
+    data = list(...)
+  )
+  true <- tidyr::unnest_wider(true, "data")
 
-  # rand aborts when both chars and numbers are FALSE
-  expect_error(rand(10, chars = FALSE, numbers = FALSE))
-})
+  # Procedure for Garmin data: If there is a list column with timestamp, remove it as this is
+  # used for generating the time itself
+  if (grepl("garmin", sensor)) {
+    true <- select(true, -dplyr::any_of(c("timestamp", "startTimestamp", "endTimestamp")))
+  }
 
-# gen_id ==============
-test_that("gen_id works", {
-  # Return a string of correct format and length
-  id <- gen_id()
-  expect_equal(nchar(id), 36) # Format: 8-4-4-4-12 = 32 chars + 4 hyphens
-  expect_match(id, "^([a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12})$")
+  # Replace different-styled column names
+  if (!is.null(new_names)) {
+    colnames <- colnames(true)
+    colnames[colnames %in% new_names] <- names(new_names)
+    colnames(true) <- colnames
+  }
 
-  # gen_id returns a string with uppercase characters when uppercase=TRUE"
-  id_upper <- gen_id(uppercase = TRUE)
-  expect_match(id_upper, "^([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12})$")
-})
+  # Make sure all columns are present
+  if (!is.null(.cols)) {
+    missing <- setdiff(.cols, colnames(true))
+    if (length(missing) > 0) {
+      true[, missing] <- NA
+    }
+  }
+
+  # Make sure columns are in the same order
+  true <- dplyr::relocate(true, any_of(colnames(res)))
+
+  # Check that a measurement_id is present, but don't check the value
+  expect_true("measurement_id" %in% colnames(res))
+
+  # Check that measurement_id is a character if it is present, otherwise it's NA
+  if (all(is.na(res$measurement_id))) {
+    expect_type(res$measurement_id, "logical")
+  } else {
+    expect_type(res$measurement_id, "character")
+
+    # Test measurement_id length, but detect suffix
+    if (any(grepl("_", res$measurement_id))) {
+      expect_equal(unique(nchar(res$measurement_id)), 38) # 38 characters
+    } else {
+      expect_equal(unique(nchar(res$measurement_id)), 36) # 36 characters
+    }
+  }
+
+  res$measurement_id <- "12345a" # Hardcode the value to avoid checking it
+
+  true <- as.data.frame(true)
+  expect_equal(res, true)
+}
 
 # safe_data_frame  ===========
 test_that("safe_data_frame", {
@@ -336,7 +389,7 @@ test_that("appusage", {
   res <- unpack_sensor_data(dat)
 
   true <- tibble(
-    measurement_id = "12345a",
+    measurement_id = NA,
     participant_id = "12345",
     time = "2021-11-14 16:40:00.123456",
     end_time = "2024-01-24 20:46:40.434183",
@@ -350,9 +403,8 @@ test_that("appusage", {
 
   # Check that a measurement_id is present, but don't check the value
   expect_true("measurement_id" %in% colnames(res))
-  expect_type(res$measurement_id, "character")
-  expect_match(res$measurement_id, ".{36}") # 36 characters
-  res$measurement_id <- "12345a" # Hardcode the value to avoid checking it
+  expect_type(res$measurement_id, "logical")
+  expect_true(all(is.na(res$measurement_id)))
 
   true <- as.data.frame(true)
   expect_equal(res, true)
@@ -389,7 +441,7 @@ test_that("appusage", {
   res <- unpack_sensor_data(dat)
 
   true <- tibble(
-    measurement_id = "12345a",
+    measurement_id = NA,
     participant_id = "12345",
     time = "2021-11-14 16:40:00.123456",
     end_time = "2024-01-24 20:46:40.434183",
@@ -403,9 +455,8 @@ test_that("appusage", {
 
   # Check that a measurement_id is present, but don't check the value
   expect_true("measurement_id" %in% colnames(res))
-  expect_type(res$measurement_id, "character")
-  expect_equal(unique(nchar(res$measurement_id)), 38) # 38 characters, because of suffix
-  res$measurement_id <- "12345a" # Hardcode the value to avoid checking it
+  expect_type(res$measurement_id, "logical")
+  expect_true(all(is.na(res$measurement_id)))
 
   true <- as.data.frame(true)
   expect_equal(res, true)
@@ -444,9 +495,8 @@ test_that("appusage", {
 
   # Check that a measurement_id is present, but don't check the value
   expect_true("measurement_id" %in% colnames(res2))
-  expect_type(res2$measurement_id, "character")
-  expect_equal(unique(nchar(res2$measurement_id)), 38) # 38 characters, because of suffix
-  res2$measurement_id <- "12345a" # Hardcode the value to avoid checking it
+  expect_type(res2$measurement_id, "logical")
+  expect_true(all(is.na(res$measurement_id))) # 38 characters, because of suffix
 
   true <- as.data.frame(true)
   expect_equal(res2, true)
@@ -556,6 +606,77 @@ test_that("bluetooth", {
   )
 })
 
+# BluetoothBeacon ===============
+test_that("bluetoothbeacon", {
+  # Helper: build raw bluetoothbeacon data in the new cams format
+  make_beacon_dat <- function(...) {
+    dat <- tibble::tibble(
+      study_id = "test-study",
+      participant_id = "12345",
+      data_format = "cams 1.0.0",
+      start_time = "2021-11-14 16:40:00.123456",
+      sensor = "bluetoothbeacon",
+      data = list(list(...))
+    )
+    class(dat) <- c("bluetoothbeacon", class(dat))
+    dat
+  }
+
+  # --- No scan_result ---
+  dat <- make_beacon_dat(region = "LocationA")
+  res <- unpack_sensor_data(dat)
+  expect_true("measurement_id" %in% colnames(res))
+  expect_type(res$measurement_id, "logical")
+  expect_equal(res$participant_id, "12345")
+  expect_equal(res$date, "2021-11-14")
+  expect_equal(res$time, "16:40:00.123456")
+  expect_equal(res$region, "LocationA")
+  expect_true(is.na(res$uuid))
+  expect_true(is.na(res$rssi))
+
+  # --- scan_result is NULL ---
+  dat <- make_beacon_dat(region = "LocationA", scanResult = list(NULL))
+  res <- unpack_sensor_data(dat)
+  expect_true("measurement_id" %in% colnames(res))
+  expect_equal(res$region, "LocationA")
+  expect_true(is.na(res$uuid))
+
+  # --- scan_result with one entry (snake_case column names) ---
+  dat <- make_beacon_dat(
+    region = "LocationA",
+    scanResult = list(list(
+      uuid = "FDA50693-A4E2-4FB1-AFCF-C6EB07647825",
+      rssi = -73L,
+      major = 10L,
+      minor = 12L,
+      accuracy = 7.54,
+      proximity = "far"
+    ))
+  )
+  res <- unpack_sensor_data(dat)
+  expect_equal(nrow(res), 1)
+  expect_equal(res$region, "LocationA")
+  expect_equal(res$uuid, "FDA50693-A4E2-4FB1-AFCF-C6EB07647825")
+  expect_equal(res$rssi, -73L)
+  expect_equal(res$major, 10L)
+  expect_equal(res$minor, 12L)
+  expect_equal(res$accuracy, 7.54, tolerance = 1e-4)
+  expect_equal(res$proximity, "far")
+
+  # --- Multiple scan results ---
+  dat <- make_beacon_dat(
+    region = "LocationA",
+    scanResult = list(
+      list(uuid = "AAA", rssi = -50L, major = 1L, minor = 2L, accuracy = 1.0, proximity = "near"),
+      list(uuid = "BBB", rssi = -80L, major = 3L, minor = 4L, accuracy = 5.0, proximity = "far")
+    )
+  )
+  res <- unpack_sensor_data(dat)
+  expect_equal(nrow(res), 2)
+  expect_true(all(res$region == "LocationA"))
+  expect_equal(sort(res$uuid), c("AAA", "BBB"))
+})
+
 # Connectivity ============
 test_that("connectivity", {
   unit_test(
@@ -652,6 +773,31 @@ test_that("device", {
     sdk = "1.0.0",
     new_names = new_names
   )
+
+  # Test that SDK with combined integer and character always returns character
+  sdk_dat <- bind_rows(
+    common_data(
+      sensor = "device",
+      list(
+        device_id = "abc",
+        hardware = "Android",
+        sdk = "1.0.0"
+      )
+    ),
+    common_data(
+      sensor = "device",
+      list(
+        device_id = "def",
+        hardware = "iPhone",
+        sdk = 15
+      )
+    )
+  )
+
+  # Execute the sensor function based on its name
+  class(sdk_dat) <- c("device", class(sdk_dat))
+  sdk_res <- unpack_sensor_data(sdk_dat)
+  expect_type(sdk_res$sdk, "character")
 })
 
 # Error ========
@@ -867,6 +1013,40 @@ test_that("memory", {
   )
 })
 
+# mpathinfo =========
+test_that("mpathinfo", {
+  .cols = c("connection_id", "account_code", "study_name", "sense_version")
+
+  unit_test(
+    "mpathinfo",
+    .cols = .cols
+  )
+
+  unit_test(
+    "mpathinfo",
+    .cols = .cols,
+    connection_id = "conn123",
+    account_code = "acc456",
+    study_name = "Study A",
+    sense_version = 6
+  )
+
+  unit_test(
+    "mpathinfo",
+    .cols = .cols,
+    new_names = c(
+      connection_id = "connectionId",
+      account_code = "accountCode",
+      study_name = "studyName",
+      sense_version = "senseVersion"
+    ),
+    connectionId = "conn123",
+    accountCode = "acc456",
+    studyName = "Study A",
+    senseVersion = 6
+  )
+})
+
 # Noise ========
 test_that("noise", {
   .cols <- c("mean_decibel", "std_decibel", "min_decibel", "max_decibel")
@@ -1048,5 +1228,433 @@ test_that("wifi", {
   unit_test(
     "wifi",
     .cols = col_names
+  )
+})
+
+# GarminAccelerometer ============
+test_that("garminaccelerometer", {
+  .cols <- c("x", "y", "z", "mac_address")
+  new_names <- c(
+    x = "xValue",
+    y = "yValue",
+    z = "zValue",
+    mac_address = "macAddress"
+  )
+
+  # empty test
+  unit_test_garmin(
+    "garminaccelerometer",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456
+    )
+  )
+
+  # Single observation
+  unit_test_garmin(
+    "garminaccelerometer",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      x = 0.1,
+      y = 0.2,
+      z = 0.3,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminActigraphy ============
+test_that("garminactigraphy", {
+  .cols <- c("instance", "total_energy", "n_zero_crossing", "time_above_threshold", "mac_address")
+  new_names <- c(
+    instance = "instance",
+    total_energy = "totalEnergy",
+    n_zero_crossing = "zeroCrossingCount",
+    time_above_threshold = "timeAboveThreshold",
+    mac_address = "macAddress"
+  )
+
+  unit_test(
+    "garminactigraphy",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    startTimestamp = 1.636908e+12 + 123.456,
+    endTimestamp = 1.636908e+12 + 5123.456
+  )
+
+  unit_test(
+    "garminactigraphy",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    startTimestamp = 1.636908e+12 + 123.456,
+    endTimestamp = 1.636908e+12 + 5123.456,
+    instance = "Actigraphy1",
+    total_energy = 100.5,
+    n_zero_crossing = 50,
+    time_above_threshold = 30.5,
+    mac_address = "AA:BB:CC:DD:EE:FF"
+  )
+})
+
+# GarminBBI ============
+test_that("garminbbi", {
+  .cols <- c("bbi", "mac_address")
+  new_names <- c(mac_address = "macAddress")
+
+  unit_test_garmin(
+    "garminbbi",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminbbi",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      bbi = 850,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminEnhancedBBI ============
+test_that("garminenhancedbbi", {
+  .cols <- c("bbi", "status", "gap_duration", "mac_address")
+  new_names <- c(
+    gap_duration = "gapDuration",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminenhancedbbi",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminenhancedbbi",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      bbi = 850,
+      status = "VALID",
+      gap_duration = 0,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminGyroscope ============
+test_that("garmingyroscope", {
+  .cols <- c("x", "y", "z", "mac_address")
+  new_names <- c(
+    x = "xValue",
+    y = "yValue",
+    z = "zValue",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garmingyroscope",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garmingyroscope",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      x = 0.1,
+      y = 0.2,
+      z = 0.3,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminHeartRate ============
+test_that("garminheartrate", {
+  .cols <- c("bpm", "status", "mac_address")
+  new_names <- c(
+    bpm = "beatsPerMinute",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminheartrate",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminheartrate",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      bpm = 75,
+      status = "VALID",
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminMeta ============
+test_that("garminmeta", {
+  col_names <- c(
+    "time_from",
+    "time_to",
+    "n_accelerometer",
+    "n_actigraphy_1",
+    "n_actigraphy_2",
+    "n_actigraphy_3",
+    "n_bbi",
+    "n_enhanced_bbi",
+    "n_gyroscope",
+    "n_heartrate",
+    "n_respiration",
+    "n_skin_temperature",
+    "n_spo2",
+    "n_steps",
+    "n_stress",
+    "n_wrist_status",
+    "n_zero_crossing"
+  )
+
+  new_names <- c(
+    time_from = "fromTime",
+    time_to = "toTime",
+    n_accelerometer = "accelerometer",
+    n_actigraphy_1 = "actigraphy1",
+    n_actigraphy_2 = "actigraphy2",
+    n_actigraphy_3 = "actigraphy3",
+    n_bbi = "bbi",
+    n_enhanced_bbi = "enhancedBbi",
+    n_gyroscope = "gyroscope",
+    n_heartrate = "heartRate",
+    n_respiration = "respiration",
+    n_skin_temperature = "skinTemperature",
+    n_spo2 = "spo2",
+    n_steps = "steps",
+    n_stress = "stress",
+    n_wrist_status = "wristStatus",
+    n_zero_crossing = "zeroCrossing"
+  )
+
+  unit_test(
+    "garminmeta",
+    .cols = col_names
+  )
+
+  unit_test(
+    "garminmeta",
+    .cols = col_names,
+    time_from = "2021-11-14 16:00:00",
+    time_to = "2021-11-14 17:00:00",
+    n_accelerometer = 100,
+    n_actigraphy_1 = 10,
+    n_actigraphy_2 = 10,
+    n_actigraphy_3 = 10,
+    n_bbi = 50,
+    n_enhanced_bbi = 50,
+    n_gyroscope = 100,
+    n_heartrate = 60,
+    n_respiration = 60,
+    n_skin_temperature = 60,
+    n_spo2 = 60,
+    n_steps = 10,
+    n_stress = 60,
+    n_wrist_status = 10,
+    n_zero_crossing = 10
+  )
+})
+
+# GarminRespiration ============
+test_that("garminrespiration", {
+  .cols <- c("bpm", "status", "mac_address")
+  new_names <- c(
+    bpm = "breathsPerMinute",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminrespiration",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminrespiration",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      bpm = 16,
+      status = "VALID",
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminSkinTemperature ============
+test_that("garminskintemperature", {
+  .cols <- c("temperature", "status", "mac_address")
+  new_names <- c(mac_address = "macAddress")
+
+  unit_test_garmin(
+    "garminskintemperature",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminskintemperature",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      temperature = 36.5,
+      status = "VALID",
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminSPO2 ============
+test_that("garminspo2", {
+  .cols <- c("spo2", "mac_address")
+  new_names <- c(
+    spo2 = "spo2Reading",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminspo2",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminspo2",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      spo2 = 98,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminSteps ============
+test_that("garminsteps", {
+  .cols <- c("step_count", "total_steps", "mac_address")
+  new_names <- c(
+    step_count = "stepCount",
+    total_steps = "totalSteps",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminsteps",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    list(
+      startTimestamp = 1.636908e+12 + 123.456,
+      endTimestamp = 1.636908e+12 + 5123.456
+    )
+  )
+
+  unit_test_garmin(
+    "garminsteps",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    list(
+      startTimestamp = 1.636908e+12 + 123.456,
+      endTimestamp = 1.636908e+12 + 5123.456,
+      step_count = 50,
+      total_steps = 5000,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminStress ============
+test_that("garminstress", {
+  .cols <- c("stress", "status", "mac_address")
+  new_names <- c(
+    stress = "stressScore",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminstress",
+    .cols = .cols,
+    list(timestamp = 1.636908e+12 + 123.456)
+  )
+
+  unit_test_garmin(
+    "garminstress",
+    .cols = .cols,
+    list(
+      timestamp = 1.636908e+12 + 123.456,
+      stress = 30,
+      status = "VALID",
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
+  )
+})
+
+# GarminWristStatus ============
+test_that("garminwriststatus", {
+  .cols <- c("status", "mac_address")
+  new_names <- c(status = "status", mac_address = "macAddress")
+
+  unit_test(
+    "garminwriststatus",
+    .cols = .cols,
+    timestamp = 1.636908e+12 + 123.456
+  )
+
+  unit_test(
+    "garminwriststatus",
+    .cols = .cols,
+    timestamp = 1.636908e+12 + 123.456,
+    status = "ON_WRIST",
+    mac_address = "AA:BB:CC:DD:EE:FF"
+  )
+})
+
+# GarminZeroCrossing ============
+test_that("garminzerocrossing", {
+  .cols <- c("total_energy", "n_zero_crossing", "deadband", "mac_address")
+  new_names <- c(
+    total_energy = "totalEnergy",
+    n_zero_crossing = "zeroCrossingCount",
+    deadband = "deadband",
+    mac_address = "macAddress"
+  )
+
+  unit_test_garmin(
+    "garminzerocrossing",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    list(
+      startTimestamp = 1.636908e+12 + 123.456,
+      endTimestamp = 1.636908e+12 + 5123.456
+    )
+  )
+
+  unit_test_garmin(
+    "garminzerocrossing",
+    .cols = .cols,
+    end_time = as.POSIXct("2021-11-14 16:40:05.123456", tz = "UTC"),
+    list(
+      startTimestamp = 1.636908e+12 + 123.456,
+      endTimestamp = 1.636908e+12 + 5123.456,
+      total_energy = 100.5,
+      n_zero_crossing = 50,
+      deadband = 2,
+      mac_address = "AA:BB:CC:DD:EE:FF"
+    )
   )
 })

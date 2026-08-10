@@ -2,14 +2,15 @@
 # needs to be at the top of the file to make sure it is skipped when calculating coverage.
 ensure_suggested_package <- function(name, call = rlang::caller_env()) {
   if (!requireNamespace(name, quietly = TRUE)) {
-    abort(
+    cli_abort(
       c(
-        paste0("Package `", name, "` is needed for this function to work."),
-        i = paste0("Please install it using `install.packages(\"", name, "\")`")
+        "Package {.pkg {name}} is needed for this function to work.",
+        i = "Please install it using {.code install.packages('{name}')}"
       ),
       call = call
     )
   }
+  invisible(TRUE)
 }
 
 check_db <- function(
@@ -25,16 +26,16 @@ check_db <- function(
   }
 
   if (is.null(db)) {
-    msg <- paste0("Database connection `", arg, "` must not be NULL.")
-    abort(msg, arg = arg, call = call)
+    msg <- paste0("Database connection {.arg ", arg, "} must not be NULL.")
+    cli_abort(msg, arg = arg, call = call)
   }
 
   if (!inherits(db, "DBIConnection")) {
     msg <- c(
-      paste0("Argument `", arg, "` is not a database connection."),
+      paste0("Argument {.arg ", arg, "} is not a database connection."),
       x = paste0("You supplied ", with_article(utils::tail(class(db), 1)), ".")
     )
-    abort(msg, arg = arg, call = call)
+    cli_abort(msg, arg = arg, call = call)
   }
 
   if (inherits(db, "SQLiteConnection")) {
@@ -49,10 +50,10 @@ check_db <- function(
 
   if (!dbIsValid(db)) {
     msg <- c(
-      paste0("Database connection `", arg, "` is not valid."),
+      paste0("Database connection {.arg ", arg, "} is not valid."),
       i = "Did you forget to open the connection or save it to a variable?"
     )
-    abort(msg, arg = arg, call = call)
+    cli_abort(msg, arg = arg, call = call)
   }
 
   return(invisible(TRUE))
@@ -122,7 +123,7 @@ check_arg <- function(
         "."
       )
     )
-    cli::cli_abort(msg, arg = arg, call = call)
+    cli_abort(msg, arg = arg, call = call)
   }
 
   return(invisible(TRUE))
@@ -130,7 +131,7 @@ check_arg <- function(
 
 with_article <- function(x) {
   article <- lapply(x, function(y) {
-    if (any(substr(y, 1, 1) == c("a", "e", "h", "i", "o", "u"))) {
+    if (any(grepl("^[aeiouAEIOU]", y))) {
       return("an")
     } else {
       return("a")
@@ -152,10 +153,10 @@ check_sensors <- function(
 
   if (length(missing) > 0) {
     msg <- c(
-      paste0("Sensor(s) ", paste0("\"", missing, "\"", collapse = ", "), " could not be found."),
-      i = "See `mpathsenser::sensors` for the full list of available sensors."
+      "Sensor{?s} {.arg {missing}} could not be found.",
+      i = "See {.code mpathsenser::sensors} for the full list of available sensors."
     )
-    abort(msg, arg = arg, call = call)
+    cli_abort(msg, arg = arg, call = call)
   }
 
   return(invisible(TRUE))
@@ -166,10 +167,10 @@ check_offset <- function(offset_before, offset_after, call = rlang::caller_env()
     (is.null(offset_before) || all(offset_before == 0)) &&
       (is.null(offset_after) || all(offset_after == 0))
   ) {
-    return(abort(
-      "`offset_before` and `offset_after` cannot be 0 or NULL at the same time.",
+    cli_abort(
+      "{.arg offset_before} and {.arg offset_after} cannot both be 0 or NULL.",
       call = call
-    ))
+    )
   }
   if (
     !is.null(offset_before) &&
@@ -177,10 +178,10 @@ check_offset <- function(offset_before, offset_after, call = rlang::caller_env()
         lubridate::is.period(offset_before) ||
         is.numeric(offset_before))
   ) {
-    return(abort(
-      "`offset_before` must be a character vector, numeric vector, or a period.",
+    cli_abort(
+      "{.arg offset_before} must be a character, numeric, or period.",
       call = call
-    ))
+    )
   }
   if (
     !is.null(offset_after) &&
@@ -188,10 +189,10 @@ check_offset <- function(offset_before, offset_after, call = rlang::caller_env()
         lubridate::is.period(offset_after) ||
         is.numeric(offset_after))
   ) {
-    return(abort(
-      "`offset_after` must be a character vector, numeric vector, or a period.",
+    cli_abort(
+      "{.arg offset_after} must be a character, numeric, or period.",
       call = call
-    ))
+    )
   }
 
   # Convert offset_before to integer time
@@ -206,17 +207,17 @@ check_offset <- function(offset_before, offset_after, call = rlang::caller_env()
     offset_after <- as.integer(as.double(offset_after))
   }
   if (is.na(offset_before) || is.na(offset_after)) {
-    return(abort(
+    cli_abort(
       c(
         "Invalid offset specified.",
-        i = "Try something like '30 minutes', lubridate::minutes(30), or 1800."
+        i = "Try something like {.val 30 minutes}, {.code lubridate::minutes(30)}, or {.code 1800}."
       ),
       call = call
-    ))
+    )
   }
   if (!is.null(offset_before) && offset_before < 0) {
     offset_before <- abs(offset_before)
-    warn(
+    cli_warn(
       c(
         "`offset_before` must be a positive period (i.e. greater than 0).",
         i = "Taking the absolute value."
@@ -226,7 +227,7 @@ check_offset <- function(offset_before, offset_after, call = rlang::caller_env()
   }
   if (!is.null(offset_after) && offset_after < 0) {
     offset_after <- abs(offset_after)
-    warn(
+    cli_warn(
       c(
         "`offset_after` must be a positive period (i.e. greater than 0).",
         i = "Taking the absolute value."

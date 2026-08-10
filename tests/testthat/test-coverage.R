@@ -16,36 +16,36 @@ test_that("coverage", {
   # Sensors
   expect_error(
     coverage(db, "12345", sensor = "foo"),
-    "Sensor\\(s\\) \"foo\" could not be found."
+    ".*Sensor `foo` could not be found\\..*"
   )
 
   # participant_id
-  expect_error(coverage(db, "-1"), "Participant_id not known.")
+  expect_error(coverage(db, "foo"), "\\\"foo\\\".* is not a known participant")
 
   # Frequency
   expect_error(
     coverage(db, "12345", frequency = c(1, 2, 3)),
-    "Frequency must be a named numeric vector"
+    "`frequency` must be a named numeric vector"
   )
   expect_error(
     coverage(db, "12345", frequency = c(1, 2, 3), relative = FALSE),
-    "Frequency must be a named numeric vector"
+    "`frequency` must be a named numeric vector"
   )
   tmp_freq <- freq
   names(tmp_freq) <- NULL
   expect_error(
     coverage(db, "12345", frequency = tmp_freq),
-    "Frequency must be a named numeric vector"
+    "`frequency` must be a named numeric vector"
   )
 
   # start_date and end_date
   expect_error(
     coverage(db, "12345", start_date = 1, end_date = 2),
-    "start_date and end_date must be NULL, a character string, or date."
+    "`start_date` and `end_date` must be `NULL`, a date string, or a .*<Date>"
   )
   expect_error(
     coverage(db, "12345", start_date = "foo", end_date = "bar"),
-    "start_date and end_date must be NULL, a character string, or date."
+    "`start_date` and `end_date` must be `NULL`, a date string, or a .*<Date>"
   )
 
   # Offset
@@ -58,11 +58,55 @@ test_that("coverage", {
   )
   expect_error(
     coverage(db, "12345", offset = "foo"),
-    "Argument offset must be either \\'None\\', 1 day, or 2, 3, 4, \\.\\.\\. days\\."
+    "`offset` must be .*\\\"None\\\".*, or a day specification like .*\\\"1 day\\\".*"
   )
 
+  # Check sensors that do not exist in the database, but is a valid sensor name
+  tmp <- tempfile()
+  file.copy(system.file("testdata", "test.db", package = "mpathsenser"), tmp)
+  db <- open_db(NULL, tmp)
+  DBI::dbRemoveTable(db, "Accelerometer")
+  expect_warning(
+    coverage(db, "12345", sensor = c("Accelerometer", "Gyroscope")),
+    paste0(
+      "This sensor does not exist in the database and will be removed from the output: ",
+      "`Accelerometer`."
+    )
+  )
+  close_db(db)
+  file.remove(tmp)
+})
+
+test_that("coverage takes submeasurements without measurement_id into account", {
+  # Copy the test database to a temporary path
+  tmp <- tempfile()
+  db <- create_db(NULL, tmp)
+
+  # Populate the database
+  add_study(db, "foo", NA)
+  add_participant(db, "12345", "foo")
+
+  data <- data.frame(
+    measurement_id = c("a_1", "a_2", "b"),
+    participant_id = "12345",
+    date = "2025-19-12",
+    time = c("14:58:00", "14:58:01", "14:59:00")
+  )
+  DBI::dbWriteTable(db, "Accelerometer", data, overwrite = TRUE)
+
+  with_ids <- coverage(db, "12345", relative = FALSE)
+
+  # Now remove the IDs
+  data$measurement_id <- NULL
+  DBI::dbWriteTable(db, "Accelerometer", data, overwrite = TRUE)
+  without_ids <- coverage(db, "12345", relative = FALSE)
+
+  # The count should not depend on the measurement_id
+  expect_equal(with_ids, without_ids)
+
   # Cleanup
-  cleanup_test_db(db)
+  dbDisconnect(db)
+  file.remove(tmp)
 })
 
 test_that("plot.mpathsenser_coverage", {

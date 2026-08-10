@@ -29,10 +29,6 @@
 #'   \href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
 #'   calling this function.
 #'
-#' @section Progress: You can be updated of the progress of this function by using the
-#'   \pkg{progressr} package. See `progressr`'s
-#'   \href{https://cran.r-project.org/package=progressr/vignettes/progressr-01-intro.html}{vignette}
-#'   on how to subscribe to these updates.
 #'
 #' @param path The path to the file directory
 #' @param db Valid database connection, typically created by [create_db()].
@@ -41,6 +37,8 @@
 #' @param batch_size The number of files that are to be processed in a single batch.
 #' @param backend Name of the database backend that is used. Currently, only RSQLite is supported.
 #' @param recursive Should the listing recurse into directories?
+#' @param .progress Whether to display a progress bar.
+#' @param debug Whether suppressed warnings and errors should be shown for debugging purposes.
 #'
 #' @seealso [create_db()] for creating a database for `import()` to use, [close_db()] for closing
 #'   this database; [index_db()] to create indices on the database for faster future processing, and
@@ -79,7 +77,9 @@ import <- function(
   sensors = NULL,
   batch_size = 24,
   backend = "duckdb",
-  recursive = TRUE
+  recursive = TRUE,
+  .progress = TRUE,
+  debug = FALSE
 ) {
   # Check arguments
   check_arg(path, type = "character", n = 1)
@@ -88,12 +88,14 @@ import <- function(
   check_arg(batch_size, "integerish", n = 1)
   check_arg(backend, "character", n = 1)
   check_arg(recursive, "logical", n = 1)
+  check_arg(.progress, "logical", n = 1)
+  check_arg(debug, "logical", n = 1)
 
   # Normalise path and check if directory exists
   path <- normalizePath(file.path(path), mustWork = FALSE)
   if (!dir.exists(path)) {
-    abort(c(
-      paste("Directory", path, "does not exist."),
+    cli_abort(c(
+      "Directory {.path {path}} does not exist.",
       i = "Did you make a typo in the path name?"
     ))
   }
@@ -101,9 +103,14 @@ import <- function(
   # Retrieve all JSON files
   files <- list.files(path = path, pattern = "*.json$", recursive = recursive)
 
+  if (debug) {
+    len_files <- length(files)
+    cli::cli_progress_step("Found {len_files} file{?s} to process.")
+  }
+
   if (length(files) == 0) {
-    abort(c(
-      paste("Can't find JSON files in", path, "."),
+    cli_abort(c(
+      "Can't find any JSON files in {.path {path}}.",
       i = "Did you put the JSON files in the correct directory?"
     ))
   }
@@ -115,8 +122,16 @@ import <- function(
     # Keep files _not_ already registered in db
     files <- files[!(files %in% processed_files$file_name)]
 
+    if (debug) {
+      len_duplicates <- len_files - length(files)
+      len_files <- length(files)
+      cli::cli_progress_step(
+        "Found {len_duplicates} duplicate file{?s}. Continuing with {len_files} file{?s}."
+      )
+    }
+
     if (length(files) == 0) {
-      inform("No new files to process.")
+      cli_inform("No new files to process.")
       return(invisible(""))
     }
   }
@@ -124,31 +139,50 @@ import <- function(
   # Split the files into batches
   batches <- split(files, ceiling(seq_along(files) / batch_size))
 
-  # Display progress, if enabled
-  if (requireNamespace("progressr", quietly = TRUE)) {
-    p <- progressr::progressor(steps = length(batches))
+  # Set up a progress bar
+  if (.progress) {
+    pb <- cli::cli_progress_bar(
+      total = length(batches),
+      format = "Importing data... {cli::pb_bar} {cli::pb_current}/{cli::pb_total} batch{?es} \\
+      [{cli::pb_percent}] | {cli::pb_eta_str}"
+    )
+    cli::cli_progress_update(inc = 0, force = TRUE)
   }
 
   for (i in seq_along(batches)) {
     # All the files in the batch
     batch_files <- batches[[i]]
 
+    if (debug) {
+      len_batches <- length(batches)
+      cli::cli_progress_output(cli::cli_rule(
+        left = "Starting work on {.field batch {i}} out of {len_batches}.",
+        id = ""
+      ))
+    }
+
     # Read in all the files, in parallel
-    batch_data <- furrr::future_map(
+    batch_data <- future_map(
       .x = batch_files,
-      .f = ~ .import_read_json(path, .x),
-      .options = furrr::furrr_options(seed = TRUE)
+      .f = ~ .import_read_json(path, .x)
     )
     names(batch_data) <- batch_files
+
+    # For the files marked as NA, register the study, participant_id, and the file name,
+    # but keep the data empty as there was no data (empty file).
+    batch_na <- batch_files[is.na(batch_data)]
 
     # Remove NULLs, as we want to keep these files unmarked
     # (something went wrong when reading in the data)
     batch_data <- purrr::compact(batch_data)
 
-    # For the files marked as NA, register the study, participant_id, and the file name,
-    # but keep the data empty as there was no data (empty file).
-    batch_na <- batch_files[is.na(batch_data)]
+    # Keep non-null non-NA files for further processing
     batch_data <- batch_data[!is.na(batch_data)]
+
+    if (debug) {
+      len_batch_data <- length(batch_data)
+      cli::cli_progress_output("Read {len_batch_data} JSON file{?s}.")
+    }
 
     # Save the empty files in data frame to add to the meta data later
     # Meta data is what is being registered
@@ -162,16 +196,20 @@ import <- function(
     }
 
     # Clean the lists to be in a dataframe format
-    batch_data <- furrr::future_map2(
+    batch_data <- future_map2(
       .x = batch_data,
       .y = names(batch_data),
-      .f = .import_clean,
-      .options = furrr::furrr_options(seed = TRUE)
+      .f = .import_clean
     )
 
     # Remove NULLs, as we want to keep these files unmarked
     # (something went wrong when reading in the data)
     batch_data <- purrr::compact(batch_data)
+
+    if (debug) {
+      len_batch_data <- length(batch_data)
+      cli::cli_progress_output("Cleaned {len_batch_data} file{?s}.")
+    }
 
     # Generate the meta data, i.e. the participant_id, study_id, and file name to be written to the
     # database later.
@@ -199,18 +237,14 @@ import <- function(
     # From the dataframes we can get the participant_id and study_id
     # Use this information to query the database to find out whether this file has already been
     # processed. If already processed, drop it.
-    duplicates <- .import_is_duplicate(
-      db,
-      meta_data
-    )
+    duplicates <- .import_is_duplicate(db = db, meta_data)
     meta_data <- meta_data[!duplicates, ]
     batch_data <- batch_data[names(batch_data) %in% meta_data[["id"]]]
 
     # Extract the sensor data
-    batch_data <- furrr::future_map(
+    batch_data <- future_map(
       .x = batch_data,
-      .f = ~ .import_extract_sensor_data(.x, sensors),
-      .options = furrr::furrr_options(seed = TRUE)
+      .f = ~ .import_extract_sensor_data(.x, sensors, debug = debug)
     )
 
     # To do: Use mpathinfo to generate new metadata
@@ -225,6 +259,11 @@ import <- function(
       meta_data <- bind_rows(meta_data, batch_na)
     }
 
+    if (debug) {
+      len_batch_data <- length(batch_data)
+      cli::cli_progress_output("Extracted sensor data from {len_batch_data} file{?s}.")
+    }
+
     # Interesting feature in purrr::transpose. If the names would not be explicitly set, it would
     # only take the names of the first entry of the list. So, if some sensors would be present in
     # the first entry (e.g. low sampling sensors like Device), it would disappear from the data
@@ -236,27 +275,41 @@ import <- function(
     )
     batch_data <- lapply(batch_data, bind_rows)
     batch_data <- purrr::compact(batch_data)
-    batch_data <- lapply(batch_data, distinct) # Filter out duplicate rows (for some reason)
+    # Filter out duplicate rows (for some reason)
+    batch_data <- lapply(batch_data, function(x) if (anyDuplicated(x)) distinct(x) else x)
 
+    if (debug) {
+      n_tables <- length(batch_data)
+      write_pb <- cli::cli_progress_output("Writing {n_tables} table{?s}.")
+    }
     # Write all data as a single transaction, safely.
+    # Note that interrupting halfway does not rollback the transaction, in which case running
+    # `import()` again will result failed writing, as another transaction is still active while
+    # the previous one never completed and is thus still active.
     try(
-      expr = .import_write_to_db(db, meta_data, batch_data),
-      silent = TRUE
+      .import_write_to_db(db, meta_data, batch_data),
+      silent = !debug
     )
 
     # Update progress bar
-    if (requireNamespace("progressr", quietly = TRUE)) {
-      p(sprintf("Added %g out of %g", i * batch_size, length(files)))
+    if (.progress) {
+      cli::cli_progress_update(id = pb)
     }
   }
 
   processed_files <- get_processed_files(db)
   complete <- unlist(files, use.names = FALSE) %in% processed_files$file_name
+
+  # Close the progress bar
+  cli::cli_progress_done()
+
   if (all(complete)) {
-    inform("All files were successfully written to the database.")
+    cli_inform(
+      "All {length(unlist(files))} file{?s} {?was/were} successfully written to the database."
+    )
     return(invisible(""))
   } else {
-    warn("Some files could not be written to the database.")
+    cli_warn("Some files could not be written to the database.")
     return(files[!complete])
   }
 }
@@ -273,7 +326,7 @@ import <- function(
   }
 
   if (!file.exists(full_path)) {
-    warn(paste(filename, "does not exist."))
+    cli_warn(paste(filename, "does not exist."))
     return(NA)
   }
 
@@ -291,7 +344,7 @@ import <- function(
   # We don't want to make a record of having tried to process this file (but we do give a warning),
   # as we want to make sure users fix and retry the file.
   if (!jsonlite::validate(file)) {
-    warn(paste0("Invalid JSON format in file ", filename[1]))
+    cli_warn("Invalid JSON format in file {.file {full_path}}.")
     return(NULL)
   }
 
@@ -311,22 +364,20 @@ import <- function(
   # If reading in the file failed, provide a warning to the user and return an empty result.
   # Similar reasoning as above.
   if (inherits(possible_error, "try-error")) {
-    warn(c(
-      paste0("Invalid JSON format in file ", filename, "."),
-      i = "Try running `fix_jsons()` to resolve issues with this file."
+    cli_warn(c(
+      paste0("Invalid JSON format in file {.file {filename}}."),
+      i = "Try running {.help [fix_jsons()](mpathsenser::fix_jsons)} to \\
+      resolve issues with this file."
     ))
     return(NULL)
   }
 
   # Check if it is not an empty file Skip this file if empty, but add it to the list of
   # processed file to register this incident and to avoid having to do it again
-  if (
-    length(data) == 0 ||
-      identical(data, list()) ||
-      identical(data, list(list())) ||
-      identical(data, list(structure(list(), names = character(0)))) ||
-      is.null(unlist(data, use.names = FALSE))
-  ) {
+  # Protect against NULL, not lists, empty lists, and lists of empty lists
+  # Do not use unlist() to recursively check empty lists, because this is very costly for large
+  # data files.
+  if (is.null(data) || !is.list(data) || length(data) == 0 || lengths(data[1]) == 0) {
     return(NA)
   }
 
@@ -390,7 +441,7 @@ safe_extract <- function(vec, var) {
 
 # New clean function for the new file format as of CARP 1.0.0
 .import_clean_new <- function(data, file_name) {
-  meta <- .import_meta_data_from_file_name(file_name)
+  meta <- .import_meta_data_from_mpathinfo(data, file_name)
   meta$file_name <- NULL
 
   data <- tibble(
@@ -453,7 +504,7 @@ safe_extract <- function(vec, var) {
 .import_map_sensor_names <- function(names) {
   names <- trimws(names)
   lower_names <- tolower(names)
-  dplyr::case_match(
+  recode_values(
     lower_names,
     c("accelerometer", "accelerationfeatures", "averageaccelerometer") ~
       "Accelerometer",
@@ -462,6 +513,7 @@ safe_extract <- function(vec, var) {
     c("app_usage", "appusage") ~ "AppUsage",
     c("battery", "batterystate") ~ "Battery",
     "bluetooth" ~ "Bluetooth",
+    "beacondata" ~ "BluetoothBeacon",
     "calendar" ~ "Calendar",
     "connectivity" ~ "Connectivity",
     c("device", "deviceinformation") ~ "Device",
@@ -487,7 +539,7 @@ safe_extract <- function(vec, var) {
   )
 }
 
-.import_extract_sensor_data <- function(data, sensors = NULL) {
+.import_extract_sensor_data <- function(data, sensors = NULL, debug = FALSE) {
   # Detect if this is a file in a legacy format
   is_legacy <- "body" %in% colnames(data)
 
@@ -495,6 +547,12 @@ safe_extract <- function(vec, var) {
   # 1.0.0)
   if (is_legacy) {
     data$body <- lapply(data$body, function(x) rlang::set_names(x, "body"))
+  }
+
+  # Special unpack process for Garmin sensing data
+  has_selected_garmin_sensor <- is.null(sensors) || any(grepl("garmin", tolower(sensors)))
+  if ("garminalllogsdata" %in% data$sensor && has_selected_garmin_sensor) {
+    data <- .import_extract_garmin_logs(data)
   }
 
   # Set names in accordance with the table names
@@ -521,7 +579,7 @@ safe_extract <- function(vec, var) {
   if (any(!(setdiff(names, "mpathinfo") %in% mpathsenser::sensors))) {
     not_exist <- names[!(names %in% mpathsenser::sensors)]
     not_exist <- setdiff(not_exist, "mpathinfo")
-    warn(c(
+    cli_warn(c(
       paste0("Sensor '", not_exist, "' is not supported by this package."),
       i = "Data from this sensor is removed from the output."
     ))
@@ -543,13 +601,16 @@ safe_extract <- function(vec, var) {
           tolower(names(data)),
           SIMPLIFY = FALSE
         )
-        out <- lapply(data, unpack_sensor_data)
+        out <- purrr::map(data, unpack_sensor_data)
       }
 
       names(out) <- names
       return(out)
     },
     error = function(e) {
+      if (debug) {
+        print(e)
+      }
       return(NA)
     }
   )
@@ -571,16 +632,25 @@ safe_extract <- function(vec, var) {
     )
   })
 
-  for (i in seq_along(sensor_data)) {
-    dplyr::rows_insert(
-      dplyr::tbl(db, names(sensor_data)[[i]]),
-      sensor_data[[i]],
-      by = "measurement_id",
-      copy = TRUE,
-      in_place = TRUE,
-      conflict = "ignore"
-    )
-  }
+    for (i in seq_along(sensor_data)) {
+      tmp_tbl <- dplyr::copy_to(
+        dest = db,
+        df = sensor_data[[i]],
+        name = "tmp_import",
+        overwrite = TRUE,
+        temporary = TRUE,
+        in_transaction = FALSE
+      )
+
+      dplyr::rows_upsert(
+        dplyr::tbl(db, names(sensor_data)[[i]]),
+        tmp_tbl,
+        by = .import_get_pk(names(sensor_data)[[i]]),
+        copy = FALSE,
+        in_place = TRUE
+      )
+    }
+    DBI::dbRemoveTable(db, "tmp_import", fail_if_missing = FALSE)
 
   DBI::dbWithTransaction(db, {
     # Add files to list of processed files
@@ -593,6 +663,33 @@ safe_extract <- function(vec, var) {
   })
 }
 
+.import_meta_data_from_mpathinfo <- function(data, file_name) {
+  # Only keep mpathinfo entry
+  has_info <- purrr::map_lgl(data, \(x) x[["data"]][["__type"]] == "dk.cachet.carp.mpathinfo")
+
+  # No mpathinfo found
+  if (!any(has_info)) {
+    # Try fallback to file name
+    return(.import_meta_data_from_file_name(file_name))
+  }
+
+  if (sum(has_info) > 1) {
+    cli_warn(c(
+      "Multiple `mpathinfo` entries found in file: {.file {file_name}}.",
+      i = "Using the first occurrence."
+    ))
+  }
+
+  data <- data[has_info][[1]]
+
+  # Return the same structure as .import_meta_data_from_file_name()
+  # Future versions could include senseVersion and accountCode
+  tibble(
+    study_id = data$data[["studyName"]] %||% "-1",
+    participant_id = as.character(data$data[["connectionId"]]) %||% "N/A",
+    file_name = file_name
+  )
+}
 
 .import_meta_data_from_file_name <- function(file_name) {
   # The file name is structured as follows:
@@ -645,4 +742,146 @@ safe_extract <- function(vec, var) {
   }
 
   out
+}
+
+.import_extract_garmin_logs <- function(.data) {
+  garmin_data <- filter(.data, .data$sensor == "garminalllogsdata")
+
+  garmin_cols <- lapply(garmin_data$data, \(x) {
+    list(
+      GarminAccelerometer = x[["accelerometer"]],
+      GarminActigraphy = x[c("actigraphy1", "actigraphy2", "actigraphy3")],
+      GarminBBI = x[["bbi"]],
+      GarminEnhancedBBI = x[["enhancedBbi"]],
+      GarminGyroscope = x[["gyroscope"]],
+      GarminHeartRate = x[["heartRate"]],
+      GarminMeta = x[c("fromTime", "toTime", "entryCounts")],
+      GarminRespiration = x[["respiration"]],
+      GarminSkinTemperature = x[["skinTemperature"]],
+      GarminSPO2 = x[["spo2"]],
+      GarminSteps = x[["steps"]],
+      GarminStress = x[["stress"]],
+      GarminWristStatus = x[["wristStatus"]],
+      GarminZeroCrossing = x[["zeroCrossing"]]
+    )
+  })
+  garmin_data[names(garmin_cols[[1]])] <- purrr::list_transpose(garmin_cols)
+
+  # Extract Garmin sensor data into new columns
+  # garmin_data$GarminAccelerometer <- lapply(garmin_data$data, \(x) x[["accelerometer"]])
+  # garmin_data$GarminActigraphy <- lapply(garmin_data$data, \(x) {
+  #   x[c("actigraphy1", "actigraphy2", "actigraphy3")]
+  # })
+  garmin_data$GarminActigraphy <- lapply(
+    garmin_data$GarminActigraphy,
+    \(x) purrr::list_flatten(x, name_spec = "{inner}")
+  )
+
+  # garmin_data$GarminBBI <- lapply(garmin_data$data, \(x) x[["bbi"]])
+  # garmin_data$GarminEnhancedBBI <- lapply(garmin_data$data, \(x) x[["enhancedBbi"]])
+  # garmin_data$GarminGyroscope <- lapply(garmin_data$data, \(x) x[["gyroscope"]])
+  # garmin_data$GarminHeartRate <- lapply(garmin_data$data, \(x) x[["heartRate"]])
+  # garmin_data$GarminMeta <- lapply(garmin_data$data, \(x) {
+  #   x[c("fromTime", "toTime", "entryCounts")]
+  # })
+  # For the meta data, flatten the entrycounts
+  garmin_data$GarminMeta <- lapply(
+    garmin_data$GarminMeta,
+    \(x) purrr::list_flatten(x, name_spec = "{inner}")
+  )
+  # garmin_data$GarminRespiration <- lapply(garmin_data$data, \(x) x[["respiration"]])
+  # garmin_data$GarminSkinTemperature <- lapply(garmin_data$data, \(x) x[["skinTemperature"]])
+  # garmin_data$GarminSPO2 <- lapply(garmin_data$data, \(x) x[["spo2"]])
+  # garmin_data$GarminSteps <- lapply(garmin_data$data, \(x) x[["steps"]])
+  # garmin_data$GarminStress <- lapply(garmin_data$data, \(x) x[["stress"]])
+  # garmin_data$GarminWristStatus <- lapply(garmin_data$data, \(x) x[["wristStatus"]])
+  # garmin_data$GarminZeroCrossing <- lapply(garmin_data$data, \(x) x[["zeroCrossing"]])
+
+  # Remove the extract columns from the data column
+  garmin_data$data <- lapply(garmin_data$data, \(x) {
+    purrr::discard_at(
+      x = x,
+      at = c(
+        "accelerometer",
+        "actigraphy1",
+        "actigraphy2",
+        "actigraphy3",
+        "bbi",
+        "enhancedBbi",
+        "gyroscope",
+        "heartRate",
+        "fromTime",
+        "toTime",
+        "entryCounts",
+        "respiration",
+        "skinTemperature",
+        "spo2",
+        "steps",
+        "stress",
+        "wristStatus",
+        "zeroCrossing"
+      )
+    )
+  })
+
+  # Check if the remainder is empty
+  if (any(lengths(garmin_data$data) > 0)) {
+    not_exist <- lapply(garmin_data$data, names)
+    not_exist <- unlist(not_exist, use.names = FALSE)
+    not_exist <- unique(not_exist)
+    cli_warn(c(
+      "Garmin data type{?s} {.var {not_exist}} is not supported by this package.",
+      i = "Data is removed from the output."
+    ))
+  }
+
+  # Remove the remainder
+  garmin_data$data <- NULL
+
+  # Pivot the data to get a single sensor column
+  garmin_data <- garmin_data |>
+    select(-"sensor") |>
+    tidyr::pivot_longer(dplyr::starts_with("Garmin"), names_to = "sensor", values_to = "data")
+
+  # Unnest the actigraphy data as there are 3 measurement at once
+  actigraphy <- garmin_data |>
+    filter(.data$sensor == "GarminActigraphy") |>
+    unnest("data")
+
+  garmin_data <- garmin_data |>
+    filter(.data$sensor != "GarminActigraphy") |>
+    bind_rows(actigraphy)
+
+  # Remove measurements that were missing
+  garmin_data <- garmin_data |>
+    filter(!purrr::map_lgl(.data$data, is.null)) |>
+    filter(!purrr::map_lgl(.data$data, \(x) length(x) == 0))
+
+  # add back to the main data
+  # the order of the rows doesn't matter in this case
+  .data |>
+    filter(.data$sensor != "garminalllogsdata") |>
+    bind_rows(garmin_data)
+}
+
+# Mapping to get the primary keys for a sensor table
+.import_get_pk <- function(sensor) {
+  pks <- switch(
+    sensor,
+    AppUsage = "app",
+    Bluetooth = "bluetooth_device_id",
+    BluetoothBeacon = "uuid",
+    Calendar = c("event_id", "calendar_id", "start", "end"),
+    GarminActigraphy = c("instance"),
+    InstalledApps = "app",
+    NA
+  )
+
+  if (!all(is.na(pks))) {
+    pks <- c("participant_id", "date", "time", pks)
+  } else {
+    pks <- c("participant_id", "date", "time")
+  }
+
+  pks
 }

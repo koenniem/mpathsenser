@@ -58,10 +58,10 @@ decrypt_gps <- function(data, key, ignore = ":") {
 
   # Custom key check: Either raw and length 32, or a character vector
   if (!(is.raw(key) && length(key) == 32) && !is.character(key)) {
-    abort(c(
-      "`key` must be either a hexadecimal string or a binary vector.",
-      i = "Try to use `sodium::hex2bin(key)` or `sodium::bin2hex(key)`",
-      x = "Steer clear of `charToRaw(key)`, as this delivers an incorrect key format."
+    cli_abort(c(
+      "{.arg key} must be either a hexadecimal string or a binary vector.",
+      i = "Try {.code sodium::hex2bin(key)} or {.code sodium::bin2hex(key)}.",
+      x = "Avoid {.code charToRaw(key)}: it produces an incorrect key format."
     ))
   }
 
@@ -70,9 +70,9 @@ decrypt_gps <- function(data, key, ignore = ":") {
   }
 
   data <- data |>
-    furrr::future_map(sodium::hex2bin, ignore = ignore) |>
-    furrr::future_map(sodium::simple_decrypt, key = key) |>
-    furrr::future_map(rawToChar) |>
+    future_map(\(x) sodium::hex2bin(x, ignore = ignore)) |>
+    future_map(\(x) sodium::simple_decrypt(x, key = key)) |>
+    future_map(rawToChar) |>
     unlist(recursive = FALSE) |>
     as.double()
 
@@ -80,12 +80,12 @@ decrypt_gps <- function(data, key, ignore = ":") {
 }
 
 deg2rad <- function(deg) {
-  check_arg(deg, "double")
+  check_arg(deg, "numeric")
   deg * pi / 180
 }
 
 rad2deg <- function(rad) {
-  check_arg(rad, "double")
+  check_arg(rad, "numeric")
   rad * 180 / pi
 }
 
@@ -110,11 +110,11 @@ rad2deg <- function(rad) {
 #' ord <- c(41.97861, -87.90472) # Chicago O'Hare International Airport
 #' haversine(fra[1], fra[2], ord[1], ord[2]) # 6971.059 km
 haversine <- function(lat1, lon1, lat2, lon2, r = 6371) {
-  check_arg(lat1, "double")
-  check_arg(lon1, "double")
-  check_arg(lat2, "double")
-  check_arg(lon2, "double")
-  check_arg(r, "double")
+  check_arg(lat1, "numeric")
+  check_arg(lon1, "numeric")
+  check_arg(lat2, "numeric")
+  check_arg(lon2, "numeric")
+  check_arg(r, "numeric")
 
   p <- pi / 180
   a <- 0.5 -
@@ -124,8 +124,8 @@ haversine <- function(lat1, lon1, lat2, lon2, r = 6371) {
 }
 
 location_variance <- function(lat, lon) {
-  check_arg(lat, "double")
-  check_arg(lon, "double")
+  check_arg(lat, "numeric")
+  check_arg(lon, "numeric")
 
   log((stats::sd(lat) * 2 + stats::sd(lon) * 2) + 1)
 }

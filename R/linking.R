@@ -49,7 +49,7 @@ link_impl <- function(
   # Match sensing data with ESM using a left join
   data <- data |>
     dplyr::left_join(y, by = by, multiple = "all", relationship = "many-to-many") |>
-    mutate(across(dplyr::all_of(y_time), as.integer, .names = ".y_time")) |>
+    mutate(across(all_of(y_time), as.integer, .names = ".y_time")) |>
     tidyr::drop_na(".start_time", ".end_time")
 
   # The main data, i.e. data exactly within the interval
@@ -58,7 +58,7 @@ link_impl <- function(
     arrange(across(c({{ by }}, ".y_time"))) |>
     select(-".y_time") |>
     nest({{ name }} := !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
-    select(dplyr::all_of(c(".row_id", name)))
+    select(all_of(c(".row_id", name)))
 
   # Merge back with original data
   # Bug: if this happens after merging data_before and data_after, they would be lost in the case
@@ -80,7 +80,7 @@ link_impl <- function(
       group_by(.data$.row_id) |>
       dplyr::slice_max(order_by = .data$.y_time, n = 1, with_ties = TRUE) |>
       ungroup() |>
-      mutate(across(dplyr::all_of(y_time), .names = "original_time")) |>
+      mutate(across(all_of(y_time), .names = "original_time")) |>
       mutate({{ y_time }} := lubridate::as_datetime(.data$.start_time, tz = tz)) |>
       select(-".y_time") |>
       nest(data_before = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
@@ -111,7 +111,7 @@ link_impl <- function(
       group_by(.data$.row_id) |>
       dplyr::slice_min(order_by = .data$.y_time, n = 1, with_ties = TRUE) |>
       ungroup() |>
-      mutate(across(dplyr::all_of(y_time), .names = "original_time")) |>
+      mutate(across(all_of(y_time), .names = "original_time")) |>
       mutate({{ y_time }} := lubridate::as_datetime(.data$.end_time, tz = tz)) |>
       select(-".y_time") |>
       nest(data_after = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
@@ -142,7 +142,7 @@ link_impl <- function(
     if (nrow(data_main) > 0) {
       # Add column original_time in cases where it's missing
       for (i in seq_len(nrow(data_main))) {
-        if (!any("original_time" == colnames(pull(data_main, dplyr::all_of(name))[[i]]))) {
+        if (!any("original_time" == colnames(pull(data_main, all_of(name))[[i]]))) {
           data_main$data[[i]]$original_time <- as.POSIXct(NA, tz = tz)
         }
       }
@@ -425,7 +425,9 @@ link <- function(
 
   # Check that not end_time and any offset are used at the same time
   if (!missing(end_time) && (!missing(offset_before) || !missing(offset_after))) {
-    abort("`end_time` and `offset_before` or `offset_after` cannot be used at the same time.")
+    cli_abort(
+      "{.arg end_time} cannot be combined with {.arg offset_before} or {.arg offset_after}."
+    )
   }
 
   # Check offsets if end_time is not missing
@@ -437,7 +439,7 @@ link <- function(
 
   # Do not perform matching when x and y are identical
   if (identical(x, y) || isTRUE(all.equal(x, y))) {
-    abort("`x` and `y` are identical.")
+    cli_abort("{.arg x} and {.arg y} are identical.")
   }
 
   # Get the start_time, end_time, and y_time as characters and check their validity
@@ -634,22 +636,22 @@ link_gaps <- function(
 
   # Check for time column in data
   if (!("time" %in% colnames(data))) {
-    abort("Column `time` must be present in `data`")
+    cli_abort("Column {.code time} must be present in {.arg data}.")
   }
   # Check for time column
   if (!("from" %in% colnames(gaps) && "to" %in% colnames(gaps))) {
-    abort("Column `from` and `to` must be present in `gaps`.")
+    cli_abort("Column {.code from} and {.code to} must be present in {.arg gaps}.")
   }
   if (!lubridate::is.POSIXct(data$time)) {
-    abort("Column `time` in `data` must be a POSIXct.")
+    cli_abort("Column {.code time} in {.arg data} must be a POSIXct.")
   }
 
   # Check that gap or gap_data is not already present in data
   if ("gap" %in% colnames(data)) {
-    abort("column 'gap' should not already be present in data")
+    cli_abort("Column {.code gap} must not already be present in {.arg data}.")
   }
   if (raw_data && "gap_data" %in% colnames(data)) {
-    abort("column 'gap_data' should not already be present in data")
+    cli_abort("Column {.code gap_data} must not already be present in {.arg data}.")
   }
 
   # Calculate the start and end time of the interval (in seconds) of each row in data
@@ -693,12 +695,12 @@ link_gaps <- function(
       from = as.POSIXct(
         vector(mode = "double"),
         origin = "1970-01-01",
-        tz = attr(gaps$from, "tzone")
+        tz = lubridate::tz(gaps$from)
       ),
       to = as.POSIXct(
         vector(mode = "double"),
         origin = "1970-01-01",
-        tz = attr(gaps$from, "tzone")
+        tz = lubridate::tz(gaps$to)
       ),
       gap = integer(0)
     )
@@ -900,9 +902,9 @@ bin_data <- function(
   } else if (is.numeric(by) && !fixed) {
     by_duration <- by
   } else {
-    abort(paste(
-      "`by` must be one of 'sec', 'min', 'hour', or 'day',",
-      "or a numeric value if `fixed = FALSE`."
+    cli_abort(c(
+      "{.arg by} must be one of {.val sec}, {.val min}, {.val hour}, or {.val day},",
+      i = "Or a numeric value when {.code fixed = FALSE}."
     ))
   }
 
@@ -936,32 +938,20 @@ bin_data <- function(
     distinct() |>
     drop_na("bin_start")
 
-  if (utils::packageVersion("dplyr") >= "1.1.0") {
-    # nocov start
-    groups <- dplyr::group_vars(out)
-    out <- out |>
-      dplyr::reframe(
-        bin_start = seq.POSIXt(
-          from = min(.data$bin_start, na.rm = TRUE),
-          to = max(.data$bin_start, na.rm = TRUE) + by_duration,
-          by = by_duration
-        )
+  groups <- dplyr::group_vars(out)
+  out <- out |>
+    dplyr::reframe(
+      bin_start = seq.POSIXt(
+        from = min(.data$bin_start, na.rm = TRUE),
+        to = max(.data$bin_start, na.rm = TRUE) + by_duration,
+        by = by_duration
       )
+    )
 
-    # Regroup after reframe
-    if (length(groups) > 0) {
-      out <- group_by(out, dplyr::pick(dplyr::all_of(groups)))
-    }
-  } else {
-    out <- out |>
-      summarise(
-        bin_start = seq.POSIXt(
-          from = min(.data$bin_start, na.rm = TRUE),
-          to = max(.data$bin_start, na.rm = TRUE) + by_duration,
-          by = by_duration
-        )
-      )
-  } # nocov end
+  # Regroup after reframe
+  if (length(groups) > 0) {
+    out <- group_by(out, dplyr::pick(all_of(groups)))
+  }
 
   if (by == "day") {
     out <- out |>

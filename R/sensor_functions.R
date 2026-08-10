@@ -135,7 +135,7 @@ first_date <- function(db, sensor, participant_id = NULL) {
 #' @examples
 #' \dontrun{
 #' db <- open_db()
-#' first_date(db, "Accelerometer", "12345")
+#' last_date(db, "Accelerometer", "12345")
 #' }
 last_date <- function(db, sensor, participant_id = NULL) {
   check_db(db)
@@ -209,6 +209,7 @@ installed_apps <- function(db, participant_id = NULL) {
 #' \code{exact} is \code{TRUE}, it interacts with \code{num} in the sense that it no longer selects
 #' the top search result but instead the top search result that matches the last part of the package
 #' name.
+#' @inheritParams import
 #'
 #' @section Warning:
 #' Do not abuse this function or you will be banned by the Google Play Store. The minimum delay
@@ -232,7 +233,7 @@ installed_apps <- function(db, participant_id = NULL) {
 #'
 #' # Get OnePlus weather
 #' app_category("net.oneplus.weather")
-app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE) {
+app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE, .progress = TRUE) {
   # Check if required packages are available
   ensure_suggested_package("curl")
   ensure_suggested_package("httr")
@@ -244,8 +245,8 @@ app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE) {
 
   res <- data.frame(app = name, package = rep(NA, length(name)), genre = rep(NA, length(name)))
 
-  if (requireNamespace("progressr", quietly = TRUE)) {
-    p <- progressr::progressor(steps = length(name))
+  if (.progress) {
+    cli::cli_progress_bar(total = length(name))
   }
 
   for (i in seq_along(name)) {
@@ -254,8 +255,8 @@ app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE) {
       error = \(e) list(package = NA, genre = NA)
     )
 
-    if (requireNamespace("progressr", quietly = TRUE)) {
-      p()
+    if (.progress) {
+      cli::cli_progress_update()
     }
 
     if (length(name) > 1) {
@@ -873,18 +874,16 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
   if (!is.null(by)) {
     err <- try(
       {
-        select(data, dplyr::all_of({{ by }}))
-        select(gaps, dplyr::all_of({{ by }}))
+        select(data, all_of({{ by }}))
+        select(gaps, all_of({{ by }}))
       },
       silent = TRUE
     )
 
     if (inherits(err, "try-error")) {
-      abort(paste0(
-        "Column(s) ",
-        paste0("\"", by, "\"", collapse = ", "),
-        " must be present in both `data` and `gaps`."
-      ))
+      cli_abort(
+        "Column{?s} {.code {by}} must be present in both {.arg data} and {.arg gaps}."
+      )
     }
 
     # Remove gaps that do not occur in the data based on the `by` column

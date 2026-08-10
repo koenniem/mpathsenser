@@ -4,11 +4,10 @@
   "identifier": "mpathsenser",
   "description": "Overcomes one of the major challenges in mobile (passive) sensing, namely being able to pre-process the raw data that comes from a mobile sensing app, specifically 'm-Path Sense' <https://m-path.io>. The main task of 'mpathsenser' is therefore to read 'm-Path Sense' JSON files into a database and provide several convenience functions to aid in data processing.",
   "name": "mpathsenser: Process and Analyse Data from m-Path Sense",
-  "relatedLink": ["https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser", "https://CRAN.R-project.org/package=mpathsenser"],
   "codeRepository": "https://github.com/koenniem/mpathsenser",
   "issueTracker": "\n    https://github.com/koenniem/mpathsenser/issues",
   "license": "https://spdx.org/licenses/GPL-3.0",
-  "version": "1.2.4",
+  "version": "1.2.4.9000",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "R",
@@ -144,18 +143,6 @@
         "url": "https://cran.r-project.org"
       },
       "sameAs": "https://CRAN.R-project.org/package=lintr"
-    },
-    {
-      "@type": "SoftwareApplication",
-      "identifier": "progressr",
-      "name": "progressr",
-      "provider": {
-        "@id": "https://cran.r-project.org",
-        "@type": "Organization",
-        "name": "Comprehensive R Archive Network (CRAN)",
-        "url": "https://cran.r-project.org"
-      },
-      "sameAs": "https://CRAN.R-project.org/package=progressr"
     },
     {
       "@type": "SoftwareApplication",
@@ -389,7 +376,7 @@
     },
     "SystemRequirements": null
   },
-  "fileSize": "4982.685KB",
+  "fileSize": "4591.09KB",
   "citation": [
     {
       "@type": "ScholarlyArticle",
@@ -438,8 +425,10 @@
       }
     }
   ],
+  "relatedLink": ["https://koenniem.github.io/mpathsenser/", "https://CRAN.R-project.org/package=mpathsenser"],
   "releaseNotes": "https://github.com/koenniem/mpathsenser/blob/main/NEWS.md",
   "readme": "https://github.com/koenniem/mpathsenser/blob/master/README.md",
+  "contIntegration": ["https://github.com/koenniem/mpathsenser/actions/workflows/R-CMD-check.yaml", "https://app.codecov.io/gh/koenniem/mpathsenser"],
   "developmentStatus": "https://www.repostatus.org/#active",
-  "keywords": ["mobile-sensing", "r"]
+  "keywords": ["mobile-sensing", "r", "passive-sensing", "m-path"]
 }

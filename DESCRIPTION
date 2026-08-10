@@ -15,46 +15,44 @@ Description: Overcomes one of the major challenges in mobile (passive)
     JSON files into a database and provide several convenience functions
     to aid in data processing.
 License: GPL (>= 3)
-URL: 
-    https://github.com/koenniem/mpathsenser,
-    https://ppw-okpiv.pages.gitlab.kuleuven.be/researchers/u0134047/mpathsenser
-BugReports: 
+URL:
+    https://koenniem.github.io/mpathsenser/
+BugReports:
     https://github.com/koenniem/mpathsenser/issues
-Depends: 
+Depends:
     R (>= 4.2.0)
 Imports:
     cli,
     DBI,
     dbplyr,
-    dplyr,
+    dplyr (>= 1.1.0),
     duckdb,
     furrr,
     jsonlite,
     lifecycle,
     lubridate,
-    purrr,
+    purrr (>= 1.0.0),
     rlang,
     stats,
     tibble,
     tidyr
-Suggests: 
+Suggests:
     curl,
+    furrr,
     ggplot2,
     httr,
     kableExtra,
     knitr,
     lintr,
-    progressr,
     rmarkdown,
     rvest,
     sodium,
     spelling,
-    testthat (>= 3.0.0),
-    vroom
-VignetteBuilder: 
+    testthat (>= 3.0.0)
+VignetteBuilder:
     knitr
 Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Language: en-GB
+Config/roxygen2/version: 8.0.0

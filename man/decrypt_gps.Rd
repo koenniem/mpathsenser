@@ -11,7 +11,7 @@ decrypt_gps(data, key, ignore = ":")
 
 \item{key}{A curve25519 private key.}
 
-\item{ignore}{A string with characters to ignore from \code{data}. See \code{\link[sodium:helpers]{sodium::hex2bin()}}.}
+\item{ignore}{A string with characters to ignore from \code{data}. See \code{\link[sodium:hex2bin]{sodium::hex2bin()}}.}
 }
 \value{
 A vector of doubles of the decrypted GPS coordinates.

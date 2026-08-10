@@ -17,10 +17,25 @@ sensors <- c(
   "AppUsage",
   "Battery",
   "Bluetooth",
+  "BluetoothBeacon",
   "Calendar",
   "Connectivity",
   "Device",
   "Error",
+  "GarminAccelerometer",
+  "GarminActigraphy",
+  "GarminBBI",
+  "GarminEnhancedBBI",
+  "GarminGyroscope",
+  "GarminHeartRate",
+  "GarminMeta",
+  "GarminRespiration",
+  "GarminSkinTemperature",
+  "GarminSPO2",
+  "GarminSteps",
+  "GarminStress",
+  "GarminWristStatus",
+  "GarminZeroCrossing",
   "Geofence",
   "Gyroscope",
   "Heartbeat",
@@ -79,20 +94,20 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
     if (overwrite) {
       tryCatch(
         file.remove(db_name),
-        warning = function(e) abort(as.character(e)),
-        error = function(e) abort(as.character(e))
+        warning = function(e) cli_abort(conditionMessage(e)),
+        error = function(e) cli_abort(conditionMessage(e))
       )
     } else {
-      cli::cli_abort(c(
-        paste0("Database {.file ", db_name, "} already exists."),
-        i = " Use {.code overwrite = TRUE} to overwrite."
+      cli_abort(c(
+        "Database {.path {db_name}} already exists.",
+        i = "Use {.code overwrite = TRUE} to overwrite."
       ))
     }
   }
 
   # Check if path exists
   if (!dir.exists(dirname(db_name))) {
-    abort(paste0("Directory ", dirname(db_name), " does not exist."))
+    cli_abort("Directory {.path {dirname(db_name)}} does not exist.")
   }
 
   # Create a new db instance
@@ -101,7 +116,7 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
       db <- dbConnect(duckdb::duckdb(), db_name, read_only = FALSE)
     },
     error = function(e) {
-      cli::cli_abort(paste0("Could not create a database in ", db_name)) # nocov
+      cli_abort("Could not create a database at {.path {db_name}}.") # nocov
     }
   )
 
@@ -136,9 +151,9 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
     error = function(e) {
       # nocov start
       dbDisconnect(db)
-      abort(c(
+      cli_abort(c(
         "Database definition file not found. The package is probably corrupted.",
-        i = "Please reinstall mpathsenser using `install.packages(\"mpathsenser\")`"
+        i = "Please reinstall {.pkg mpathsenser} using {.code install.packages(\"mpathsenser\")}"
       )) # nocov end
     }
   )
@@ -189,7 +204,7 @@ open_db <- function(path = getwd(), db_name = "sense.db", read_only = TRUE) {
   }
 
   if (!is_driver && !file.exists(db_name)) {
-    abort("There is no such file")
+    cli_abort("There is no database at {.path {db_name}}.")
   }
 
   if (is_driver) {
@@ -200,7 +215,7 @@ open_db <- function(path = getwd(), db_name = "sense.db", read_only = TRUE) {
 
   if (!DBI::dbExistsTable(db, "Participant")) {
     dbDisconnect(db)
-    abort("Sorry, this does not appear to be a mpathsenser database.")
+    cli_abort("The file {.path {db_name}} does not appear to be an {.pkg mpathsenser} database.")
   }
   return(db)
 }
@@ -243,11 +258,15 @@ close_db <- function(db) {
 
 #' Create indexes for an mpathsenser database
 #'
-#' @description `r lifecycle::badge("stable")`
+#' @description `r lifecycle::badge("deprecated")`
 #'
 #'   Create indexes for an mpathsenser database on the `participant_id`, `date`, and a combination
 #'   of these variable for all the tables in the database. This will speed up queries that use these
-#'   variables in the `WHERE` clause.
+#'   variables in the `WHERE` clause. Because
+#'
+#' @section Deprecation:
+#' Because `participant_id`, `date`, and `time` are now primary keys in the database, indexes are
+#' no longer needed.
 #'
 #' @inheritParams get_data
 #'
@@ -297,7 +316,7 @@ index_db <- function(db) {
       }
     },
     error = function(e) {
-      abort(as.character(e))
+      cli_abort(conditionMessage(e)) # nocov
     }
   )
 
@@ -339,8 +358,8 @@ vacuum_db <- function(db) {
 #' @param target_db A mpathsenser database connection where the data will be transferred to.
 #'   [create_db()] to create a new database.
 #' @param sensor A character vector containing one or multiple sensors. See
-#'   \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use "All" for all available
-#'   sensors.
+#'   \code{\link[mpathsenser]{sensors}} for a list of available sensors. Defaults to `NULL`, which
+#'   means all available sensors.
 #'
 #' @returns Returns a connection to `target_db`. Note that this is not the same connection as the
 #' input `target_db`.
@@ -371,20 +390,14 @@ vacuum_db <- function(db) {
 copy_db <- function(
   source_db,
   target_db,
-  sensor = "All"
+  sensor = NULL
 ) {
   check_db(source_db, arg = "source_db")
   check_db(target_db, arg = "target_db")
-  check_arg(sensor, "character")
+  check_sensors(sensor, allow_null = TRUE, arg = "sensor")
 
-  # Check sensors
-  if (length(sensor) == 1 && sensor == "All") {
+  if (is.null(sensor)) {
     sensor <- sensors
-  } else {
-    missing <- sensor[!(sensor %in% sensors)]
-    if (length(missing) != 0) {
-      abort(paste0("Sensor(s) ", paste0(missing, collapse = ", "), " not found."))
-    }
   }
 
   # Get target database path - for duckdb, we access the path via the driver
@@ -627,7 +640,7 @@ get_studies <- function(db, lazy = FALSE) {
 #' @description `r lifecycle::badge("stable")`
 #'
 #' @param db db A database connection, as created by [create_db()].
-#' @param sensor A character vector of one or multiple vectors. Use `sensor = "All"` for all
+#' @param sensor A character vector of one or multiple vectors. Use `sensor = NULL` for all
 #'   sensors. See \link[mpathsenser]{sensors} for a list of all available sensors.
 #' @param participant_id A character string identifying a single participant. Use
 #'   [get_participants()] to retrieve all participants from the database. Leave empty to get data
@@ -658,15 +671,15 @@ get_studies <- function(db, lazy = FALSE) {
 #' }
 get_nrows <- function(
   db,
-  sensor = "All",
+  sensor = NULL,
   participant_id = NULL,
   start_date = NULL,
   end_date = NULL
 ) {
   check_db(db)
-  check_arg(sensor, "character", allow_null = TRUE)
+  check_sensors(sensor, allow_null = TRUE)
 
-  if (is.null(sensor) || sensor[[1]] == "All") {
+  if (is.null(sensor)) {
     sensor <- sensors
   }
 
