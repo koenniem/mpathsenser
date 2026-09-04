@@ -59,6 +59,11 @@
     {
         "sensorStartTime": 1765888652323280,
         "sensorEndTime": 1765889155888309,
+        "data": {}
+    },
+    {
+        "sensorStartTime": 1765888652323280,
+        "sensorEndTime": 1765889155888309,
         "data": {
             "__type": "dk.cachet.carp.appusage",
             "start": "2025-12-16T15:54:31Z",
@@ -104,6 +109,14 @@
         "data": {
             "__type": "dk.cachet.carp.beacondata",
             "region": "LocationA",
+            "scanResult": []
+        }
+    },
+    {
+        "sensorStartTime": 1765888800000000,
+        "data": {
+            "__type": "dk.cachet.carp.beacondata",
+            "region": "LocationA",
             "scanResult": [
                 {
                     "uuid": "FDA50693-A4E2-4FB1-AFCF-C6EB07647825",
@@ -114,6 +127,15 @@
                     "proximity": "far"
                 }
             ]
+        }
+    },
+    {
+        "sensorStartTime": 1765913013695276,
+        "data": {
+            "__type": "dk.cachet.carp.bluetooth",
+            "startScan": "2025-12-16T20:23:22.458165",
+            "endScan": "2025-12-16T20:23:32.460703",
+            "scanResult": []
         }
     },
     {
@@ -201,6 +223,13 @@
         }
     },
     {
+        "sensorStartTime": 1786456447178543,
+        "data": {
+            "__type": "dk.cachet.carp.error",
+            "message": "WeatherProbe Exception: ClientException with SocketException: Software caused connection abort (OS Error: Software caused connection abort, errno = 103), address = api.openweathermap.org, port = 39196, uri=https://api.openweathermap.org/data/2.5/weather?lat=50.12345678&lon=4.123456&appid=1234&lang=en"
+        }
+    },
+    {
         "sensorStartTime": 1765889155597422,
         "data": {
             "__type": "dk.cachet.carp.heartbeat",
@@ -213,8 +242,8 @@
         "sensorStartTime": 1765901528566862,
         "data": {
             "__type": "dk.cachet.carp.garminalllogsdata",
-            "fromTime": "2025-12-16T17:09:48.313",
-            "toTime": "2025-12-16T17:11:58.163900",
+            "fromTime": "2025-12-16T17:09:48.313Z",
+            "toTime": "2025-12-16T17:11:58.1639Z",
             "entryCounts": {
                 "heartRate": 26,
                 "stress": 2,
@@ -333,7 +362,7 @@
                     "startTimestamp": 1765902704567,
                     "endTimestamp": 1765902711567,
                     "instance": "ACTIGRAPHY_1",
-                    "totalEnergy": 1488289.81,
+                    "totalEnergy": 1488289,
                     "zeroCrossingCount": 0,
                     "timeAboveThreshold": 58.1096
                 },
@@ -386,6 +415,82 @@
                     "zeroCrossingCount": 0,
                     "timeAboveThreshold": 60.7411
                 }
+            ],
+            "gyroscope": [
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902623559,
+                    "xValue": 113.3744,
+                    "yValue": 437.6353,
+                    "zValue": -906.8707
+                },
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902623599,
+                    "xValue": 118.0369,
+                    "yValue": 440.0922,
+                    "zValue": -873.2643
+                }
+            ],
+            "respiration": [
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902714567,
+                    "breathsPerMinute": 13.58393492,
+                    "status": "Active"
+                },
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902714587,
+                    "breathsPerMinute": 14.18393492,
+                    "status": "Active"
+                }
+            ],
+            "skinTemperature": [
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902714567,
+                    "temperature": 39.421849383,
+                    "status": "Active"
+                },
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902714587,
+                    "temperature": 39.651849383,
+                    "status": "Active"
+                }
+            ],
+            "spo2": [
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902714567,
+                    "spo2Reading": 95
+                },
+                {
+                    "macAddress": "00",
+                    "timestamp": 1765902714587,
+                    "spo2Reading": 98
+                }
+            ],
+            "zeroCrossing": [
+                {
+                    "macAddress": "00",
+                    "startTimestamp": 1765902704567,
+                    "endTimestamp": 1765902711567,
+                    "zeroCrossingCount": 4,
+                    "totalEnergy": 1234,
+                    "deadband": 1000,
+                    "deadbandValue": 50
+                },
+                {
+                    "macAddress": "00",
+                    "startTimestamp": 1765902704587,
+                    "endTimestamp": 1765902711587,
+                    "totalEnergy": 1235,
+                    "zeroCrossingCount": 2,
+                    "deadBand": 1000,
+                    "deadBandValue": 50
+                }
             ]
         }
     },
@@ -405,7 +510,7 @@
             "time": "2025-12-16T16:49:25",
             "isMock": false,
             "elapsedRealtimeNanos": 618215086000000,
-            "elapsedRealtimeUncertaintyNanos": 0
+            "elapsedRealtimeUncertaintyNanos": 0.0
         }
     },
     {
@@ -434,7 +539,7 @@
             "connectionId": 12345,
             "accountCode": "abcd1",
             "studyName": "DemoStudy",
-            "senseVersion": 6
+            "senseVersion": 5
         }
     },
     {
