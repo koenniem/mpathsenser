@@ -11,14 +11,21 @@ This vector contains the following
 information:\tabular{lll}{
    Sensor \tab Frequency (per hour) \tab Full text \cr
    Accelerometer \tab 720 \tab Once per 5 seconds. Can have multiple instances. \cr
-   AirQuality \tab 1 \tab Once per hour. \cr
+   Activity \tab 120 \tab Once per 30 seconds. \cr
    AppUsage \tab 2 \tab Once every 30 minutes. Can have multiple instances. \cr
+   Battery \tab 60 \tab Once per minute. \cr
    Bluetooth \tab 12 \tab Once every 5 minutes. Can have multiple instances. \cr
-   Gyroscope \tab 720 \tab Once per 5 seconds. Can have multiple instances. \cr
+   BluetoothBeacon \tab 12 \tab Once every 5 minutes. Can have multiple instances. \cr
+   Connectivity \tab 12 \tab Once every 5 minutes. \cr
+   Device \tab 60 \tab Once per minute. \cr
+   Error \tab 12 \tab Once every 5 minutes. \cr
+   Heartbeat \tab 60 \tab Once per minute. \cr
    Light \tab 360 \tab Once per 10 seconds. \cr
    Location \tab 60 \tab Once every 60 seconds. \cr
    Memory \tab 60 \tab Once per minute \cr
-   Noise \tab 120 \tab Once every 30 seconds. Microphone cannot be used in the background in Android 11. \cr
+   Pedometer \tab 60 \tab Once per minute. \cr
+   Screen \tab 12 \tab Once every 5 minutes. \cr
+   Timezone \tab 12 \tab Once every 5 minutes. \cr
    Weather \tab 1 \tab Once per hour. \cr
    Wifi \tab 60 \tab Once per minute. \cr
 }

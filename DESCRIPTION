@@ -26,8 +26,7 @@ Imports:
     DBI,
     dbplyr,
     dplyr (>= 1.1.0),
-    duckdb,
-    furrr,
+    duckdb (>= 1.0.0),
     jsonlite,
     lifecycle,
     lubridate,
@@ -38,15 +37,12 @@ Imports:
     tidyr
 Suggests:
     curl,
-    furrr,
     ggplot2,
     httr,
     kableExtra,
     knitr,
-    lintr,
     rmarkdown,
     rvest,
-    sodium,
     spelling,
     testthat (>= 3.0.0)
 VignetteBuilder:

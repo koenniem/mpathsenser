@@ -1,7 +1,7 @@
 # Tests for database.R
 
 test_that("sensors-vec", {
-  expect_vector(sensors, character(), size = 42)
+  expect_vector(sensors, character(), size = 32)
 })
 
 test_that("create_db", {
@@ -44,14 +44,32 @@ test_that("create_db", {
 
 test_that("open_db", {
   fake_db <- tempfile("foo", fileext = ".db")
-  expect_error(open_db(NULL, fake_db), NULL)
+  expect_error(open_db(fake_db), "There is no database at")
+
+  # A directory is not a database file
+  dir_d <- tempfile("open_db_dir")
+  dir.create(dir_d)
+  expect_error(open_db(dir_d), "is a directory, not a database file")
+  file.create(file.path(dir_d, "mydb.duckdb"))
+  expect_error(open_db(dir_d), "Did you mean")
+
+  # The path can be given as a directory plus a file name, like create_db()
+  dir_d2 <- tempfile("open_db_dir2")
+  dir.create(dir_d2)
+  db0 <- create_db(dir_d2, "mydb.duckdb")
+  close_db(db0)
+  db0 <- open_db(dir_d2, "mydb.duckdb")
+  expect_true(dbIsValid(db0))
+  close_db(db0)
+  unlink(dir_d2, recursive = TRUE)
+  unlink(dir_d, recursive = TRUE)
 
   # Create a new (non-mpathsenser db)
   db <- dbConnect(duckdb::duckdb(), fake_db)
   dbExecute(db, "CREATE TABLE foo(bar INTEGER, PRIMARY KEY(bar));")
   dbDisconnect(db)
   gc() # Force garbage collection to ensure file handles are released
-  expect_error(open_db(NULL, fake_db), "Sorry, this does not appear to be a mpathsenser database.")
+  expect_error(open_db(fake_db), "does not appear to be an mpathsenser database")
   file.remove(fake_db)
 
   # Test with a fresh test database
@@ -60,7 +78,7 @@ test_that("open_db", {
   dbDisconnect(db)
   closeAllConnections()
 
-  db <- open_db(NULL, db_path)
+  db <- open_db(db_path)
   expect_true(dbIsValid(db))
   dbDisconnect(db)
   file.remove(db_path)
@@ -79,7 +97,7 @@ test_that("copy_db", {
     "Sensor `foo` could not be found."
   )
 
-  new_db <- copy_db(db, new_db, sensor = "All")
+  new_db <- copy_db(db, new_db, sensor = NULL)
   expect_equal(get_nrows(db), get_nrows(new_db))
   close_db(new_db)
   file.remove(filename)
@@ -87,7 +105,7 @@ test_that("copy_db", {
   # Create new db and copy to it
   new_db <- create_db(NULL, filename)
   new_db <- copy_db(db, new_db, sensor = "Accelerometer")
-  true <- c(2L, rep(0L, 26))
+  true <- c(0L, rep(0L, 31))
   names(true) <- sensors
   expect_equal(get_nrows(new_db), true)
 
@@ -107,29 +125,28 @@ test_that("close_db", {
   expect_no_error(close_db(db)) # NULL db
 })
 
-test_that("index_db", {
+test_that("optimize_db", {
   # Create db
   filename <- tempfile("foo", fileext = ".db")
-  db <- create_db(NULL, filename)
+  db <- create_test_db(path = filename)
 
-  expect_error(index_db(db), NA)
-  expect_error(index_db(db), "already exists")
-
-  # Cleanup
-  dbDisconnect(db)
-  file.remove(filename)
-
-  expect_error(
-    index_db(db),
-    "Database connection `db` is not valid."
+  expect_error(optimize_db(db, sensors = "Activity", .progress = FALSE), NA)
+  expect_error(optimize_db(db, sensors = "Error", .progress = FALSE), NA)
+  expect_error(optimise_db(db, sensors = "Activity", .progress = FALSE), NA)
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Activity")[[1]],
+    1
   )
-})
 
-test_that("vacuum_db", {
-  # Create db
-  filename <- tempfile("foo", fileext = ".db")
-  db <- create_db(NULL, filename)
-  expect_error(vacuum_db(db), NA)
+  # The rewrite must preserve the schema of the original table: the NOT NULL
+  # constraints of the sensor tables survive the reordering
+  nullable <- DBI::dbGetQuery(
+    db,
+    "SELECT is_nullable FROM information_schema.columns
+     WHERE table_schema = 'main' AND table_name = 'Activity'
+       AND column_name = 'participant_id'"
+  )[[1]]
+  expect_equal(nullable, "NO")
 
   # Cleanup
   dbDisconnect(db)
@@ -159,7 +176,7 @@ test_that("add_participant", {
   filename <- tempfile("foo", fileext = ".db")
   db <- create_db(NULL, filename)
 
-  data <- data.frame(participant_id = "12345", study_id = "12345")
+  data <- data.frame(participant_id = 12345, study_id = "12345")
   dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
   expect_equal(add_participant(db, data$participant_id, data$study_id), 1)
   participants <- DBI::dbGetQuery(db, "SELECT * FROM Participant")
@@ -177,14 +194,53 @@ test_that("add_processed_file", {
   filename <- tempfile("foo", fileext = ".db")
   db <- create_db(NULL, filename)
 
-  data <- data.frame(file_name = "12345.json", participant_id = "12345", study_id = "12345")
   dbExecute(db, "INSERT INTO Study VALUES('12345', 'mpathsenser')")
   dbExecute(db, "INSERT INTO Participant VALUES('12345', '12345')")
-  expect_equal(add_processed_files(db, data$file_name, data$study_id, data$participant_id), 1)
-  files <- DBI::dbGetQuery(db, "SELECT * FROM ProcessedFiles")
-  expect_equal(files, data)
-  expect_equal(add_processed_files(db, data$file_name, data$study_id, data$participant_id), 0)
-  expect_equal(add_processed_files(db, NULL, NULL, NULL), 0)
+  expect_equal(
+    add_processed_files(
+      db,
+      file_name = "12345.json",
+      participant_id = "12345",
+      file_size_bytes = 10,
+      modified_at = as.POSIXct("2025-01-01", tz = "UTC")
+    ),
+    1
+  )
+  files <- DBI::dbGetQuery(db, "SELECT file_name, participant_id FROM ProcessedFiles")
+  expect_equal(
+    files,
+    data.frame(file_name = "12345.json", participant_id = 12345)
+  )
+  # The same name, size, and modification time is a duplicate
+  expect_equal(
+    add_processed_files(
+      db,
+      file_name = "12345.json",
+      participant_id = "12345",
+      file_size_bytes = 10,
+      modified_at = as.POSIXct("2025-01-01", tz = "UTC")
+    ),
+    0
+  )
+  # A different modification time is a new record
+  expect_equal(
+    add_processed_files(
+      db,
+      file_name = "12345.json",
+      participant_id = "12345",
+      file_size_bytes = 10,
+      modified_at = as.POSIXct("2025-01-02", tz = "UTC")
+    ),
+    1
+  )
+  expect_equal(
+    add_processed_files(
+      db,
+      file_name = NULL,
+      participant_id = NULL
+    ),
+    0
+  )
 
   # Cleanup
   dbDisconnect(db)
@@ -192,13 +248,10 @@ test_that("add_processed_file", {
 })
 
 test_that("clear_db", {
-  path <- system.file("testdata", package = "mpathsenser")
-
   # Create db
   filename <- tempfile("foo", fileext = ".db")
-  db <- create_db(NULL, filename)
+  db <- create_test_db(path = filename)
 
-  suppressMessages(import(path, db = db, recursive = FALSE))
   original <- sum(get_nrows(db))
   original <- original + nrow(get_participants(db))
   original <- original + nrow(get_studies(db))
@@ -209,6 +262,12 @@ test_that("clear_db", {
   expect_equal(Reduce(`+`, res), original)
   expect_equal(sum(get_nrows(db)), 0L)
 
+  # The file_id sequence is reset after clearing
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT nextval('processed_files_seq')")[[1]],
+    1
+  )
+
   # Cleanup
   dbDisconnect(db)
   file.remove(filename)
@@ -217,12 +276,14 @@ test_that("clear_db", {
 test_that("get_processed_files", {
   db <- create_test_db()
   res <- get_processed_files(db)
-  true <- data.frame(
-    file_name = c("test.json", "empty.json", "new_tests.json"),
-    participant_id = c("12345", "N/A", "N/A"),
-    study_id = c("test-study", "-1", "-1")
-  )
-  expect_equal(res, true)
+  # file_id assignment order is not guaranteed, so compare on file name
+  res <- res[order(res$file_name), ]
+  expect_equal(res$file_name, c("test1.json", "test2.json"))
+  expect_equal(res$participant_id, c(12345, 12345))
+  expect_equal(res$sense_version, c(5L, 5L))
+  expect_false("file_hash" %in% colnames(res))
+  expect_s3_class(res$modified_at, "POSIXct")
+  expect_s3_class(res$processed_at, "POSIXct")
   cleanup_test_db(db)
 })
 
@@ -231,8 +292,8 @@ test_that("get_participants", {
   res <- get_participants(db)
   res_lazy <- get_participants(db, lazy = TRUE)
   true <- data.frame(
-    participant_id = c("12345", "N/A"),
-    study_id = c("test-study", "-1")
+    participant_id = 12345,
+    study_id = "test_study"
   )
   expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_duckdb_connection")
@@ -244,8 +305,8 @@ test_that("get_study", {
   res <- get_studies(db)
   res_lazy <- get_studies(db, lazy = TRUE)
   true <- data.frame(
-    study_id = c("test-study", "-1"),
-    data_format = c("carp", NA)
+    study_id = "test_study",
+    data_format = "CARP JSON"
   )
   expect_equal(res, true)
   expect_s3_class(res_lazy, "tbl_duckdb_connection")

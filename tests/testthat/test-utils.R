@@ -1,4 +1,5 @@
 test_that("ccopy", {
+  skip_if_not(nzchar(Sys.which("zip")), "zip binary not available")
   # Create directory for zip in tempdir
   zip_dir <- file.path(tempdir(), "mpathsenser_zip")
   dir.create(zip_dir)
@@ -8,7 +9,7 @@ test_that("ccopy", {
     tempfile(file.path("mpathsenser_zip", "test"), fileext = ".zip")
 
   # Zip in the new temp directory
-  utils::zip(zipfile, system.file("testdata", "test.json", package = "mpathsenser"), flags = "-q")
+  utils::zip(zipfile, system.file("testdata", "tests.json", package = "mpathsenser"), flags = "-q")
 
   expect_message(ccopy(zip_dir, zip_dir), "No files left to copy")
   expect_message(ccopy(zip_dir, tempdir()), "Copying 1 file\\.")
@@ -171,6 +172,7 @@ test_that("test_jsons", {
 })
 
 test_that("unzip_data", {
+  skip_if_not(nzchar(Sys.which("zip")), "zip binary not available")
   # Create directory for zip in tempdir
   zip_dir <- tempfile()
   dir.create(zip_dir)
@@ -181,7 +183,7 @@ test_that("unzip_data", {
   # Zip in the new temp directory
   utils::zip(
     zipfile,
-    system.file("testdata", "test.json", package = "mpathsenser"),
+    system.file("testdata", "tests.json", package = "mpathsenser"),
     flags = "-rjq9X"
   )
 
@@ -192,7 +194,7 @@ test_that("unzip_data", {
 
   expect_message(
     unzip_data(zip_dir, recursive = TRUE, overwrite = FALSE),
-    "No files to unzip."
+    "No files were unzipped."
   )
 
   expect_message(
@@ -202,7 +204,7 @@ test_that("unzip_data", {
 
   # Try a mixture of zip and json files
   file.copy(
-    from = system.file("testdata", "test.json", package = "mpathsenser"),
+    from = system.file("testdata", "tests.json", package = "mpathsenser"),
     to = file.path(zip_dir, "test2.json"),
     overwrite = TRUE
   )

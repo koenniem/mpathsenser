@@ -1,84 +1,3 @@
-#' Decrypt GPS data from a curve25519 public key
-#'
-#' @description `r lifecycle::badge("stable")`
-#'
-#'  By default, the latitude and longitude of the GPS data collected by m-Path Sense are encrypted
-#'  using an asymmetric curve25519 key to provide extra protection for these highly sensitive data.
-#'  This function takes a character vector and decrypts its longitude and latitude columns using the
-#'  provided `key`.
-#'
-#' @inheritSection import Parallel
-#'
-#' @param data A character vector containing hexadecimal (i.e. encrypted) data.
-#' @param key A curve25519 private key.
-#' @param ignore A string with characters to ignore from `data`. See [sodium::hex2bin()].
-#'
-#' @returns A vector of doubles of the decrypted GPS coordinates.
-#' @export
-#'
-#' @examplesIf rlang::is_installed("sodium")
-#' library(dplyr)
-#' library(sodium)
-#' # Create some GPS  coordinates.
-#' data <- data.frame(
-#'   participant_id = "12345",
-#'   time = as.POSIXct(c(
-#'     "2022-12-02 12:00:00",
-#'     "2022-12-02 12:00:01",
-#'     "2022-12-02 12:00:02"
-#'   )),
-#'   longitude = c("50.12345", "50.23456", "50.34567"),
-#'   latitude = c("4.12345", "4.23456", "4.345678")
-#' )
-#'
-#' # Generate keypair
-#' key <- sodium::keygen()
-#' pub <- sodium::pubkey(key)
-#'
-#' # Encrypt coordinates with pubkey
-#' # You do not need to do this for m-Path Sense
-#' # as this is already encrypted
-#' encrypt <- function(data, pub) {
-#'   data <- lapply(data, charToRaw)
-#'   data <- lapply(data, function(x) sodium::simple_encrypt(x, pub))
-#'   data <- lapply(data, sodium::bin2hex)
-#'   data <- unlist(data)
-#'   data
-#' }
-#' data$longitude <- encrypt(data$longitude, pub)
-#' data$latitude <- encrypt(data$latitude, pub)
-#'
-#' # Once the data has been collected, decrypt it using decrypt_gps().
-#' data |>
-#'   mutate(longitude = decrypt_gps(longitude, key)) |>
-#'   mutate(latitude = decrypt_gps(latitude, key))
-decrypt_gps <- function(data, key, ignore = ":") {
-  ensure_suggested_package("sodium")
-  check_arg(data, "character")
-
-  # Custom key check: Either raw and length 32, or a character vector
-  if (!(is.raw(key) && length(key) == 32) && !is.character(key)) {
-    cli_abort(c(
-      "{.arg key} must be either a hexadecimal string or a binary vector.",
-      i = "Try {.code sodium::hex2bin(key)} or {.code sodium::bin2hex(key)}.",
-      x = "Avoid {.code charToRaw(key)}: it produces an incorrect key format."
-    ))
-  }
-
-  if (!is.raw(key)) {
-    key <- sodium::hex2bin(key)
-  }
-
-  data <- data |>
-    future_map(\(x) sodium::hex2bin(x, ignore = ignore)) |>
-    future_map(\(x) sodium::simple_decrypt(x, key = key)) |>
-    future_map(rawToChar) |>
-    unlist(recursive = FALSE) |>
-    as.double()
-
-  data
-}
-
 deg2rad <- function(deg) {
   check_arg(deg, "numeric")
   deg * pi / 180
@@ -164,35 +83,57 @@ geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1, format 
   check_arg(email, "character", n = 1, allow_null = TRUE)
   check_arg(rate_limit, "double", n = 1)
   check_arg(format, "character", n = 1)
+  check_arg(lat, "numeric")
+  check_arg(lon, "numeric")
+
+  if (length(lat) != length(lon)) {
+    cli::cli_abort("{.arg lat} and {.arg lon} must have equal length.")
+  }
 
   format <- match.arg(format, c("jsonv2", "geojson", "geocodejson"))
 
-  base_query <- "https://nominatim.openstreetmap.org/reverse?"
-  args <- list(
-    lat = lat,
-    lon = lon,
-    email = rep(email, length(lat)),
-    zoom = rep(zoom, length(lat)),
-    format = rep(format, length(lat))
-  )
+  n <- length(lat)
 
-  args <- purrr::transpose(args)
-  args <- lapply(args, function(x) paste0(names(x), "=", x, collapse = "&"))
-  query <- lapply(args, function(x) paste0(base_query, x))
-  lapply(query, function(x) {
-    res <- suppressWarnings(tryCatch(
-      {
-        jsonlite::fromJSON(x)
-      },
-      error = \(e) {
-        NA
+  if (n == 0) {
+    return(list())
+  }
+
+  # Avoid duplicate API requests
+  key <- paste(lat, lon, zoom, sep = "_")
+  unique_key <- unique(key)
+
+  results <- vector("list", length(unique_key))
+  # names(results) <- unique_key
+
+  base_url <- "https://nominatim.openstreetmap.org/reverse"
+
+  for (i in seq_along(unique_key)) {
+    idx <- match(unique_key[i], key)
+
+    query <- paste0(
+      base_url,
+      "?lat=", lat[idx],
+      "&lon=", lon[idx],
+      "&zoom=", zoom,
+      "&format=", format,
+      if (nzchar(email)) {
+        paste0("&email=", utils::URLencode(email, reserved = TRUE))
+      } else {
+        ""
       }
-    ))
+    )
 
-    if (length(args) > 1) {
+    results[[i]] <- suppressWarnings(
+      tryCatch(
+        jsonlite::fromJSON(query),
+        error = function(e) NA
+      )
+    )
+
+    if (i < length(unique_key)) {
       Sys.sleep(rate_limit)
     }
+  }
 
-    res
-  })
+  results[match(key, unique_key)]
 }

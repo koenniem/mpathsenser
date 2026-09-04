@@ -2,7 +2,7 @@
 title: "Get started"
 output: rmarkdown::html_vignette
 description: >
-  How to get started with mpathsenser? This vignette takes a 
+  How to get started with mpathsenser? This vignette takes a
   look at some example data and provides a practical starting
   point on working with the package.
 vignette: >
@@ -14,118 +14,237 @@ vignette: >
 ```{r, echo = FALSE, include = FALSE, message = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  message = FALSE
 )
 ```
 
-First, make sure we load some useful libraries (and of course `mpathsenser` itself).
+This vignette walks through the complete mpathsenser workflow: importing the JSON files exported by m-Path Sense into a database, checking what was imported, deduplicating and optimising the data, and finally extracting and visualising it. We use a small example dataset that ships with the package, but everything works the same on your own data.
+
+First, make sure we load the package (and `dplyr` and `ggplot2` for querying and plotting).
 
 ```{r setup}
-library(tidyr)
+library(mpathsenser)
 library(dplyr)
 library(ggplot2)
-library(mpathsenser)
 ```
 
-# Importing files
+# The m-Path Sense data format
 
-The data for this vignette is contained in the `extdata` folder. However, on some system this folder may be set to read-only and it is generally good practice not to modify package folders (to prevent changing or breaking the package). To this end, we first copy the data to a temporary directory (as defined by the environment variable \code{TMPDIR}, \code{TMP}, or \code{TEMP}), a directory that is freshly created each time at R's start up and cleaned up when the session ends.
+The m-Path Sense app continuously collects data in the background (e.g. accelerometer data, screen events, battery level, or data from paired Garmin devices) and writes it to JSON files. A JSON file is really just a text file with a specific format: it contains a list of entries, where each entry has a `sensorStartTime` (in microseconds since the Unix epoch) and a `data` object. The `__type` field inside `data` says which sensor produced the entry. When a file reaches a certain size (5 MB by default), it is zipped and transferred to the study server.
 
-```{r copy data, results="hide"}
-# Get the temp folder
-tempdir <- tempdir()
-tempdir <- file.path(tempdir, "vignette")
-dir.create(tempdir)
+Let's look at the first entry of one of the example files:
 
-# Get a handle to the data files
-path <- system.file("extdata", "example", package = "mpathsenser")
-
-# Get a list of all the files that are to be copied
-copy_list <- list.files(path, "carp-data", full.names = TRUE)
-
-# Copy all data
-file.copy(
-  from = copy_list,
-  to = tempdir,
-  overwrite = TRUE,
-  copy.mode = FALSE
+```{r peek}
+con <- file(
+  system.file(
+    "extdata",
+    "example",
+    "1_example_study_12345_m_Path_sense_2025-12-13_08-00-00.000000.json",
+    package = "mpathsenser"
+  )
 )
+cat(substr(readLines(con, warn = FALSE)[2], 1, 220), "\n...")
+close(con)
 ```
 
-The `extdata` folder contains several `.zip` files as well as some `JSON` files. It is likely that the data for your study will look the same only much more. Note that all of these data files came directly from m-Path Sense (i.e. there was no pre-processing yet).
+Because data is written as it comes in, a file is only properly closed when the app is shut down gracefully. If the app is killed, the file may end without its closing bracket and can no longer be read by a JSON parser. The package provides `test_jsons()` to find such files and `fix_jsons()` to repair them. Zip archives can be extracted with `unzip_data()`. In practice, a first preprocessing pass for a new batch of data therefore looks like this:
 
-The data from m-Path Sense originates in the following way: The application continuously collects all kinds of data in the background (e.g. accelerometer data). Once collected, the data goes through several stages where, for example, the data is pre-processed (as already happens with data from the `light` sensor) or anonymised upon request. Finally, data is written to a `JSON` file which is really just a text file but with a specific format. When some new data comes in (whether it be from the same sensor or not), the next line is written in the `JSON` file and so on, until the file has reached a certain size (5MB by default). The `JSON` file is then zipped to reduce its size and subsequently transferred to a server. Once transferred, the data is deleted from the participant's phone to both save on space as well as prevent data leakage.
-
-Thus, a first step to take is to unzip these files to extract its `JSON` contents. If you feel more comfortable unzipping using your favourite zip program you can do so, just make sure all files end up in the same directory (including the non-zipped JSON files).
-
-```{r unzip}
-unzip_data(path = tempdir)
+```{r, eval = FALSE}
+unzip_data(path = "path/to/data") # extract .zip files, if any
+to_fix <- test_jsons(path = "path/to/data") # find broken files
+fix_jsons(files = to_fix) # repair them
 ```
 
-In m-Path Sense, data is written to JSON files as it comes in. In the JSON file format, every file starts with `[` and ends with `]`. If the app is killed, JSON files are not properly closed and hence cannot be read by JSON parsers. So, we must first test if all files are in a valid JSON format and fix those that are not.
+`read_mpath_sense()` itself reads plain JSON files; there is no need to unzip or fix files that are already valid.
 
-You may first run `fix_jsons()` to fix all files in the directory that need fixing, or you can first run `test_jsons()` to get an estimate of how many file need fixing. Running `fix_jsons()` also runs `test_jsons()` implicitly to only fix files that really need fixing.
+# Example data
 
-```{r fix and test JSONS}
-# Note that test_jsons returns the full path names
-to_fix <- test_jsons(tempdir)
-print(to_fix)
+The package ships with a small example dataset in `inst/extdata/example`, which mimics what m-Path Sense exports: two participants (`12345` and `67890`) in a study called `cravings_study`, with three days of data for the main participant. The files follow the m-Path Sense naming convention and contain the common sensors (activity, battery, screen, wifi, location, app usage, Garmin heart rate and stress, and several others).
 
-fix_jsons(path = NULL, to_fix)
+```{r example data}
+path <- system.file("extdata", "example", package = "mpathsenser")
+list.files(path)
 ```
 
-Next, we can create an `mpathsenser` database using the `create_db()` function. This function takes as a first argument a pathname where the database will be created and as a second argument a `db_name` to name the database file. You may also leave `path` set to `NULL` and specify a full path name (including file name) in the `db_name` argument. Always remember to save the output to a variable so you can use it later and to avoid having an open handle but unused handle on the database connection.
+There is no need to copy these files anywhere: `read_mpath_sense()` only reads from this folder, and we will create the database elsewhere.
+
+# Creating a database
+
+All data is stored in a [DuckDB](https://duckdb.org) database. A new database is created with `create_db()`, which takes a directory and a database name, or `NULL` and a full path (useful for temporary databases):
 
 ```{r create db}
-# Create a new database
-db <- create_db(tempdir, "getstarted.db")
+# A database file in the R session's temporary directory
+db <- create_db(NULL, file.path(tempdir(), "getstarted.db"))
+
+# An in-memory database is also possible (data is lost on close)
+# db <- create_db(NULL, ":memory:")
 ```
 
-Finally, we can import the data into the newly created database using the `import()` function. This function takes as a first argument the path to the directory where the data is located and as a second argument the database handle. You may also specify a `batch_size` to control how many files are imported at once. Files are processed sequentially (though parallellism is supported via the `future` package) but files are written in batch to the database for the sake of efficiency. A greater batch size thus denotes larger batches of files being written to the database at once (and is more efficient), but risk failing the larger batch a single file fails to be processed.
+`create_db()` returns the database connection, which every other function in this package takes as its first argument — always save it to a variable. An existing database is opened again with `open_db()` and closed with `close_db()` when you are done. Both functions accept `threads`, `memory_limit`, and `temp_directory` arguments to control how DuckDB uses the resources of your machine.
 
-```{r import data}
-# Import the data
-import(
-  path = tempdir,
-  db = db,
-  sensors = NULL, # All sensors
-  batch_size = 12,
-  recursive = TRUE
-)
+# Importing the data
+
+With the database in place, importing is a single function call:
+
+```{r import}
+read_mpath_sense(path = path, db = db, .progress = FALSE)
 ```
+
+The import works in batches: all files of a batch are staged and written in a single transaction, so an error in one file does not lose the work of the others. The `batch_size` argument (default 100) controls how many files are processed at once — larger batches are faster but use more memory. The `rows_per_chunk` argument (default 100000) bounds the size of the individual ingest statements, which is useful to keep memory usage in check when a batch contains very large files (e.g. Garmin logs). Setting `debug = TRUE` prints a detailed log of what the import is doing and how long each step took.
+
+If everything went well, the message says that all files were written to the database. When a file fails, `read_mpath_sense()` returns the names of the problematic files so they can be inspected manually; the remaining files are imported normally.
+
+## Re-importing is safe
+
+Files that were imported once are tracked in the `ProcessedFiles` table (by file name, size, and modification time), so running `read_mpath_sense()` again on the same folder is a no-op for unchanged files:
+
+```{r reimport}
+read_mpath_sense(path = path, db = db, .progress = FALSE)
+```
+
+Only new files are processed. A corrected file that was re-uploaded (same name, different content) is imported again, and the deduplication step afterwards makes sure the newest version wins (see below).
+
+# What did we just import?
+
+A few functions give a quick overview of the database contents.
+
+```{r participants}
+get_participants(db)
+```
+
+```{r studies}
+get_studies(db)
+```
+
+```{r processed}
+get_processed_files(db)
+```
+
+```{r nrows}
+get_nrows(db)
+```
+
+`get_nrows()` queries every sensor table, so it can be slow on large databases. `first_date()` and `last_date()` give the first and last date for a particular sensor, e.g. to see how much data a participant has collected so far.
+
+# Deduplication
+
+m-Path Sense does not guarantee that each measurement occurs only once in the database: a file may be uploaded twice (e.g. under a different name), or a participant may re-upload a corrected file. After every import, `read_mpath_sense()` therefore removes duplicate measurements. The deduplication can also be run manually with `deduplicate_db()`, e.g. to clean up after an interrupted import:
+
+```{r, eval = FALSE}
+deduplicate_db(db)
+```
+
+## How duplicates are identified
+
+Each measurement is identified by a *measurement key*: `participant_id` and `time`, plus sensor-specific extras where a sensor can record several measurements at the same time. The extras are defined per table — for example `AppUsage` adds `package_name` (one row per app at the same time), `Bluetooth` adds `bluetooth_device_id` (one row per detected device per scan), and `GarminActigraphy` adds `instance` (Garmin reports three actigraphy series at once). The default key is exactly `participant_id` + `time`.
+
+Rows sharing a key are duplicates. When several rows share a key, a single winner is kept and the rest are removed; rows whose key is not duplicated are never touched, so data imported in earlier runs stays intact (deduplication never removes the only version of a measurement).
+
+## Which row wins
+
+The winner is chosen in two steps:
+
+1. **Newest file wins.** The row with the highest `source_file_id` (i.e. imported from the most recently processed file) is preferred. This is why a corrected re-upload replaces previous values, while rows that were removed in the corrected file are preserved (their key no longer has a duplicate in the database, so they are never touched). Files are processed oldest to newest, so `source_file_id` is a reliable proxy for chronological order; if the same measurement appears in the same run in two files, the later file wins.
+2. **Within the newest file, the row's position decides.** For most sensors the *first* row wins. Two exceptions keep the *last* row instead, because within one file they can legitimately repeat a timestamp with a refined value:
+   - **Interval sensors** (those with an `end_time` column, such as `Accelerometer`, `GarminSteps`, and `GarminZeroCrossing`). A high-throughput sensor may report the same start time twice with a later `end_time`, where the second row is the completed measurement window. Keeping the last row preserves the latest `end_time`. The same situation can also arise across files (file A reports a start time with one `end_time`, file B reports the same start time with another); the newest-file rule above then applies.
+   - **Garmin's recalculated point measurements** (`GarminBBI`, `GarminEnhancedBBI`, `GarminHeartRate`, `GarminStress`). Garmin records these under an absolute timestamp (to the microsecond) and recalculates the value of an already-recorded timestamp once more data becomes available. Two measurements can therefore share the exact same `time` but carry different values; the last one recorded in the file is the recalculation and is authoritative. If such duplicates end up in different files, the files are processed in chronological order so the measurement of the later file wins automatically.
+
+Deduplication runs once per sensor, inside its own transaction, and only touches key groups that actually occur more than once. A duplicate-free table costs a single grouped scan, which is why it is safe to run unconditionally at the end of every import.
+
+# Optimising the database
+
+DuckDB stores data in a columnar format and maintains per-block statistics (zonemaps) that allow it to skip large parts of a table when filtering. These statistics are most effective when the data is sorted by the columns that queries filter on — typically `participant_id` and `time`. The import processes files oldest to newest, so the data is already roughly chronological, but a single participant's measurements are spread across the whole table.
+
+`optimize_db()` rewrites the sensor tables ordered by `participant_id` and `time`, which improves both query speed and compression:
+
+```{r optimize}
+optimize_db(db, sensors = "Pedometer")
+```
+
+For a large database this rewrite takes on the order of seconds per table (the data has to be read, sorted, and written back once), so it is best run after a large bulk import rather than after every incremental one.
+
+# Assigning timezones and representing timestamps
+
+Canonical sensor timestamps are stored as UTC `TIMESTAMPTZ` absolute instants directly in the main schema. The explicitly named `_with_local` and `_local` views expose participant-local wall-clock `TIMESTAMP` values. If the m-Path Sense data contains `Timezone` measurements (the app records the timezone of the phone), the import automatically assigns an IANA timezone to every measurement based on the timezone active at its start time. `add_timezones_to_db()` can be rerun for existing or selected tables:
+
+```{r timezones}
+add_timezones_to_db(db, .progress = FALSE)
+```
+
+DuckDB retains both pieces of information: canonical `TIMESTAMPTZ` answers when the observation occurred, while `timezone` records the participant's IANA timezone at that instant. This preserves distinct instants even when they have the same local clock time during an autumn DST transition; the explicit local views present the corresponding local wall-clock values.
+
+R datetime vectors have one technical timezone attribute, so `to_local_time()` is the helper to convert canonical timestamps to the wall-clock value in the observation's timezone. It stores the result with technical timezone `UTC` to prevent automatic shifting. This `UTC` attribute does not mean the displayed values are UTC; the separate `timezone` column supplies their interpretation:
+
+```{r}
+get_data(db, sensor = "Pedometer", participant_id = "12345") |>
+  collect() |>
+  mutate(time = to_local_time(time, timezone))
+```
+
+Keep the `timezone` column alongside any timestamp transformed with `to_local_time()`.
+
+`to_local_time()` works both on timestamps already collected into R and inside a lazy query: when applied in a `dplyr` pipeline before `collect()`, dbplyr translates it to the `to_local_time()` macro stored in the database, so the conversion happens in DuckDB. `collect_local()` is a convenience wrapper that collects a lazy table and converts every timestamp column at once, equivalent to collecting the corresponding `_local` view:
+
+```{r}
+get_data(db, sensor = "Pedometer", participant_id = "12345") |>
+  collect_local()
+```
+
+# Extracting data
+
+`get_data()` is the main function to extract data from the database. It returns a lazy [dbplyr](https://dbplyr.tidyverse.org) table, so you can continue querying with `dplyr` and only bring the result into memory with `collect()` when needed. This keeps large extractions efficient: the filtering happens inside DuckDB.
+
+```{r get data}
+# All screen events of one participant
+get_data(db, sensor = "Screen", participant_id = "12345") |>
+  count(screen_event) |>
+  collect()
+```
+
+```{r}
+# Average battery level per participant
+get_data(db, sensor = "Battery") |>
+  group_by(participant_id) |>
+  summarise(battery_level = mean(battery_level, na.rm = TRUE)) |>
+  collect()
+```
+
+A time window can be selected with `start_date` and `end_date` (in `YYYY-MM-DD` format). Leaving the arguments empty returns all data. Functions such as `bin_data()`, `moving_average()`, and `to_local_time()` build on `get_data()` for common data processing tasks.
 
 # Creating a coverage chart
 
-To get a better overview of the data, we may create a coverage chart that shows the average number of collected samples per hour for each sensor for a single participant. An important distinction must be made between a relative and absolute coverage chart. The relative coverage chart shows the average number of samples per hour for each sensor as a percentage of the *expected* number of samples per hour for that sensor. The absolute coverage chart shows the average number of samples per hour for each sensor. The relative coverage chart is useful to see how well the data is being collected for each sensor, while the absolute coverage chart is useful to see how well the data is being collected in general.
+To get a better overview of the data, `coverage()` computes the average number of collected samples per hour for each sensor and participant. An absolute coverage chart shows the average number of samples per hour, while a relative coverage chart expresses this as a percentage of the *expected* sampling rate for that sensor (see `mpathsenser::freq`). The relative chart is useful to see how well the data is being collected for each sensor, the absolute chart to see how much data there is in general.
 
-```{r}
-sensors <- c(
-  "Accelerometer", "Activity", "AppUsage", "Bluetooth", "Calendar",
-  "Connectivity", "Device", "Gyroscope", "InstalledApps", "Light",
-  "Location", "Memory", "Pedometer", "Screen", "Weather", "Wifi"
-)
+```{r coverage}
 cov <- coverage(
   db = db,
-  participant_id = "2784",
-  sensor = sensors,
+  participant_id = "12345",
+  sensor = c("Activity", "Battery", "Screen", "Wifi", "Location", "Pedometer"),
   relative = FALSE
 )
-
-print(cov)
 ```
 
-Additionally, we can print the coverage data using the `plot()` function.
+The result is a tidy data frame with the average coverage per hour of the day, which can be plotted with the `plot()` method:
 
-```{r, fig.width=13, fig.height=8, fig.align='center', dpi=55}
-#| fig.alt: > 
-#|   Coverage plot showing average number of samples per hour for each sensor.
+```{r coverage plot, fig.width = 8, fig.height = 5, fig.align = "center", dpi = 100}
+#| fig.alt: Coverage plot showing the average number of samples per hour for
+#|   each sensor.
 plot(cov)
 ```
 
 # Closing the database
 
-Finally, recall that once you're done working with a database to also close it.
+For read-only analyses or dashboards, use a separate connection such as `open_db("path/to/db", read_only = TRUE)`. DuckDB supports multiple readers, but two simultaneous imports or other writers are not supported. If a query may spill to disk, set `temp_directory` to a local directory rather than a synchronised folder such as OneDrive.
 
-```{r}
+Finally, close the database connection when you are done. Closing a file-based database ensures all data is written to disk.
+
+```{r close}
 close_db(db)
 ```
+
+# Further reading
+
+- The [data overview article](data-overview.html) documents all tables of the database schema.
+- The [reference](https://koenniem.github.io/mpathsenser/reference/index.html) describes every function in detail.
+- The m-Path Sense documentation at <https://m-path.io> explains how the data is collected on the phone.

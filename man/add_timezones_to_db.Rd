@@ -2,7 +2,7 @@
 % Please edit documentation in R/timezone_helpers.R
 \name{add_timezones_to_db}
 \alias{add_timezones_to_db}
-\title{Add timezone to measurements in an m-Path Sense database}
+\title{Assign timezones to canonical measurements in an m-Path Sense database}
 \usage{
 add_timezones_to_db(db, sensors = NULL, .progress = TRUE)
 }
@@ -20,20 +20,39 @@ Invisibly returns \code{TRUE} if all updates complete successfully.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
 
-This function looks for a \code{Timezone} table in a local m-Path Sense SQLite database and uses it
-to assign timezone values to all other sensor tables. For each observation in a sensor table,
-it finds the timezone interval that matches the observation's timestamp and adds or updates a
-\code{timezone} column accordingly.
+This function uses the \code{Timezone} table to assign a timezone to all other
+sensor tables. For each observation in a sensor table, it finds the
+timezone interval that matches the observation's start time and updates
+the \code{timezone} column accordingly. Observations that occurred before the
+first timezone measurement of a participant are assigned the first known
+timezone.
 }
 \details{
-Note that rerunning this function overwrites existing \code{timezone} columns in the sensor tables.
-Also note that if a measurement matches multiple time zones (i.e. a timezone change occurred
-during the measurement), the timezone with the longest overlap is chosen.
+The timezone is assigned based on the start time of a measurement, so a
+measurement that crosses a timezone change is assigned the timezone at its
+start.
+
+The timezone intervals are derived once from the \code{Timezone} table and then
+applied to every sensor table with a single equality join, rather than running
+an ASOF join per sensor. This is much faster when there are many sensors or a
+large \code{Timezone} table, and it guarantees that all sensor tables receive the
+identical timezone for a given \verb{(participant_id, time)}.
+
+Consecutive timezone events that share the same timezone are collapsed into a
+single interval before the join. Timezone sampling is far more frequent than
+actual timezone changes, so this reduces the join to a handful of intervals per
+participant instead of matching each measurement against every sampled event.
+
+Observations that already carry a \code{timezone} value are left untouched: only
+\code{NULL} timezone cells are populated. This makes rerunning the function
+cheap (it only fills gaps) and safe, since a previously assigned timezone is
+never overwritten. To recompute a timezone that has already been set, clear
+it first (e.g. \verb{UPDATE ... SET timezone = NULL}) or re-import the data.
 }
 \examples{
 \dontrun{
 # Connect to an m-Path Sense database
-db <- open_db("path/to/db.sqlite")
+db <- open_db("path/to/db")
 
 # Add timezone information to all tables
 add_timezones_to_db(db)

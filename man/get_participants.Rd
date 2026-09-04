@@ -23,7 +23,7 @@ db <- create_db(tempdir(), "mydb.db")
 
 # Add some participants
 DBI::dbExecute(db, "INSERT INTO Study VALUES('study1', 'data_format1')")
-DBI::dbExecute(db, "INSERT INTO Participant VALUES('participant1', 'study1')")
+DBI::dbExecute(db, "INSERT INTO Participant VALUES(1, 'study1')")
 
 # Get the participants
 get_participants(db)

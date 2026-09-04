@@ -1,5 +1,6 @@
 AirQuality
 AppUsage
+BluetoothBeacon
 CMD
 Codecov
 EMA
@@ -46,16 +47,19 @@ anymore
 apps’
 booleans
 centered
+cli
 db
 dd
 defunctional
 dplyr
+errored
 future’
 geocodejson
 geocoding
 geojson
 ggplot
 hotfix
+jsons
 jsonv
 kilometers
 knitr
@@ -65,6 +69,7 @@ mpathinfo
 nominatim
 on's
 parallellism
+rlang
 th
 tibble
 timezone

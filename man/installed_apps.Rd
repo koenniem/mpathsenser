@@ -9,7 +9,8 @@ installed_apps(db, participant_id = NULL)
 \arguments{
 \item{db}{A database connection to an mpathsenser database.}
 
-\item{participant_id}{A character string identifying a single participant. Use
+\item{participant_id}{A single participant identifier (stored as an unsigned integer; an
+integer, numeric, or character value is accepted). Use
 \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 Leave empty to get data for all participants.}
 }

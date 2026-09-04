@@ -14,9 +14,10 @@ identify_gaps(
 \arguments{
 \item{db}{A database connection to an m-Path Sense database.}
 
-\item{participant_id}{A character string identifying a single participant. Use
+\item{participant_id}{A single participant identifier. Use
 \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
-Leave empty to get data for all participants.}
+Leave empty to get data for all participants. Participant ids are stored as unsigned
+integers, so an integer, numeric, or character value is accepted.}
 
 \item{min_gap}{The minimum time (in seconds) passed between two subsequent measurements for it to
 be considered a gap.}

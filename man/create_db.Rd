@@ -4,18 +4,41 @@
 \alias{create_db}
 \title{Create a new mpathsenser database}
 \usage{
-create_db(path = getwd(), db_name = "sense.db", overwrite = FALSE)
+create_db(
+  path = getwd(),
+  db_name = NULL,
+  ...,
+  overwrite = FALSE,
+  threads = NULL,
+  memory_limit = NULL,
+  temp_directory = NULL
+)
 }
 \arguments{
-\item{path}{The path to the database.}
+\item{path}{The path to the database file, or the directory in which the
+database is created when \code{db_name} is given. Use \code{NULL} for an in-memory
+database.}
 
-\item{db_name}{The name of the database.}
+\item{db_name}{Optional name of the database file. When given, \code{path} is
+treated as the directory in which the database is created.}
 
-\item{overwrite}{In case a database with \code{db_name} already exists, indicate whether it should
-be overwritten or not. Otherwise, this option is ignored.}
+\item{...}{Additional arguments passed to \code{\link[DBI:dbConnect]{DBI::dbConnect()}}.}
+
+\item{overwrite}{In case a database already exists, indicate whether it
+should be overwritten or not. Otherwise, this option is ignored.}
+
+\item{threads}{The number of threads DuckDB may use. Defaults to \code{NULL},
+which lets DuckDB use all available cores. Lower this on shared servers.}
+
+\item{memory_limit}{Memory limit for the DuckDB instance (e.g. \code{"4GB"}).
+Defaults to \code{NULL}, which uses DuckDB's default of roughly 80\% of RAM.}
+
+\item{temp_directory}{Directory for temporary files (spill-to-disk). Use a
+local disk with sufficient space; do not point this at a synced directory
+such as OneDrive.}
 }
 \value{
-A database connection using prepared database schemas.
+A connection using prepared database schemas.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}

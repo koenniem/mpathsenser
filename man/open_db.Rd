@@ -4,16 +4,38 @@
 \alias{open_db}
 \title{Open an mpathsenser database.}
 \usage{
-open_db(path = getwd(), db_name = "sense.db", read_only = TRUE)
+open_db(
+  path,
+  db_name = NULL,
+  ...,
+  read_only = FALSE,
+  threads = NULL,
+  memory_limit = NULL,
+  temp_directory = NULL
+)
 }
 \arguments{
-\item{path}{The path to the database. Use NULL to use the full path name in db_name.}
+\item{path}{The path to the database file, or the directory in which the
+database resides when \code{db_name} is given.}
 
-\item{db_name}{The name of the database.}
+\item{db_name}{Optional name of the database file. When given, \code{path} is
+treated as the directory containing the database, just like
+\code{\link[=create_db]{create_db()}}.}
 
-\item{read_only}{Whether the database should be opened in read only mode. This is useful when you
-want to add data to the database (e.g. with \code{\link[=import]{import()}}) but leads to file locking and thereby
-prevents multiple connections reading from the database.}
+\item{...}{Additional arguments passed to \code{\link[DBI:dbConnect]{DBI::dbConnect()}}.}
+
+\item{read_only}{Open the database in read-only mode. Recommended for
+connections used by dashboards, so that no accidental writes are possible.}
+
+\item{threads}{The number of threads DuckDB may use. Defaults to \code{NULL},
+which lets DuckDB use all available cores.}
+
+\item{memory_limit}{Memory limit for the DuckDB instance (e.g. \code{"2GB"}).
+Defaults to \code{NULL}, which uses DuckDB's default of roughly 80\% of RAM.}
+
+\item{temp_directory}{Directory for temporary files (spill-to-disk). Use a
+local disk with sufficient space; do not point this at a synced directory
+such as OneDrive.}
 }
 \value{
 A connection to an mpathsenser database.
@@ -21,21 +43,32 @@ A connection to an mpathsenser database.
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
+\details{
+On Windows, a database file is locked while any R process has it
+open. Close connections with \code{\link[=close_db]{close_db()}} when you are done. A database
+that is open in another process cannot be opened for writing; use
+\code{read_only = TRUE} to query it anyway (DuckDB allows multiple readers).
+}
 \examples{
 # First create a database in a temporary directory
-db <- create_db(tempdir(), "mydb.db")
+db <- create_db(file.path(tempdir(), "mydb.db"))
 close_db(db)
 DBI::dbIsValid(db) # db is closed
 
 # Then re-open it
-db2 <- open_db(tempdir(), "mydb.db")
+db2 <- open_db(file.path(tempdir(), "mydb.db"))
 DBI::dbIsValid(db2) # db is opened
+
+# The path can also be given as a directory plus a file name
+db3 <- open_db(tempdir(), "mydb.db")
+DBI::dbIsValid(db3)
 
 # Cleanup
 close_db(db2)
+close_db(db3)
 file.remove(file.path(tempdir(), "mydb.db"))
 }
 \seealso{
 \code{\link[=close_db]{close_db()}} for closing a database; \code{\link[=copy_db]{copy_db()}} for copying (part of) a database;
-\code{\link[=index_db]{index_db()}} for indexing a database; \code{\link[=get_data]{get_data()}} for extracting data from a database.
+\code{\link[=optimize_db]{optimize_db()}} for re-ordering a database; \code{\link[=get_data]{get_data()}} for extracting data from a database.
 }

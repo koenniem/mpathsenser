@@ -32,10 +32,10 @@ names that need to be fixed. If there were no issues, an invisible empty string 
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
 \section{Parallel}{
- This function supports parallel processing in the sense that it is able to
-distribute it's computation load among multiple workers. To make use of this functionality, run
-\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
-calling this function.
+ This function does not support parallel processing via
+\pkg{future}, as DuckDB already parallelises reading and writing across its
+threads. Since a DuckDB database allows only a single writer at a time, do
+not run multiple imports into the same database concurrently.
 }
 
 \examples{

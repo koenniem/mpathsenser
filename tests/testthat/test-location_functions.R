@@ -102,7 +102,4 @@ test_that("geocode_rev", {
 
   # No errors
   expect_false(any(unlist(lapply(res, names)) == "error"))
-
-  # Correct places
-  # Disabled, as too tight checking will lead to a failed test when something on OSM changes
 })

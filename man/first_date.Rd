@@ -9,12 +9,13 @@ first_date(db, sensor, participant_id = NULL)
 \arguments{
 \item{db}{A database connection to an m-Path Sense database.}
 
-\item{sensor}{The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
-sensors.}
+\item{sensor}{The name of a sensor or its derived \verb{_local} or \verb{_with_local} view.
+See \link[mpathsenser]{sensors} for the physical sensor names.}
 
-\item{participant_id}{A character string identifying a single participant. Use
+\item{participant_id}{A single participant identifier. Use
 \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
-Leave empty to get data for all participants.}
+Leave empty to get data for all participants. Participant ids are stored as unsigned
+integers, so an integer, numeric, or character value is accepted.}
 }
 \value{
 A string in the format 'YYYY-mm-dd' of the first entry date.

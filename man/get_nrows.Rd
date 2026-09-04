@@ -18,7 +18,8 @@ get_nrows(
 \item{sensor}{A character vector of one or multiple vectors. Use \code{sensor = NULL} for all
 sensors. See \link[mpathsenser]{sensors} for a list of all available sensors.}
 
-\item{participant_id}{A character string identifying a single participant. Use
+\item{participant_id}{A single participant identifier (stored as an unsigned integer; an
+integer, numeric, or character value is accepted). Use
 \code{\link[=get_participants]{get_participants()}} to retrieve all participants from the database. Leave empty to get data
 for all participants.}
 

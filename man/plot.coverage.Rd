@@ -4,7 +4,7 @@
 \alias{plot.coverage}
 \title{Plot a coverage overview}
 \usage{
-\method{plot}{coverage}(x, ...)
+\method{plot}{coverage}(x, digits = 2, ...)
 }
 \arguments{
 \item{x}{A tibble with the coverage data coming from \code{\link[=coverage]{coverage()}}.}

@@ -20,7 +20,8 @@ coverage(
 \item{db}{A valid database connection. Schema must be that as it is created by
 \link{open_db}.}
 
-\item{participant_id}{A character string of \emph{one} participant ID.}
+\item{participant_id}{A single participant ID. Stored as an unsigned integer;
+both an integer/numeric and a character value are accepted.}
 
 \item{sensor}{A character vector containing one or multiple sensors. See
 \code{\link[mpathsenser]{sensors}} for a list of available sensors. Use \code{NULL} for all

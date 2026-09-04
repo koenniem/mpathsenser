@@ -378,7 +378,7 @@ link <- function(
   add_before = FALSE,
   add_after = FALSE,
   name = "data",
-  split = by
+  split = 1
 ) {
   check_arg(x, type = "data.frame")
   check_arg(y, type = "data.frame")
@@ -387,41 +387,11 @@ link <- function(
   check_arg(add_after, type = "logical")
   check_arg(name, type = "character")
 
-  if (missing(time)) {
-    lifecycle::deprecate_warn(
-      when = "1.1.2",
-      what = "link(time = 'must not be missing')",
-      details = c(
-        i = paste(
-          "Due to backwards compatiblity, `time` defaults to",
-          "'time' for now."
-        ),
-        i = paste(
-          "Please make this argument explicit to prevent your",
-          "code from breaking in a future version."
-        )
-      )
-    )
-    time <- "time"
-  }
-
-  if (missing(y_time)) {
-    lifecycle::deprecate_warn(
-      when = "1.1.2",
-      what = "link(y_time = 'must not be missing')",
-      details = c(
-        i = paste(
-          "Due to backwards compatiblity, `y_time` defaults to",
-          "'time' for now."
-        ),
-        i = paste(
-          "Please make this argument explicit to prevent your",
-          "code from breaking in a future version."
-        )
-      )
-    )
-    y_time <- "time"
-  }
+  lifecycle::deprecate_soft(
+    when = "2.0.0",
+    what = "link(split)",
+    details = "The `split` argument is deprecated and now defaults to 1."
+  )
 
   # Check that not end_time and any offset are used at the same time
   if (!missing(end_time) && (!missing(offset_before) || !missing(offset_after))) {
@@ -463,102 +433,19 @@ link <- function(
   }
   check_arg(pull(y, y_time), "POSIXt", arg = "y_time")
 
-  # Split up the data for computation efficiency, either based on a numeric value (fixed group size)
-  # or a variable
-  if (!is.null(split)) {
-    if (is.numeric(split)) {
-      x <- split(x, rep(1:split, each = ceiling(nrow(x) / split), length.out = nrow(x)))
-    } else {
-      x <- dplyr::group_split(x, across({{ by }}))
-    }
-  } else {
-    x <- list(x)
-  }
-
-  # Temporarily override future global max size options
-  old <- options(future.globals.maxSize = .Machine$double.xmax)
-  on.exit(options(old))
-
-  x |>
-    furrr::future_map(
-      ~ link_impl(
-        x = .x,
-        y = y,
-        by = by,
-        start_time = start_time,
-        end_time = end_time,
-        y_time = y_time,
-        offset_before = offset_before,
-        offset_after = offset_after,
-        add_before = add_before,
-        add_after = add_after,
-        name = name
-      ),
-      .options = furrr::furrr_options(seed = TRUE)
-    ) |>
-    bind_rows()
-}
-
-#' Link two sensors OR one sensor and an external data frame using an mpathsenser database
-#'
-#' @description `r lifecycle::badge("deprecated")`
-#'
-#'   This function is deprecated in favour of [link()]. It used to be a wrapper around [link()] but
-#'   extracts data in the database for you.
-#'
-#' @inheritParams get_data
-#' @inheritParams link
-#' @param sensor_one The name of a primary sensor. See \link[mpathsenser]{sensors} for a list of
-#'   available sensors.
-#' @param sensor_two The name of a secondary sensor. See \link[mpathsenser]{sensors} for a list of
-#'   available sensors. Cannot be used together with `external`.
-#' @param external Optionally, specify an external data frame. Cannot be used at the same time as a
-#'   second sensor. This data frame must have a column called `time`.
-#' @param external_time The name of the column containing the timestamps in `external`.
-#' @param reverse Switch `sensor_one` with either `sensor_two` or `external`? Particularly useful in
-#'   combination with `external`.
-#' @param ignore_large Safety override to prevent long wait times. Set to `TRUE` to do this function
-#'   on lots of data.
-#'
-#' @seealso [link()]
-#'
-#' @returns A tibble with the data of `sensor_one` with a new column `data` with the matched data of
-#'   either `sensor_two` or `external` according to `offset_before` or `offset_after`. The other way
-#'   around when `reverse = TRUE`.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' # Open a database
-#' db <- open_db("path/to/db")
-#'
-#' # Link two sensors
-#' link_db(db, "accelerometer", "gyroscope", offset_before = 300, offset_after = 300)
-#'
-#' # Link a sensor with an external data frame
-#' link_db(db, "accelerometer",
-#'   external = my_external_data,
-#'   external_time = "time", offset_before = 300, offset_after = 300
-#' )
-#' }
-link_db <- function(
-  db,
-  sensor_one,
-  sensor_two = NULL,
-  external = NULL,
-  external_time = "time",
-  offset_before = 0,
-  offset_after = 0,
-  add_before = FALSE,
-  add_after = FALSE,
-  participant_id = NULL,
-  start_date = NULL,
-  end_date = NULL,
-  reverse = FALSE,
-  ignore_large = FALSE
-) {
-  # Soft deprecate warning
-  lifecycle::deprecate_stop("1.1.2", "link_db()", "link()")
+  link_impl(
+    x = x,
+    y = y,
+    by = by,
+    start_time = start_time,
+    end_time = end_time,
+    y_time = y_time,
+    offset_before = offset_before,
+    offset_after = offset_after,
+    add_before = add_before,
+    add_after = add_after,
+    name = name
+  )
 }
 
 #' Link gaps to (ESM) data
@@ -768,8 +655,8 @@ link_intervals <- function(
 
   # Set gaps time stamps out of the interval to the interval's bounds
   res <- res |>
-    mutate({{ y_start }} := ifelse({{ y_start }} < {{ x_start }}, {{ x_start }}, {{ y_start }})) |>
-    mutate({{ y_end }} := ifelse({{ y_end }} > {{ x_end }}, {{ x_end }}, {{ y_end }})) |>
+    mutate({{ y_start }} := if_else({{ y_start }} < {{ x_start }}, {{ x_start }}, {{ y_start }})) |>
+    mutate({{ y_end }} := if_else({{ y_end }} > {{ x_end }}, {{ x_end }}, {{ y_end }})) |>
     mutate(across(c({{ y_start }}, {{ y_end }}), \(.x) lubridate::as_datetime(.x, tz = tz)))
 
   out <- x |>

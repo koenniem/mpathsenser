@@ -9,12 +9,13 @@ get_data(db, sensor, participant_id = NULL, start_date = NULL, end_date = NULL)
 \arguments{
 \item{db}{A database connection to an m-Path Sense database.}
 
-\item{sensor}{The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
-sensors.}
+\item{sensor}{The name of a sensor or its derived \verb{_local} or \verb{_with_local} view.
+See \link[mpathsenser]{sensors} for the physical sensor names.}
 
-\item{participant_id}{A character string identifying a single participant. Use
+\item{participant_id}{A single participant identifier. Use
 \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
-Leave empty to get data for all participants.}
+Leave empty to get data for all participants. Participant ids are stored as unsigned
+integers, so an integer, numeric, or character value is accepted.}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
 convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
@@ -40,7 +41,9 @@ This is useful for various functions in this package that work with a lazy tibbl
 functions such as \code{\link[dplyr:filter]{dplyr::filter()}} or \code{\link[dplyr:mutate]{dplyr::mutate()}} before pulling the data into R. These
 functions will be executed in-database, and will therefore be much faster than having to first
 pull all data into R and then possibly removing a large part of it. Importantly, data can
-pulled into R using \code{\link[dplyr:collect]{dplyr::collect()}}.
+pulled into R using \code{\link[dplyr:collect]{dplyr::collect()}}. Measurement timestamps are
+returned as canonical absolute \code{TIMESTAMPTZ} values. Use \code{\link[=collect_local]{collect_local()}}
+or the explicit \verb{_local} views for participant-local wall-clock values.
 }
 \examples{
 \dontrun{

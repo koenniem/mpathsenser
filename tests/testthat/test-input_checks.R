@@ -54,6 +54,25 @@ test_that("check_db", {
   )
 })
 
+test_that("check_db recognizes missing sensors", {
+  db <- create_db(NULL, tempfile("chk", fileext = ".db"))
+  DBI::dbExecute(db, "DROP TABLE Accelerometer")
+  expect_error(
+    check_db(db),
+    paste0(
+      "The following sensor is missing from the database: .*\"Accelerometer\".*"
+    )
+  )
+
+  # Try again, but with the check disabled
+  old_opts <- options(mpathsenser.check_missing_sensors = FALSE)
+  on.exit(options(old_opts), TRUE)
+  expect_true(check_db(db))
+
+  # Cleanup
+  close_db(db)
+})
+
 test_that("check_arg", {
   # Test NULL behaviour
   expect_error(

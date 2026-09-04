@@ -40,7 +40,8 @@ repo:
 reference:
   - title: Import data
     contents:
-      - import
+      - read_mpath_sense
+      - deduplicate_db
       - fix_jsons
       - test_jsons
       - unzip_data
@@ -52,9 +53,8 @@ reference:
       - create_db
       - open_db
       - close_db
-      - index_db
+      - optimize_db
       - copy_db
-      - vacuum_db
 
   - title: Data retrieval
     contents:
@@ -80,7 +80,8 @@ reference:
       - add_gaps
       - bin_data
       - moving_average
-      - with_localtime
+      - to_local_time
+      - collect_local
 
   - title: Sensor-specific functions
     contents:

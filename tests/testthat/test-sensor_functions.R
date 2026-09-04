@@ -1,38 +1,43 @@
 # Tests for sensor_functions.R
 
 test_that("get_data", {
-  db <- create_test_db()
-  res <- get_data(db, "Activity", "12345", "2021-11-14", "2021-11-14") %>%
-    collect()
+  db <- create_sensor_test_db()
+  res <- get_data(db, "Activity", "12345", "2021-11-14", "2021-11-14") |>
+    dplyr::select(participant_id, time, timezone, confidence, type) |>
+    dplyr::collect()
   expect_equal(
     res,
     tibble::tibble(
-      measurement_id = c(
-        "fbf85cd7-6d37-53a8-5c44-ad8fe13ef7ac",
-        "ef96364c-d1f4-5f73-ce40-277f078e3d0f",
-        "5ba54e77-4bcf-c8d1-17ff-71b9ed908897"
-      ),
-      participant_id = "12345",
+      participant_id = 12345,
       time = as.POSIXct(
         c("2021-11-14 13:59:59", "2021-11-14 14:00:00", "2021-11-14 14:00:01"),
         tz = "UTC"
       ),
+      timezone = rep(NA_character_, 3),
       confidence = c(NA, 100L, 99L),
       type = c(NA, "WALKING", "STILL")
     )
   )
 
   # Only a start date
-  res <- get_data(db, "Device", "12345", "2021-11-14", "2021-11-14") %>%
-    collect()
+  res <- get_data(db, "Device", "12345", "2021-11-14", "2021-11-14") |>
+    dplyr::select(
+      participant_id,
+      time,
+      device_id,
+      hardware,
+      device_name,
+      device_manufacturer,
+      device_model,
+      operating_system,
+      platform,
+      operating_system_version
+    ) |>
+    dplyr::collect()
   expect_equal(
     res,
     tibble::tibble(
-      measurement_id = c(
-        "ac1230a8-ed5f-4ded-7fca-7693a5ab4124",
-        "138b9204-a313-96f3-89de-42bc2ac9d1e9"
-      ),
-      participant_id = "12345",
+      participant_id = 12345,
       time = as.POSIXct(c("2021-11-14 13:00:00", "2021-11-14 14:01:00"), tz = "UTC"),
       device_id = c("QKQ1.200628.002", NA),
       hardware = c("qcom", NA),
@@ -41,29 +46,20 @@ test_that("get_data", {
       device_model = c("M2007J17G", NA),
       operating_system = c("REL", NA),
       platform = c("Android", NA),
-      operating_system_version = rep(NA_character_, 2),
-      sdk = rep(NA_character_, 2)
+      operating_system_version = rep(NA_character_, 2)
     )
   )
 
   # Only an end date
-  res <- get_data(db, "Device", "12345", end_date = "2021-11-13") %>%
-    collect()
+  res <- get_data(db, "Device", "12345", end_date = "2021-11-13") |>
+    dplyr::select(participant_id, time, device_id) |>
+    dplyr::collect()
   expect_equal(
     res,
     tibble::tibble(
-      measurement_id = "bce3c272-3e06-4c84-f533-5bbbeaaac049",
-      participant_id = "12345",
+      participant_id = 12345,
       time = as.POSIXct("2021-11-13 13:00:00", tz = "UTC"),
-      device_id = "QKQ1.200628.002",
-      hardware = "qcom",
-      device_name = "gauguin",
-      device_manufacturer = "Xiaomi",
-      device_model = "M2007J17G",
-      operating_system = "REL",
-      platform = "Android",
-      operating_system_version = NA_character_,
-      sdk = NA_character_
+      device_id = "QKQ1.200628.002"
     )
   )
 
@@ -71,21 +67,21 @@ test_that("get_data", {
 })
 
 test_that("first_date", {
-  db <- create_test_db()
+  db <- create_sensor_test_db()
   expect_equal(first_date(db, "Device"), as.Date("2021-11-13"))
   expect_equal(first_date(db, "Device", "12345"), as.Date("2021-11-13"))
   cleanup_test_db(db)
 })
 
 test_that("last_date", {
-  db <- create_test_db()
+  db <- create_sensor_test_db()
   expect_equal(last_date(db, "Device"), as.Date("2021-11-14"))
   expect_equal(last_date(db, "Device", "12345"), as.Date("2021-11-14"))
   cleanup_test_db(db)
 })
 
 test_that("installed_apps", {
-  db <- create_test_db()
+  db <- create_sensor_test_db()
   res <- installed_apps(db, "12345")
   true <- tibble::tibble(
     app = c(
@@ -144,7 +140,7 @@ test_that("app_category", {
 })
 
 test_that("device_info", {
-  db <- create_test_db()
+  db <- create_sensor_test_db()
 
   expect_error(device_info(db, participant_id = "12345"), NA)
   res <- device_info(db, participant_id = "12345")
@@ -160,7 +156,7 @@ test_that("device_info", {
       "operating_system",
       "platform",
       "operating_system_version",
-      "sdk"
+      "timezone"
     )
   )
   expect_true(nrow(res) > 0)
@@ -168,7 +164,7 @@ test_that("device_info", {
 })
 
 test_that("moving_average", {
-  db <- create_test_db()
+  db <- create_sensor_test_db()
 
   expect_error(
     moving_average(db, "Accelerometer", cols = "x_mean", participant_id = "12345", n = 2),
@@ -190,7 +186,7 @@ test_that("moving_average", {
 })
 
 test_that("identify_gaps", {
-  db <- create_test_db()
+  db <- create_sensor_test_db()
 
   gaps <- identify_gaps(db, "12345", min_gap = 1, sensor = sensors)
 
@@ -198,7 +194,7 @@ test_that("identify_gaps", {
   gaps <- gaps[1:8, ]
 
   true <- tibble::tibble(
-    participant_id = c("12345"),
+    participant_id = c(12345),
     from = as.POSIXct(
       c(
         "2021-11-13 13:00:00",

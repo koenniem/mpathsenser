@@ -56,6 +56,25 @@ check_db <- function(
     cli_abort(msg, arg = arg, call = call)
   }
 
+  # Check that all sensors are present in the database. If not, the database is corrupt.
+  if (isTRUE(getOption("mpathsenser.check_missing_sensors", TRUE))) {
+    tables <- DBI::dbGetQuery(
+      db,
+      "SELECT table_name FROM duckdb_tables() WHERE schema_name = 'main'"
+    )$table_name
+    missing_sensors <- sensors[!(tolower(sensors) %in% tolower(tables))]
+    if (length(missing_sensors) > 0) {
+      msg <- c(
+        "The following sensor{?s} {?is/are} missing from the database: {.val {missing_sensors}}.",
+        x = "The database is likely corrupt.",
+        i = "Try re-opening the database or create a new one using {.help create_db}.",
+        i = "To skip this check in this session, run \\
+        {.code options(mpathsenser.check_missing_sensors = FALSE)}."
+      )
+      cli_abort(msg, arg = arg, call = call)
+    }
+  }
+
   return(invisible(TRUE))
 }
 
@@ -145,11 +164,21 @@ check_sensors <- function(
   x,
   n = NULL,
   allow_null = FALSE,
+  include_views = TRUE,
   arg = rlang::caller_arg(x),
   call = rlang::caller_env()
 ) {
   check_arg(x, type = "character", allow_null = allow_null, n = n, arg = arg, call = call)
-  missing <- x[!(tolower(x) %in% tolower(sensors))]
+  check_arg(include_views, "logical", n = 1)
+  valid_sensors <- sensors
+  if (include_views) {
+    valid_sensors <- c(
+      valid_sensors,
+      paste0(sensors, "_local"),
+      paste0(sensors, "_with_local")
+    )
+  }
+  missing <- x[!(tolower(x) %in% tolower(valid_sensors))]
 
   if (length(missing) > 0) {
     msg <- c(
@@ -160,6 +189,10 @@ check_sensors <- function(
   }
 
   return(invisible(TRUE))
+}
+
+.physical_sensor <- function(x) {
+  sub("_(local|with_local)$", "", x)
 }
 
 check_offset <- function(offset_before, offset_after, call = rlang::caller_env()) {

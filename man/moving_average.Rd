@@ -17,15 +17,16 @@ moving_average(
 \arguments{
 \item{db}{A database connection to an m-Path Sense database.}
 
-\item{sensor}{The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
-sensors.}
+\item{sensor}{The name of a sensor or its derived \verb{_local} or \verb{_with_local} view.
+See \link[mpathsenser]{sensors} for the physical sensor names.}
 
 \item{cols}{Character vectors of the columns in the \code{sensor} table to average over.}
 
 \item{n}{The number of seconds to average over. The index of the result will be centered compared
 to the rolling window of observations.}
 
-\item{participant_id}{A character vector identifying one or multiple participants.}
+\item{participant_id}{A vector identifying one or multiple participants (stored as unsigned
+integers; integer, numeric, or character values are accepted).}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
 convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the

@@ -1,9 +1,10 @@
 # nocov start
 .onLoad <- function(libname, pkgname) {
-  # Set progress default
+  # Set options for mpathsenser
   op <- options()
   op_mpathsenser <- list(
-    mpathsenser.show_progress = TRUE
+    mpathsenser.show_progress = TRUE,
+    mpathsenser.check_missing_sensors = TRUE
   )
   toset <- !(names(op_mpathsenser) %in% names(op))
   if (any(toset)) {

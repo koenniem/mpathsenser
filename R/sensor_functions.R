@@ -11,15 +11,18 @@
 #'   functions such as [dplyr::filter()] or [dplyr::mutate()] before pulling the data into R. These
 #'   functions will be executed in-database, and will therefore be much faster than having to first
 #'   pull all data into R and then possibly removing a large part of it. Importantly, data can
-#'   pulled into R using [dplyr::collect()].
+#'   pulled into R using [dplyr::collect()]. Measurement timestamps are
+#'   returned as canonical absolute `TIMESTAMPTZ` values. Use [collect_local()]
+#'   or the explicit `_local` views for participant-local wall-clock values.
 #'
 #'
 #' @param db A database connection to an m-Path Sense database.
-#' @param sensor The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
-#'   sensors.
-#' @param participant_id A character string identifying a single participant. Use
+#' @param sensor The name of a sensor or its derived `_local` or `_with_local` view.
+#'   See \link[mpathsenser]{sensors} for the physical sensor names.
+#' @param participant_id A single participant identifier. Use
 #'   \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
-#'   Leave empty to get data for all participants.
+#'   Leave empty to get data for all participants. Participant ids are stored as unsigned
+#'   integers, so an integer, numeric, or character value is accepted.
 #' @param start_date Optional search window specifying date where to begin search. Must be
 #'   convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
 #'   date of the first entry for a participant.
@@ -50,14 +53,15 @@ get_data <- function(
   end_date = NULL
 ) {
   check_db(db)
-  check_sensors(sensor, n = 1)
-  check_arg(participant_id, type = c("character", "integerish"), allow_null = TRUE)
+  check_sensors(sensor, n = 1, include_views = TRUE)
+  check_arg(participant_id, type = c("character", "integerish", "numeric"), allow_null = TRUE)
   check_arg(sensor, "character", n = 1)
   check_arg(start_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
   check_arg(end_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
 
-  sensor <- tolower(sensor)
+  sensor <- as.character(sensor)
   out <- dplyr::tbl(db, sensor)
+  attr(out, "mpathsenser_sensor") <- sensor
 
   if (!is.null(participant_id)) {
     p_id <- as.character(participant_id)
@@ -78,6 +82,7 @@ get_data <- function(
     out <- filter(out, .data$time <= end_date)
   }
 
+  # Canonical sensor tables expose absolute TIMESTAMPTZ values directly.
   out
 }
 
@@ -103,6 +108,7 @@ get_data <- function(
 #' }
 first_date <- function(db, sensor, participant_id = NULL) {
   check_db(db)
+  check_sensors(sensor, n = 1)
   check_arg(sensor, "character", n = 1)
 
   out <- dplyr::tbl(db, sensor)
@@ -139,6 +145,7 @@ first_date <- function(db, sensor, participant_id = NULL) {
 #' }
 last_date <- function(db, sensor, participant_id = NULL) {
   check_db(db)
+  check_sensors(sensor, n = 1)
   check_arg(sensor, c("character", "integerish"), n = 1, allow_null = TRUE)
 
   out <- dplyr::tbl(db, sensor)
@@ -163,7 +170,8 @@ last_date <- function(db, sensor, participant_id = NULL) {
 #' throughout the study.
 #'
 #' @param db A database connection to an mpathsenser database.
-#' @param participant_id A character string identifying a single participant. Use
+#' @param participant_id A single participant identifier (stored as an unsigned integer; an
+#' integer, numeric, or character value is accepted). Use
 #' \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 #' Leave empty to get data for all participants.
 #'
@@ -183,13 +191,14 @@ last_date <- function(db, sensor, participant_id = NULL) {
 installed_apps <- function(db, participant_id = NULL) {
   check_db(db)
 
-  get_data(db, "InstalledApps", participant_id) |>
+  # The InstalledApps sensor no longer exists; installed apps are derived from
+  # the apps that appear in the AppUsage data
+  get_data(db, "AppUsage", participant_id) |>
     filter(!is.na(.data$app)) |>
     distinct(.data$app) |>
     arrange(.data$app) |>
     collect()
 }
-
 
 #' Find the category of an app on the Google Play Store
 #'
@@ -209,7 +218,7 @@ installed_apps <- function(db, participant_id = NULL) {
 #' \code{exact} is \code{TRUE}, it interacts with \code{num} in the sense that it no longer selects
 #' the top search result but instead the top search result that matches the last part of the package
 #' name.
-#' @inheritParams import
+#' @inheritParams read_mpath_sense
 #'
 #' @section Warning:
 #' Do not abuse this function or you will be banned by the Google Play Store. The minimum delay
@@ -369,218 +378,11 @@ app_category_impl <- function(name, num, exact) {
 #' }
 device_info <- function(db, participant_id = NULL) {
   get_data(db, "Device", participant_id = participant_id) |>
-    select(-any_of(c("measurement_id", "date", "time"))) |>
+    select(-any_of(c("measurement_id", "date", "time", "device_data", "source_file_id"))) |>
     distinct() |>
     collect()
 }
 
-# nocov start
-#' Get app usage per hour
-#'
-#' @description
-#' `r lifecycle::badge("deprecated")`
-#'
-#' This function extracts app usage per hour for either one or multiple participants. If multiple
-#' days are selected, the app usage time is averaged.
-#'
-#' @inheritParams get_data
-#' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results.
-#'
-#' @returns A data frame containing a column 'app' and a column 'usage' for the hourly app usage.
-#' @keywords internal
-app_usage <- function(
-  db,
-  participant_id = NULL,
-  start_date = NULL,
-  end_date = NULL,
-  by = c("Total", "Day", "Hour")
-) {
-  lifecycle::deprecate_stop(
-    when = "1.1.2",
-    what = "app_usage()",
-    details = c(
-      i = paste(
-        "`app_usage()` is defunctional for now, as it",
-        "is unclear how this function should behave."
-      ),
-      i = "It will be reimplemented in mpathsenser 2.0.0."
-    )
-  )
-}
-
-#' Get a summary of physical activity (recognition)
-#'
-#' @description
-#' `r lifecycle::badge("deprecated")`
-#'
-#' @inheritParams get_data
-#' @param data A data frame containing the activity data. See \link[mpathsenser]{get_data} for
-#' retrieving activity data from an mpathsenser database.
-#' @param confidence The minimum confidence (0-100) that should be assigned to an observation by
-#' Activity Recognition.
-#' @param direction The directionality of the duration calculation, i.e. \eqn{t - t_{t-1}} or
-#' \eqn{t_{t+1} - t}.
-#' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results.
-#'
-#' @returns A tibble containing a column 'activity' and a column 'duration' for the hourly
-#' activity duration.
-#' @keywords internal
-activity_duration <- function(
-  data = NULL,
-  db = NULL,
-  participant_id = NULL,
-  confidence = 70,
-  direction = "forward",
-  start_date = NULL,
-  end_date = NULL,
-  by = c("Total", "Day", "Hour")
-) {
-  lifecycle::deprecate_stop(
-    when = "1.1.2",
-    what = "activity_duration()",
-    details = c(
-      i = paste(
-        "`activity_duration()` is defunctional for now, as it",
-        "is unclear how this function should behave."
-      ),
-      i = "It will be reimplemented in mpathsenser 2.0.0."
-    )
-  )
-}
-
-#' @noRd
-compress_activity <- function(data, direction = "forward") {
-  data |>
-    arrange("time") |>
-    filter(!(lead(.data$type) == .data$type & lag(.data$type) == .data$type))
-}
-
-#' Screen duration by hour or day
-#'
-#' @description
-#' `r lifecycle::badge("deprecated")`
-#'
-#' Calculate the screen duration time where the screen was _unlocked_ (i.e. not just on).
-#'
-#' @inheritParams get_data
-#' @param by Either 'Hour' or 'Day' indicating how to summarise the results. Leave empty to get raw
-#' screen duration per measurement.
-#'
-#' @returns A tibble with either 'hour' and 'duration' columns or 'date' and 'duration' columns
-#' depending on the \code{by} argument. Alternatively, if no \code{by} is specified, a remote
-#' tibble is returned with the date, time, and duration since the previous measurement.
-#' @keywords internal
-screen_duration <- function(
-  db,
-  participant_id,
-  start_date = NULL,
-  end_date = NULL,
-  by = c("Hour", "Day")
-) {
-  lifecycle::deprecate_stop(
-    when = "1.1.2",
-    what = "screen_duration()",
-    details = c(
-      i = paste(
-        "`screen_duration()` is defunctional for now, as it",
-        "is unclear how this function should behave."
-      ),
-      i = "It will be reimplemented in mpathsenser 2.0.0."
-    )
-  )
-}
-
-#' Get number of times screen turned on
-#'
-#' @description
-#' `r lifecycle::badge("deprecated")`
-#'
-#' @inheritParams get_data
-#' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results. Defaults to
-#' total.
-#'
-#' @returns In case grouping is by the total amount, returns a single numeric value. For date and
-#' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen on's 'n'.
-#' @keywords internal
-n_screen_on <- function(
-  db,
-  participant_id,
-  start_date = NULL,
-  end_date = NULL,
-  by = c("Total", "Hour", "Day")
-) {
-  lifecycle::deprecate_stop(
-    when = "1.1.2",
-    what = "n_screen_on()",
-    details = c(
-      i = paste(
-        "`n_screen_on()` is defunctional for now, as it",
-        "is unclear how this function should behave."
-      ),
-      i = "It will be reimplemented in mpathsenser 2.0.0."
-    )
-  )
-}
-
-#' Get number of screen unlocks
-#'
-#' @description
-#' `r lifecycle::badge("deprecated")`
-#'
-#' @inheritParams get_data
-#' @param by Either 'Total', 'Hour', or 'Day' indicating how to summarise the results. Defaults to
-#' total.
-#'
-#' @returns In case grouping is by the total amount, returns a single numeric value. For date and
-#' hour grouping returns a tibble with columns 'date' or 'hour' and the number of screen unlocks
-#' 'n'.
-#' @keywords internal
-n_screen_unlocks <- function(
-  db,
-  participant_id,
-  start_date = NULL,
-  end_date = NULL,
-  by = c("Total", "Hour", "Day")
-) {
-  lifecycle::deprecate_stop(
-    when = "1.1.2",
-    what = "n_screen_unlocks()",
-    details = c(
-      i = paste(
-        "`n_screen_unlocks()` is defunctional for now, as it",
-        "is unclear how this function should behave."
-      ),
-      i = "It will be reimplemented in mpathsenser 2.0.0."
-    )
-  )
-}
-
-
-#' Get step count
-#'
-#' @description
-#' `r lifecycle::badge("deprecated")`
-#'
-#' Extracts the number of steps per hour as sensed by the underlying operating system.
-#'
-#' @inheritParams get_data
-#'
-#' @returns A tibble with the 'date', 'hour', and the number of 'steps'.
-#' @keywords internal
-step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = NULL) {
-  lifecycle::deprecate_stop(
-    when = "1.1.2",
-    what = "step_count()",
-    details = c(
-      i = paste(
-        "`step_count()` is defunctional for now, as it",
-        "is unclear how this function should behave."
-      ),
-      i = "It will be reimplemented in mpathsenser 2.0.0."
-    )
-  )
-}
-# nocov end
 
 #' Moving average for values in an mpathsenser database
 #'
@@ -590,7 +392,8 @@ step_count <- function(db, participant_id = NULL, start_date = NULL, end_date = 
 #' @param cols Character vectors of the columns in the \code{sensor} table to average over.
 #' @param n The number of seconds to average over. The index of the result will be centered compared
 #'   to the rolling window of observations.
-#' @param participant_id A character vector identifying one or multiple participants.
+#' @param participant_id A vector identifying one or multiple participants (stored as unsigned
+#'   integers; integer, numeric, or character values are accepted).
 #'
 #' @returns A tibble with the same columns as the input, modified to be a moving average.
 #' @export
@@ -619,10 +422,10 @@ moving_average <- function(
 ) {
   lifecycle::signal_stage("experimental", "moving_average()")
   check_db(db)
-  check_sensors(sensor, n = 1)
+  check_sensors(sensor, n = 1, include_views = TRUE)
   check_arg(cols, "character")
   check_arg(n, "numeric")
-  check_arg(participant_id, c("character", "integerish"), allow_null = TRUE)
+  check_arg(participant_id, c("character", "integerish", "numeric"), allow_null = TRUE)
   check_arg(start_date, c("character", "POSIXt"), n = 1, allow_null = TRUE)
   check_arg(end_date, c("character", "POSIXt"), n = 1, allow_null = TRUE)
 

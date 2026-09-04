@@ -45,10 +45,10 @@ straightforward corruption from files so that only a small number may still need
 hand.
 }
 \section{Parallel}{
- This function supports parallel processing in the sense that it is able to
-distribute it's computation load among multiple workers. To make use of this functionality, run
-\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
-calling this function.
+ This function does not support parallel processing via
+\pkg{future}, as DuckDB already parallelises reading and writing across its
+threads. Since a DuckDB database allows only a single writer at a time, do
+not run multiple imports into the same database concurrently.
 }
 
 \examples{

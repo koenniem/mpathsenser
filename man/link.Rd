@@ -16,7 +16,7 @@ link(
   add_before = FALSE,
   add_after = FALSE,
   name = "data",
-  split = by
+  split = 1
 )
 }
 \arguments{
