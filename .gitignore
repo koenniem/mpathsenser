@@ -17,3 +17,4 @@ revdep/
 AGENTS.MD
 .pi/
 .devcontainer/
+.mcp.json
