@@ -91,7 +91,7 @@ With the database in place, importing is a single function call:
 read_mpath_sense(path = path, db = db, .progress = FALSE)
 ```
 
-The import works in batches: all files of a batch are staged and written in a single transaction, so an error in one file does not lose the work of the others. The `batch_size` argument (default 100) controls how many files are processed at once — larger batches are faster but use more memory. The `rows_per_chunk` argument (default 100000) bounds the size of the individual ingest statements, which is useful to keep memory usage in check when a batch contains very large files (e.g. Garmin logs). Setting `debug = TRUE` prints a detailed log of what the import is doing and how long each step took.
+The import works in batches: all files of a batch are staged and written in a single transaction, so an error in one file does not lose the work of the others. The `batch_size` argument (default 100) controls how many files are processed at once — larger batches are faster but use more memory. The `rows_per_chunk` argument (default 100000) bounds the size of the individual ingest statements, which is useful to keep memory usage in check when a batch contains very large files (e.g. Garmin logs). Setting `.debug = TRUE` prints a detailed log of what the import is doing and how long each step took.
 
 If everything went well, the message says that all files were written to the database. When a file fails, `read_mpath_sense()` returns the names of the problematic files so they can be inspected manually; the remaining files are imported normally.
 

@@ -23,7 +23,7 @@
   `source_file_id`.
 * `read_mpath_sense()` stages all files of a batch together for maximum
   throughput. Interrupted imports are rolled back cleanly, and any leftover
-  transaction is rolled back automatically on the next run. `debug = TRUE`
+  transaction is rolled back automatically on the next run. `.debug = TRUE`
   reports progress per batch and per sensor.
 * Importing the Garmin sensors is now memory-safe and much faster. The nested
   arrays of a `garminalllogsdata` entry (which can hold tens of thousands of
@@ -68,7 +68,7 @@
   manually via the new `deduplicate_db()` function.
 * Files are processed oldest to newest based on the timestamp in the file
   name, so the data is stored roughly chronologically.
-* `read_mpath_sense(debug = TRUE)` now reports what it is currently doing
+* `read_mpath_sense(.debug = TRUE)` now reports what it is currently doing
   before a step starts, in addition to the completion message with timing.
 * Dropped the sensors that no longer occur in m-Path Sense data (AirQuality,
   Calendar, Geofence, Gyroscope, InstalledApps, Keyboard, Mobility, Noise,

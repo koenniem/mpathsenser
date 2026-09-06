@@ -11,7 +11,7 @@ read_mpath_sense(
   batch_size = 1000,
   recursive = TRUE,
   .progress = TRUE,
-  debug = FALSE
+  .debug = FALSE
 )
 }
 \arguments{
@@ -30,7 +30,7 @@ batches import faster but use more memory.}
 
 \item{.progress}{Whether to display a progress bar.}
 
-\item{debug}{Whether suppressed warnings and errors should be shown for
+\item{.debug}{Whether suppressed warnings and errors should be shown for
 debugging purposes. When \code{TRUE}, a message is shown for every staged batch
 and for every sensor that is ingested.}
 }

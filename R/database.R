@@ -808,7 +808,7 @@ optimise_db <- function(db, sensors = NULL, .progress = TRUE) {
 #' @param sensors A character vector of one or multiple sensors. Use
 #'   `sensors = NULL` for all sensors. See \link[mpathsenser]{sensors} for a
 #'   list of all available sensors.
-#' @param debug Whether to print a message per sensor table.
+#' @param .debug Whether to print a message per sensor table.
 #'
 #' @returns A named integer vector with the number of duplicate rows removed
 #'   per sensor.
@@ -828,17 +828,17 @@ optimise_db <- function(db, sensors = NULL, .progress = TRUE) {
 #' # Remember to close the connection
 #' close_db(db)
 #' }
-deduplicate_db <- function(db, sensors = NULL, debug = FALSE) {
+deduplicate_db <- function(db, sensors = NULL, .debug = FALSE) {
   check_db(db)
   check_sensors(sensors, allow_null = TRUE)
-  check_arg(debug, "logical", n = 1)
+  check_arg(.debug, "logical", n = 1)
 
   if (is.null(sensors)) {
     sensors <- mpathsenser::sensors
   }
   sensors <- .physical_sensor(sensors)
 
-  .read_dedup(db, sensors, debug = debug)
+  .read_dedup(db, sensors, .debug = .debug)
 }
 
 ### ----------- Getters ---------------

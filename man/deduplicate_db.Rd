@@ -4,7 +4,7 @@
 \alias{deduplicate_db}
 \title{Deduplicate measurements in a database}
 \usage{
-deduplicate_db(db, sensors = NULL, debug = FALSE)
+deduplicate_db(db, sensors = NULL, .debug = FALSE)
 }
 \arguments{
 \item{db}{A database connection, as created by \code{\link[=create_db]{create_db()}}.}
@@ -13,7 +13,7 @@ deduplicate_db(db, sensors = NULL, debug = FALSE)
 \code{sensors = NULL} for all sensors. See \link[mpathsenser]{sensors} for a
 list of all available sensors.}
 
-\item{debug}{Whether to print a message per sensor table.}
+\item{.debug}{Whether to print a message per sensor table.}
 }
 \value{
 A named integer vector with the number of duplicate rows removed

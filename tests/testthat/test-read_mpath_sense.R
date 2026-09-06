@@ -934,7 +934,7 @@ test_that("debug mode reports progress per file and per sensor", {
   db <- create_db(NULL, ":memory:")
 
   expect_output(
-    read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE, debug = TRUE),
+    read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE, .debug = TRUE),
     "Ingested 1 row into Pedometer"
   )
 

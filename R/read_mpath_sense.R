@@ -63,7 +63,7 @@
 #'   batches import faster but use more memory.
 #' @param recursive Should the listing recurse into directories?
 #' @param .progress Whether to display a progress bar.
-#' @param debug Whether suppressed warnings and errors should be shown for
+#' @param .debug Whether suppressed warnings and errors should be shown for
 #'   debugging purposes. When `TRUE`, a message is shown for every staged batch
 #'   and for every sensor that is ingested.
 #'
@@ -85,7 +85,7 @@ read_mpath_sense <- function(
   batch_size = 1000,
   recursive = TRUE,
   .progress = TRUE,
-  debug = FALSE
+  .debug = FALSE
 ) {
   # Check arguments
   check_arg(path, type = "character", n = 1)
@@ -94,7 +94,7 @@ read_mpath_sense <- function(
   check_arg(batch_size, "integerish", n = 1)
   check_arg(recursive, "logical", n = 1)
   check_arg(.progress, "logical", n = 1)
-  check_arg(debug, "logical", n = 1)
+  check_arg(.debug, "logical", n = 1)
 
   # Roll back any unfinished transaction (e.g. left behind by an interrupted
   # run), so that this import can proceed.
@@ -131,7 +131,7 @@ read_mpath_sense <- function(
     ))
   }
 
-  .read_debug(debug, "Found {length(files)} file{?s} to process.")
+  .read_debug(.debug, "Found {length(files)} file{?s} to process.")
 
   # Register meta data of the file to track provenance
   full_paths <- normalizePath(file.path(path, files), mustWork = FALSE)
@@ -159,7 +159,7 @@ read_mpath_sense <- function(
 
   # Keep only files that were not yet (successfully) imported
   .read_debug_time(
-    debug,
+    .debug,
     "Checking for already imported files",
     "Found {length(files) - nrow(file_meta)} duplicate file{?s}. Continuing with {nrow(file_meta)} file{?s}.",
     file_meta <- .read_filter_new_files(db, file_meta)
@@ -192,7 +192,7 @@ read_mpath_sense <- function(
   active_sensors <- character(0) # sensors for which data was actually found
 
   for (batch_idx in seq_along(batches)) {
-    if (debug) {
+    if (.debug) {
       len_batches <- length(batches)
       cli::cli_rule(
         left = "Starting work on {.field batch {batch_idx}} out of {len_batches}."
@@ -200,7 +200,7 @@ read_mpath_sense <- function(
     }
 
     batch_files <- file_meta[batches[[batch_idx]], , drop = FALSE]
-    res <- .read_mpath_sense_batch(db, batch_files, target_sensors, debug)
+    res <- .read_mpath_sense_batch(db, batch_files, target_sensors, .debug)
 
     run_file_ids <- c(run_file_ids, res$file_ids)
     skipped_files <- c(skipped_files, res$skipped)
@@ -227,11 +227,11 @@ read_mpath_sense <- function(
   # deduplicate_db() to also clean up duplicates left behind by interrupted
   # imports. Sensors without candidate groups cost a single grouped scan.
   if (length(run_file_ids) > 0) {
-    .read_dedup(db, active_sensors, debug = debug, file_ids = run_file_ids)
+    .read_dedup(db, active_sensors, .debug = .debug, file_ids = run_file_ids)
 
     # Optimize the database before adding timezones
     .read_debug_time(
-      debug,
+      .debug,
       msg = "Optimizing the database...",
       msg_done = "Database optimized.",
       optimize_db(db, sensors = active_sensors, .progress = FALSE)
@@ -247,7 +247,7 @@ read_mpath_sense <- function(
     has_timezones <- has_timezones$n > 0
     if (has_timezones) {
       .read_debug_time(
-        debug,
+        .debug,
         msg = "Adding timezones to measurements...",
         msg_done = "Added timezones to database.",
         add_timezones_to_db(db, .progress = FALSE)
@@ -317,14 +317,14 @@ read_mpath_sense <- function(
 # Process a batch of files within a single transaction. When the batch fails,
 # each file of the batch is retried individually so that only the files that
 # also fail on their own are reported as unprocessed.
-.read_mpath_sense_batch <- function(db, batch_meta, target_sensors, debug) {
+.read_mpath_sense_batch <- function(db, batch_meta, target_sensors, .debug) {
   res <- tryCatch(
     .read_db_transaction(
       db,
-      .read_mpath_sense_loop(db, batch_meta, target_sensors, debug)
+      .read_mpath_sense_loop(db, batch_meta, target_sensors, .debug)
     ),
     error = function(e) {
-      .read_debug(debug, conditionMessage(e))
+      .read_debug(.debug, conditionMessage(e))
       NULL
     }
   )
@@ -349,11 +349,11 @@ read_mpath_sense <- function(
           db,
           batch_meta[i, , drop = FALSE],
           target_sensors,
-          debug
+          .debug
         )
       ),
       error = function(e) {
-        .read_debug(debug, conditionMessage(e))
+        .read_debug(.debug, conditionMessage(e))
         NULL
       }
     )
@@ -380,7 +380,7 @@ read_mpath_sense <- function(
 # - unknown_types: data.frame of payload types not handled by any parser
 # - unknown_versions: senseVersion values not found in the registry
 # - active_sensors: sensors for which data was found in the batch
-.read_mpath_sense_loop <- function(db, batch_meta, target_sensors, debug) {
+.read_mpath_sense_loop <- function(db, batch_meta, target_sensors, .debug) {
   # Clean up temporary tables, also when an error occurs outside of a
   # transaction (e.g. a failed batch that was rolled back).
   on.exit(
@@ -423,7 +423,7 @@ read_mpath_sense <- function(
     )
   }
   staged <- .read_debug_time(
-    debug,
+    .debug,
     "Staging {length(batch_paths)} file{?s}",
     "Staging {length(batch_paths)} file{?s}.",
     tryCatch(
@@ -454,7 +454,7 @@ read_mpath_sense <- function(
   # logs) are not parsed at this stage; the mpathinfo fields themselves are
   # only parsed for the matching rows.
   .read_debug_time(
-    debug,
+    .debug,
     "Extracting mpathinfo metadata",
     "Extracting mpathinfo metadata.",
     {
@@ -528,7 +528,7 @@ read_mpath_sense <- function(
   # ProcessedFiles table for every batch, which made registration grow
   # linearly with the database size; a plain INSERT appends at constant cost.
   .read_debug_time(
-    debug,
+    .debug,
     "Registering Study, Participant, and ProcessedFiles",
     "Registering Study, Participant, and ProcessedFiles.",
     {
@@ -578,7 +578,7 @@ read_mpath_sense <- function(
   # Only run the ingest functions of sensors whose payload type occurs in the
   # staged data; the other queries would scan the staging table for nothing.
   .read_debug_time(
-    debug,
+    .debug,
     "Ingesting sensor data",
     "Ingesting sensor data.",
     {
@@ -600,7 +600,7 @@ read_mpath_sense <- function(
     for (sensor_name in active) {
       sql <- registry[[sensor_name]]$fun(v)
       .read_debug_time(
-        debug,
+        .debug,
         "Ingesting data for {sensor_name}",
         "Ingested {n_rows} row{?s} into {sensor_name}.",
         n_rows <- .read_ingest(db, sql)

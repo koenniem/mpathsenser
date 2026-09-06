@@ -1,13 +1,13 @@
 # Internal helpers shared by the read_mpath_sense() pipeline.
 
-# Print a message when debug = TRUE. The glue expressions in the message are
+# Print a message when .debug = TRUE. The glue expressions in the message are
 # evaluated in the calling environment, so callers can refer to their own
 # variables. The message is printed immediately: cli_progress_step renders
 # its "done" state lazily at the next progress event, which under a tight
 # loop can emit stale or duplicated lines (e.g. the last sensor of a batch
 # printed twice, with the previous sensor's message text).
-.read_debug <- function(debug, ..., .envir = parent.frame()) {
-  if (debug) {
+.read_debug <- function(.debug, ..., .envir = parent.frame()) {
+  if (.debug) {
     # The message is diagnostic output only: a message that fails to render
     # (e.g. unresolvable glue) must never take down the import, so any error
     # is swallowed here.
@@ -16,7 +16,7 @@
   invisible(NULL)
 }
 
-# Run code and, when debug = TRUE, report the message together with the time
+# Run code and, when .debug = TRUE, report the message together with the time
 # the code took. The code is evaluated in the calling environment, so
 # assignments it makes are visible to the caller. The in-progress message is
 # shown before the code runs and replaced in place by the done message (which
@@ -27,8 +27,8 @@
 # in a different environment), so the messages are evaluated with
 # cli::format_inline in the calling environment and written directly, with a
 # carriage return replacing the in-progress line.
-.read_debug_time <- function(debug, msg, msg_done, code, .envir = parent.frame()) {
-  if (isFALSE(debug)) {
+.read_debug_time <- function(.debug, msg, msg_done, code, .envir = parent.frame()) {
+  if (isFALSE(.debug)) {
     return(eval(substitute(code), envir = .envir))
   }
 
@@ -399,7 +399,7 @@
 # the table size. Each sensor is deduplicated in its own transaction, so an
 # interrupted run rolls back cleanly instead of leaving a sensor half
 # deduplicated.
-.read_dedup <- function(db, sensors, debug = FALSE, file_ids = NULL) {
+.read_dedup <- function(db, sensors, .debug = FALSE, file_ids = NULL) {
   removed <- integer(0)
   for (sensor in sensors) {
     keys <- read_dedup_keys[[sensor]] %||% c("participant_id", "time")
@@ -429,7 +429,7 @@
     cand_table <- if (is.null(file_ids)) "dedup_touched" else "dedup_cand"
 
     .read_debug_time(
-      debug,
+      .debug,
       "Deduplicating {sensor}",
       "Deduplicated {sensor}: {n_removed} duplicate row{?s} removed.",
       n_removed <- .read_db_transaction(db, {
