@@ -2,12 +2,19 @@ test_that("create_db creates local views for every physical sensor table", {
   db <- create_db(NULL, ":memory:")
   on.exit(close_db(db), add = TRUE)
 
-  physical <- DBI::dbGetQuery(
+  # Physical sensor tables live in the raw schema; main holds the metadata
+  # tables, the main.<sensor> views, and the _local/_with_local views.
+  raw_tables <- DBI::dbGetQuery(
     db,
     "SELECT table_name
      FROM information_schema.tables
-     WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
-       AND table_name NOT IN ('Study', 'Participant', 'ProcessedFiles', 'Meta')"
+     WHERE table_schema = 'raw' AND table_type = 'BASE TABLE'"
+  )$table_name
+  main_tables <- DBI::dbGetQuery(
+    db,
+    "SELECT table_name
+     FROM information_schema.tables
+     WHERE table_schema = 'main' AND table_type = 'BASE TABLE'"
   )$table_name
   views <- DBI::dbGetQuery(
     db,
@@ -16,20 +23,41 @@ test_that("create_db creates local views for every physical sensor table", {
      WHERE table_schema = 'main' AND table_type = 'VIEW'"
   )$table_name
 
+  expect_setequal(main_tables, c("Study", "Participant", "ProcessedFiles", "Meta"))
+  expect_setequal(raw_tables, mpathsenser::sensors)
   expect_setequal(
     views,
-    c(paste0(physical, "_local"), paste0(physical, "_with_local"))
+    c(sensors, paste0(raw_tables, "_local"), paste0(raw_tables, "_with_local"))
   )
+
+  # None of the main views (base, _local, or _with_local) may expose the
+  # internal provenance columns; they only live in the raw physical tables.
+  leaks <- DBI::dbGetQuery(
+    db,
+    "SELECT DISTINCT table_name
+     FROM information_schema.columns
+     WHERE table_schema = 'main'
+       AND column_name IN ('source_file_id', 'source_row_id', 'source_measurement_id')"
+  )$table_name
+  expect_length(leaks, 0)
+
+  raw_cols <- DBI::dbGetQuery(
+    db,
+    "SELECT column_name FROM information_schema.columns
+     WHERE table_schema = 'raw' AND table_name = 'Accelerometer'
+     ORDER BY ordinal_position"
+  )$column_name
+  expect_true(all(c("source_file_id", "source_row_id", "source_measurement_id") %in% raw_cols))
 
   DBI::dbExecute(
     db,
-    "INSERT INTO Timezone (participant_id, time, timezone, source_file_id)
-     VALUES ('1', '2025-01-01 00:00:00+00', 'Europe/Brussels', 1)"
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id)
+     VALUES ('1', '2025-01-01 00:00:00+00', 'Europe/Brussels', 1, 1, 1)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO Accelerometer (participant_id, time, source_file_id)
-     VALUES ('1', '2025-01-15 11:00:00+00', 1)"
+    "INSERT INTO raw.Accelerometer (participant_id, time, source_file_id, source_row_id, source_measurement_id)
+     VALUES ('1', '2025-01-15 11:00:00+00', 1, 1, 1)"
   )
   add_timezones_to_db(db, sensors = "Accelerometer", .progress = FALSE)
   result <- dplyr::tbl(db, "Accelerometer") |>
@@ -67,8 +95,11 @@ test_that("legacy local wall-clock timestamps are not shifted by the views", {
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO AppUsage (participant_id, time, period_start, timezone, source_file_id)
-     VALUES ('1', '2025-01-15 11:00:00+00', '2025-01-15 12:00:00+00', 'Europe/Brussels', 1)"
+    "INSERT INTO raw.AppUsage (
+       participant_id, time, period_start, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     )
+     VALUES ('1', '2025-01-15 11:00:00+00', '2025-01-15 12:00:00+00', 'Europe/Brussels', 1, 1, 1)"
   )
 
   # time shifts to local (11:00 UTC -> 12:00 Brussels); period_start keeps its

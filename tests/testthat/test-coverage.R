@@ -101,12 +101,14 @@ test_that("coverage returns correct values for relative and absolute", {
       tz = "UTC"
     ),
     timezone = NA_character_,
-    source_file_id = 1
+    source_file_id = 1,
+    source_row_id = seq_len(8),
+    source_measurement_id = 1
   )
-  DBI::dbExecute(db, "DELETE FROM Accelerometer")
+  DBI::dbExecute(db, "DELETE FROM raw.Accelerometer")
   DBI::dbWriteTable(
     db,
-    DBI::Id(schema = "main", table = "Accelerometer"),
+    DBI::Id(schema = "raw", table = "Accelerometer"),
     data,
     append = TRUE
   )
@@ -167,12 +169,14 @@ test_that("coverage filters Heartbeat on Secondary Phone ignores other devices",
     ),
     device_role_name = c("Primary Phone", "Secondary Phone", "Primary Watch"),
     timezone = NA_character_,
-    source_file_id = 1
+    source_file_id = 1,
+    source_row_id = seq_len(3),
+    source_measurement_id = 1
   )
-  DBI::dbExecute(db, "DELETE FROM Heartbeat")
+  DBI::dbExecute(db, "DELETE FROM raw.Heartbeat")
   DBI::dbWriteTable(
     db,
-    DBI::Id(schema = "main", table = "Heartbeat"),
+    DBI::Id(schema = "raw", table = "Heartbeat"),
     data,
     append = TRUE
   )

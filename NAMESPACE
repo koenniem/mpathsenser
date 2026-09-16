@@ -36,40 +36,50 @@ export(sensors)
 export(test_jsons)
 export(to_local_time)
 export(unzip_data)
-importFrom(DBI,dbConnect)
-importFrom(DBI,dbDisconnect)
-importFrom(DBI,dbExecute)
-importFrom(DBI,dbIsValid)
-importFrom(cli,cli_abort)
-importFrom(cli,cli_inform)
-importFrom(cli,cli_warn)
+importFrom(DBI,
+  dbConnect,
+  dbDisconnect,
+  dbExecute,
+  dbIsValid
+)
+importFrom(cli,
+  cli_abort,
+  cli_inform,
+  cli_warn
+)
 importFrom(dbplyr,window_order)
-importFrom(dplyr,across)
-importFrom(dplyr,all_of)
-importFrom(dplyr,any_of)
-importFrom(dplyr,arrange)
-importFrom(dplyr,bind_rows)
-importFrom(dplyr,collect)
-importFrom(dplyr,distinct)
-importFrom(dplyr,filter)
-importFrom(dplyr,group_by)
-importFrom(dplyr,lag)
-importFrom(dplyr,lead)
-importFrom(dplyr,mutate)
-importFrom(dplyr,n)
-importFrom(dplyr,pull)
-importFrom(dplyr,select)
-importFrom(dplyr,slice)
-importFrom(dplyr,summarise)
-importFrom(dplyr,ungroup)
+importFrom(dplyr,
+  across,
+  all_of,
+  any_of,
+  arrange,
+  bind_rows,
+  collect,
+  distinct,
+  filter,
+  group_by,
+  lag,
+  lead,
+  mutate,
+  n,
+  pull,
+  select,
+  slice,
+  summarise,
+  ungroup
+)
 importFrom(lifecycle,deprecated)
 importFrom(purrr,map)
-importFrom(rlang,"%||%")
-importFrom(rlang,":=")
-importFrom(rlang,.data)
-importFrom(rlang,.env)
+importFrom(rlang,
+  "%||%",
+  ":=",
+  .data,
+  .env
+)
 importFrom(tibble,tibble)
-importFrom(tidyr,complete)
-importFrom(tidyr,drop_na)
-importFrom(tidyr,nest)
-importFrom(tidyr,unnest)
+importFrom(tidyr,
+  complete,
+  drop_na,
+  nest,
+  unnest
+)

@@ -37,6 +37,7 @@
 #' @importFrom purrr map
 #' @importFrom rlang .env
 #' @importFrom rlang :=
+#' @importFrom rlang %||%
 #' @importFrom tibble tibble
 #' @importFrom tidyr complete
 #' @importFrom tidyr drop_na

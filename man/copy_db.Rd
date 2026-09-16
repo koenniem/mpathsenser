@@ -32,8 +32,10 @@ db2 <- create_db(tempdir(), "mydb2.db")
 DBI::dbExecute(db1, "INSERT INTO Study VALUES ('study_1', 'default')")
 DBI::dbExecute(db1, "INSERT INTO Participant VALUES (1, 'study_1')")
 DBI::dbExecute(db1, "INSERT INTO ProcessedFiles(file_name, participant_id) VALUES ('f1', 1)")
-DBI::dbExecute(db1, "INSERT INTO Activity(participant_id, time, confidence, type, source_file_id) VALUES(
-               1, '2024-01-01 08:00:00', 100, 'WALKING', 1)")
+# Sensor data lives in the raw schema (the main.Activity view is read-only)
+DBI::dbExecute(db1, "INSERT INTO raw.Activity(
+  participant_id, time, confidence, type, source_file_id, source_row_id, source_measurement_id
+) VALUES (1, '2024-01-01 08:00:00', 100, 'WALKING', 1, 1, 1)")
 
 # Then copy the first database to the second database
 db2 <- copy_db(db1, db2)

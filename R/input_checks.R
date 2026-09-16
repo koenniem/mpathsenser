@@ -56,13 +56,26 @@ check_db <- function(
     cli_abort(msg, arg = arg, call = call)
   }
 
-  # Check that all sensors are present in the database. If not, the database is corrupt.
+  # Check that all sensors are present in the database. Physical sensor
+  # tables live in the raw schema; the main schema holds a read-only view per
+  # sensor. Both layers are required: a missing raw table means the data is
+  # gone, and a missing view means queries through main.<sensor> fail.
   if (isTRUE(getOption("mpathsenser.check_missing_sensors", TRUE))) {
-    tables <- DBI::dbGetQuery(
+    raw_tables <- DBI::dbGetQuery(
       db,
-      "SELECT table_name FROM duckdb_tables() WHERE schema_name = 'main'"
+      "SELECT table_name FROM information_schema.tables
+       WHERE table_schema = 'raw' AND table_type = 'BASE TABLE'
+         AND NOT ends_with(table_name, '_optimize_tmp')"
     )$table_name
-    missing_sensors <- sensors[!(tolower(sensors) %in% tolower(tables))]
+    main_tables <- DBI::dbGetQuery(
+      db,
+      "SELECT table_name FROM information_schema.tables
+       WHERE table_schema = 'main' AND table_type IN ('BASE TABLE', 'VIEW')"
+    )$table_name
+    missing_sensors <- sensors[
+      !(tolower(sensors) %in% tolower(raw_tables)) |
+        !(tolower(sensors) %in% tolower(main_tables))
+    ]
     if (length(missing_sensors) > 0) {
       msg <- c(
         "The following sensor{?s} {?is/are} missing from the database: {.val {missing_sensors}}.",

@@ -33,10 +33,21 @@
   }
 
   t0 <- proc.time()
-  tryCatch(
-    cat(cli::format_inline(paste0("{cli::symbol$info} ", msg, "..."), .envir = .envir)),
+  # Append an ellipsis unless the caller already provided one.
+  progress <- tryCatch(
+    cli::format_inline(
+      paste0(
+        "{cli::symbol$info} ",
+        msg,
+        if (grepl("\\.\\.\\.$", msg)) "" else "..."
+      ),
+      .envir = .envir
+    ),
     error = function(e) NULL
   )
+  if (!is.null(progress)) {
+    cat(progress)
+  }
   out <- eval(substitute(code), envir = .envir)
   ms <- round((proc.time() - t0)[["elapsed"]] * 1000)
   done <- tryCatch(
@@ -52,7 +63,13 @@
     # message must never take down the import.
     cat("\n")
   } else {
-    cat("\r", done, "\n", sep = "")
+    # On a terminal the carriage return replaces the in-progress line with
+    # the done line. Pad the done line so it never leaves a visible tail of
+    # the in-progress line behind when it is shorter (the [Nms] timing makes
+    # the done line shorter on fast steps). This also keeps captured logs
+    # clean when the capture resolves the carriage return.
+    pad <- if (is.null(progress)) 0L else max(0L, nchar(progress) - nchar(done))
+    cat("\r", done, strrep(" ", pad), "\n", sep = "")
   }
   out
 }
@@ -89,7 +106,16 @@
 
   # Drop intra-run duplicates (the same name, size, and modification time in
   # the same run): the first occurrence is imported, later ones add nothing.
-  file_meta[!duplicated(key_new), , drop = FALSE]
+  file_meta <- file_meta[!duplicated(key_new), , drop = FALSE]
+
+  # Report whether the database held no processed files when this run started.
+  # read_mpath_sense() uses this to choose between a full-table dedup pass and
+  # the file-scoped pass: in a database that was empty before the run every
+  # duplicate key group necessarily involves a row of this run, so the two
+  # passes find exactly the same candidates and the full-table pass can skip
+  # the per-row flagging join against the run's file_ids.
+  attr(file_meta, "db_was_empty") <- nrow(processed) == 0
+  file_meta
 }
 
 # Register empty (0-byte) files as processed. Because empty files contain no
@@ -219,13 +245,19 @@
   paste0("[", paste0("'", escaped, "'", collapse = ", "), "]")
 }
 
-# SQL fragment that safely unnests a JSON array (or single value, or NULL)
-# into one row per element, tolerating missing keys. The array is transformed
+# SQL fragment that returns a typed list of STRUCTs for a JSON array (or
+# single value, or NULL), tolerating missing keys. The array is transformed
 # directly to a list of typed STRUCTs (schema), which uses far less memory than
 # keeping the elements as JSON values: DuckDB's parsed JSON representation
 # costs roughly 1.5-2 KB per element, which makes ingesting large arrays (e.g.
 # Garmin logs with tens of thousands of values per entry) run out of memory.
 # With a typed schema the transform costs only tens of bytes per element.
+#
+# Ingest statements wrap this expression in a lateral (SELECT <expr> AS l)
+# and expand it with UNNEST(j.l) WITH ORDINALITY: the ordinality column is the
+# true 1-based array position (verified stable at threads = 16), whereas a
+# ROW_NUMBER() over UNNEST emission order is scrambled under parallel scans
+# and range()+subscript enumeration is ~4x slower.
 .read_json_array_typed <- function(expr, schema, key = NULL) {
   obj_schema <- gsub("^\\[|\\]$", "", schema)
   if (is.null(key)) {
@@ -359,7 +391,9 @@
 # Deduplicate the sensor tables: per measurement key (participant_id, time,
 # plus table-specific extras) only one row is kept — the most recent one. "Most
 # recent" is resolved as the row of the newest file (highest source_file_id),
-# and within that file the last recorded row (highest rowid). Every sensor
+# and within that file the row latest in source order (highest source_row_id,
+# then highest source_measurement_id — the 1-based ordinals captured at import
+# time for the JSON entry and the nested collection element). Every sensor
 # therefore uses the same last-wins tie-break, which is an upsert
 # (INSERT OR REPLACE) semantics: a later measurement overwrites an earlier one
 # regardless of whether the duplicate originates from the same file or a
@@ -393,36 +427,61 @@
 # size. Restricting genuinely duplicated groups keeps the work proportional to
 # the number of real duplicates; a bulk import of largely distinct data (the
 # common no-reimport case) short-circuits cheaply on zero candidates. The
-# duplicated groups involving a new row are found by a grouped count over a
-# NULL-safe semi-join of the whole sensor table against the new rows' keys,
-# so the search itself still scales with the amount of new data rather than
-# the table size. Each sensor is deduplicated in its own transaction, so an
-# interrupted run rolls back cleanly instead of leaving a sensor half
-# deduplicated.
+# duplicated groups involving a new row are found by a single grouped scan of
+# the sensor table that flags new rows through the small dedup_files table, so
+# discovery costs one pass however many rows were imported. Each sensor is
+# deduplicated in its own transaction, so an interrupted run rolls back cleanly
+# instead of leaving a sensor half deduplicated.
 .read_dedup <- function(db, sensors, .debug = FALSE, file_ids = NULL) {
   removed <- integer(0)
+  # Scoped passes resolve the new files through a small temp table rather than
+  # an IN (...) literal list. With tens of thousands of imported files the
+  # literal list made every per-row membership test a giant OR-chain, turning
+  # each full scan into a CPU-bound crawl; the temp table lets DuckDB
+  # hash-join (semi-join) the membership test instead.
+  if (!is.null(file_ids)) {
+    DBI::dbWriteTable(
+      db,
+      "dedup_files",
+      data.frame(file_id = unique(file_ids)),
+      temporary = TRUE,
+      overwrite = TRUE
+    )
+    on.exit(
+      try(DBI::dbExecute(db, "DROP TABLE IF EXISTS dedup_files"), silent = TRUE),
+      add = TRUE
+    )
+  }
   for (sensor in sensors) {
     keys <- read_dedup_keys[[sensor]] %||% c("participant_id", "time")
     key_list <- paste0(keys, collapse = ", ")
     key_list_t <- paste0("t.", keys, collapse = ", ")
+    sensor_raw <- paste0("raw.", sensor)
 
-    # Join conditions between the candidate table d and the sensor table.
-    join_t <- paste0(
-      sprintf("d.%s IS NOT DISTINCT FROM t.%s", keys, keys),
-      collapse = " AND "
+    # Base key columns are NOT NULL in every sensor table and can be hashed;
+    # the table-specific extras (package_name, uuid, region, instance,
+    # device_type, bluetooth_device_id) are nullable. The candidate joins use
+    # equality on the base keys and apply the extras as residual
+    # IS NOT DISTINCT FROM filters, which lets DuckDB hash-join the candidate
+    # discovery instead of falling back to a blockwise nested-loop join over
+    # the whole table (which made the file_ids-restricted pass slow).
+    base_keys <- intersect(c("participant_id", "time"), keys)
+    extra_keys <- setdiff(keys, base_keys)
+    join_parts <- c(
+      if (length(base_keys) > 0) {
+        paste0(sprintf("d.%s = t.%s", base_keys, base_keys), collapse = " AND ")
+      },
+      if (length(extra_keys) > 0) {
+        paste0(
+          sprintf("d.%s IS NOT DISTINCT FROM t.%s", extra_keys, extra_keys),
+          collapse = " AND "
+        )
+      }
     )
-    # Candidate finding for the file_ids branch: join a set of the newly
-    # imported keys (alias nk) against the sensor table (alias b). The base
-    # key columns are NOT NULL so equality is safe there, but the table-specific
-    # extras (e.g. package_name, uuid) are nullable, so the match must be
-    # NULL-safe (IS NOT DISTINCT FROM) to keep the same key semantics as the
-    # window/delete joins below.
+    join_t <- paste(join_parts, collapse = " AND ")
     b_key_list <- paste0("b.", keys, collapse = ", ")
     b_grp <- paste0("b.", keys, collapse = ", ")
-    join_nk <- paste0(
-      sprintf("nk.%s IS NOT DISTINCT FROM b.%s", keys, keys),
-      collapse = " AND "
-    )
+
     # The candidate table holds the key groups worth examining: the duplicated
     # groups of the whole table (file_ids = NULL) or the duplicated key groups
     # involving a row newly imported in this run (file_ids given).
@@ -441,43 +500,30 @@
               "CREATE OR REPLACE TEMP TABLE dedup_touched AS
                SELECT %s FROM %s GROUP BY %s HAVING COUNT(*) > 1",
               key_list,
-              sensor,
+              sensor_raw,
               key_list
             )
           )
           n_dupes <- DBI::dbGetQuery(db, "SELECT COUNT(*) AS n FROM dedup_touched")[[1]]
         } else {
-          # Key groups of the rows just inserted in this run — but only those
+          # Key groups of the rows just inserted in this run -- but only those
           # that are actually duplicated somewhere in the table (which includes
-          # duplicates against pre-existing rows). Doing SELECT DISTINCT on the
-          # new rows alone would make the candidate set as large as the number
-          # of newly imported rows even when there are no duplicates at all,
-          # and the window/delete passes below scale with that candidate size.
-          # A bulk import of largely distinct data would therefore pay the full
-          # window+delete cost over millions of non-duplicate keys. Restricting
-          # candidates to genuinely duplicated groups keeps the work proportional
-          # to the number of real duplicates, for zero candidates it short-circuits
-          # cheaply (the common no-reimport case), and the duplicated groups are
-          # found from the new source_file_ids only.
-          DBI::dbExecute(
-            db,
-            sprintf(
-              "CREATE OR REPLACE TEMP TABLE dedup_newkeys AS
-               SELECT DISTINCT %s FROM %s WHERE source_file_id IN (%s)",
-              key_list,
-              sensor,
-              paste0(file_ids, collapse = ", ")
-            )
-          )
+          # duplicates against pre-existing rows). This is found with a single
+          # grouped scan of the sensor table: the LEFT JOIN against the small
+          # dedup_files table flags newly imported rows, and COUNT_IF keeps
+          # only groups that contain at least one of them. Discovery therefore
+          # costs one pass no matter how many rows were imported, and it never
+          # materializes the (potentially millions of) distinct new keys: the
+          # previous DISTINCT-plus-join discovery did both, which made the
+          # scoped pass slower than a full-table GROUP BY on bulk imports.
           DBI::dbExecute(
             db,
             sprintf(
               "CREATE OR REPLACE TEMP TABLE dedup_cand AS
-               SELECT %s FROM %s b JOIN dedup_newkeys nk ON %s
-               GROUP BY %s HAVING COUNT(*) > 1",
+               SELECT %s FROM %s b LEFT JOIN dedup_files f ON f.file_id = b.source_file_id
+               GROUP BY %s HAVING COUNT(*) > 1 AND COUNT_IF(f.file_id IS NOT NULL) > 0",
               b_key_list,
-              sensor,
-              join_nk,
+              sensor_raw,
               b_grp
             )
           )
@@ -486,27 +532,35 @@
 
         # No candidate groups in this sensor: nothing to do.
         if (n_dupes == 0L) {
-          # file_ids branch dedup_newkeys was created as well, so drop both.
-          DBI::dbExecute(db, "DROP TABLE IF EXISTS dedup_newkeys")
           DBI::dbExecute(db, sprintf("DROP TABLE IF EXISTS %s", cand_table))
           0L
         } else {
           # The winner per candidate key group: the row of the newest file, and
-          # within that file the last recorded row (highest rowid). This is the
-          # same last-wins/upsert rule for every sensor. Join to the candidate
-          # table so only candidate key groups are considered.
+          # within that file the last row in source order (highest
+          # source_file_id, then source_row_id, then source_measurement_id).
+          # This reproduces the historical last-wins/upsert semantics without
+          # relying on DuckDB's internal rowid (which does not reflect source
+          # order under parallel scans). The final rowid term is an inert
+          # tie-break for the (by-construction impossible) case of two rows
+          # with an identical provenance triple; it never decides between
+          # distinct triples. Join to the candidate table so only candidate
+          # key groups are considered.
           DBI::dbExecute(
             db,
             sprintf(
               "CREATE OR REPLACE TEMP TABLE dedup_keep AS
                SELECT rid FROM (
                  SELECT t.rowid AS rid,
-                        ROW_NUMBER() OVER (PARTITION BY %s ORDER BY t.source_file_id DESC, t.rowid DESC) AS rn
+                        ROW_NUMBER() OVER (PARTITION BY %s
+                          ORDER BY t.source_file_id DESC,
+                                   t.source_row_id DESC,
+                                   t.source_measurement_id DESC,
+                                   t.rowid DESC) AS rn
                  FROM %s t
                  JOIN %s d ON %s
                ) WHERE rn = 1",
               key_list_t,
-              sensor,
+              sensor_raw,
               cand_table,
               join_t
             )
@@ -521,13 +575,12 @@
               "DELETE FROM %s AS t USING %s d
                WHERE %s
                  AND t.rowid NOT IN (SELECT rid FROM dedup_keep)",
-              sensor,
+              sensor_raw,
               cand_table,
               join_t
             )
           )
           DBI::dbExecute(db, "DROP TABLE IF EXISTS dedup_keep")
-          DBI::dbExecute(db, "DROP TABLE IF EXISTS dedup_newkeys")
           DBI::dbExecute(db, sprintf("DROP TABLE IF EXISTS %s", cand_table))
           n_removed
         }
@@ -541,7 +594,8 @@
 
 # Deduplication keys per sensor table. The default is (participant_id, time).
 # The tie-break within a duplicated key group is always last-wins (upsert):
-# keep the row of the newest file, and within that file the last recorded row.
+# keep the row of the newest file, and within that file the row latest in
+# source order (source_row_id, then source_measurement_id).
 read_dedup_keys <- list(
   AppUsage = c("participant_id", "time", "package_name"),
   Bluetooth = c("participant_id", "time", "bluetooth_device_id"),

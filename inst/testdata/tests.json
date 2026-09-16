@@ -1,5 +1,15 @@
 [
     {
+        "sensorStartTime": 1765889440388567,
+        "data": {
+            "__type": "dk.cachet.carp.mpathinfo",
+            "connectionId": 12345,
+            "accountCode": "abcd1",
+            "studyName": "DemoStudy",
+            "senseVersion": 5
+        }
+    },
+    {
         "sensorStartTime": 1765888652322187,
         "sensorEndTime": 1765888787319006,
         "data": {
@@ -530,16 +540,6 @@
             "__type": "dk.cachet.carp.freememory",
             "freePhysicalMemory": 459444220,
             "freeVirtualMemory": 3978772477
-        }
-    },
-    {
-        "sensorStartTime": 1765889440388567,
-        "data": {
-            "__type": "dk.cachet.carp.mpathinfo",
-            "connectionId": 12345,
-            "accountCode": "abcd1",
-            "studyName": "DemoStudy",
-            "senseVersion": 5
         }
     },
     {

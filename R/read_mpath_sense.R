@@ -134,7 +134,7 @@ read_mpath_sense <- function(
   .read_debug(.debug, "Found {length(files)} file{?s} to process.")
 
   # Register meta data of the file to track provenance
-  full_paths <- normalizePath(file.path(path, files), mustWork = FALSE)
+  full_paths <- file.path(path, files)
   file_info <- file.info(full_paths, extra_cols = FALSE)
   file_meta <- tibble::tibble(
     source_file = full_paths,
@@ -164,6 +164,10 @@ read_mpath_sense <- function(
     "Found {length(files) - nrow(file_meta)} duplicate file{?s}. Continuing with {nrow(file_meta)} file{?s}.",
     file_meta <- .read_filter_new_files(db, file_meta)
   )
+
+  # TRUE when the database held no processed files before this run. Used to
+  # choose between the full-table dedup pass and the file-scoped pass.
+  db_was_empty <- isTRUE(attr(file_meta, "db_was_empty"))
 
   if (nrow(file_meta) == 0) {
     cli_inform("No new files to process.")
@@ -218,16 +222,22 @@ read_mpath_sense <- function(
   # Deduplicate the sensor data. Because the sensor tables have no unique
   # constraints, duplicate measurements (e.g. the same file imported under a
   # different name) are removed afterwards, per measurement key, with the
-  # newest file winning. Only the key groups of the rows that this run just
-  # imported are examined (the rows we inserted, plus any existing rows that
-  # share a key with them); rows that were already in the database before this
-  # run were deduplicated when they were imported and are left untouched. This
-  # keeps the cost proportional to the amount of new data instead of the whole
-  # table size, which matters for small imports into large databases. Use
+  # newest file winning. When the database was empty before this run, every
+  # duplicate key group necessarily involves a row this run inserted, so the
+  # full-table pass (no file_ids) finds exactly the same candidates as the
+  # file-scoped pass while skipping the per-row flagging join against the run's
+  # file_ids; it also cleans up duplicate rows left behind by interrupted runs.
+  # Otherwise only the key groups of the rows this run just imported are
+  # examined (the rows we inserted, plus any existing rows that share a key
+  # with them); rows that were already in the database before this run were
+  # deduplicated when they were imported and are left untouched. This keeps the
+  # cost proportional to the amount of new data instead of the whole table
+  # size, which matters for small imports into large databases. Use
   # deduplicate_db() to also clean up duplicates left behind by interrupted
   # imports. Sensors without candidate groups cost a single grouped scan.
   if (length(run_file_ids) > 0) {
-    .read_dedup(db, active_sensors, .debug = .debug, file_ids = run_file_ids)
+    file_ids <- if (db_was_empty) NULL else run_file_ids
+    .read_dedup(db, active_sensors, .debug = .debug, file_ids = file_ids)
 
     # Optimize the database before adding timezones
     .read_debug_time(
@@ -250,7 +260,10 @@ read_mpath_sense <- function(
         .debug,
         msg = "Adding timezones to measurements...",
         msg_done = "Added timezones to database.",
-        add_timezones_to_db(db, .progress = FALSE)
+        # Only the sensors imported by this run can hold new NULL-timezone
+        # rows; other tables are already filled and their UPDATEs would scan
+        # for nothing.
+        add_timezones_to_db(db, sensors = active_sensors, .progress = FALSE)
       )
     }
   }
@@ -388,7 +401,8 @@ read_mpath_sense <- function(
       DBI::dbExecute(
         db,
         "DROP TABLE IF EXISTS raw_staging; DROP TABLE IF EXISTS mpathinfo_map;
-       DROP TABLE IF EXISTS file_metadata_map; DROP TABLE IF EXISTS file_id_map"
+       DROP TABLE IF EXISTS file_metadata_map; DROP TABLE IF EXISTS file_id_map;
+       DROP TABLE IF EXISTS garmin_parsed"
       ),
       silent = TRUE
     ),
@@ -407,6 +421,37 @@ read_mpath_sense <- function(
   # data->>'__type', and the data is kept as VARCHAR rather than JSON, because
   # parsing the JSON at staging time keeps staging memory bounded; typed
   # transformations are applied only by the sensor queries that need them.
+  #
+  # Each staged row carries source_row_id: the 1-based position of the JSON
+  # array element within its file (the order in which m-Path Sense wrote the
+  # entries). Entries are NOT sorted by sensorStartTime: start times are
+  # monotone within each sensor, but the file interleaves the sensors, so the
+  # times as a whole are not sorted (and equal-time entries from different
+  # sensors are common). Sorting by time would therefore reorder the entries
+  # and break the "which row was recorded later" semantics that deduplication
+  # relies on: within one sensor a later row has both a later time and a
+  # later file position, so the file position is the order that matters.
+  #
+  # DuckDB cannot expose the array position of read_json rows directly, and a
+  # ROW_NUMBER() window over the scan output is not reliable: a window over
+  # parallel scan chunks numbers rows by chunk-arrival order, which is
+  # scrambled for partitioned windows (verified at threads = 16). The staged
+  # table's rowid is assigned by the single writer in the order the CTAS
+  # receives the scan output, and read_json emits every file's rows in file
+  # order. Even though preserve_insertion_order = false lets the writer
+  # reorder the chunks (so files can occupy rowid bands in arbitrary order,
+  # and bands of a multi-chunk file can interleave with those of other
+  # files), the rows of any single file always keep their file order along
+  # rowid (verified across uneven multi-file batches and multi-chunk files at
+  # threads = 16). source_row_id is therefore derived from the physical rowid
+  # after staging: one window pass numbers the rows of each file by rowid
+  # (ROW_NUMBER), which is exact even when a file's band is not contiguous.
+  # This adds one window pass + one update over the staged rows. Note that
+  # deriving the ordinal from the rowid this way costs nothing extra at
+  # import time (a few ms per batch) compared with enabling
+  # preserve_insertion_order, which measurably slows the parallel staging
+  # scan itself; the ordering guarantee of the ordinal only ever relies on
+  # the per-file emission order above, never on chunk order.
   stage_query <- function(format) {
     paste0(
       "CREATE OR REPLACE TEMP TABLE raw_staging AS ",
@@ -438,6 +483,21 @@ read_mpath_sense <- function(
     # Fall back to auto-detection for files that are not JSON arrays
     DBI::dbExecute(db, stage_query("auto"))
   }
+  # Derive each row's 1-based position within its file from the physical
+  # rowid (see the comment above stage_query()). ROW_NUMBER by rowid within
+  # each file is exact regardless of chunk order or band contiguity: read_json
+  # emits every file's rows in file order, and the CTAS writer assigns rowids
+  # in emission order.
+  DBI::dbExecute(db, "ALTER TABLE raw_staging ADD COLUMN source_row_id BIGINT")
+  DBI::dbExecute(
+    db,
+    "UPDATE raw_staging s
+     SET source_row_id = w.rn
+     FROM (SELECT rowid AS rid,
+                  ROW_NUMBER() OVER (PARTITION BY source_file ORDER BY rowid) AS rn
+           FROM raw_staging) w
+     WHERE w.rid = s.rowid"
+  )
 
   # Unknown sensor types: collect for an aggregated warning at the end of the
   # import. Known but useless types (see ignored_sensor_types) are skipped
@@ -452,7 +512,9 @@ read_mpath_sense <- function(
   # Extract the mpathinfo entry of each file (one row per file). The type is
   # matched without parsing the JSON, so that large payloads (e.g. Garmin
   # logs) are not parsed at this stage; the mpathinfo fields themselves are
-  # only parsed for the matching rows.
+  # only parsed for the matching rows. m-Path Sense writes the mpathinfo
+  # entry first, but the selection is defensive: the first mpathinfo entry in
+  # file order (lowest source_row_id), not the one with the earliest time.
   .read_debug_time(
     .debug,
     "Extracting mpathinfo metadata",
@@ -468,7 +530,7 @@ read_mpath_sense <- function(
            TRY_CAST(data->>'senseVersion' AS INTEGER) AS sense_version
          FROM raw_staging
          WHERE regexp_extract(data, '\"__type\"\\s*:\\s*\"([^\"]+)\"', 1) = 'dk.cachet.carp.mpathinfo'
-         QUALIFY ROW_NUMBER() OVER (PARTITION BY source_file ORDER BY sensorStartTime) = 1"
+         QUALIFY ROW_NUMBER() OVER (PARTITION BY source_file ORDER BY source_row_id) = 1"
       )
       mpath <- DBI::dbGetQuery(
         db,
@@ -577,17 +639,43 @@ read_mpath_sense <- function(
 
   # Only run the ingest functions of sensors whose payload type occurs in the
   # staged data; the other queries would scan the staging table for nothing.
-  .read_debug_time(
-    .debug,
-    "Ingesting sensor data",
-    "Ingesting sensor data.",
-    {
-      registry_default <- sensor_registry[["default"]]
-      type_map <- vapply(registry_default, \(x) x[["type"]], character(1))
-      active <- intersect(target_sensors, names(type_map)[type_map %in% types$payload_type])
-    }
-  )
+  registry_default <- sensor_registry[["default"]]
+  type_map <- vapply(registry_default, \(x) x[["type"]], character(1))
+  active <- intersect(target_sensors, names(type_map)[type_map %in% types$payload_type])
 
+  # Count the staged rows per (payload_type, sense_version). A sensor's ingest
+  # for a version can only produce rows when the batch contains entries of its
+  # payload type in files of that version; when a batch mixes sense versions
+  # (e.g. v5 and v6 files), dispatching every active sensor for every version
+  # would run full JSON-transforming queries that match nothing (observed at
+  # ~0.3-0.8 s per zero-row Garmin call, ~30 s per mixed batch). The per-file
+  # sense_version comes from mpathinfo_map (one row per file).
+  staged_by_version <- DBI::dbGetQuery(
+    db,
+    "SELECT s.payload_type, m.sense_version, COUNT(*) AS n
+     FROM raw_staging s
+     JOIN mpathinfo_map m ON m.source_file = s.source_file
+     WHERE s.payload_type IS NOT NULL
+     GROUP BY s.payload_type, m.sense_version"
+  )
+  # Vectorised NA-safe equality between the staged sense_version values and
+  # the dispatch version v (v is NA for files without a parseable version).
+  same_version <- function(v) {
+    sv <- staged_by_version$sense_version
+    if (is.na(v)) is.na(sv) else !is.na(sv) & sv == v
+  }
+  has_staged <- function(sensor, v) {
+    any(same_version(v) &
+      staged_by_version$payload_type == type_map[[sensor]] &
+      staged_by_version$n > 0)
+  }
+  # All Garmin sensors share the garminalllogsdata payload type. Their ingest
+  # statements read the garmin_parsed temp table (one typed transform of every
+  # staged payload, built once per version below), so a single presence check
+  # for the payload type gates the whole block.
+  garmin_type <- "dk.cachet.carp.garminalllogsdata"
+  garmin_sensors <- intersect(active, names(type_map)[type_map == garmin_type])
+  other_sensors <- setdiff(active, garmin_sensors)
   # Dynamically trigger the targeted ingest functions, per senseVersion
   unknown_versions <- character(0)
   for (v in unique(meta$sense_version)) {
@@ -597,7 +685,69 @@ read_mpath_sense <- function(
       unknown_versions <- c(unknown_versions, vkey)
       registry <- registry_default
     }
-    for (sensor_name in active) {
+    # Garmin sensors: parse all garminalllogsdata payloads of this version
+    # once (typed, one row per payload in garmin_parsed), then run each
+    # Garmin ingest against its own column. A payload carries only a subset
+    # of the ~15 arrays; sensors whose array is absent (or empty) in every
+    # payload of this batch/version would otherwise run a zero-row unnest
+    # over garmin_parsed (~30-250 ms per call in the 106k-file run: 690
+    # calls, ~104 s). Count the total elements per parsed column once (a
+    # cheap scan of the list-offset vectors; SUM(list_length) is NULL-safe)
+    # and skip the ingest of a sensor whose array holds no elements.
+    if (length(garmin_sensors) > 0 && has_staged(garmin_sensors[1], v)) {
+      # Time the CTAS in the debug output (it returns no row count, so a
+      # cheap COUNT over the ~hundreds-to-thousands of parsed payloads
+      # reports what was built; the CTAS itself dominates this step).
+      .read_debug_time(
+        .debug,
+        "Parsing Garmin payloads for sense version {v}",
+        "Parsed {n_payloads} Garmin payload{?s} for sense version {v}.",
+        n_payloads <- {
+          DBI::dbExecute(db, .read_garmin_parse_sql(v))
+          if (isTRUE(.debug)) {
+            DBI::dbGetQuery(db, "SELECT COUNT(*) FROM garmin_parsed")[[1]]
+          } else {
+            0L
+          }
+        }
+      )
+      garmin_cols <- unique(unlist(garmin_sensor_array_cols[garmin_sensors]))
+      n_els <- NULL
+      if (length(garmin_cols) > 0) {
+        n_els <- DBI::dbGetQuery(
+          db,
+          sprintf(
+            "SELECT %s FROM garmin_parsed",
+            paste0(
+              sprintf(
+                "COALESCE(SUM(LENGTH(\"%s\")), 0) AS \"%s\"",
+                garmin_cols,
+                garmin_cols
+              ),
+              collapse = ", "
+            )
+          )
+        )
+      }
+      for (sensor_name in garmin_sensors) {
+        cols <- garmin_sensor_array_cols[[sensor_name]]
+        if (!is.null(cols) && !is.null(n_els) &&
+            sum(as.numeric(n_els[1, cols])) == 0) {
+          next
+        }
+        sql <- registry[[sensor_name]]$fun(v)
+        .read_debug_time(
+          .debug,
+          "Ingesting data for {sensor_name}",
+          "Ingested {n_rows} row{?s} into {sensor_name}.",
+          n_rows <- .read_ingest(db, sql)
+        )
+      }
+    }
+    for (sensor_name in other_sensors) {
+      if (!has_staged(sensor_name, v)) {
+        next
+      }
       sql <- registry[[sensor_name]]$fun(v)
       .read_debug_time(
         .debug,

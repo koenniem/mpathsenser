@@ -43,13 +43,16 @@ if (is.na(dbdef_path)) {
 }
 dbdef <- readLines(dbdef_path)
 tables <- list()
+schemas <- character(0)
 for (line in dbdef) {
-  m <- regmatches(line, regexec("CREATE TABLE IF NOT EXISTS ([A-Za-z_][A-Za-z_0-9]*)\\s*\\(", line))[[1]]
+  m <- regmatches(line, regexec("CREATE TABLE IF NOT EXISTS (raw\\.)?([A-Za-z_][A-Za-z_0-9]*)\\s*\\(", line))[[1]]
   if (length(m) > 0) {
-    current <- m[2]
+    current <- m[3]
+    # Sensor tables are physical in the raw schema; main.<sensor> is a view
+    schemas[[current]] <- if (nzchar(m[2])) "raw" else "main"
     tables[[current]] <- data.frame(
-      column = character(0), type = character(0), not_null = logical(0),
-      stringsAsFactors = FALSE
+      column = character(0), type = character(0),
+      not_null = logical(0), stringsAsFactors = FALSE
     )
   } else if (exists("current") && !is.null(current)) {
     m2 <- regmatches(line, regexec("^  ([a-z_0-9]+) ([A-Za-z0-9_ ]+)( NOT NULL)?,?$", line))[[1]]
@@ -86,7 +89,7 @@ col_desc <- c(
   participant_id = "Unique ID of the participant, stored as an unsigned integer.",
   time = "Start time of the measurement, stored as a UTC instant.",
   end_time = "End time of the measurement, stored as a UTC instant.",
-  source_file_id = "ID of the source file the measurement came from (see ProcessedFiles).",
+  source_file_id = "Internal: ID of the source file the measurement came from (see ProcessedFiles). Not exposed by the main views.",
   mac_address = "MAC address of the device that produced the measurement.",
   status = "Status of the measurement.",
   instance = "Identifier of the actigraphy instance.",
@@ -238,6 +241,9 @@ describe <- function(table, column) {
 # Render the schema table of one sensor table as a styled kable
 schema_table <- function(table) {
   df <- tables[[table]]
+  # The source-id columns are internal to the raw tables and hidden by the
+  # main.<sensor> views, so they are not part of the user-facing schema.
+  df <- df[!df$column %in% c("source_file_id", "source_row_id", "source_measurement_id"), ]
   df |>
     transmute(
       Variable = column,
@@ -253,11 +259,13 @@ schema_table <- function(table) {
 
 This article provides an overview of the tables in an `mpathsenser` database. The database is created by `create_db()` and populated by `read_mpath_sense()`. It is a [DuckDB](https://duckdb.org) database, so all data is stored in a columnar format and queried through SQL (via `dplyr`/`dbplyr` or `DBI`). All timestamps are stored as UTC instants.
 
-The database consists of two parts: metadata tables (`Study`, `Participant`, `ProcessedFiles`, and `Meta`) and one table per sensor. Every sensor table contains the `participant_id` of the participant who produced the measurement and the `source_file_id` of the file it came from, which links each measurement to its provenance in `ProcessedFiles`. The `participant_id` is stored as an unsigned integer, matching how the m-Path Sense `connectionId` is encoded. The tables below are generated from the schema definition (`dbdef.sql`) that `create_db()` uses, so they always match the initial database schema.
+The database is split over two schemas. The `main` schema holds the metadata tables (`Study`, `Participant`, `ProcessedFiles`, and `Meta`) plus one read-only view per sensor; the physical sensor tables live in the `raw` schema. The views expose exactly the measurement columns, so user-facing queries (`get_data()`, DBI, dbplyr) never see the internal details. Under the hood, every sensor row additionally carries three provenance columns that stay internal: `source_file_id` (the `ProcessedFiles` id of the file the measurement came from), `source_row_id` (the 1-based position of the JSON entry in its file, i.e. the order in which m-Path Sense wrote the entries — start times are monotone within each sensor, but the file interleaves the sensors, so a time-based order would not reproduce the file order) and `source_measurement_id` (the 1-based position within a nested collection for sensors that unnest arrays, such as Garmin logs, `AppUsage`, or Bluetooth scan results; 1 for ordinary entries). These columns determine which row wins when duplicate measurements are removed. The `participant_id` is stored as an unsigned integer, matching how the m-Path Sense `connectionId` is encoded. The tables below are generated from the schema definition (`dbdef.sql`) that `create_db()` uses, so they always match the initial database schema.
+
+The split is enforced for convenience, not secrecy: the raw physical tables are still part of the database and can be queried directly (e.g. `SELECT * FROM raw.Accelerometer`), where the provenance columns and DuckDB's implicit per-row `rowid` are visible. All package functions read through the `main` views, so the internal ordering columns never leak into normal use; the `_local`/`_with_local` views hide them too.
 
 `ProcessedFiles` identifies an imported file by the combination of `file_name`, `participant_id`, `file_size_bytes`, and `modified_at`. There is deliberately no content-hash column. The `file_id` is also used as `source_file_id` in sensor tables and determines which file wins when duplicate measurements are deduplicated.
 
-The initial sensor tables have no unique constraints: duplicate measurements are possible (e.g. the same file imported under a different name) and are removed by the deduplication step of `read_mpath_sense()`. Per measurement key (`participant_id`, `time`, plus sensor-specific extras such as the app for `AppUsage`), the row of the newest file is kept. Within that newest file, most sensors keep the first row; interval sensors (those with an `end_time`) and Garmin's recalculated point measurements (`GarminBBI`, `GarminEnhancedBBI`, `GarminHeartRate`, `GarminStress`) keep the last row, since they can legitimately repeat a start time with a later `end_time` or a recalculated value. See the deduplication section of the main workflow vignette for details.
+The initial sensor tables have no unique constraints: duplicate measurements are possible (e.g. the same file imported under a different name) and are removed by the deduplication step of `read_mpath_sense()`. Per measurement key (`participant_id`, `time`, plus sensor-specific extras such as the app for `AppUsage`), the row of the newest file is kept; within that file the row latest in source order wins (`source_row_id`, then `source_measurement_id`), which is an upsert (last-wins) rule for every sensor. This means interval sensors (those with an `end_time`) keep the latest `end_time` when they repeat a start time, and Garmin's recalculated point measurements (`GarminBBI`, `GarminEnhancedBBI`, `GarminHeartRate`, `GarminStress`) keep the recalculation. See the deduplication section of the main workflow vignette for details.
 
 ## Querying the database
 
@@ -325,7 +333,7 @@ schema_table("ProcessedFiles")
 
 ## Sensor-specific tables
 
-The tables below describe the physical sensor tables in the `main` schema. Canonical timestamps are stored as UTC `TIMESTAMPTZ` values, and each row may include an IANA `timezone` for local rendering. Explicitly named local views expose participant-local wall-clock values; `COALESCE(timezone, 'UTC')` ensures unmapped observations still have non-NULL timestamps. The import populates timezone values automatically; `add_timezones_to_db()` can be rerun to normalize existing or selected tables.
+The tables below describe the physical sensor tables in the `raw` schema, exactly as exposed by the `main.<sensor>` views (which drop the three internal provenance columns). Canonical timestamps are stored as UTC `TIMESTAMPTZ` values, and each row may include an IANA `timezone` for local rendering. Explicitly named local views expose participant-local wall-clock values; `COALESCE(timezone, 'UTC')` ensures unmapped observations still have non-NULL timestamps. The import populates timezone values automatically; `add_timezones_to_db()` can be rerun to normalize existing or selected tables.
 
 ```{r, echo=FALSE, results="asis"}
 metadata_tables <- c("Meta", "Study", "Participant", "ProcessedFiles")

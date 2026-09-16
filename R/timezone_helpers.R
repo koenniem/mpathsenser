@@ -61,8 +61,9 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
   # Do not add the timezone to the timezone table itself to avoid confusion
   sensors <- sensors[tolower(sensors) != "timezone"]
 
-  # Check that the table timezone exists
-  if (!DBI::dbExistsTable(db, "Timezone", schema = "main")) {
+  # Check that the timezone data exists (as the main.Timezone view over raw)
+  if (!DBI::dbExistsTable(db, "Timezone", schema = "main") &&
+    !DBI::dbExistsTable(db, "Timezone", schema = "raw")) {
     cli::cli_abort(
       c(
         "The table `Timezone` does not exist in the database.",
@@ -74,10 +75,14 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
     )
   }
 
-  # Make sure the timezone column exists in all sensor tables
+  # Make sure the timezone column exists in all sensor tables (physical raw
+  # tables; the main.<sensor> views expose the column automatically).
   for (sensor in sensors) {
-    if (!"timezone" %in% DBI::dbListFields(db, sensor, schema = "main")) {
-      DBI::dbExecute(db, sprintf("ALTER TABLE %s ADD COLUMN timezone TEXT", sensor))
+    if (!"timezone" %in% DBI::dbListFields(db, sensor, schema = "raw")) {
+      DBI::dbExecute(
+        db,
+        sprintf("ALTER TABLE raw.%s ADD COLUMN timezone TEXT", sensor)
+      )
     }
   }
 
@@ -104,7 +109,7 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
               CASE WHEN timezone IS NOT DISTINCT FROM
                         LAG(timezone) OVER (PARTITION BY participant_id ORDER BY time)
                    THEN 0 ELSE 1 END AS is_start
-       FROM Timezone
+       FROM raw.Timezone
      ),
      with_grp AS (
        SELECT participant_id, time, timezone,
@@ -146,7 +151,7 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
     DBI::dbExecute(
       db,
       sprintf(
-        "UPDATE %s s
+        "UPDATE raw.%s s
          SET timezone = t.timezone
          FROM temp_tz_intervals t
          WHERE s.participant_id = t.participant_id

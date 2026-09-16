@@ -4,8 +4,10 @@ test_that("add_timezones_to_db aborts if Timezone table is missing", {
 
   db <- create_db(NULL, tempfile("tz_test", fileext = ".db"))
 
-  # Drop the Timezone table to simulate data without timezone measurements
-  DBI::dbExecute(db, "DROP TABLE Timezone")
+  # Drop the raw Timezone table (and the main view over it) to simulate data
+  # without timezone measurements
+  DBI::dbExecute(db, "DROP TABLE raw.Timezone")
+  DBI::dbExecute(db, "DROP VIEW IF EXISTS main.Timezone")
 
   expect_error(
     add_timezones_to_db(db),
@@ -20,15 +22,15 @@ test_that("add_timezones_to_db adds timezone column correctly", {
 
   DBI::dbExecute(
     db,
-    "INSERT INTO Timezone (participant_id, time, timezone, source_file_id) VALUES
-     ('12345', '2021-11-14 13:00:00', 'Europe/Brussels', 1),
-     ('12345', '2021-11-14 14:00:00', 'America/New_York', 1)"
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('12345', '2021-11-14 13:00:00', 'Europe/Brussels', 1, 1, 1),
+     ('12345', '2021-11-14 14:00:00', 'America/New_York', 1, 1, 1)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO Accelerometer (participant_id, time, source_file_id) VALUES
-     ('12345', '2021-11-14 13:30:00', 1),
-     ('12345', '2021-11-14 14:30:00', 1)"
+    "INSERT INTO raw.Accelerometer (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('12345', '2021-11-14 13:30:00', 1, 1, 1),
+     ('12345', '2021-11-14 14:30:00', 1, 1, 1)"
   )
 
   add_timezones_to_db(db, sensors = "Accelerometer", .progress = FALSE)
@@ -46,19 +48,19 @@ test_that("add_timezones_to_db handles multiple participants independently", {
 
   DBI::dbExecute(
     db,
-    "INSERT INTO Timezone (participant_id, time, timezone, source_file_id) VALUES
-     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1),
-     ('1', '2024-01-02 00:00:00', 'America/New_York', 1),
-     ('2', '2024-01-01 00:00:00', 'Asia/Tokyo', 1),
-     ('2', '2024-01-03 00:00:00', 'Europe/London', 1)"
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1, 1, 1),
+     ('1', '2024-01-02 00:00:00', 'America/New_York', 1, 1, 1),
+     ('2', '2024-01-01 00:00:00', 'Asia/Tokyo', 1, 1, 1),
+     ('2', '2024-01-03 00:00:00', 'Europe/London', 1, 1, 1)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO Accelerometer (participant_id, time, source_file_id) VALUES
-     ('1', '2024-01-01 12:00:00', 1),
-     ('1', '2024-01-02 12:00:00', 1),
-     ('2', '2024-01-01 12:00:00', 1),
-     ('2', '2024-01-03 12:00:00', 1)"
+    "INSERT INTO raw.Accelerometer (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 12:00:00', 1, 1, 1),
+     ('1', '2024-01-02 12:00:00', 1, 1, 1),
+     ('2', '2024-01-01 12:00:00', 1, 1, 1),
+     ('2', '2024-01-03 12:00:00', 1, 1, 1)"
   )
 
   add_timezones_to_db(db, sensors = "Accelerometer", .progress = FALSE)
@@ -78,18 +80,18 @@ test_that("add_timezones_to_db handles travel and repeated DST instants", {
 
   DBI::dbExecute(
     db,
-    "INSERT INTO Timezone (participant_id, time, timezone, source_file_id) VALUES
-     ('1', '2025-01-01 00:00:00+00', 'Europe/Brussels', 1),
-     ('1', '2025-02-01 00:00:00+00', 'America/New_York', 1),
-     ('1', '2025-10-26 01:00:00+00', 'Europe/Brussels', 1)"
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2025-01-01 00:00:00+00', 'Europe/Brussels', 1, 1, 1),
+     ('1', '2025-02-01 00:00:00+00', 'America/New_York', 1, 1, 1),
+     ('1', '2025-10-26 01:00:00+00', 'Europe/Brussels', 1, 1, 1)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO Activity (participant_id, time, source_file_id) VALUES
-     ('1', '2025-01-15 12:00:00+00', 1),
-     ('1', '2025-02-15 11:00:00+00', 1),
-     ('1', '2025-10-26 00:30:00+00', 1),
-     ('1', '2025-10-26 01:30:00+00', 1)"
+    "INSERT INTO raw.Activity (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2025-01-15 12:00:00+00', 1, 1, 1),
+     ('1', '2025-02-15 11:00:00+00', 1, 1, 1),
+     ('1', '2025-10-26 00:30:00+00', 1, 1, 1),
+     ('1', '2025-10-26 01:30:00+00', 1, 1, 1)"
   )
 
   add_timezones_to_db(db, sensors = "Activity", .progress = FALSE)
@@ -117,15 +119,15 @@ test_that("add_timezones_to_db handles measurements before and after known timez
 
   DBI::dbExecute(
     db,
-    "INSERT INTO Timezone (participant_id, time, timezone, source_file_id) VALUES
-     ('1', '2024-01-02 00:00:00', 'Europe/Brussels', 1)"
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-02 00:00:00', 'Europe/Brussels', 1, 1, 1)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO Light (participant_id, time, source_file_id) VALUES
-     ('1', '2024-01-01 12:00:00', 1),
-     ('1', '2024-01-02 12:00:00', 1),
-     ('1', '2024-01-03 12:00:00', 1)"
+    "INSERT INTO raw.Light (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 12:00:00', 1, 1, 1),
+     ('1', '2024-01-02 12:00:00', 1, 1, 1),
+     ('1', '2024-01-03 12:00:00', 1, 1, 1)"
   )
 
   add_timezones_to_db(db, sensors = "Light", .progress = FALSE)
@@ -144,8 +146,8 @@ test_that("add_timezones_to_db works for empty tables", {
 
   DBI::dbExecute(
     db,
-    "INSERT INTO Timezone (participant_id, time, timezone, source_file_id) VALUES
-     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1)"
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1, 1, 1)"
   )
 
   expect_silent(add_timezones_to_db(db, sensors = "Pedometer", .progress = FALSE))
@@ -158,14 +160,14 @@ test_that("add_timezones_to_db removes temporary tables afterward", {
 
   DBI::dbExecute(
     db,
-    "INSERT INTO Timezone (participant_id, time, timezone, source_file_id) VALUES
-     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1)"
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1, 1, 1)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO Light (participant_id, time, source_file_id) VALUES
-     ('1', '2024-01-01 01:00:00', 1),
-     ('1', '2024-01-01 02:00:00', 1)"
+    "INSERT INTO raw.Light (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 01:00:00', 1, 1, 1),
+     ('1', '2024-01-01 02:00:00', 1, 1, 1)"
   )
 
   add_timezones_to_db(db, sensors = "Light", .progress = FALSE)
@@ -182,17 +184,17 @@ test_that("add_timezones_to_db preserves existing timezone values", {
 
   DBI::dbExecute(
     db,
-    "INSERT INTO Timezone (participant_id, time, timezone, source_file_id) VALUES
-     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1)"
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1, 1, 1)"
   )
   # Fresh schemas already carry the timezone column. A pre-existing timezone
   # must be preserved; only NULL cells are populated.
   DBI::dbExecute(
     db,
-    "INSERT INTO Accelerometer (participant_id, time, timezone, source_file_id) VALUES
-     ('1', '2024-01-01 00:10:00', NULL, 1),
-     ('1', '2024-01-01 01:00:00', 'America/New_York', 1),
-     ('1', '2024-01-01 02:00:00', NULL, 1)"
+    "INSERT INTO raw.Accelerometer (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:10:00', NULL, 1, 1, 1),
+     ('1', '2024-01-01 01:00:00', 'America/New_York', 1, 1, 1),
+     ('1', '2024-01-01 02:00:00', NULL, 1, 1, 1)"
   )
 
   add_timezones_to_db(db, sensors = "Accelerometer", .progress = FALSE)
@@ -214,14 +216,14 @@ test_that("coincident timezone events do not multiply or duplicate rows", {
   # return one timezone per observation and not multiply sensor rows.
   DBI::dbExecute(
     db,
-    "INSERT INTO Timezone (participant_id, time, timezone, source_file_id) VALUES
-     ('1', '2024-06-01 00:00:00', 'Europe/Brussels', 1),
-     ('1', '2024-06-01 00:00:00', 'America/New_York', 2)"
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-06-01 00:00:00', 'Europe/Brussels', 1, 1, 1),
+     ('1', '2024-06-01 00:00:00', 'America/New_York', 2, 1, 1)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO Activity (participant_id, time, source_file_id) VALUES
-     ('1', '2024-06-01 00:00:00', 1)"
+    "INSERT INTO raw.Activity (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-06-01 00:00:00', 1, 1, 1)"
   )
 
   add_timezones_to_db(db, sensors = "Activity", .progress = FALSE)
@@ -238,13 +240,13 @@ test_that("add_timezones_to_db is idempotent on an already-normalized table", {
 
   DBI::dbExecute(
     db,
-    "INSERT INTO Timezone (participant_id, time, timezone, source_file_id) VALUES
-     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1)"
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1, 1, 1)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO Pedometer (participant_id, time, source_file_id) VALUES
-     ('1', '2024-01-01 01:00:00', 1)"
+    "INSERT INTO raw.Pedometer (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 01:00:00', 1, 1, 1)"
   )
 
   add_timezones_to_db(db, sensors = "Pedometer", .progress = FALSE)
@@ -264,11 +266,12 @@ test_that("canonical tables retain UTC and explicit local views expose local val
   db <- create_db(NULL, ":memory:")
   DBI::dbExecute(
     db,
-    "INSERT INTO Timezone VALUES ('1', '2025-01-01 00:00:00+00', 'Europe/Brussels', 1)"
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id)
+     VALUES ('1', '2025-01-01 00:00:00+00', 'Europe/Brussels', 1, 1, 1)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO Activity (participant_id, time, source_file_id) VALUES ('1', '2025-01-15 11:00:00+00', 1)"
+    "INSERT INTO raw.Activity (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES ('1', '2025-01-15 11:00:00+00', 1, 1, 1)"
   )
   add_timezones_to_db(db, sensors = "Activity", .progress = FALSE)
 
@@ -288,7 +291,7 @@ test_that("canonical tables retain UTC and explicit local views expose local val
 
   DBI::dbExecute(
     db,
-    "INSERT INTO Activity (participant_id, time, source_file_id) VALUES ('2', '2025-01-15 11:00:00+00', 1)"
+    "INSERT INTO raw.Activity (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES ('2', '2025-01-15 11:00:00+00', 1, 1, 1)"
   )
   unmapped <- DBI::dbGetQuery(db, "SELECT time FROM main.Activity WHERE participant_id = '2'")
   expect_equal(unmapped$time, as.POSIXct("2025-01-15 11:00:00", tz = "UTC"))

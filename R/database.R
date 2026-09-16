@@ -83,6 +83,116 @@ sensors <- c(
   invisible(TRUE)
 }
 
+# Create the user-facing sensor views (main.<sensor>) over the physical raw
+# tables. Each view exposes the raw table without the three internal
+# provenance columns (source_file_id, source_row_id, source_measurement_id);
+# the timezone column (where present) is retained. The columns are
+# introspected from information_schema rather than duplicated in R, so the
+# views always match the physical schema. Creation is idempotent
+# (CREATE OR REPLACE). It runs on writable connections at create_db()/open_db()
+# time; read-only connections skip it. Returns TRUE when any view was
+# (re)created.
+.create_sensor_views <- function(db) {
+  # Exclude leftover <sensor>_optimize_tmp tables from interrupted
+  # optimize_db() runs; those are physical raw tables, not sensors.
+  sensors_raw <- DBI::dbGetQuery(
+    db,
+    "SELECT table_name FROM information_schema.tables
+     WHERE table_schema = 'raw' AND table_type = 'BASE TABLE'
+       AND NOT ends_with(table_name, '_optimize_tmp')"
+  )$table_name
+  if (length(sensors_raw) == 0) {
+    return(invisible(FALSE))
+  }
+
+  # Fast path: the common case is a complete database whose views are
+  # current. Unconditional (re)creation costs ~0.4 s (measured), so first
+  # compare one checksum per layer: the sorted raw column list (minus
+  # provenance) against the sorted main-sensor-view column list. A single
+  # information_schema scan (~10 ms) suffices; any drift falls back to the
+  # per-view loop below, which (re)creates only the views that differ.
+  #
+  # Only the 32 main.<sensor> base views participate in the checksum: the
+  # _local/_with_local views add derived columns (e.g. time_local), so their
+  # column lists can never match the raw list. They are static SQL from
+  # views.sql and are handled by .create_local_views(), not here.
+  sums <- DBI::dbGetQuery(
+    db,
+    "SELECT
+       (SELECT string_agg(c.column_name, ',' ORDER BY c.table_name, c.ordinal_position)
+        FROM information_schema.columns c
+        WHERE c.table_schema = 'raw'
+          AND c.column_name NOT IN ('source_file_id', 'source_row_id', 'source_measurement_id')) AS raw_sum,
+       (SELECT string_agg(c.column_name, ',' ORDER BY c.table_name, c.ordinal_position)
+        FROM information_schema.columns c
+        WHERE c.table_schema = 'main' AND c.table_name IN (
+          SELECT table_name FROM information_schema.tables
+          WHERE table_schema = 'raw' AND table_type = 'BASE TABLE'
+            AND NOT ends_with(table_name, '_optimize_tmp'))) AS view_sum"
+  )
+  if (!is.na(sums$raw_sum) && identical(sums$raw_sum, sums$view_sum)) {
+    return(invisible(TRUE))
+  }
+
+  existing <- DBI::dbGetQuery(
+    db,
+    "SELECT table_name AS view_name, string_agg(column_name, ',' ORDER BY ordinal_position) AS cols
+     FROM information_schema.columns
+     WHERE table_schema = 'main'
+     GROUP BY table_name"
+  )
+  for (sensor in sensors_raw) {
+    want <- DBI::dbGetQuery(
+      db,
+      "SELECT string_agg(column_name, ',' ORDER BY ordinal_position) AS cols
+       FROM information_schema.columns
+       WHERE table_schema = 'raw' AND table_name = ?
+         AND column_name NOT IN ('source_file_id', 'source_row_id', 'source_measurement_id')",
+      params = list(sensor)
+    )$cols[[1]]
+    have <- existing$cols[existing$view_name == sensor]
+    if (length(have) == 1 && !is.na(have) && identical(have, want)) {
+      next
+    }
+    cols <- strsplit(want, ",", fixed = TRUE)[[1]]
+    view_cols <- paste0(
+      vapply(cols, function(c) {
+        as.character(DBI::dbQuoteIdentifier(db, c))
+      }, character(1)),
+      collapse = ", "
+    )
+    DBI::dbExecute(
+      db,
+      sprintf(
+        "CREATE OR REPLACE VIEW main.%s AS SELECT %s FROM raw.%s",
+        as.character(DBI::dbQuoteIdentifier(db, sensor)),
+        view_cols,
+        as.character(DBI::dbQuoteIdentifier(db, sensor))
+      )
+    )
+  }
+  invisible(TRUE)
+}
+
+# True when the database has the current mpathsenser layout: the physical
+# sensor tables live in the raw schema (with the main.<sensor> views over
+# them). Databases with the legacy layout (physical sensor tables in main)
+# are unsupported and must be recreated with create_db().
+.has_mpathsenser_schema <- function(db) {
+  n_raw <- DBI::dbGetQuery(
+    db,
+    "SELECT COUNT(*) AS n FROM information_schema.tables
+     WHERE table_schema = 'raw' AND table_name = 'Accelerometer'
+       AND table_type = 'BASE TABLE'"
+  )$n[[1]]
+  n_main_view <- DBI::dbGetQuery(
+    db,
+    "SELECT COUNT(*) AS n FROM information_schema.tables
+     WHERE table_schema = 'main' AND table_name = 'Accelerometer' AND table_type = 'VIEW'"
+  )$n[[1]]
+  n_raw > 0 && n_main_view > 0
+}
+
 # Define the to_local_time() macro and the per-sensor _local/_with_local views
 # from the static SQL file. Views live in SQL, not in R, so they are generated
 # once against the canonical schema and stay in sync with it. Creating them is
@@ -232,6 +342,7 @@ create_db <- function(
     memory_limit = memory_limit,
     temp_directory = temp_directory
   )
+  .create_sensor_views(db)
   .create_local_views(db)
 
   return(db)
@@ -367,7 +478,7 @@ open_db <- function(
 
   if (
     !DBI::dbExistsTable(db, "Participant") ||
-      !DBI::dbExistsTable(db, "Activity", schema = "main")
+      !.has_mpathsenser_schema(db)
   ) {
     dbDisconnect(db)
     cli_abort("The file {.path {path}} does not appear to be an {.pkg mpathsenser} database.")
@@ -379,6 +490,13 @@ open_db <- function(
     memory_limit = memory_limit,
     temp_directory = temp_directory
   )
+
+  # Ensure the sensor views exist (they are created by create_db()).
+  # Views are only (re)created on writable connections; read-only connections
+  # skip this step, so a database opened read-only must already contain them.
+  if (!read_only) {
+    .create_sensor_views(db)
+  }
 
   .create_local_views(db)
 
@@ -445,8 +563,10 @@ close_db <- function(db) {
 #' DBI::dbExecute(db1, "INSERT INTO Study VALUES ('study_1', 'default')")
 #' DBI::dbExecute(db1, "INSERT INTO Participant VALUES (1, 'study_1')")
 #' DBI::dbExecute(db1, "INSERT INTO ProcessedFiles(file_name, participant_id) VALUES ('f1', 1)")
-#' DBI::dbExecute(db1, "INSERT INTO Activity(participant_id, time, confidence, type, source_file_id) VALUES(
-#'                1, '2024-01-01 08:00:00', 100, 'WALKING', 1)")
+#' # Sensor data lives in the raw schema (the main.Activity view is read-only)
+#' DBI::dbExecute(db1, "INSERT INTO raw.Activity(
+#'   participant_id, time, confidence, type, source_file_id, source_row_id, source_measurement_id
+#' ) VALUES (1, '2024-01-01 08:00:00', 100, 'WALKING', 1, 1, 1)")
 #'
 #' # Then copy the first database to the second database
 #' db2 <- copy_db(db1, db2)
@@ -492,14 +612,16 @@ copy_db <- function(
   )
 
   # Copy all specified sensors. The sensor tables have no unique constraints,
-  # so ON CONFLICT cannot be used here.
+  # so ON CONFLICT cannot be used here. Physical tables live in the raw
+  # schema; the main.<sensor> views of the target keep working because they
+  # read from raw.<sensor> by name.
   for (i in seq_along(sensor)) {
     dbExecute(
       source_db,
       paste0(
-        "INSERT INTO new_db.",
+        "INSERT INTO new_db.raw.",
         sensor[i],
-        " SELECT * FROM ",
+        " SELECT * FROM raw.",
         sensor[i]
       )
     )
@@ -622,34 +744,6 @@ add_processed_files <- function(
   )
 }
 
-#' @noRd
-clear_db <- function(db) {
-  check_db(db)
-  tables <- c(sensors, "ProcessedFiles", "Participant", "Study")
-  res <- vapply(
-    tables,
-    \(x) {
-      dbExecute(
-        db,
-        paste0("DELETE FROM ", if (x %in% sensors) "" else "", x, " WHERE 1;")
-      )
-    },
-    numeric(1)
-  )
-  names(res) <- tables
-
-  # Reset the file_id sequence so a cleared database starts at 1 again
-  DBI::dbExecute(db, "ALTER TABLE ProcessedFiles ALTER file_id DROP DEFAULT")
-  DBI::dbExecute(db, "DROP SEQUENCE IF EXISTS processed_files_seq")
-  DBI::dbExecute(db, "CREATE SEQUENCE processed_files_seq START 1")
-  DBI::dbExecute(
-    db,
-    "ALTER TABLE ProcessedFiles ALTER file_id SET DEFAULT nextval('processed_files_seq')"
-  )
-
-  res
-}
-
 #' Re-order the data in a database for faster processing
 #'
 #' @description `r lifecycle::badge("experimental")`
@@ -693,7 +787,7 @@ optimize_db <- function(db, sensors = NULL, .progress = TRUE) {
   sensors <- setdiff(.physical_sensor(sensors), "Timezone")
 
   quote_raw <- function(name) {
-    as.character(DBI::dbQuoteIdentifier(db, DBI::Id(schema = "main", table = name)))
+    as.character(DBI::dbQuoteIdentifier(db, DBI::Id(schema = "raw", table = name)))
   }
   quote_table <- function(name) {
     as.character(DBI::dbQuoteIdentifier(db, name))
@@ -744,7 +838,7 @@ optimize_db <- function(db, sensors = NULL, .progress = TRUE) {
       not_null <- DBI::dbGetQuery(
         db,
         "SELECT column_name FROM information_schema.columns
-         WHERE table_schema = 'main' AND table_name = ? AND is_nullable = 'NO'
+         WHERE table_schema = 'raw' AND table_name = ? AND is_nullable = 'NO'
          ORDER BY ordinal_position",
         params = list(sensor)
       )$column_name
@@ -768,6 +862,10 @@ optimize_db <- function(db, sensors = NULL, .progress = TRUE) {
         )
       )
       DBI::dbExecute(db, sprintf("DROP TABLE %s", source))
+      # The temporary table lives in the same (raw) schema as the original, so
+      # an unqualified RENAME TO resolves correctly; the identically named
+      # main.<sensor> view is unaffected (DuckDB resolves view bodies by name
+      # at query time).
       DBI::dbExecute(
         db,
         sprintf("ALTER TABLE %s RENAME TO %s", temporary_id, source_table)
@@ -792,7 +890,10 @@ optimise_db <- function(db, sensors = NULL, .progress = TRUE) {
 #'   Removes duplicate measurements from the sensor tables. Per measurement
 #'   key (participant and time, plus sensor-specific extras such as the app
 #'   for AppUsage), the most recent row is kept: the row of the newest source
-#'   file, and within that file the last recorded row. This is an upsert
+#'   file, and within that file the row latest in source order (each row
+#'   records the 1-based ordinal of its JSON entry and of its position within
+#'   nested collections, so the winner is deterministic and independent of
+#'   physical row order). This is an upsert
 #'   (INSERT OR REPLACE) semantics, matching the historical behaviour of the
 #'   SQLite-based importer — a later measurement overwrites an earlier one
 #'   with the same key, whether the duplicate came from the same file or a

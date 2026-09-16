@@ -197,7 +197,8 @@ test_that("Garmin array values survive the JSON to DuckDB round trip", {
   # it 'deadBand' (an old, misspelled variant) and yields NULL.
   zero_crossing <- DBI::dbGetQuery(
     db,
-    "SELECT total_energy, n_zero_crossing, deadband FROM GarminZeroCrossing ORDER BY rowid"
+    "SELECT total_energy, n_zero_crossing, deadband
+     FROM raw.GarminZeroCrossing ORDER BY source_row_id, source_measurement_id"
   )
   expect_equal(zero_crossing$total_energy, c(1234L, 1235L))
   expect_equal(zero_crossing$n_zero_crossing, c(4L, 2L))

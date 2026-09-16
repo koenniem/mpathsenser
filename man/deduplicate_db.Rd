@@ -25,7 +25,10 @@ per sensor.
 Removes duplicate measurements from the sensor tables. Per measurement
 key (participant and time, plus sensor-specific extras such as the app
 for AppUsage), the most recent row is kept: the row of the newest source
-file, and within that file the last recorded row. This is an upsert
+file, and within that file the row latest in source order (each row
+records the 1-based ordinal of its JSON entry and of its position within
+nested collections, so the winner is deterministic and independent of
+physical row order). This is an upsert
 (INSERT OR REPLACE) semantics, matching the historical behaviour of the
 SQLite-based importer — a later measurement overwrites an earlier one
 with the same key, whether the duplicate came from the same file or a

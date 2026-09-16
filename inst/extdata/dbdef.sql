@@ -1,3 +1,13 @@
+-- Database definition for mpathsenser DuckDB databases.
+--
+-- Layout: physical sensor tables live in the `raw` schema; the `main` schema
+-- holds the metadata tables (Study, Participant, ProcessedFiles, Meta) and one
+-- read-only view per sensor (main.<sensor>) that projects the raw table
+-- without the internal provenance columns (source_file_id, source_row_id,
+-- source_measurement_id). The views are created by the R helper
+-- .create_sensor_views(); user-facing functions query main.<sensor>.
+CREATE SCHEMA IF NOT EXISTS raw;
+
 -- Sequence backing ProcessedFiles.file_id. Never reset this sequence in normal
 -- operation: file_id ordering is used to decide which file wins on deduplication.
 CREATE SEQUENCE IF NOT EXISTS processed_files_seq START 1;
@@ -28,7 +38,14 @@ CREATE TABLE IF NOT EXISTS ProcessedFiles(
   FOREIGN KEY(participant_id) REFERENCES Participant(participant_id)
 );
 
-CREATE TABLE IF NOT EXISTS Accelerometer(
+-- Sensor tables. Each row carries three internal provenance columns:
+--   source_file_id        file_id of the ProcessedFiles record (UBIGINT)
+--   source_row_id         1-based ordinal of the JSON entry within its file
+--   source_measurement_id 1 for scalar entries; 1-based index within the
+--                         nested collection for unnested measurements
+-- The main.<sensor> views hide these columns; all user-facing access goes
+-- through the views.
+CREATE TABLE IF NOT EXISTS raw.Accelerometer(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   end_time TIMESTAMPTZ,
@@ -75,23 +92,27 @@ CREATE TABLE IF NOT EXISTS Accelerometer(
   avg_res_acc REAL,
   sma REAL,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Activity(
+CREATE TABLE IF NOT EXISTS raw.Activity(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   confidence UTINYINT,
   type TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS AppUsage(
+CREATE TABLE IF NOT EXISTS raw.AppUsage(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   end_time TIMESTAMPTZ,
@@ -102,23 +123,27 @@ CREATE TABLE IF NOT EXISTS AppUsage(
   package_name TEXT,
   last_foreground TIMESTAMPTZ,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Battery(
+CREATE TABLE IF NOT EXISTS raw.Battery(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   battery_level UTINYINT,
   battery_status TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Bluetooth(
+CREATE TABLE IF NOT EXISTS raw.Bluetooth(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   start_scan TIMESTAMPTZ,
@@ -130,12 +155,14 @@ CREATE TABLE IF NOT EXISTS Bluetooth(
   rssi SMALLINT,
   tx_power_level SMALLINT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS BluetoothBeacon(
+CREATE TABLE IF NOT EXISTS raw.BluetoothBeacon(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   region TEXT,
@@ -146,22 +173,26 @@ CREATE TABLE IF NOT EXISTS BluetoothBeacon(
   accuracy REAL,
   proximity TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Connectivity(
+CREATE TABLE IF NOT EXISTS raw.Connectivity(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   connectivity_status TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Device(
+CREATE TABLE IF NOT EXISTS raw.Device(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   device_id TEXT,
@@ -174,22 +205,26 @@ CREATE TABLE IF NOT EXISTS Device(
   operating_system_version TEXT,
   device_data JSON,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Error(
+CREATE TABLE IF NOT EXISTS raw.Error(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   message TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminAccelerometer(
+CREATE TABLE IF NOT EXISTS raw.GarminAccelerometer(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   x REAL,
@@ -197,12 +232,14 @@ CREATE TABLE IF NOT EXISTS GarminAccelerometer(
   z REAL,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminActigraphy(
+CREATE TABLE IF NOT EXISTS raw.GarminActigraphy(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   end_time TIMESTAMPTZ,
@@ -212,23 +249,27 @@ CREATE TABLE IF NOT EXISTS GarminActigraphy(
   time_above_threshold REAL,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminBBI(
+CREATE TABLE IF NOT EXISTS raw.GarminBBI(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   bbi USMALLINT,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminEnhancedBBI(
+CREATE TABLE IF NOT EXISTS raw.GarminEnhancedBBI(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   bbi USMALLINT,
@@ -236,12 +277,14 @@ CREATE TABLE IF NOT EXISTS GarminEnhancedBBI(
   gap_duration INTEGER,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminGyroscope(
+CREATE TABLE IF NOT EXISTS raw.GarminGyroscope(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   x REAL,
@@ -249,24 +292,28 @@ CREATE TABLE IF NOT EXISTS GarminGyroscope(
   z REAL,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminHeartRate(
+CREATE TABLE IF NOT EXISTS raw.GarminHeartRate(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   bpm USMALLINT,
   status TEXT,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminMeta(
+CREATE TABLE IF NOT EXISTS raw.GarminMeta(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   time_from TIMESTAMPTZ,
@@ -287,47 +334,55 @@ CREATE TABLE IF NOT EXISTS GarminMeta(
   n_wrist_status UINTEGER,
   n_zero_crossing UINTEGER,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminRespiration(
+CREATE TABLE IF NOT EXISTS raw.GarminRespiration(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   bpm REAL,
   status TEXT,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminSkinTemperature(
+CREATE TABLE IF NOT EXISTS raw.GarminSkinTemperature(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   temperature REAL,
   status TEXT,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminSPO2(
+CREATE TABLE IF NOT EXISTS raw.GarminSPO2(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   spo2 UTINYINT,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminSteps(
+CREATE TABLE IF NOT EXISTS raw.GarminSteps(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   end_time TIMESTAMPTZ,
@@ -335,35 +390,41 @@ CREATE TABLE IF NOT EXISTS GarminSteps(
   total_steps UINTEGER,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminStress(
+CREATE TABLE IF NOT EXISTS raw.GarminStress(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   stress UTINYINT,
   status TEXT,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminWristStatus(
+CREATE TABLE IF NOT EXISTS raw.GarminWristStatus(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   status TEXT,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS GarminZeroCrossing(
+CREATE TABLE IF NOT EXISTS raw.GarminZeroCrossing(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   end_time TIMESTAMPTZ,
@@ -372,24 +433,28 @@ CREATE TABLE IF NOT EXISTS GarminZeroCrossing(
   deadband INTEGER,
   mac_address TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Heartbeat(
+CREATE TABLE IF NOT EXISTS raw.Heartbeat(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   period INTEGER,
   device_type TEXT,
   device_role_name TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Light(
+CREATE TABLE IF NOT EXISTS raw.Light(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   end_time TIMESTAMPTZ,
@@ -398,12 +463,14 @@ CREATE TABLE IF NOT EXISTS Light(
   min_lux REAL,
   max_lux REAL,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Location(
+CREATE TABLE IF NOT EXISTS raw.Location(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   latitude DOUBLE,
@@ -419,52 +486,62 @@ CREATE TABLE IF NOT EXISTS Location(
   elapsed_realtime_nanos UBIGINT,
   elapsed_realtime_uncertainty_nanos UBIGINT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Memory(
+CREATE TABLE IF NOT EXISTS raw.Memory(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   free_physical_memory UBIGINT,
   free_virtual_memory UBIGINT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Pedometer(
+CREATE TABLE IF NOT EXISTS raw.Pedometer(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   step_count UINTEGER,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Screen(
+CREATE TABLE IF NOT EXISTS raw.Screen(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   screen_event TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Timezone(
+CREATE TABLE IF NOT EXISTS raw.Timezone(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Weather(
+CREATE TABLE IF NOT EXISTS raw.Weather(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   country TEXT,
@@ -488,19 +565,23 @@ CREATE TABLE IF NOT EXISTS Weather(
   temp_min REAL,
   temp_max REAL,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 
 
-CREATE TABLE IF NOT EXISTS Wifi(
+CREATE TABLE IF NOT EXISTS raw.Wifi(
   participant_id UINTEGER NOT NULL,
   time TIMESTAMPTZ NOT NULL,
   ssid TEXT,
   bssid TEXT,
   ip TEXT,
   timezone TEXT,
-  source_file_id UBIGINT NOT NULL
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
 

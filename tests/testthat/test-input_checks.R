@@ -56,13 +56,35 @@ test_that("check_db", {
 
 test_that("check_db recognizes missing sensors", {
   db <- create_db(NULL, tempfile("chk", fileext = ".db"))
-  DBI::dbExecute(db, "DROP TABLE Accelerometer")
+  # Sensor tables are physical in raw and exposed as views in main; dropping
+  # the main view (or the raw table) must be detected as a missing sensor.
+  DBI::dbExecute(db, "DROP VIEW main.Accelerometer")
   expect_error(
     check_db(db),
     paste0(
       "The following sensor is missing from the database: .*\"Accelerometer\".*"
     )
   )
+  # Restoring the view alone is not enough: the raw physical table is required
+  # too, so dropping it (after recreating the view) must still fail.
+  .create_sensor_views(db)
+  expect_true(check_db(db))
+  DBI::dbExecute(db, "ALTER TABLE raw.Accelerometer RENAME TO Accelerometer_bak")
+  expect_error(
+    check_db(db),
+    paste0(
+      "The following sensor is missing from the database: .*\"Accelerometer\".*"
+    )
+  )
+  DBI::dbExecute(db, "ALTER TABLE raw.Accelerometer_bak RENAME TO Accelerometer")
+
+  # A leftover <sensor>_optimize_tmp table from an interrupted optimize_db()
+  # run must be ignored by both the sensor check and view creation.
+  DBI::dbExecute(db, "CREATE TABLE raw.Pedometer_optimize_tmp AS SELECT * FROM raw.Pedometer WHERE FALSE")
+  expect_true(check_db(db))
+  expect_no_error(.create_sensor_views(db))
+  expect_false(DBI::dbExistsTable(db, "Pedometer_optimize_tmp", schema = "main"))
+  DBI::dbExecute(db, "DROP TABLE raw.Pedometer_optimize_tmp")
 
   # Try again, but with the check disabled
   old_opts <- options(mpathsenser.check_missing_sensors = FALSE)

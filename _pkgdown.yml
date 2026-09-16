@@ -74,7 +74,6 @@ reference:
   - title: Data transformation
     contents:
       - link
-      - link_db
       - link_gaps
       - identify_gaps
       - add_gaps
@@ -88,7 +87,6 @@ reference:
       - device_info
       - app_category
       - installed_apps
-      - decrypt_gps
       - haversine
       - geocode_rev
 

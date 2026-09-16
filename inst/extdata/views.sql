@@ -5,6 +5,16 @@
 --   <sensor>_with_local  all columns, plus one localized column per timestamp
 --   <sensor>_local       timestamps replaced by their localized wall-clock value
 --
+-- Most views read the user-facing main.<sensor> view (not the raw table), so
+-- the internal provenance columns (source_file_id, source_row_id,
+-- source_measurement_id) are hidden from query results, exactly as in the base
+-- sensor views. The exception is the views that need the legacy
+-- sense_version <= 6 behaviour (AppUsage, Bluetooth, Location, Weather):
+-- those read raw.<sensor> (excluding the provenance columns) joined against
+-- ProcessedFiles for the sense version. The raw schema tables remain the
+-- physical storage and keep the provenance columns for internal use and for
+-- technically inclined users who query them directly.
+--
 -- Legacy timestamp workaround: m-Path Sense versions <= 6 stored a few
 -- timestamps (AppUsage period_start/period_end/last_foreground, Bluetooth
 -- start_scan/end_scan, Location time, Weather time/sunrise/sunset) as local
@@ -26,26 +36,26 @@ CREATE OR REPLACE VIEW Accelerometer_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local,
     to_local_time(s.end_time, s.timezone) AS end_time_local
-    FROM Accelerometer s;
+    FROM main.Accelerometer s;
 
 CREATE OR REPLACE VIEW Accelerometer_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time,
     to_local_time(s.end_time, s.timezone) AS end_time
 )
-    FROM Accelerometer s;
+    FROM main.Accelerometer s;
 CREATE OR REPLACE VIEW Activity_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM Activity s;
+    FROM main.Activity s;
 
 CREATE OR REPLACE VIEW Activity_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM Activity s;
+    FROM main.Activity s;
 CREATE OR REPLACE VIEW AppUsage_with_local AS
-SELECT s.*,
+SELECT s.* EXCLUDE (source_file_id, source_row_id, source_measurement_id),
     to_local_time(s.time, s.timezone) AS time_local,
     to_local_time(s.end_time, s.timezone) AS end_time_local,
     CASE WHEN pf.sense_version <= 6 THEN s.period_start AT TIME ZONE 'UTC'
@@ -54,10 +64,10 @@ SELECT s.*,
        ELSE to_local_time(s.period_end, s.timezone) END AS period_end_local,
     CASE WHEN pf.sense_version <= 6 THEN s.last_foreground AT TIME ZONE 'UTC'
        ELSE to_local_time(s.last_foreground, s.timezone) END AS last_foreground_local
-    FROM AppUsage s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
+    FROM raw.AppUsage s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
 
 CREATE OR REPLACE VIEW AppUsage_local AS
-SELECT s.* REPLACE (
+SELECT s.* EXCLUDE (source_file_id, source_row_id, source_measurement_id) REPLACE (
     to_local_time(s.time, s.timezone) AS time,
     to_local_time(s.end_time, s.timezone) AS end_time,
     CASE WHEN pf.sense_version <= 6 THEN s.period_start AT TIME ZONE 'UTC'
@@ -67,143 +77,143 @@ SELECT s.* REPLACE (
     CASE WHEN pf.sense_version <= 6 THEN s.last_foreground AT TIME ZONE 'UTC'
        ELSE to_local_time(s.last_foreground, s.timezone) END AS last_foreground
 )
-    FROM AppUsage s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
+    FROM raw.AppUsage s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
 CREATE OR REPLACE VIEW Battery_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM Battery s;
+    FROM main.Battery s;
 
 CREATE OR REPLACE VIEW Battery_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM Battery s;
+    FROM main.Battery s;
 CREATE OR REPLACE VIEW Bluetooth_with_local AS
-SELECT s.*,
+SELECT s.* EXCLUDE (source_file_id, source_row_id, source_measurement_id),
     to_local_time(s.time, s.timezone) AS time_local,
     CASE WHEN pf.sense_version <= 6 THEN s.start_scan AT TIME ZONE 'UTC'
        ELSE to_local_time(s.start_scan, s.timezone) END AS start_scan_local,
     CASE WHEN pf.sense_version <= 6 THEN s.end_scan AT TIME ZONE 'UTC'
        ELSE to_local_time(s.end_scan, s.timezone) END AS end_scan_local
-    FROM Bluetooth s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
+    FROM raw.Bluetooth s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
 
 CREATE OR REPLACE VIEW Bluetooth_local AS
-SELECT s.* REPLACE (
+SELECT s.* EXCLUDE (source_file_id, source_row_id, source_measurement_id) REPLACE (
     to_local_time(s.time, s.timezone) AS time,
     CASE WHEN pf.sense_version <= 6 THEN s.start_scan AT TIME ZONE 'UTC'
        ELSE to_local_time(s.start_scan, s.timezone) END AS start_scan,
     CASE WHEN pf.sense_version <= 6 THEN s.end_scan AT TIME ZONE 'UTC'
        ELSE to_local_time(s.end_scan, s.timezone) END AS end_scan
 )
-    FROM Bluetooth s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
+    FROM raw.Bluetooth s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
 CREATE OR REPLACE VIEW BluetoothBeacon_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM BluetoothBeacon s;
+    FROM main.BluetoothBeacon s;
 
 CREATE OR REPLACE VIEW BluetoothBeacon_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM BluetoothBeacon s;
+    FROM main.BluetoothBeacon s;
 CREATE OR REPLACE VIEW Connectivity_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM Connectivity s;
+    FROM main.Connectivity s;
 
 CREATE OR REPLACE VIEW Connectivity_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM Connectivity s;
+    FROM main.Connectivity s;
 CREATE OR REPLACE VIEW Device_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM Device s;
+    FROM main.Device s;
 
 CREATE OR REPLACE VIEW Device_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM Device s;
+    FROM main.Device s;
 CREATE OR REPLACE VIEW Error_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM Error s;
+    FROM main.Error s;
 
 CREATE OR REPLACE VIEW Error_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM Error s;
+    FROM main.Error s;
 CREATE OR REPLACE VIEW GarminAccelerometer_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM GarminAccelerometer s;
+    FROM main.GarminAccelerometer s;
 
 CREATE OR REPLACE VIEW GarminAccelerometer_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM GarminAccelerometer s;
+    FROM main.GarminAccelerometer s;
 CREATE OR REPLACE VIEW GarminActigraphy_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local,
     to_local_time(s.end_time, s.timezone) AS end_time_local
-    FROM GarminActigraphy s;
+    FROM main.GarminActigraphy s;
 
 CREATE OR REPLACE VIEW GarminActigraphy_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time,
     to_local_time(s.end_time, s.timezone) AS end_time
 )
-    FROM GarminActigraphy s;
+    FROM main.GarminActigraphy s;
 CREATE OR REPLACE VIEW GarminBBI_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM GarminBBI s;
+    FROM main.GarminBBI s;
 
 CREATE OR REPLACE VIEW GarminBBI_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM GarminBBI s;
+    FROM main.GarminBBI s;
 CREATE OR REPLACE VIEW GarminEnhancedBBI_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM GarminEnhancedBBI s;
+    FROM main.GarminEnhancedBBI s;
 
 CREATE OR REPLACE VIEW GarminEnhancedBBI_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM GarminEnhancedBBI s;
+    FROM main.GarminEnhancedBBI s;
 CREATE OR REPLACE VIEW GarminGyroscope_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM GarminGyroscope s;
+    FROM main.GarminGyroscope s;
 
 CREATE OR REPLACE VIEW GarminGyroscope_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM GarminGyroscope s;
+    FROM main.GarminGyroscope s;
 CREATE OR REPLACE VIEW GarminHeartRate_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM GarminHeartRate s;
+    FROM main.GarminHeartRate s;
 
 CREATE OR REPLACE VIEW GarminHeartRate_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM GarminHeartRate s;
+    FROM main.GarminHeartRate s;
 CREATE OR REPLACE VIEW GarminMeta_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local,
     to_local_time(s.time_from, s.timezone) AS time_from_local,
     to_local_time(s.time_to, s.timezone) AS time_to_local
-    FROM GarminMeta s;
+    FROM main.GarminMeta s;
 
 CREATE OR REPLACE VIEW GarminMeta_local AS
 SELECT s.* REPLACE (
@@ -211,167 +221,167 @@ SELECT s.* REPLACE (
     to_local_time(s.time_from, s.timezone) AS time_from,
     to_local_time(s.time_to, s.timezone) AS time_to
 )
-    FROM GarminMeta s;
+    FROM main.GarminMeta s;
 CREATE OR REPLACE VIEW GarminRespiration_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM GarminRespiration s;
+    FROM main.GarminRespiration s;
 
 CREATE OR REPLACE VIEW GarminRespiration_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM GarminRespiration s;
+    FROM main.GarminRespiration s;
 CREATE OR REPLACE VIEW GarminSPO2_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM GarminSPO2 s;
+    FROM main.GarminSPO2 s;
 
 CREATE OR REPLACE VIEW GarminSPO2_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM GarminSPO2 s;
+    FROM main.GarminSPO2 s;
 CREATE OR REPLACE VIEW GarminSkinTemperature_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM GarminSkinTemperature s;
+    FROM main.GarminSkinTemperature s;
 
 CREATE OR REPLACE VIEW GarminSkinTemperature_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM GarminSkinTemperature s;
+    FROM main.GarminSkinTemperature s;
 CREATE OR REPLACE VIEW GarminSteps_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local,
     to_local_time(s.end_time, s.timezone) AS end_time_local
-    FROM GarminSteps s;
+    FROM main.GarminSteps s;
 
 CREATE OR REPLACE VIEW GarminSteps_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time,
     to_local_time(s.end_time, s.timezone) AS end_time
 )
-    FROM GarminSteps s;
+    FROM main.GarminSteps s;
 CREATE OR REPLACE VIEW GarminStress_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM GarminStress s;
+    FROM main.GarminStress s;
 
 CREATE OR REPLACE VIEW GarminStress_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM GarminStress s;
+    FROM main.GarminStress s;
 CREATE OR REPLACE VIEW GarminWristStatus_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM GarminWristStatus s;
+    FROM main.GarminWristStatus s;
 
 CREATE OR REPLACE VIEW GarminWristStatus_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM GarminWristStatus s;
+    FROM main.GarminWristStatus s;
 CREATE OR REPLACE VIEW GarminZeroCrossing_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local,
     to_local_time(s.end_time, s.timezone) AS end_time_local
-    FROM GarminZeroCrossing s;
+    FROM main.GarminZeroCrossing s;
 
 CREATE OR REPLACE VIEW GarminZeroCrossing_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time,
     to_local_time(s.end_time, s.timezone) AS end_time
 )
-    FROM GarminZeroCrossing s;
+    FROM main.GarminZeroCrossing s;
 CREATE OR REPLACE VIEW Heartbeat_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM Heartbeat s;
+    FROM main.Heartbeat s;
 
 CREATE OR REPLACE VIEW Heartbeat_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM Heartbeat s;
+    FROM main.Heartbeat s;
 CREATE OR REPLACE VIEW Light_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local,
     to_local_time(s.end_time, s.timezone) AS end_time_local
-    FROM Light s;
+    FROM main.Light s;
 
 CREATE OR REPLACE VIEW Light_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time,
     to_local_time(s.end_time, s.timezone) AS end_time
 )
-    FROM Light s;
+    FROM main.Light s;
 CREATE OR REPLACE VIEW Location_with_local AS
-SELECT s.*,
+SELECT s.* EXCLUDE (source_file_id, source_row_id, source_measurement_id),
     CASE WHEN pf.sense_version <= 6 THEN s.time AT TIME ZONE 'UTC'
        ELSE to_local_time(s.time, s.timezone) END AS time_local
-    FROM Location s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
+    FROM raw.Location s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
 
 CREATE OR REPLACE VIEW Location_local AS
-SELECT s.* REPLACE (
+SELECT s.* EXCLUDE (source_file_id, source_row_id, source_measurement_id) REPLACE (
     CASE WHEN pf.sense_version <= 6 THEN s.time AT TIME ZONE 'UTC'
        ELSE to_local_time(s.time, s.timezone) END AS time
 )
-    FROM Location s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
+    FROM raw.Location s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
 CREATE OR REPLACE VIEW Memory_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM Memory s;
+    FROM main.Memory s;
 
 CREATE OR REPLACE VIEW Memory_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM Memory s;
+    FROM main.Memory s;
 CREATE OR REPLACE VIEW Pedometer_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM Pedometer s;
+    FROM main.Pedometer s;
 
 CREATE OR REPLACE VIEW Pedometer_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM Pedometer s;
+    FROM main.Pedometer s;
 CREATE OR REPLACE VIEW Screen_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM Screen s;
+    FROM main.Screen s;
 
 CREATE OR REPLACE VIEW Screen_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM Screen s;
+    FROM main.Screen s;
 CREATE OR REPLACE VIEW Timezone_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM Timezone s;
+    FROM main.Timezone s;
 
 CREATE OR REPLACE VIEW Timezone_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM Timezone s;
+    FROM main.Timezone s;
 CREATE OR REPLACE VIEW Weather_with_local AS
-SELECT s.*,
+SELECT s.* EXCLUDE (source_file_id, source_row_id, source_measurement_id),
     CASE WHEN pf.sense_version <= 6 THEN s.time AT TIME ZONE 'UTC'
        ELSE to_local_time(s.time, s.timezone) END AS time_local,
     CASE WHEN pf.sense_version <= 6 THEN s.sunrise AT TIME ZONE 'UTC'
        ELSE to_local_time(s.sunrise, s.timezone) END AS sunrise_local,
     CASE WHEN pf.sense_version <= 6 THEN s.sunset AT TIME ZONE 'UTC'
        ELSE to_local_time(s.sunset, s.timezone) END AS sunset_local
-    FROM Weather s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
+    FROM raw.Weather s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
 
 CREATE OR REPLACE VIEW Weather_local AS
-SELECT s.* REPLACE (
+SELECT s.* EXCLUDE (source_file_id, source_row_id, source_measurement_id) REPLACE (
     CASE WHEN pf.sense_version <= 6 THEN s.time AT TIME ZONE 'UTC'
        ELSE to_local_time(s.time, s.timezone) END AS time,
     CASE WHEN pf.sense_version <= 6 THEN s.sunrise AT TIME ZONE 'UTC'
@@ -379,15 +389,15 @@ SELECT s.* REPLACE (
     CASE WHEN pf.sense_version <= 6 THEN s.sunset AT TIME ZONE 'UTC'
        ELSE to_local_time(s.sunset, s.timezone) END AS sunset
 )
-    FROM Weather s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
+    FROM raw.Weather s LEFT JOIN ProcessedFiles pf ON pf.file_id = s.source_file_id;
 CREATE OR REPLACE VIEW Wifi_with_local AS
 SELECT s.*,
     to_local_time(s.time, s.timezone) AS time_local
-    FROM Wifi s;
+    FROM main.Wifi s;
 
 CREATE OR REPLACE VIEW Wifi_local AS
 SELECT s.* REPLACE (
     to_local_time(s.time, s.timezone) AS time
 )
-    FROM Wifi s;
+    FROM main.Wifi s;
 

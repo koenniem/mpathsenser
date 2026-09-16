@@ -72,6 +72,16 @@ test_that("open_db", {
   expect_error(open_db(fake_db), "does not appear to be an mpathsenser database")
   file.remove(fake_db)
 
+  # A raw table without its main view (e.g. views dropped) is rejected too:
+  # the schema check requires both layers.
+  db1 <- create_db(NULL, tempfile("schemacheck", fileext = ".db"))
+  p1 <- db1@driver@dbdir
+  DBI::dbExecute(db1, "DROP VIEW main.Accelerometer")
+  dbDisconnect(db1)
+  gc()
+  expect_error(open_db(p1), "does not appear to be an mpathsenser database")
+  file.remove(p1)
+
   # Test with a fresh test database
   db <- create_test_db(path = tempfile())
   db_path <- db@driver@dbdir
@@ -139,14 +149,26 @@ test_that("optimize_db", {
   )
 
   # The rewrite must preserve the schema of the original table: the NOT NULL
-  # constraints of the sensor tables survive the reordering
+  # constraints of the sensor tables survive the reordering (checked on the
+  # physical raw table; the main.Activity view exposes the same columns minus
+  # the provenance ids)
   nullable <- DBI::dbGetQuery(
     db,
     "SELECT is_nullable FROM information_schema.columns
-     WHERE table_schema = 'main' AND table_name = 'Activity'
+     WHERE table_schema = 'raw' AND table_name = 'Activity'
        AND column_name = 'participant_id'"
   )[[1]]
   expect_equal(nullable, "NO")
+
+  # The main.Activity view keeps working after the raw-table rewrite
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Activity")[[1]],
+    1
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT COUNT(*) FROM raw.Activity")[[1]],
+    1
+  )
 
   # Cleanup
   dbDisconnect(db)

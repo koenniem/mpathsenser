@@ -61,13 +61,24 @@ test_that("import populates the database correctly", {
   expect_equal(pf$sense_version, 5L)
   expect_equal(pf$file_size_bytes, file.size(file.path(dir, "a.json")))
 
-  # Sensor data with correct values, UTC instants, and file provenance
+  # Sensor data with correct values, UTC instants, and file provenance. The
+  # user-facing Activity view hides the provenance columns; the raw table
+  # carries them.
   act <- DBI::dbGetQuery(db, "SELECT * FROM Activity")
   expect_equal(act$participant_id, 12345)
   expect_equal(act$confidence, 80)
   expect_equal(act$type, "WALKING")
   expect_equal(format(act$time, tz = "UTC"), "2025-12-16 12:50:40")
-  expect_equal(act$source_file_id, pf$file_id)
+  expect_false("source_file_id" %in% names(act))
+  expect_false("source_row_id" %in% names(act))
+
+  act_raw <- DBI::dbGetQuery(db, "SELECT * FROM raw.Activity")
+  expect_equal(act_raw$source_file_id, pf$file_id)
+  # source_row_id is the 1-based position of the entry in the file (the
+  # mpathinfo entry is first, then the sensor entries in file order), so the
+  # Activity entry is the second row of the file.
+  expect_equal(act_raw$source_row_id, 2)
+  expect_equal(act_raw$source_measurement_id, 1)
 
   bat <- DBI::dbGetQuery(db, "SELECT * FROM Battery")
   expect_equal(bat$battery_level, 87)
@@ -192,11 +203,12 @@ test_that("end-time sensor deduplication keeps the last same-file row", {
   db <- create_db(NULL, ":memory:")
   DBI::dbExecute(
     db,
-    "INSERT INTO Accelerometer (
-       participant_id, time, end_time, n, timezone, source_file_id
+    "INSERT INTO raw.Accelerometer (
+       participant_id, time, end_time, n, timezone,
+       source_file_id, source_row_id, source_measurement_id
      ) VALUES
-       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', TIMESTAMPTZ '2025-12-16 12:01:00+00', 1, NULL, 1),
-       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', TIMESTAMPTZ '2025-12-16 12:02:00+00', 2, NULL, 1)"
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', TIMESTAMPTZ '2025-12-16 12:01:00+00', 1, NULL, 1, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', TIMESTAMPTZ '2025-12-16 12:02:00+00', 2, NULL, 1, 2, 1)"
   )
 
   res <- deduplicate_db(db, sensors = "Accelerometer")
@@ -214,16 +226,17 @@ test_that("interval sensors keep the newest file when end times differ", {
   # newer file 2 has an updated (longer) end time. The newest file must win.
   DBI::dbExecute(
     db,
-    "INSERT INTO Accelerometer (
-       participant_id, time, end_time, n, timezone, source_file_id
+    "INSERT INTO raw.Accelerometer (
+       participant_id, time, end_time, n, timezone,
+       source_file_id, source_row_id, source_measurement_id
      ) VALUES
-       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', TIMESTAMPTZ '2025-12-16 12:01:00+00', 1, NULL, 1),
-       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', TIMESTAMPTZ '2025-12-16 12:05:00+00', 2, NULL, 2)"
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', TIMESTAMPTZ '2025-12-16 12:01:00+00', 1, NULL, 1, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', TIMESTAMPTZ '2025-12-16 12:05:00+00', 2, NULL, 2, 1, 1)"
   )
 
   res <- deduplicate_db(db, sensors = "Accelerometer")
   expect_equal(unname(res[["Accelerometer"]]), 1)
-  accelerometer <- DBI::dbGetQuery(db, "SELECT end_time, n, source_file_id FROM Accelerometer")
+  accelerometer <- DBI::dbGetQuery(db, "SELECT end_time, n, source_file_id FROM raw.Accelerometer")
   expect_equal(accelerometer$n, 2)
   expect_equal(accelerometer$source_file_id, 2)
   expect_equal(format(accelerometer$end_time, tz = "UTC"), "2025-12-16 12:05:00")
@@ -233,29 +246,44 @@ test_that("interval sensors keep the newest file when end times differ", {
 
 test_that("Garmin point sensors keep the last recorded row within a file", {
   db <- create_db(NULL, ":memory:")
+  # Two measurements with the same key in one file: the one later in source
+  # order (higher source_row_id / source_measurement_id) wins, regardless of
+  # physical insertion order.
   DBI::dbExecute(
     db,
-    "INSERT INTO GarminBBI (participant_id, time, bbi, mac_address, timezone, source_file_id) VALUES
-       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 763, '00', NULL, 1),
-       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 800, '00', NULL, 1)"
+    "INSERT INTO raw.GarminBBI (
+       participant_id, time, bbi, mac_address, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     ) VALUES
+       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 763, '00', NULL, 1, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 800, '00', NULL, 1, 1, 2)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO GarminEnhancedBBI (participant_id, time, bbi, status, gap_duration, mac_address, timezone, source_file_id) VALUES
-       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 992, 'lowConfidence', 0, '00', NULL, 1),
-       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 999, 'lowConfidence', 0, '00', NULL, 1)"
+    "INSERT INTO raw.GarminEnhancedBBI (
+       participant_id, time, bbi, status, gap_duration, mac_address, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     ) VALUES
+       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 992, 'lowConfidence', 0, '00', NULL, 1, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 999, 'lowConfidence', 0, '00', NULL, 1, 1, 2)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO GarminHeartRate (participant_id, time, bpm, status, mac_address, timezone, source_file_id) VALUES
-       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 60, 'locked', 'A', NULL, 1),
-       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 61, 'locked', 'A', NULL, 1)"
+    "INSERT INTO raw.GarminHeartRate (
+       participant_id, time, bpm, status, mac_address, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     ) VALUES
+       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 60, 'locked', 'A', NULL, 1, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 61, 'locked', 'A', NULL, 1, 1, 2)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO GarminStress (participant_id, time, stress, status, mac_address, timezone, source_file_id) VALUES
-       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 40, 'valid', '00', NULL, 1),
-       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 55, 'valid', '00', NULL, 1)"
+    "INSERT INTO raw.GarminStress (
+       participant_id, time, stress, status, mac_address, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     ) VALUES
+       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 40, 'valid', '00', NULL, 1, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 55, 'valid', '00', NULL, 1, 1, 2)"
   )
 
   res <- deduplicate_db(
@@ -287,13 +315,16 @@ test_that("Garmin point sensors keep the newest file when split across files", {
   # The same timestamp with different values in two files: the newer file wins.
   DBI::dbExecute(
     db,
-    "INSERT INTO GarminHeartRate (participant_id, time, bpm, status, mac_address, timezone, source_file_id) VALUES
-       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 60, 'locked', 'A', NULL, 1),
-       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 70, 'locked', 'A', NULL, 2)"
+    "INSERT INTO raw.GarminHeartRate (
+       participant_id, time, bpm, status, mac_address, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     ) VALUES
+       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 60, 'locked', 'A', NULL, 1, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 16:30:00+00', 70, 'locked', 'A', NULL, 2, 1, 1)"
   )
 
   deduplicate_db(db, sensors = "GarminHeartRate")
-  heart_rate <- DBI::dbGetQuery(db, "SELECT bpm, source_file_id FROM GarminHeartRate")
+  heart_rate <- DBI::dbGetQuery(db, "SELECT bpm, source_file_id FROM raw.GarminHeartRate")
   expect_equal(heart_rate$bpm, 70L)
   expect_equal(heart_rate$source_file_id, 2)
 
@@ -304,20 +335,26 @@ test_that("non-Garmin point sensors keep the last row of a file", {
   db <- create_db(NULL, ":memory:")
   DBI::dbExecute(
     db,
-    "INSERT INTO Activity (participant_id, time, confidence, type, timezone, source_file_id) VALUES
-       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 80, 'WALKING', NULL, 1),
-       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 99, 'RUNNING', NULL, 1)"
+    "INSERT INTO raw.Activity (
+       participant_id, time, confidence, type, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     ) VALUES
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 80, 'WALKING', NULL, 1, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 99, 'RUNNING', NULL, 1, 2, 1)"
   )
   DBI::dbExecute(
     db,
-    "INSERT INTO GarminAccelerometer (participant_id, time, x, y, z, mac_address, timezone, source_file_id) VALUES
-       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 1, 2, 3, 'A', NULL, 1),
-       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 4, 5, 6, 'A', NULL, 1)"
+    "INSERT INTO raw.GarminAccelerometer (
+       participant_id, time, x, y, z, mac_address, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     ) VALUES
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 1, 2, 3, 'A', NULL, 1, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 4, 5, 6, 'A', NULL, 1, 1, 2)"
   )
 
   deduplicate_db(db, sensors = c("Activity", "GarminAccelerometer"))
-  # Deduplication is an upsert (last wins), so the last recorded row is kept
-  # for every sensor, not only for interval/Garmin sensors.
+  # Deduplication is an upsert (last wins), so the row latest in source order
+  # is kept for every sensor, not only for interval/Garmin sensors.
   expect_equal(DBI::dbGetQuery(db, "SELECT confidence FROM Activity")$confidence, 99L)
   expect_equal(DBI::dbGetQuery(db, "SELECT x FROM GarminAccelerometer")$x, 4)
 
@@ -328,11 +365,12 @@ test_that("GarminSteps keeps the newest end time for a repeated start time", {
   db <- create_db(NULL, ":memory:")
   DBI::dbExecute(
     db,
-    "INSERT INTO GarminSteps (
-       participant_id, time, end_time, step_count, total_steps, mac_address, timezone, source_file_id
+    "INSERT INTO raw.GarminSteps (
+       participant_id, time, end_time, step_count, total_steps, mac_address, timezone,
+       source_file_id, source_row_id, source_measurement_id
      ) VALUES
-       (1, TIMESTAMPTZ '2025-12-16 16:31:44+00', TIMESTAMPTZ '2025-12-16 16:31:51+00', 1, 120, '00', NULL, 1),
-       (1, TIMESTAMPTZ '2025-12-16 16:31:44+00', TIMESTAMPTZ '2025-12-16 16:31:59+00', 2, 122, '00', NULL, 1)"
+       (1, TIMESTAMPTZ '2025-12-16 16:31:44+00', TIMESTAMPTZ '2025-12-16 16:31:51+00', 1, 120, '00', NULL, 1, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 16:31:44+00', TIMESTAMPTZ '2025-12-16 16:31:59+00', 2, 122, '00', NULL, 1, 1, 2)"
   )
 
   deduplicate_db(db, sensors = "GarminSteps")
@@ -379,18 +417,21 @@ test_that("deduplication does not remove data imported in earlier runs", {
 test_that("deduplication is an upsert: newest file and last row win", {
   db <- create_db(NULL, ":memory:")
   # A plain point sensor with the same key in two files. The newest file (2)
-  # must win, and within that file the last recorded row must win.
+  # must win, and within that file the row latest in source order must win.
   DBI::dbExecute(
     db,
-    "INSERT INTO Activity (participant_id, time, confidence, type, timezone, source_file_id) VALUES
-       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 80, 'WALKING', NULL, 1),
-       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 90, 'STILL', NULL, 2),
-       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 99, 'RUNNING', NULL, 2)"
+    "INSERT INTO raw.Activity (
+       participant_id, time, confidence, type, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     ) VALUES
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 80, 'WALKING', NULL, 1, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 90, 'STILL', NULL, 2, 1, 1),
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 99, 'RUNNING', NULL, 2, 2, 1)"
   )
 
   deduplicate_db(db, sensors = "Activity")
-  act <- DBI::dbGetQuery(db, "SELECT confidence, type, source_file_id FROM Activity")
-  # Only one row remains: the newest file's last row.
+  act <- DBI::dbGetQuery(db, "SELECT confidence, type, source_file_id FROM raw.Activity")
+  # Only one row remains: the newest file's row latest in source order.
   expect_equal(act$confidence, 99L)
   expect_equal(act$type, "RUNNING")
   expect_equal(act$source_file_id, 2)
@@ -411,16 +452,21 @@ test_that("deduplicate_db removes duplicates on demand", {
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
   expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Activity")[[1]], 1)
 
-  # Create a duplicate measurement manually
+  # Create a duplicate measurement manually: same key, but the copy is later in
+  # source order so it must win.
   DBI::dbExecute(
     db,
-    "INSERT INTO Activity (participant_id, time, confidence, type, timezone, source_file_id)
-     SELECT participant_id, time, 99, 'RUNNING', timezone, source_file_id FROM Activity"
+    "INSERT INTO raw.Activity (
+       participant_id, time, confidence, type, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     )
+     SELECT participant_id, time, 99, 'RUNNING', timezone,
+            source_file_id, source_row_id + 1, source_measurement_id FROM raw.Activity"
   )
   res <- deduplicate_db(db, sensors = "Activity")
   expect_equal(unname(res[["Activity"]]), 1)
   act <- DBI::dbGetQuery(db, "SELECT confidence FROM Activity")
-  # Same file, so the last row (highest rowid) wins: deduplication is an
+  # Same file, so the row later in source order wins: deduplication is an
   # upsert for every sensor.
   expect_equal(act$confidence, 99)
 
@@ -495,7 +541,7 @@ test_that("file_ids are assigned in deterministic batch order", {
   ))
 
   pf <- DBI::dbGetQuery(db, "SELECT file_id, participant_id, file_name FROM ProcessedFiles ORDER BY file_id")
-  ped <- DBI::dbGetQuery(db, "SELECT participant_id, step_count, source_file_id FROM Pedometer ORDER BY source_file_id")
+  ped <- DBI::dbGetQuery(db, "SELECT participant_id, step_count, source_file_id FROM raw.Pedometer ORDER BY source_file_id")
 
   # file_ids are consecutive and assigned in import (chronological) order
   expect_equal(pf$file_id, seq_len(nrow(pf)))
@@ -604,6 +650,45 @@ test_that("files without mpathinfo are skipped and reported", {
   expect_equal(
     DBI::dbGetQuery(db, "SELECT COUNT(*) FROM ProcessedFiles")[[1]],
     1
+  )
+
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("ingest dispatch runs each sensor once per sense version with rows", {
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  # Two files in one batch with different sense versions and disjoint sensor
+  # payloads: the v5 file has stepcount, the v6 file has battery. Before the
+  # version-aware dispatch, every sensor whose payload type occurred anywhere
+  # in the batch was ingested for EVERY version present, so the second
+  # version pass ran full zero-row queries for sensors of the other version.
+  make_test_file(
+    dir,
+    "v5.json",
+    version = 5,
+    sensors = list(list(`__type` = "dk.cachet.carp.stepcount", steps = 3))
+  )
+  make_test_file(
+    dir,
+    "v6.json",
+    version = 6,
+    sensors = list(list(`__type` = "dk.cachet.carp.batterystate", batteryLevel = 5, batteryStatus = "OK"))
+  )
+  db <- create_db(NULL, ":memory:")
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE, batch_size = 10))
+
+  # Each sensor ingested exactly once, from its own version's file
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]], 1)
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Battery")[[1]], 1)
+  ped <- DBI::dbGetQuery(db, "SELECT step_count, source_file_id FROM raw.Pedometer")
+  bat <- DBI::dbGetQuery(db, "SELECT battery_level, source_file_id FROM raw.Battery")
+  expect_equal(ped$step_count, 3L)
+  expect_equal(bat$battery_level, 5L)
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT sense_version FROM ProcessedFiles ORDER BY file_id")$sense_version,
+    c(5L, 6L)
   )
 
   close_db(db)
@@ -923,6 +1008,38 @@ test_that("empty Bluetooth scan results preserve the scan measurement", {
   unlink(dir, recursive = TRUE)
 })
 
+test_that("garmin ingest is skipped for arrays absent from the batch payloads", {
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  make_test_file(
+    dir,
+    "a.json",
+    sensors = list(list(
+      `__type` = "dk.cachet.carp.garminalllogsdata",
+      bbi = list(list(timestamp = 1765889440388567, bbi = 800)),
+      heartRate = list(list(timestamp = 1765889440388567, beatsPerMinute = 60))
+    ))
+  )
+  db <- create_db(NULL, ":memory:")
+
+  # Sensors whose array carries no element in any payload of the batch are
+  # not dispatched at all (they would only run a zero-row unnest over
+  # garmin_parsed; in the 106k-file run those calls cost ~104 s in total).
+  expect_output(
+    read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE, .debug = TRUE),
+    "Ingested 1 row into GarminBBI"
+  )
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM GarminHeartRate")[[1]], 1)
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM GarminStress")[[1]], 0)
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM GarminSkinTemperature")[[1]], 0)
+
+  # GarminMeta has no array column: it still runs and records the payload
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM GarminMeta")[[1]], 1)
+
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
 test_that("debug mode reports progress per file and per sensor", {
   dir <- tempfile("import_test")
   dir.create(dir)
@@ -963,6 +1080,493 @@ test_that("an unfinished transaction is rolled back before importing", {
     DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]],
     1
   )
+
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("deduplication keeps the newest provenance triple regardless of rowid", {
+  db <- create_db(NULL, ":memory:")
+  # Insert rows in reverse source order: the physically-first row has the
+  # higher source_row_id, so physical order (rowid) opposes source order.
+  # Deduplication must resolve by provenance, not by rowid.
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Activity (
+       participant_id, time, confidence, type, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     ) VALUES
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 99, 'RUNNING', NULL, 1, 5, 1),
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 80, 'WALKING', NULL, 1, 1, 1)"
+  )
+
+  deduplicate_db(db, sensors = "Activity")
+  act <- DBI::dbGetQuery(db, "SELECT confidence, type FROM Activity")
+  # The row with source_row_id 5 was recorded later in the file and must win,
+  # even though it was inserted (and hence has a lower rowid) first.
+  expect_equal(act$confidence, 99L)
+  expect_equal(act$type, "RUNNING")
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Activity")[[1]], 1)
+
+  close_db(db)
+})
+
+test_that("dedup chooses a full-table pass on an empty database and a scoped pass otherwise", {
+  db <- create_db(NULL, ":memory:")
+  meta <- tibble::tibble(
+    source_file = "/tmp/f.json",
+    file_name = "f.json",
+    rel_path = "f.json",
+    file_size_bytes = 100,
+    modified_at = as.POSIXct("2025-12-16", tz = "UTC")
+  )
+
+  # An empty database reports db_was_empty = TRUE: the end-of-run dedup pass
+  # then runs over the full sensor tables (no file_ids flagging join).
+  out <- .read_filter_new_files(db, meta)
+  expect_true(attr(out, "db_was_empty"))
+
+  # After a run registered processed files the same database reports FALSE,
+  # so a later run uses the file-scoped dedup pass.
+  dir <- tempfile("dedup_choice")
+  dir.create(dir)
+  make_test_file(
+    dir,
+    "a.json",
+    connection_id = "12345",
+    sensors = list(list(`__type` = "dk.cachet.carp.activity", confidence = 80, type = "WALKING"))
+  )
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+  meta2 <- meta
+  meta2$file_name <- meta2$rel_path <- "g.json"
+  out2 <- .read_filter_new_files(db, meta2)
+  expect_false(attr(out2, "db_was_empty"))
+
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("deduplication resolves cross-file duplicates by newest file first", {
+  db <- create_db(NULL, ":memory:")
+  # file 2 is newer; within file 2 the later source row wins even when it was
+  # physically inserted earlier than the older file's rows.
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Activity (
+       participant_id, time, confidence, type, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     ) VALUES
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 90, 'STILL', NULL, 2, 9, 1),
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 80, 'WALKING', NULL, 1, 2, 1),
+       (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 95, 'JOGGING', NULL, 2, 3, 1)"
+  )
+
+  deduplicate_db(db, sensors = "Activity")
+  act <- DBI::dbGetQuery(db, "SELECT confidence, type, source_file_id FROM raw.Activity")
+  # Within file 2, the row with source_row_id 9 was recorded later than the
+  # row with source_row_id 3 and must win.
+  expect_equal(act$confidence, 90L)
+  expect_equal(act$type, "STILL")
+  expect_equal(act$source_file_id, 2)
+
+  close_db(db)
+})
+
+test_that("main sensor views hide the provenance columns and are read-only", {
+  db <- create_db(NULL, ":memory:")
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Activity (
+       participant_id, time, confidence, type, timezone,
+       source_file_id, source_row_id, source_measurement_id
+     ) VALUES (1, TIMESTAMPTZ '2025-12-16 12:00:00+00', 80, 'WALKING', NULL, 1, 1, 1)"
+  )
+
+  # main.Activity exposes the raw columns minus the three source-id columns;
+  # timezone stays visible.
+  view_cols <- DBI::dbGetQuery(
+    db,
+    "SELECT column_name FROM information_schema.columns
+     WHERE table_schema = 'main' AND table_name = 'Activity'
+     ORDER BY ordinal_position"
+  )$column_name
+  raw_cols <- DBI::dbGetQuery(
+    db,
+    "SELECT column_name FROM information_schema.columns
+     WHERE table_schema = 'raw' AND table_name = 'Activity'
+     ORDER BY ordinal_position"
+  )$column_name
+  expect_equal(
+    view_cols,
+    setdiff(raw_cols, c("source_file_id", "source_row_id", "source_measurement_id"))
+  )
+  expect_true("timezone" %in% view_cols)
+
+  # The view is readable
+  expect_equal(DBI::dbGetQuery(db, "SELECT confidence FROM Activity")$confidence, 80L)
+  # ... but not writable
+  expect_error(
+    DBI::dbExecute(
+      db,
+      "INSERT INTO Activity (participant_id, time, confidence) VALUES (1, now(), 50)"
+    )
+  )
+  expect_error(
+    DBI::dbExecute(db, "DELETE FROM Activity")
+  )
+
+  close_db(db)
+})
+
+test_that("views stay consistent after dedup, optimize, and timezone fills", {
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  make_test_file(
+    dir,
+    "a.json",
+    sensors = list(
+      list(`__type` = "dk.cachet.carp.stepcount", steps = 1),
+      list(`__type` = "dk.cachet.carp.timezone", timezone = "Europe/Brussels")
+    )
+  )
+  db <- create_db(NULL, ":memory:")
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+
+  # A duplicate measurement in a second file (renamed copy)
+  file.copy(file.path(dir, "a.json"), file.path(dir, "b.json"))
+  Sys.sleep(1.1)
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]], 1)
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT timezone FROM Pedometer")$timezone,
+    "Europe/Brussels"
+  )
+  optimize_db(db, sensors = "Pedometer", .progress = FALSE)
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]], 1)
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT step_count FROM Pedometer")$step_count,
+    1L
+  )
+
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("source_row_id ordinals are consecutive and deterministic across batch sizes", {
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  # Five files with distinct measurement times (so deduplication keeps one row
+  # per sensor per file), each with several entries; compare batch_size 1 vs 100.
+  t0 <- 1765889440388567
+  for (i in 1:5) {
+    make_test_file(
+      dir,
+      paste0("f", i, ".json"),
+      start_time = t0 + i * 1e8,
+      sensors = list(
+        list(`__type` = "dk.cachet.carp.stepcount", steps = i),
+        list(`__type` = "dk.cachet.carp.activity", confidence = 10 + i, type = "WALKING"),
+        list(`__type` = "dk.cachet.carp.batterystate", batteryLevel = i, batteryStatus = "OK")
+      )
+    )
+  }
+  db1 <- create_db(NULL, ":memory:")
+  db2 <- create_db(NULL, ":memory:")
+  suppressMessages(read_mpath_sense(
+    path = dir, db = db1, recursive = FALSE, .progress = FALSE, batch_size = 1
+  ))
+  suppressMessages(read_mpath_sense(
+    path = dir, db = db2, recursive = FALSE, .progress = FALSE, batch_size = 100
+  ))
+
+  for (tbl in c("raw.Pedometer", "raw.Activity", "raw.Battery")) {
+    a <- DBI::dbGetQuery(db1, sprintf("SELECT * FROM %s ORDER BY source_file_id, source_row_id", tbl))
+    b <- DBI::dbGetQuery(db2, sprintf("SELECT * FROM %s ORDER BY source_file_id, source_row_id", tbl))
+    expect_equal(a, b, info = tbl)
+    # Each file contributes one row per sensor (mpathinfo + 3 sensor entries);
+    # the row ordinal is the 1-based position of the sensor entry in the file
+    # (mpathinfo is first at position 1) and the measurement ordinal is 1.
+    expect_equal(a$source_file_id, 1:5, info = tbl)
+    expect_true(all(a$source_row_id %in% 1:4), info = tbl)
+    expect_equal(a$source_measurement_id, rep(1, 5), info = tbl)
+  }
+
+  close_db(db1)
+  close_db(db2)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("Garmin array element ordinals follow the array order", {
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  make_test_file(
+    dir,
+    "a.json",
+    sensors = list(list(
+      `__type` = "dk.cachet.carp.garminalllogsdata",
+      heartRate = list(
+        list(timestamp = 1765889440388567, beatsPerMinute = 60, macAddress = "A"),
+        list(timestamp = 1765889440389567, beatsPerMinute = 70, macAddress = "A")
+      )
+    ))
+  )
+  db <- create_db(NULL, ":memory:")
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+
+  hr <- DBI::dbGetQuery(
+    db,
+    "SELECT bpm, source_row_id, source_measurement_id
+     FROM raw.GarminHeartRate ORDER BY source_measurement_id"
+  )
+  expect_equal(hr$source_measurement_id, 1:2)
+  expect_equal(hr$bpm, c(60L, 70L))
+  # Both array elements come from the same single garminalllogsdata entry
+  expect_equal(length(unique(hr$source_row_id)), 1L)
+
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("Garmin recalculated duplicates: later array element and later file win", {
+  # One file whose array repeats a timestamp: the later array element (the
+  # recalculation) must win after deduplication.
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  make_test_file(
+    dir,
+    "a.json",
+    sensors = list(list(
+      `__type` = "dk.cachet.carp.garminalllogsdata",
+      heartRate = list(
+        list(timestamp = 1765889440388567, beatsPerMinute = 60, macAddress = "A"),
+        list(timestamp = 1765889440388567, beatsPerMinute = 80, macAddress = "A")
+      )
+    ))
+  )
+  db <- create_db(NULL, ":memory:")
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+
+  # The automatic post-import dedup already resolved the in-file duplicate.
+  hr <- DBI::dbGetQuery(db, "SELECT bpm, source_measurement_id FROM raw.GarminHeartRate")
+  expect_equal(nrow(hr), 1L)
+  expect_equal(hr$bpm, 80L)
+  expect_equal(hr$source_measurement_id, 2L)
+
+  # Same duplicate split across two entries of one file: the later entry wins.
+  make_test_file(
+    dir,
+    "b.json",
+    start_time = 1765889440388567,
+    sensors = list(
+      list(
+        `__type` = "dk.cachet.carp.garminalllogsdata",
+        heartRate = list(list(
+          timestamp = 1765889441388567, beatsPerMinute = 60, macAddress = "A"
+        ))
+      ),
+      list(
+        `__type` = "dk.cachet.carp.garminalllogsdata",
+        heartRate = list(list(
+          timestamp = 1765889441388567, beatsPerMinute = 90, macAddress = "A"
+        ))
+      )
+    )
+  )
+  Sys.sleep(1.1)
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+
+  hr2 <- DBI::dbGetQuery(
+    db,
+    "SELECT bpm, source_row_id FROM raw.GarminHeartRate WHERE source_file_id = 2"
+  )
+  expect_equal(nrow(hr2), 1L)
+  # The file contains mpathinfo (position 1) followed by the two
+  # garminalllogsdata entries (positions 2 and 3). The recalculation was
+  # written second, so it is at position 3 and wins deduplication (dedup
+  # keeps the row later in file order).
+  expect_equal(hr2$bpm, 90L)
+  expect_equal(hr2$source_row_id, 3)
+
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("staging ordinals are deterministic across thread counts and repeats", {
+  # Synthetic multi-file batch: entries carry a monotone in-file marker, with
+  # several sensor types sharing timestamps (like real files). Every row has a
+  # distinct measurement time so deduplication keeps all rows, and the staged
+  # ordinal must always equal the true file position (JSON array index),
+  # regardless of thread count or repeat.
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  for (i in 1:4) {
+    entries <- list()
+    for (k in 1:600) {
+      entries[[length(entries) + 1]] <- list(
+        sensorStartTime = 1765889440388567 + k * 1e6,
+        data = list(
+          `__type` = if (k %% 2) "dk.cachet.carp.stepcount" else "dk.cachet.carp.activity",
+          steps = k, confidence = k %% 200, type = "WALKING", marker = k
+        )
+      )
+    }
+    # The first entry is mpathinfo (deterministic anchor)
+    entries <- c(list(list(
+      sensorStartTime = 1765889440388567,
+      data = list(
+        `__type` = "dk.cachet.carp.mpathinfo", connectionId = "12345",
+        studyName = "test_study", senseVersion = 5
+      )
+    )), entries)
+    jsonlite::write_json(entries, file.path(dir, paste0("f", i, ".json")), auto_unbox = TRUE)
+  }
+
+  ordinals <- function(threads) {
+    db <- create_db(NULL, ":memory:", threads = threads)
+    res <- tryCatch(
+      {
+        suppressMessages(read_mpath_sense(
+          path = dir, db = db, recursive = FALSE, .progress = FALSE, batch_size = 2
+        ))
+        DBI::dbGetQuery(
+          db,
+          "SELECT source_file_id, source_row_id, step_count
+           FROM raw.Pedometer ORDER BY source_file_id, source_row_id"
+        )
+      },
+      error = function(e) NULL
+    )
+    close_db(db)
+    res
+  }
+
+  a <- ordinals(1)
+  b <- ordinals(8)
+  if (is.null(a) || is.null(b)) {
+    skip("staging could not be exercised in this environment")
+  }
+  # Per-file ordinals are consecutive and identical across thread settings
+  expect_equal(a$source_row_id, b$source_row_id)
+  # step_count (the in-file marker) increases with source_row_id within each
+  # file: the ordinal reflects the true file position, not scan order.
+  expect_true(all(diff(a$step_count) > 0))
+
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("source_row_id is the file position even when sensor times interleave", {
+  # m-Path Sense writes each sensor in start-time order but interleaves the
+  # sensors, so the file-wide start times are not sorted. source_row_id must
+  # still be the JSON array position, so that a row points at the exact
+  # entry in the file (data provenance).
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  # Deliberately interleaved, with the second sensor's time EARLIER than the
+  # first sensor's (as can happen between sensors), plus a duplicate start
+  # time within one sensor later in the file.
+  entries <- list(
+    list(sensorStartTime = 1765889441000000, data = list(
+      `__type` = "dk.cachet.carp.mpathinfo", connectionId = "12345",
+      studyName = "s", senseVersion = 5
+    )),
+    # stepcount at 12:00
+    list(sensorStartTime = 1765889440000000, data = list(
+      `__type` = "dk.cachet.carp.stepcount", steps = 10
+    )),
+    # activity at 12:01
+    list(sensorStartTime = 1765889441000000, data = list(
+      `__type` = "dk.cachet.carp.activity", confidence = 10, type = "WALKING"
+    )),
+    # stepcount again at 12:00:30 (later in file, later time for that sensor)
+    list(sensorStartTime = 1765889440300000, data = list(
+      `__type` = "dk.cachet.carp.stepcount", steps = 11
+    )),
+    # activity at 11:59 (a row from another sensor with an EARLIER time than
+    # the previous row)
+    list(sensorStartTime = 1765889439000000, data = list(
+      `__type` = "dk.cachet.carp.activity", confidence = 20, type = "STILL"
+    ))
+  )
+  jsonlite::write_json(entries, file.path(dir, "interleaved.json"), auto_unbox = TRUE)
+  db <- create_db(NULL, ":memory:")
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+
+  ped <- DBI::dbGetQuery(db, "SELECT step_count, source_row_id FROM raw.Pedometer ORDER BY source_row_id")
+  act <- DBI::dbGetQuery(db, "SELECT type, confidence, source_row_id FROM raw.Activity ORDER BY source_row_id")
+
+  # Rows keep the true file position: mpathinfo at 1, then 2,3,4,5.
+  expect_equal(ped$source_row_id, c(2, 4))
+  expect_equal(act$source_row_id, c(3, 5))
+  expect_equal(ped$step_count, c(10L, 11L))
+  expect_equal(act$type, c("WALKING", "STILL"))
+
+  # Duplicates on (participant, time, sensor): none here, but a same-key pair
+  # would keep the row with the later source_row_id. Covered elsewhere; here
+  # we pin the provenance-ordinal contract.
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("duplicates keep the later file position within the newest file", {
+  # One sensor reporting the same start time twice within one file: the
+  # second (later-position) row is the corrected/updated measurement and must
+  # win, regardless of the physical insertion order.
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  make_test_file(
+    dir,
+    "a.json",
+    start_time = 1765889440388567,
+    sensors = list(
+      list(`__type` = "dk.cachet.carp.activity", confidence = 50, type = "WALKING"),
+      list(`__type` = "dk.cachet.carp.activity", confidence = 90, type = "RUNNING")
+    )
+  )
+  db <- create_db(NULL, ":memory:")
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+
+  act <- DBI::dbGetQuery(db, "SELECT confidence, type, source_row_id FROM raw.Activity")
+  expect_equal(nrow(act), 1L)
+  # mpathinfo is position 1; the two activity entries are at positions 2 and 3.
+  expect_equal(act$source_row_id, 3)
+  expect_equal(act$confidence, 90L)
+  expect_equal(act$type, "RUNNING")
+
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("editing a file and re-importing overwrites the corrected measurement", {
+  # Documented behaviour: modify a value in a file, re-import (the file is new
+  # because its modification time/size changed), and the corrected measurement
+  # replaces the old one because the new file has a later source_file_id and
+  # its row is later in source order.
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  f <- make_test_file(
+    dir,
+    "a.json",
+    sensors = list(list(`__type` = "dk.cachet.carp.activity", confidence = 50, type = "WALKING"))
+  )
+  db <- create_db(NULL, ":memory:")
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+  expect_equal(DBI::dbGetQuery(db, "SELECT confidence FROM Activity")$confidence, 50L)
+
+  # Edit: change the value, keep the same sensorStartTime
+  entries <- jsonlite::fromJSON(f, simplifyVector = FALSE)
+  entries[[2]]$data$confidence <- 95
+  entries[[2]]$data$type <- "RUNNING"
+  jsonlite::write_json(entries, f, auto_unbox = TRUE)
+  Sys.sleep(1.1) # ensure the modification time differs
+
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+  act <- DBI::dbGetQuery(db, "SELECT confidence, type, source_file_id, source_row_id FROM raw.Activity")
+  expect_equal(nrow(act), 1L)
+  expect_equal(act$confidence, 95L)
+  expect_equal(act$type, "RUNNING")
+  # The winner comes from the second (corrected) version of the file
+  expect_equal(act$source_file_id, 2)
 
   close_db(db)
   unlink(dir, recursive = TRUE)
