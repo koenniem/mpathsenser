@@ -129,7 +129,7 @@ get_nrows(db)
 
 # Deduplication
 
-m-Path Sense does not guarantee that each measurement occurs only once in the database: a file may be uploaded twice (e.g. under a different name), or a participant may re-upload a corrected file. After every import, `read_mpath_sense()` therefore removes duplicate measurements. The deduplication can also be run manually with `deduplicate_db()`, e.g. to clean up after an interrupted import:
+m-Path Sense does not guarantee that each measurement occurs only once in the database: a file may be uploaded twice (e.g. under a different name), or a participant may re-upload a corrected file. After every import, `read_mpath_sense()` therefore removes duplicate measurements. Pass `deduplicate = FALSE` to skip this step. The deduplication can also be run manually with `deduplicate_db()`, e.g. to clean up after an interrupted import:
 
 ```{r, eval = FALSE}
 deduplicate_db(db)
@@ -166,7 +166,7 @@ DuckDB stores data in a columnar format and maintains per-block statistics (zone
 optimize_db(db, sensors = "Pedometer")
 ```
 
-For a large database this rewrite takes on the order of seconds per table (the data has to be read, sorted, and written back once), so it is best run after a large bulk import rather than after every incremental one.
+For a large database this rewrite takes on the order of seconds per table (the data has to be read, sorted, and written back once), so it is best run after a large bulk import rather than after every incremental one. The import automatically optimizes the sensors it touched; pass `optimize = FALSE` to `read_mpath_sense()` to skip that.
 
 # Assigning timezones and representing timestamps
 

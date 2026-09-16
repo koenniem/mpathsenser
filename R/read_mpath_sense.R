@@ -43,6 +43,9 @@
 #'   the size of the whole database. Use [deduplicate_db()] to clean up
 #'   duplicates that predate this run, e.g. after an interrupted import.
 #'
+#'   When `deduplicate = FALSE` no duplicate measurements are removed, and
+#'   when `optimize = FALSE` the sensor tables keep their import order.
+#'
 #'   Timestamps are stored as UTC instants in DuckDB. When timezone
 #'   measurements are available, the import also assigns each observation its
 #'   IANA timezone using [add_timezones_to_db()]'s interval-matching rules.
@@ -62,6 +65,11 @@
 #'   batch. All files of a batch are staged and ingested together; larger
 #'   batches import faster but use more memory.
 #' @param recursive Should the listing recurse into directories?
+#' @param deduplicate Logical; whether to remove duplicate measurements after
+#'   importing, using the last-wins rule described above. Defaults to `TRUE`.
+#' @param optimize Logical; whether to re-order the imported sensor tables by
+#'   `participant_id` and `time` as [optimize_db()] does, which speeds up later
+#'   queries and improves compression. Defaults to `TRUE`.
 #' @param .progress Whether to display a progress bar.
 #' @param .debug Whether suppressed warnings and errors should be shown for
 #'   debugging purposes. When `TRUE`, a message is shown for every staged batch
@@ -84,6 +92,8 @@ read_mpath_sense <- function(
   sensors = NULL,
   batch_size = 1000,
   recursive = TRUE,
+  deduplicate = TRUE,
+  optimize = TRUE,
   .progress = TRUE,
   .debug = FALSE
 ) {
@@ -93,6 +103,8 @@ read_mpath_sense <- function(
   check_sensors(sensors, allow_null = TRUE)
   check_arg(batch_size, "integerish", n = 1)
   check_arg(recursive, "logical", n = 1)
+  check_arg(deduplicate, "logical", n = 1)
+  check_arg(optimize, "logical", n = 1)
   check_arg(.progress, "logical", n = 1)
   check_arg(.debug, "logical", n = 1)
 
@@ -219,33 +231,40 @@ read_mpath_sense <- function(
     }
   }
 
-  # Deduplicate the sensor data. Because the sensor tables have no unique
-  # constraints, duplicate measurements (e.g. the same file imported under a
-  # different name) are removed afterwards, per measurement key, with the
-  # newest file winning. When the database was empty before this run, every
-  # duplicate key group necessarily involves a row this run inserted, so the
-  # full-table pass (no file_ids) finds exactly the same candidates as the
-  # file-scoped pass while skipping the per-row flagging join against the run's
-  # file_ids; it also cleans up duplicate rows left behind by interrupted runs.
-  # Otherwise only the key groups of the rows this run just imported are
-  # examined (the rows we inserted, plus any existing rows that share a key
-  # with them); rows that were already in the database before this run were
-  # deduplicated when they were imported and are left untouched. This keeps the
-  # cost proportional to the amount of new data instead of the whole table
-  # size, which matters for small imports into large databases. Use
-  # deduplicate_db() to also clean up duplicates left behind by interrupted
-  # imports. Sensors without candidate groups cost a single grouped scan.
+  # Post-import cleanup: duplicate removal and optimization are enabled by
+  # the `deduplicate` and `optimize` arguments (both default to TRUE).
+  #
+  # Deduplication: because the sensor tables have no unique constraints,
+  # duplicate measurements (e.g. the same file imported under a different
+  # name) are removed, per measurement key, with the newest file winning. When
+  # the database was empty before this run, every duplicate key group
+  # necessarily involves a row this run inserted, so the full-table pass (no
+  # file_ids) finds exactly the same candidates as the file-scoped pass while
+  # skipping the per-row flagging join against the run's file_ids; it also
+  # cleans up duplicate rows left behind by interrupted runs. Otherwise only
+  # the key groups of the rows this run just imported are examined (the rows
+  # we inserted, plus any existing rows that share a key with them); rows that
+  # were already in the database before this run were deduplicated when they
+  # were imported and are left untouched. This keeps the cost proportional to
+  # the amount of new data instead of the whole table size, which matters for
+  # small imports into large databases. Use deduplicate_db() to also clean up
+  # duplicates left behind by interrupted imports. Sensors without candidate
+  # groups cost a single grouped scan.
   if (length(run_file_ids) > 0) {
-    file_ids <- if (db_was_empty) NULL else run_file_ids
-    .read_dedup(db, active_sensors, .debug = .debug, file_ids = file_ids)
+    if (deduplicate) {
+      file_ids <- if (db_was_empty) NULL else run_file_ids
+      .read_dedup(db, active_sensors, .debug = .debug, file_ids = file_ids)
+    }
 
     # Optimize the database before adding timezones
-    .read_debug_time(
-      .debug,
-      msg = "Optimizing the database...",
-      msg_done = "Database optimized.",
-      optimize_db(db, sensors = active_sensors, .progress = FALSE)
-    )
+    if (optimize) {
+      .read_debug_time(
+        .debug,
+        msg = "Optimizing the database...",
+        msg_done = "Database optimized.",
+        optimize_db(db, sensors = active_sensors, .progress = FALSE)
+      )
+    }
 
     # Add the observation timezone after all files have been ingested and
     # deduplicated. This keeps the canonical timestamp as TIMESTAMPTZ while

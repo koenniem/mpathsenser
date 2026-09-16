@@ -12,7 +12,7 @@ make_test_file <- function(
   start_time = 1765889440388567
 ) {
   entries <- list(list(
-    sensorStartTime = start_time,
+    sensorStartTime = start_time[[1]],
     data = list(
       `__type` = "dk.cachet.carp.mpathinfo",
       connectionId = connection_id,
@@ -20,11 +20,32 @@ make_test_file <- function(
       senseVersion = version
     )
   ))
-  for (s in sensors) {
-    entries[[length(entries) + 1]] <- list(sensorStartTime = start_time, data = s)
+  # start_time can be a vector to give each sensor entry its own timestamp
+  # (recycled when shorter than the sensor list)
+  times <- rep_len(start_time, length(sensors))
+  for (i in seq_along(sensors)) {
+    entries[[length(entries) + 1]] <- list(sensorStartTime = times[[i]], data = sensors[[i]])
   }
   jsonlite::write_json(entries, file.path(dir, name), auto_unbox = TRUE)
   file.path(dir, name)
+}
+
+# Number of rows that violate the (participant_id, time) physical order, i.e.
+# the same check optimize_db() uses to decide whether a table needs rewriting.
+physical_order_violations <- function(db, sensor = "Activity") {
+  DBI::dbGetQuery(
+    db,
+    sprintf(
+      "SELECT COUNT(*) AS n FROM (
+         SELECT participant_id, time,
+                LAG(participant_id) OVER (ORDER BY rowid) AS pp,
+                LAG(time) OVER (ORDER BY rowid) AS pt
+         FROM raw.%s
+       ) WHERE pp IS NOT NULL
+         AND (participant_id < pp OR (participant_id = pp AND time < pt))",
+      sensor
+    )
+  )$n[[1]]
 }
 
 test_that("import populates the database correctly", {
@@ -476,6 +497,112 @@ test_that("deduplicate_db removes duplicates on demand", {
   res2 <- deduplicate_db(db, sensors = "Activity")
   expect_equal(unname(res2[["Activity"]]), 0)
 
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("deduplicate and optimize flags control the post-import passes", {
+  # The file's entries are in reverse time order and contain a duplicate
+  # measurement, so both the deduplication and the optimization are
+  # observable. Each database needs its own import because a file is only
+  # processed once.
+  dir <- tempfile("import_flags")
+  dir.create(dir)
+  t0 <- 1765889440388567
+  make_test_file(
+    dir,
+    "a.json",
+    connection_id = "12345",
+    start_time = c(t0 + 1e6, t0 + 1e6, t0),
+    sensors = list(
+      list(`__type` = "dk.cachet.carp.activity", confidence = 80, type = "WALKING"),
+      list(`__type` = "dk.cachet.carp.activity", confidence = 90, type = "STILL"),
+      list(`__type` = "dk.cachet.carp.activity", confidence = 70, type = "RUNNING")
+    )
+  )
+
+  import_activity <- function(...) {
+    db <- create_db(NULL, ":memory:")
+    suppressMessages(
+      read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE, ...)
+    )
+    db
+  }
+  activity <- function(db) {
+    DBI::dbGetQuery(db, "SELECT confidence FROM raw.Activity ORDER BY rowid")$confidence
+  }
+
+  # Defaults: deduplication removes the duplicate (the later source row wins)
+  # and optimization writes the table ordered by (participant_id, time).
+  db <- import_activity()
+  expect_equal(activity(db), c(70L, 90L))
+  expect_equal(physical_order_violations(db), 0)
+  close_db(db)
+
+  # Neither step: all three rows survive in file order.
+  db <- import_activity(deduplicate = FALSE, optimize = FALSE)
+  expect_equal(activity(db), c(80L, 90L, 70L))
+  expect_gt(physical_order_violations(db), 0)
+  close_db(db)
+
+  # Deduplicate only: the duplicate is removed, the file order stays.
+  db <- import_activity(optimize = FALSE)
+  expect_equal(activity(db), c(90L, 70L))
+  expect_gt(physical_order_violations(db), 0)
+  close_db(db)
+
+  # Optimize only: all rows survive, ordered by time.
+  db <- import_activity(deduplicate = FALSE)
+  expect_equal(activity(db), c(70L, 80L, 90L))
+  expect_equal(physical_order_violations(db), 0)
+  close_db(db)
+
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("duplicate timezone events are deduplicated at import", {
+  dir <- tempfile("import_tz_dedup")
+  dir.create(dir)
+  t0 <- 1765889440388567
+  make_test_file(
+    dir,
+    "a.json",
+    start_time = c(t0, t0),
+    sensors = list(
+      list(`__type` = "dk.cachet.carp.timezone", timezone = "Europe/Brussels"),
+      list(`__type` = "dk.cachet.carp.timezone", timezone = "Europe/Brussels")
+    )
+  )
+  db <- create_db(NULL, ":memory:")
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+  # The timezone interval matcher assumes one event per participant and
+  # instant, so duplicate timezone events are removed like any other sensor.
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM raw.Timezone")[[1]], 1)
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("read_mpath_sense validates the deduplicate and optimize flags", {
+  dir <- tempfile("import_flags_check")
+  dir.create(dir)
+  make_test_file(
+    dir,
+    "a.json",
+    sensors = list(list(`__type` = "dk.cachet.carp.stepcount", steps = 1))
+  )
+  db <- create_db(NULL, ":memory:")
+  expect_error(
+    read_mpath_sense(
+      path = dir,
+      db = db,
+      recursive = FALSE,
+      deduplicate = "yes",
+      .progress = FALSE
+    )
+  )
+  expect_error(
+    read_mpath_sense(path = dir, db = db, recursive = FALSE, optimize = 1, .progress = FALSE)
+  )
   close_db(db)
   unlink(dir, recursive = TRUE)
 })

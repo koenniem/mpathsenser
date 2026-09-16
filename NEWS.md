@@ -1,4 +1,8 @@
 # mpathsenser (in-development version)
+* `read_mpath_sense()` gained `deduplicate` and `optimize` arguments (both
+  default to `TRUE`) to control its post-import cleanup: duplicate removal
+  (per measurement key, newest file wins), re-ordering the sensor tables by
+  participant and time, both, or neither.
 * `read_mpath_sense()` no longer grows linearly with the size of the
   `ProcessedFiles` table. File ids are now assigned per batch with a
   deterministic `nextval()` call (batches are processed in chronological
