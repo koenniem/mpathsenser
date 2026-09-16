@@ -10,6 +10,8 @@ read_mpath_sense(
   sensors = NULL,
   batch_size = 1000,
   recursive = TRUE,
+  deduplicate = TRUE,
+  optimize = TRUE,
   .progress = TRUE,
   .debug = FALSE
 )
@@ -27,6 +29,13 @@ batch. All files of a batch are staged and ingested together; larger
 batches import faster but use more memory.}
 
 \item{recursive}{Should the listing recurse into directories?}
+
+\item{deduplicate}{Logical; whether to remove duplicate measurements after
+importing, using the last-wins rule described above. Defaults to \code{TRUE}.}
+
+\item{optimize}{Logical; whether to re-order the imported sensor tables by
+\code{participant_id} and \code{time} as \code{\link[=optimize_db]{optimize_db()}} does, which speeds up later
+queries and improves compression. Defaults to \code{TRUE}.}
 
 \item{.progress}{Whether to display a progress bar.}
 
@@ -71,6 +80,9 @@ this run imported (newly inserted rows plus any existing rows sharing a
 key with them), so its cost scales with the amount of new data rather than
 the size of the whole database. Use \code{\link[=deduplicate_db]{deduplicate_db()}} to clean up
 duplicates that predate this run, e.g. after an interrupted import.
+
+When \code{deduplicate = FALSE} no duplicate measurements are removed, and
+when \code{optimize = FALSE} the sensor tables keep their import order.
 
 Timestamps are stored as UTC instants in DuckDB. When timezone
 measurements are available, the import also assigns each observation its
