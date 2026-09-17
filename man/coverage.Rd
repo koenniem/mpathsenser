@@ -12,8 +12,7 @@ coverage(
   relative = TRUE,
   offset = "None",
   start_date = NULL,
-  end_date = NULL,
-  plot = deprecated()
+  end_date = NULL
 )
 }
 \arguments{

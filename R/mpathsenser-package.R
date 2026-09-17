@@ -24,6 +24,7 @@
 #' @importFrom dplyr distinct
 #' @importFrom dplyr filter
 #' @importFrom dplyr group_by
+#' @importFrom dplyr if_else
 #' @importFrom dplyr lag
 #' @importFrom dplyr lead
 #' @importFrom dplyr mutate

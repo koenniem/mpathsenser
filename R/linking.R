@@ -387,11 +387,13 @@ link <- function(
   check_arg(add_after, type = "logical")
   check_arg(name, type = "character")
 
-  lifecycle::deprecate_soft(
-    when = "2.0.0",
-    what = "link(split)",
-    details = "The `split` argument is deprecated and now defaults to 1."
-  )
+  if (!missing(split)) {
+    lifecycle::deprecate_soft(
+      when = "2.0.0",
+      what = "link(split)",
+      details = "The `split` argument is deprecated and now defaults to 1."
+    )
+  }
 
   # Check that not end_time and any offset are used at the same time
   if (!missing(end_time) && (!missing(offset_before) || !missing(offset_after))) {

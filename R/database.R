@@ -156,9 +156,13 @@ sensors <- c(
     }
     cols <- strsplit(want, ",", fixed = TRUE)[[1]]
     view_cols <- paste0(
-      vapply(cols, function(c) {
-        as.character(DBI::dbQuoteIdentifier(db, c))
-      }, character(1)),
+      vapply(
+        cols,
+        function(c) {
+          as.character(DBI::dbQuoteIdentifier(db, c))
+        },
+        character(1)
+      ),
       collapse = ", "
     )
     DBI::dbExecute(
@@ -249,10 +253,13 @@ sensors <- c(
 #' # You can also create an in-memory database
 #' db2 <- create_db(path = NULL, ":memory:")
 #'
-#' # Cleanup
+#'
+#' # Remember to always clean up database connections when you are done
 #' close_db(db)
 #' close_db(db2)
+#' \dontshow{
 #' file.remove(file.path(tempdir(), "mydb.db"))
+#' }
 create_db <- function(
   path = getwd(),
   db_name = NULL,

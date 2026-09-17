@@ -117,8 +117,7 @@ coverage <- function(
   relative = TRUE,
   offset = "None",
   start_date = NULL,
-  end_date = NULL,
-  plot = deprecated()
+  end_date = NULL
 ) {
   check_db(db)
   # participant_id is stored as an unsigned integer, but a character or
@@ -146,15 +145,6 @@ coverage <- function(
   # Check frequency
   if (!relative && !is.numeric(frequency) || is.null(names(frequency))) {
     cli_abort("{.arg frequency} must be a named numeric vector.")
-  }
-
-  # Old plot argument
-  if (lifecycle::is_present(plot)) {
-    lifecycle::deprecate_warn(
-      when = "1.1.1",
-      what = "coverage(plot)",
-      with = "plot()"
-    )
   }
 
   # Check time subset
@@ -203,7 +193,7 @@ coverage <- function(
   }
 
   # Calculate coverage from db - internal function
-  data <- coverage_impl2(
+  data <- coverage_impl(
     db,
     participant_id,
     sensor,
@@ -226,6 +216,7 @@ coverage <- function(
 #' Plot a coverage overview
 #'
 #' @param x A tibble with the coverage data coming from [coverage()].
+#' @param digits Number of digits to round the coverage values to. Defaults to 2.
 #' @param ... Other arguments passed on to methods. Not currently used.
 #'
 #' @seealso [coverage()]
@@ -332,8 +323,7 @@ plot.coverage <- function(x, digits = 2, ...) {
   plot
 }
 
-
-coverage_impl2 <- function(
+coverage_impl <- function(
   db,
   participant_id,
   sensor,

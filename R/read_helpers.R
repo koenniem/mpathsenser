@@ -561,7 +561,7 @@
         }
       })
     )
-    removed <- c(removed, setNames(n_removed, sensor))
+    removed <- c(removed, stats::setNames(n_removed, sensor))
   }
 
   removed

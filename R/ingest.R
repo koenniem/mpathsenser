@@ -73,7 +73,7 @@ accel_payload_order <- c(
 .accel_feature_exprs <- function(prefix = "j.p.") {
   is_int <- accel_payload_order %in% accel_int_fields
   type <- ifelse(is_int, "INTEGER", "REAL")
-  setNames(
+  stats::setNames(
     sprintf("CAST(%s%s AS %s)", prefix, accel_payload_order, type),
     unname(accel_col_map[accel_payload_order])
   )

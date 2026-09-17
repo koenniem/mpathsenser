@@ -45,7 +45,7 @@ garmin_entry <- function(day, sensor, n) {
     sensorStartTime = t0,
     data = c(
       list(`__type` = "dk.cachet.carp.garminalllogsdata"),
-      setNames(list(values), sensor)
+      stats::setNames(list(values), sensor)
     )
   )
 }
@@ -176,7 +176,7 @@ mk_block <- function(pid, day, hour, minutes, apps = NULL) {
       sensorStartTime = us(t),
       data = list(
         `__type` = "dk.cachet.carp.appusage",
-        usage = setNames(
+        usage = stats::setNames(
           lapply(apps, function(a) {
             list(
               startDate = paste0(
