@@ -11,7 +11,9 @@ create_db(
   overwrite = FALSE,
   threads = NULL,
   memory_limit = NULL,
-  temp_directory = NULL
+  temp_directory = NULL,
+  duckdb_home = NULL,
+  shared_home = NULL
 )
 }
 \arguments{
@@ -36,6 +38,13 @@ Defaults to \code{NULL}, which uses DuckDB's default of roughly 80\% of RAM.}
 \item{temp_directory}{Directory for temporary files (spill-to-disk). Use a
 local disk with sufficient space; do not point this at a synced directory
 such as OneDrive.}
+
+\item{duckdb_home}{Optional path to a directory for DuckDB's internal files. Mutually exclusive
+with \code{shared_home}. Defaults to \code{NULL}, which lets DuckDB decide automatically.}
+
+\item{shared_home}{Logical; whether the DuckDB home directory is shared between R sessions.
+Defaults to \code{NULL}, which lets DuckDB decide automatically. Mutually exclusive with
+\code{duckdb_home}.}
 }
 \value{
 A connection using prepared database schemas.
@@ -50,8 +59,11 @@ db <- create_db(tempdir(), "mydb.db")
 # You can also create an in-memory database
 db2 <- create_db(path = NULL, ":memory:")
 
-# Cleanup
+
+# Remember to always clean up database connections when you are done
 close_db(db)
 close_db(db2)
+\dontshow{
 file.remove(file.path(tempdir(), "mydb.db"))
+}
 }

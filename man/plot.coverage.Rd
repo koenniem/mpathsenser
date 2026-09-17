@@ -9,6 +9,8 @@
 \arguments{
 \item{x}{A tibble with the coverage data coming from \code{\link[=coverage]{coverage()}}.}
 
+\item{digits}{Number of digits to round the coverage values to. Defaults to 2.}
+
 \item{...}{Other arguments passed on to methods. Not currently used.}
 }
 \value{
