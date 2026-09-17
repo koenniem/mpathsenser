@@ -72,7 +72,7 @@ test_that("coverage", {
 
 test_that("coverage returns correct values for relative and absolute", {
   tmp <- tempfile()
-  db <- create_db(NULL, tmp)
+  db <- create_db(NULL, tmp, shared_home = FALSE)
   on.exit(
     {
       dbDisconnect(db)
@@ -149,7 +149,7 @@ test_that("coverage returns correct values for relative and absolute", {
 
 test_that("coverage filters Heartbeat on Secondary Phone ignores other devices", {
   tmp <- tempfile()
-  db <- create_db(NULL, tmp)
+  db <- create_db(NULL, tmp, shared_home = FALSE)
   on.exit(
     {
       dbDisconnect(db)

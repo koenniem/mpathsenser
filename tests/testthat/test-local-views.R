@@ -1,5 +1,5 @@
 test_that("create_db creates local views for every physical sensor table", {
-  db <- create_db(NULL, ":memory:")
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
   on.exit(close_db(db), add = TRUE)
 
   # Physical sensor tables live in the raw schema; main holds the metadata
@@ -76,7 +76,7 @@ test_that("create_db creates local views for every physical sensor table", {
 })
 
 test_that("legacy local wall-clock timestamps are not shifted by the views", {
-  db <- create_db(NULL, ":memory:")
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
   on.exit(close_db(db), add = TRUE)
 
   DBI::dbExecute(
@@ -116,7 +116,7 @@ test_that("legacy local wall-clock timestamps are not shifted by the views", {
 
 test_that("open_db reopens a database read-only without recreating views", {
   path <- tempfile("mpathsenser_views", fileext = ".db")
-  db <- create_db(path)
+  db <- create_db(path, shared_home = FALSE)
   DBI::dbExecute(db, "INSERT INTO Study (study_id) VALUES ('s')")
   DBI::dbExecute(db, "INSERT INTO Participant (participant_id, study_id) VALUES ('1', 's')")
   close_db(db)

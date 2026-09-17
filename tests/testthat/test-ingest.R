@@ -121,7 +121,7 @@ test_that("garmin_parse SQL builds one typed transform per staged payload", {
 })
 
 test_that("scalar ingest SQL executes against a staging fixture", {
-  db <- create_db(NULL, ":memory:")
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
   DBI::dbExecute(
     db,
     "CREATE TEMP TABLE raw_staging AS
@@ -150,7 +150,7 @@ test_that("scalar ingest SQL executes against a staging fixture", {
 })
 
 test_that("AppUsage ingest preserves empty, missing, and populated collections", {
-  db <- create_db(NULL, ":memory:")
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
   DBI::dbExecute(
     db,
     "CREATE TEMP TABLE raw_staging AS
@@ -194,7 +194,7 @@ test_that("AppUsage ingest preserves empty, missing, and populated collections",
 })
 
 test_that("AppUsage replaces epoch last foreground timestamps with NULL", {
-  db <- create_db(NULL, ":memory:")
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
   DBI::dbExecute(
     db,
     "CREATE TEMP TABLE raw_staging AS
@@ -227,7 +227,7 @@ test_that("AppUsage replaces epoch last foreground timestamps with NULL", {
 })
 
 test_that("typed array ingest executes", {
-  db <- create_db(NULL, ":memory:")
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
   DBI::dbExecute(
     db,
     "CREATE TEMP TABLE raw_staging AS
@@ -250,7 +250,7 @@ test_that("typed array ingest executes", {
 })
 
 test_that("Bluetooth ingest preserves empty and populated scan results", {
-  db <- create_db(NULL, ":memory:")
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
   DBI::dbExecute(
     db,
     "CREATE TEMP TABLE raw_staging AS

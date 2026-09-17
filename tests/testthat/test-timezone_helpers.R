@@ -2,7 +2,7 @@ test_that("add_timezones_to_db aborts if Timezone table is missing", {
   opts <- options(mpathsenser.check_missing_sensors = FALSE)
   on.exit(options(opts), add = TRUE)
 
-  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"))
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
   # Drop the raw Timezone table (and the main view over it) to simulate data
   # without timezone measurements
@@ -18,7 +18,7 @@ test_that("add_timezones_to_db aborts if Timezone table is missing", {
 })
 
 test_that("add_timezones_to_db adds timezone column correctly", {
-  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"))
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
   DBI::dbExecute(
     db,
@@ -44,7 +44,7 @@ test_that("add_timezones_to_db adds timezone column correctly", {
 })
 
 test_that("add_timezones_to_db handles multiple participants independently", {
-  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"))
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
   DBI::dbExecute(
     db,
@@ -76,7 +76,7 @@ test_that("add_timezones_to_db handles multiple participants independently", {
 })
 
 test_that("add_timezones_to_db handles travel and repeated DST instants", {
-  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"))
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
   DBI::dbExecute(
     db,
@@ -115,7 +115,7 @@ test_that("add_timezones_to_db handles travel and repeated DST instants", {
 })
 
 test_that("add_timezones_to_db handles measurements before and after known timezone intervals", {
-  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"))
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
   DBI::dbExecute(
     db,
@@ -142,7 +142,7 @@ test_that("add_timezones_to_db handles measurements before and after known timez
 })
 
 test_that("add_timezones_to_db works for empty tables", {
-  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"))
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
   DBI::dbExecute(
     db,
@@ -156,7 +156,7 @@ test_that("add_timezones_to_db works for empty tables", {
 })
 
 test_that("add_timezones_to_db removes temporary tables afterward", {
-  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"))
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
   DBI::dbExecute(
     db,
@@ -180,7 +180,7 @@ test_that("add_timezones_to_db removes temporary tables afterward", {
 
 
 test_that("add_timezones_to_db preserves existing timezone values", {
-  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"))
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
   DBI::dbExecute(
     db,
@@ -209,7 +209,7 @@ test_that("add_timezones_to_db preserves existing timezone values", {
 })
 
 test_that("coincident timezone events do not multiply or duplicate rows", {
-  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"))
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
   # Two timezone events at the same instant with different zones is an
   # (otherwise undefined) pathological case; the interval join must still
@@ -236,7 +236,7 @@ test_that("coincident timezone events do not multiply or duplicate rows", {
 })
 
 test_that("add_timezones_to_db is idempotent on an already-normalized table", {
-  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"))
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
   DBI::dbExecute(
     db,
@@ -263,7 +263,7 @@ test_that("add_timezones_to_db is idempotent on an already-normalized table", {
 })
 
 test_that("canonical tables retain UTC and explicit local views expose local values", {
-  db <- create_db(NULL, ":memory:")
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
   DBI::dbExecute(
     db,
     "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id)

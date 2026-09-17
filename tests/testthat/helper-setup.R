@@ -64,7 +64,7 @@ write_test_json_files <- function(dir) {
 
 # Create a fresh test database with sample data for testing
 create_test_db <- function(path = ":memory:") {
-  db <- create_db(NULL, path)
+  db <- create_db(NULL, path, shared_home = FALSE)
 
   dir <- tempfile("mpathsenser_test")
   dir.create(dir)
@@ -237,7 +237,7 @@ write_sensor_test_json_files <- function(dir) {
 
 # Create a test database with the richer sensor data
 create_sensor_test_db <- function(path = ":memory:") {
-  db <- create_db(NULL, path)
+  db <- create_db(NULL, path, shared_home = FALSE)
   dir <- tempfile("mpathsenser_sensor_test")
   dir.create(dir)
   write_sensor_test_json_files(dir)
@@ -250,3 +250,4 @@ create_sensor_test_db <- function(path = ":memory:") {
   unlink(dir, recursive = TRUE)
   db
 }
+

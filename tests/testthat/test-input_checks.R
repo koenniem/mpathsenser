@@ -33,7 +33,7 @@ test_that("check_db", {
     "Argument `foo` is not a database connection."
   )
 
-  db <- create_db(NULL, tempfile())
+  db <- create_db(NULL, tempfile(), shared_home = FALSE)
   expect_true(check_db(db))
   expect_true(check_db(db, arg = "foo"))
   expect_true(check_db(db, allow_null = TRUE, arg = "foo"))
@@ -55,7 +55,7 @@ test_that("check_db", {
 })
 
 test_that("check_db recognizes missing sensors", {
-  db <- create_db(NULL, tempfile("chk", fileext = ".db"))
+  db <- create_db(NULL, tempfile("chk", fileext = ".db"), shared_home = FALSE)
   # Sensor tables are physical in raw and exposed as views in main; dropping
   # the main view (or the raw table) must be detected as a missing sensor.
   DBI::dbExecute(db, "DROP VIEW main.Accelerometer")

@@ -242,6 +242,11 @@ sensors <- c(
 #' @param temp_directory Directory for temporary files (spill-to-disk). Use a
 #'   local disk with sufficient space; do not point this at a synced directory
 #'   such as OneDrive.
+#' @param duckdb_home Optional path to a directory for DuckDB's internal files. Mutually exclusive
+#' with `shared_home`. Defaults to `NULL`, which lets DuckDB decide automatically.
+#' @param shared_home Logical; whether the DuckDB home directory is shared between R sessions.
+#' Defaults to `NULL`, which lets DuckDB decide automatically. Mutually exclusive with
+#' `duckdb_home`.
 #'
 #' @returns A connection using prepared database schemas.
 #' @export
@@ -267,11 +272,15 @@ create_db <- function(
   overwrite = FALSE,
   threads = NULL,
   memory_limit = NULL,
-  temp_directory = NULL
+  temp_directory = NULL,
+  duckdb_home = NULL,
+  shared_home = NULL
 ) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
   check_arg(db_name, "character", n = 1, allow_null = TRUE)
   check_arg(overwrite, "logical", n = 1)
+  check_arg(duckdb_home, "character", n = 1, allow_null = TRUE)
+  check_arg(shared_home, "logical", n = 1, allow_null = TRUE)
 
   # Resolve the database file path. When db_name is given, path is treated as
   # the directory containing the database (or NULL for an in-memory database).
@@ -307,18 +316,23 @@ create_db <- function(
   # Create a new db instance
   tryCatch(
     {
-      db <- dbConnect(duckdb::duckdb(allow_extensions = TRUE), dbdir = path, ...)
+      db <- dbConnect(
+        duckdb::duckdb(
+          allow_extensions = TRUE,
+          home = duckdb_home,
+          shared_home = shared_home
+        ),
+        dbdir = path,
+        ...
+      )
     },
     error = function(e) {
       cli_abort("Could not create a database at {.path {path}}.") # nocov
     }
   )
 
-  # json and icu are bundled with DuckDB >= 1.0; older versions need to
-  # install them from the network (which fails on offline machines).
-  if (utils::packageVersion("duckdb") < "1.0") {
-    dbExecute(db, "INSTALL json; INSTALL icu;")
-  }
+  # Install the json and icu extension
+  dbExecute(db, "INSTALL json; INSTALL icu;")
 
   # Populate the db with empty tables
   tryCatch(

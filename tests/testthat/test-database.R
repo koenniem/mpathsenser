@@ -6,7 +6,7 @@ test_that("sensors-vec", {
 
 test_that("create_db", {
   filename <- tempfile("create", fileext = ".db")
-  db <- create_db(path = NULL, filename)
+  db <- create_db(path = NULL, filename, shared_home = FALSE)
   dbDisconnect(db)
   expect_true(file.exists(filename))
 
@@ -14,7 +14,7 @@ test_that("create_db", {
   temp_file <- basename(tempfile())
   expect_no_error(
     {
-      db <- create_db(path = tempdir(), db_name = temp_file)
+      db <- create_db(path = tempdir(), db_name = temp_file, shared_home = FALSE)
       dbDisconnect(db)
     }
   )
@@ -22,14 +22,14 @@ test_that("create_db", {
   # Test overwrite argument
   expect_no_error(
     {
-      db <- create_db(path = NULL, filename, overwrite = TRUE)
+      db <- create_db(path = NULL, filename, overwrite = TRUE, shared_home = FALSE)
       dbDisconnect(db)
     }
   )
 
   expect_error(
     {
-      db <- create_db(path = NULL, filename, overwrite = FALSE)
+      db <- create_db(path = NULL, filename, overwrite = FALSE, shared_home = FALSE)
       dbDisconnect(db)
     },
     NULL
@@ -56,7 +56,7 @@ test_that("open_db", {
   # The path can be given as a directory plus a file name, like create_db()
   dir_d2 <- tempfile("open_db_dir2")
   dir.create(dir_d2)
-  db0 <- create_db(dir_d2, "mydb.duckdb")
+  db0 <- create_db(dir_d2, "mydb.duckdb", shared_home = FALSE)
   close_db(db0)
   db0 <- open_db(dir_d2, "mydb.duckdb")
   expect_true(dbIsValid(db0))
@@ -74,7 +74,7 @@ test_that("open_db", {
 
   # A raw table without its main view (e.g. views dropped) is rejected too:
   # the schema check requires both layers.
-  db1 <- create_db(NULL, tempfile("schemacheck", fileext = ".db"))
+  db1 <- create_db(NULL, tempfile("schemacheck", fileext = ".db"), shared_home = FALSE)
   p1 <- db1@driver@dbdir
   DBI::dbExecute(db1, "DROP VIEW main.Accelerometer")
   dbDisconnect(db1)
@@ -99,7 +99,7 @@ test_that("copy_db", {
   db <- create_test_db()
 
   filename <- tempfile("copy", fileext = ".db")
-  new_db <- create_db(NULL, filename)
+  new_db <- create_db(NULL, filename, shared_home = FALSE)
 
   # Invalid sensor
   expect_error(
@@ -113,7 +113,7 @@ test_that("copy_db", {
   file.remove(filename)
 
   # Create new db and copy to it
-  new_db <- create_db(NULL, filename)
+  new_db <- create_db(NULL, filename, shared_home = FALSE)
   new_db <- copy_db(db, new_db, sensor = "Accelerometer")
   true <- c(0L, rep(0L, 31))
   names(true) <- sensors

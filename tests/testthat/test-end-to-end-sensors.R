@@ -13,7 +13,7 @@ import_sensor_fixture <- function() {
   dir <- tempfile("mpathsenser_fixture")
   dir.create(dir)
   file.copy(sensor_fixture_path(), file.path(dir, "tests.json"))
-  db <- create_db(NULL, ":memory:")
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
   testthat::expect_warning(
     read_mpath_sense(
       path = dir,
