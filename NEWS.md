@@ -1,4 +1,10 @@
 # mpathsenser (in-development version)
+* `ccopy()`, `fix_jsons()` and `test_jsons()` have been removed. Use
+  `base::file.copy()`, `jsonlite::validate()` and `utils::unzip()` (or
+  `unzip_data()`) instead.
+* The `Meta` table was removed from the database schema: it was never written
+  to or read from. Databases created with an earlier version must be recreated
+  with `create_db()`.
 * `read_mpath_sense()` gained `deduplicate` and `optimize` arguments (both
   default to `TRUE`) to control its post-import cleanup: duplicate removal
   (per measurement key, newest file wins), re-ordering the sensor tables by

@@ -48,12 +48,10 @@ cat(substr(readLines(con, warn = FALSE)[2], 1, 220), "\n...")
 close(con)
 ```
 
-Because data is written as it comes in, a file is only properly closed when the app is shut down gracefully. If the app is killed, the file may end without its closing bracket and can no longer be read by a JSON parser. The package provides `test_jsons()` to find such files and `fix_jsons()` to repair them. Zip archives can be extracted with `unzip_data()`. In practice, a first preprocessing pass for a new batch of data therefore looks like this:
+Because data is written as it comes in, a file is only properly closed when the app is shut down gracefully. If the app is killed, the file may end without its closing bracket and can no longer be read by a JSON parser. Verify such files with `jsonlite::validate()` before importing them, and use `unzip_data()` to extract the `.zip` archives that m-Path Sense may deliver:
 
 ```{r, eval = FALSE}
 unzip_data(path = "path/to/data") # extract .zip files, if any
-to_fix <- test_jsons(path = "path/to/data") # find broken files
-fix_jsons(files = to_fix) # repair them
 ```
 
 `read_mpath_sense()` itself reads plain JSON files; there is no need to unzip or fix files that are already valid.
@@ -154,7 +152,7 @@ Deduplication runs once per sensor, inside its own transaction, and only touches
 
 ## The schema: raw tables and main views
 
-Internally the database is split over two schemas. The physical sensor tables live in the `raw` schema and additionally carry three internal provenance columns: `source_file_id` (the `ProcessedFiles` id), `source_row_id` and `source_measurement_id` (the source-order ordinals described above). The `main` schema contains the metadata tables (`Study`, `Participant`, `ProcessedFiles`, `Meta`) and one *view* per sensor (`main.Activity`, `main.Pedometer`, …) that exposes the measurement columns only — the provenance columns stay internal. All package functions read through these views, so you never see the internal columns, and the views are read-only: writes go to `raw.<sensor>` (the import and maintenance functions handle this for you). Databases created with earlier package versions used a different layout and must be recreated with `create_db()`.
+Internally the database is split over two schemas. The physical sensor tables live in the `raw` schema and additionally carry three internal provenance columns: `source_file_id` (the `ProcessedFiles` id), `source_row_id` and `source_measurement_id` (the source-order ordinals described above). The `main` schema contains the metadata tables (`Study`, `Participant`, `ProcessedFiles`) and one *view* per sensor (`main.Activity`, `main.Pedometer`, …) that exposes the measurement columns only — the provenance columns stay internal. All package functions read through these views, so you never see the internal columns, and the views are read-only: writes go to `raw.<sensor>` (the import and maintenance functions handle this for you). Databases created with earlier package versions used a different layout and must be recreated with `create_db()`.
 
 # Optimising the database
 

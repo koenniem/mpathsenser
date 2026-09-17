@@ -81,8 +81,8 @@ test_that("coverage returns correct values for relative and absolute", {
     add = TRUE
   )
 
-  add_study(db, "foo", NA)
-  add_participant(db, "12345", "foo")
+  DBI::dbExecute(db, "INSERT INTO Study (study_id, data_format) VALUES ('foo', NULL)")
+  DBI::dbExecute(db, "INSERT INTO Participant (participant_id, study_id) VALUES (12345, 'foo')")
 
   # 2 days of data
   data <- data.frame(
@@ -158,8 +158,8 @@ test_that("coverage filters Heartbeat on Secondary Phone ignores other devices",
     add = TRUE
   )
 
-  add_study(db, "foo", NA)
-  add_participant(db, "12345", "foo")
+  DBI::dbExecute(db, "INSERT INTO Study (study_id, data_format) VALUES ('foo', NULL)")
+  DBI::dbExecute(db, "INSERT INTO Participant (participant_id, study_id) VALUES (12345, 'foo')")
 
   data <- data.frame(
     participant_id = rep("12345", 3),

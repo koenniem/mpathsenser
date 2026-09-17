@@ -3,10 +3,22 @@
 # Each function builds the SQL statement that inserts the data of one sensor
 # from the raw_staging temp table into the corresponding sensor table, using
 # file_id_map to link each row to its source file (participant, senseVersion,
-# file_id). The statements are executed by .read_ingest(), which optionally
-# chunks them with LIMIT/OFFSET to bound memory usage. All timestamps are
+# file_id). The statements are executed by .read_ingest(). All timestamps are
 # stored as UTC instants in DuckDB; observation timezones are populated after
 # ingestion by the normalization step.
+#
+# Two shapes recur across most sensors, so they are built by the shared
+# helpers below, ingest_scalar() and ingest_garmin_array(). Each helper takes
+# the table name and a named vector of column expressions and returns the
+# ingest function for that sensor; the per-sensor spec sits in its registry
+# entry (sensor_registry.R), next to the sensor's payload type, so everything a
+# sensor needs is readable in one place. Sensors whose statement does not fit
+# either shape (Accelerometer, AppUsage, Bluetooth, BluetoothBeacon,
+# Connectivity, Device, Location, Weather, GarminMeta, GarminActigraphy) keep
+# their own function, written out in full.
+#
+# A shared helper returns function(sense_version), just like a hand-written
+# ingest function, so read_mpath_sense() always calls registry[[sensor]]$fun(v).
 
 # Feature columns of the accelerationfeatures payload (phone accelerometer
 # summaries). The old ingest read each of these with a separate
@@ -109,23 +121,73 @@ ingest_accelerometer <- function(sense_version) {
   )
 }
 
-ingest_activity <- function(sense_version) {
-  sprintf(
-    "INSERT INTO raw.Activity (participant_id, time, confidence, type, source_file_id, source_row_id, source_measurement_id)
+# Shared shape 1: one row per staged entry of `payload_type`, with `columns`
+# mapping the raw.<table> columns to value expressions over the staged row
+# `s` (usually s.data->>'key'). Used by the sensors whose payload is a single
+# measurement object.
+#
+ingest_scalar <- function(table, payload_type, columns) {
+  force(table)
+  force(payload_type)
+  force(columns)
+  target_cols <- names(columns)
+  function(sense_version) {
+    sprintf(
+      "INSERT INTO raw.%s (participant_id, time, %s, source_file_id, source_row_id, source_measurement_id)
       SELECT
         m.participant_id,
         to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0),
-        CAST(s.data->>'confidence' AS INTEGER),
-        CAST(s.data->>'type' AS TEXT),
+        %s,
         m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
       FROM raw_staging s
       JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.activity'
+      WHERE s.payload_type = '%s'
         AND %s
         AND s.sensorStartTime IS NOT NULL
 ",
-    .read_version_filter(sense_version)
-  )
+      table,
+      paste0(target_cols, collapse = ", "),
+      paste0(columns, collapse = ",\n        "),
+      payload_type,
+      .read_version_filter(sense_version)
+    )
+  }
+}
+
+# Shared shape 2: one row per element of one Garmin array, where the batch's
+# garmin_parsed temp table holds every payload once with one typed list column
+# per array. `time` names the element field holding the millisecond epoch that
+# becomes the measurement time; elements without it are skipped (their time
+# column is NOT NULL). `columns` maps the raw.<table> columns to value
+# expressions over the unnested element `e`.
+#
+ingest_garmin_array <- function(table, array, time, columns) {
+  force(table)
+  force(array)
+  force(time)
+  force(columns)
+  target_cols <- names(columns)
+  function(sense_version) {
+    sprintf(
+      "INSERT INTO raw.%s (
+      participant_id, time, %s, source_file_id, source_row_id, source_measurement_id
+    )
+    SELECT
+      g.participant_id,
+      to_timestamp(CAST(e.%s AS BIGINT) / 1000.0),
+      %s,
+      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
+    FROM garmin_parsed g
+    CROSS JOIN LATERAL UNNEST(g.%s) WITH ORDINALITY AS t(e, pos)
+    WHERE (e.%s) IS NOT NULL",
+      table,
+      paste0(target_cols, collapse = ", "),
+      time,
+      paste0(columns, collapse = ",\n      "),
+      array,
+      time
+    )
+  }
 }
 
 # Origin timestamps indicate that the foreground time was unavailable. Allow a
@@ -169,24 +231,6 @@ ingest_appusage <- function(sense_version) {
   )
 }
 
-ingest_battery <- function(sense_version) {
-  sprintf(
-    "INSERT INTO raw.Battery (participant_id, time, battery_level, battery_status, source_file_id, source_row_id, source_measurement_id)
-      SELECT
-        m.participant_id,
-        to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0),
-        CAST(s.data->>'batteryLevel' AS INTEGER),
-        CAST(s.data->>'batteryStatus' AS TEXT),
-        m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
-      FROM raw_staging s
-      JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.batterystate'
-        AND %s
-        AND s.sensorStartTime IS NOT NULL
-",
-    .read_version_filter(sense_version)
-  )
-}
 
 # raw_staging rows of one payload type, as a derived table. DuckDB does not
 # push a WHERE filter on raw_staging below a CROSS JOIN LATERAL that reads
@@ -338,24 +382,6 @@ ingest_device <- function(sense_version) {
   )
 }
 
-ingest_error <- function(sense_version) {
-  sprintf(
-    "INSERT INTO raw.Error (participant_id, time, message, source_file_id, source_row_id, source_measurement_id)
-      SELECT
-        m.participant_id,
-        to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0),
-        CAST(s.data->>'message' AS TEXT),
-        m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
-      FROM raw_staging s
-      JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.error'
-        AND %s
-        AND s.sensorStartTime IS NOT NULL
-",
-    .read_version_filter(sense_version)
-  )
-}
-
 # ---------------------------------------------------------------------------
 # Garmin ingest: one parse per garminalllogsdata payload, feeding every
 # Garmin sensor table.
@@ -381,28 +407,11 @@ ingest_error <- function(sense_version) {
 # (struct of the per-sensor entry counts), and one LIST column per Garmin
 # array (heartRate, stress, steps, bbi, enhancedBbi, gyroscope,
 # accelerometer, respiration, skinTemperature, spo2, wristStatus,
-# zeroCrossing, actigraphy1, actigraphy2, actigraphy3).
-# garmin_parsed array column(s) read by each Garmin ingest function.
-# GarminMeta is absent on purpose: it derives one row per payload and has no
-# array column. Keep in sync with the UNNEST(g.<col>) expressions of the
-# ingest functions and with the array_schemas keys of
-# .read_garmin_parse_sql().
-garmin_sensor_array_cols <- list(
-  GarminAccelerometer = "accelerometer",
-  GarminActigraphy = c("actigraphy1", "actigraphy2", "actigraphy3"),
-  GarminBBI = "bbi",
-  GarminEnhancedBBI = "enhancedBbi",
-  GarminGyroscope = "gyroscope",
-  GarminHeartRate = "heartRate",
-  GarminRespiration = "respiration",
-  GarminSkinTemperature = "skinTemperature",
-  GarminSPO2 = "spo2",
-  GarminSteps = "steps",
-  GarminStress = "stress",
-  GarminWristStatus = "wristStatus",
-  GarminZeroCrossing = "zeroCrossing"
-)
-
+# zeroCrossing, actigraphy1, actigraphy2, actigraphy3). Each Garmin array
+# sensor names the column it unnests in its registry entry (`array`), which
+# read_mpath_sense() also uses to skip sensors whose array holds no elements
+# in this batch. Keep those names in sync with the schema built here and with
+# the array_schemas keys.
 .read_garmin_parse_sql <- function(sense_version) {
   # Schema of the full payload object. entryCounts counts are BIGINT;
   # fromTime/toTime stay VARCHAR so the GarminMeta legacy conversion can
@@ -506,205 +515,6 @@ ingest_garmin_meta <- function(sense_version) {
   )
 }
 
-ingest_garmin_heartrate <- function(sense_version) {
-  "INSERT INTO raw.GarminHeartRate (
-      participant_id, time, bpm, status, mac_address, source_file_id, source_row_id, source_measurement_id
-    )
-    SELECT
-      g.participant_id,
-      to_timestamp(CAST(e.timestamp AS BIGINT) / 1000.0),
-      NULLIF(TRY_CAST(e.beatsPerMinute AS BIGINT), -1),
-      CAST(e.status AS TEXT),
-      CAST(e.macAddress AS TEXT),
-      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-    FROM garmin_parsed g
-    CROSS JOIN LATERAL UNNEST(g.heartRate) WITH ORDINALITY AS t(e, pos)
-    WHERE (e.timestamp) IS NOT NULL"
-}
-
-ingest_garmin_stress <- function(sense_version) {
-  "INSERT INTO raw.GarminStress (
-      participant_id, time, stress, status, mac_address, source_file_id, source_row_id, source_measurement_id
-    )
-    SELECT
-      g.participant_id,
-      to_timestamp(CAST(e.timestamp AS BIGINT) / 1000.0),
-      NULLIF(TRY_CAST(e.stressScore AS BIGINT), -1),
-      CAST(e.status AS TEXT),
-      CAST(e.macAddress AS TEXT),
-      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-    FROM garmin_parsed g
-    CROSS JOIN LATERAL UNNEST(g.stress) WITH ORDINALITY AS t(e, pos)
-    WHERE (e.timestamp) IS NOT NULL"
-}
-
-ingest_garmin_steps <- function(sense_version) {
-  "INSERT INTO raw.GarminSteps (
-      participant_id, time, end_time, step_count, total_steps, mac_address, source_file_id, source_row_id, source_measurement_id
-    )
-    SELECT
-      g.participant_id,
-      to_timestamp(CAST(e.startTimestamp AS BIGINT) / 1000.0),
-      to_timestamp(CAST(e.endTimestamp AS BIGINT) / 1000.0),
-      NULLIF(TRY_CAST(e.stepCount AS BIGINT), -1),
-      NULLIF(TRY_CAST(e.totalSteps AS BIGINT), -1),
-      CAST(e.macAddress AS TEXT),
-      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-    FROM garmin_parsed g
-    CROSS JOIN LATERAL UNNEST(g.steps) WITH ORDINALITY AS t(e, pos)
-    WHERE (e.startTimestamp) IS NOT NULL"
-}
-
-ingest_garmin_bbi <- function(sense_version) {
-  "INSERT INTO raw.GarminBBI (
-      participant_id, time, bbi, mac_address, source_file_id, source_row_id, source_measurement_id
-    )
-    SELECT
-      g.participant_id,
-      to_timestamp(CAST(e.timestamp AS BIGINT) / 1000.0),
-      NULLIF(TRY_CAST(e.bbi AS BIGINT), -1),
-      CAST(e.macAddress AS TEXT),
-      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-    FROM garmin_parsed g
-    CROSS JOIN LATERAL UNNEST(g.bbi) WITH ORDINALITY AS t(e, pos)
-    WHERE (e.timestamp) IS NOT NULL"
-}
-
-ingest_garmin_enhanced_bbi <- function(sense_version) {
-  "INSERT INTO raw.GarminEnhancedBBI (
-      participant_id, time, bbi, status, gap_duration, mac_address, source_file_id, source_row_id, source_measurement_id
-    )
-    SELECT
-      g.participant_id,
-      to_timestamp(CAST(e.timestamp AS BIGINT) / 1000.0),
-      NULLIF(TRY_CAST(e.bbi AS BIGINT), -1),
-      CAST(e.status AS TEXT),
-      CAST(e.gapDuration AS INTEGER),
-      CAST(e.macAddress AS TEXT),
-      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-    FROM garmin_parsed g
-    CROSS JOIN LATERAL UNNEST(g.enhancedBbi) WITH ORDINALITY AS t(e, pos)
-    WHERE (e.timestamp) IS NOT NULL"
-}
-
-ingest_garmin_gyroscope <- function(sense_version) {
-  "INSERT INTO raw.GarminGyroscope (
-      participant_id, time, x, y, z, mac_address, source_file_id, source_row_id, source_measurement_id
-    )
-    SELECT
-      g.participant_id,
-      to_timestamp(CAST(e.timestamp AS BIGINT) / 1000.0),
-      CAST(e.xValue AS REAL),
-      CAST(e.yValue AS REAL),
-      CAST(e.zValue AS REAL),
-      CAST(e.macAddress AS TEXT),
-      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-    FROM garmin_parsed g
-    CROSS JOIN LATERAL UNNEST(g.gyroscope) WITH ORDINALITY AS t(e, pos)
-    WHERE (e.timestamp) IS NOT NULL"
-}
-
-ingest_garmin_accelerometer <- function(sense_version) {
-  "INSERT INTO raw.GarminAccelerometer (
-      participant_id, time, x, y, z, mac_address, source_file_id, source_row_id, source_measurement_id
-    )
-    SELECT
-      g.participant_id,
-      to_timestamp(CAST(e.timestamp AS BIGINT) / 1000.0),
-      CAST(e.xValue AS REAL),
-      CAST(e.yValue AS REAL),
-      CAST(e.zValue AS REAL),
-      CAST(e.macAddress AS TEXT),
-      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-    FROM garmin_parsed g
-    CROSS JOIN LATERAL UNNEST(g.accelerometer) WITH ORDINALITY AS t(e, pos)
-    WHERE (e.timestamp) IS NOT NULL"
-}
-
-ingest_garmin_respiration <- function(sense_version) {
-  "INSERT INTO raw.GarminRespiration (
-      participant_id, time, bpm, status, mac_address, source_file_id, source_row_id, source_measurement_id
-    )
-    SELECT
-      g.participant_id,
-      to_timestamp(CAST(e.timestamp AS BIGINT) / 1000.0),
-      CAST(e.breathsPerMinute AS REAL),
-      CAST(e.status AS TEXT),
-      CAST(e.macAddress AS TEXT),
-      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-    FROM garmin_parsed g
-    CROSS JOIN LATERAL UNNEST(g.respiration) WITH ORDINALITY AS t(e, pos)
-    WHERE (e.timestamp) IS NOT NULL"
-}
-
-ingest_garmin_skintemperature <- function(sense_version) {
-  "INSERT INTO raw.GarminSkinTemperature (
-      participant_id, time, temperature, status, mac_address, source_file_id, source_row_id, source_measurement_id
-    )
-    SELECT
-      g.participant_id,
-      to_timestamp(CAST(e.timestamp AS BIGINT) / 1000.0),
-      CAST(e.temperature AS REAL),
-      CAST(e.status AS TEXT),
-      CAST(e.macAddress AS TEXT),
-      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-    FROM garmin_parsed g
-    CROSS JOIN LATERAL UNNEST(g.skinTemperature) WITH ORDINALITY AS t(e, pos)
-    WHERE (e.timestamp) IS NOT NULL"
-}
-
-ingest_garmin_spo2 <- function(sense_version) {
-  "INSERT INTO raw.GarminSPO2 (
-      participant_id, time, spo2, mac_address, source_file_id, source_row_id, source_measurement_id
-    )
-    SELECT
-      g.participant_id,
-      to_timestamp(CAST(e.timestamp AS BIGINT) / 1000.0),
-      NULLIF(TRY_CAST(e.spo2Reading AS BIGINT), -1),
-      CAST(e.macAddress AS TEXT),
-      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-    FROM garmin_parsed g
-    CROSS JOIN LATERAL UNNEST(g.spo2) WITH ORDINALITY AS t(e, pos)
-    WHERE (e.timestamp) IS NOT NULL"
-}
-
-ingest_garmin_wriststatus <- function(sense_version) {
-  "INSERT INTO raw.GarminWristStatus (
-      participant_id, time, status, mac_address, source_file_id, source_row_id, source_measurement_id
-    )
-    SELECT
-      g.participant_id,
-      to_timestamp(CAST(e.timestamp AS BIGINT) / 1000.0),
-      CAST(e.status AS TEXT),
-      CAST(e.macAddress AS TEXT),
-      g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-    FROM garmin_parsed g
-    CROSS JOIN LATERAL UNNEST(g.wristStatus) WITH ORDINALITY AS t(e, pos)
-    WHERE (e.timestamp) IS NOT NULL"
-}
-
-ingest_garmin_zerocrossing <- function(sense_version) {
-  sprintf(
-    "INSERT INTO raw.GarminZeroCrossing (
-        participant_id, time, end_time, total_energy, n_zero_crossing, deadband, mac_address, source_file_id, source_row_id, source_measurement_id
-      )
-      SELECT
-        g.participant_id,
-        to_timestamp(CAST(e.startTimestamp AS BIGINT) / 1000.0),
-        to_timestamp(CAST(e.endTimestamp AS BIGINT) / 1000.0),
-        %s,
-        %s,
-        CAST(e.deadband AS INTEGER),
-        CAST(e.macAddress AS TEXT),
-        g.file_id, g.source_row_id AS source_row_id, pos AS source_measurement_id
-      FROM garmin_parsed g
-      CROSS JOIN LATERAL UNNEST(g.zeroCrossing) WITH ORDINALITY AS t(e, pos)
-      WHERE (e.startTimestamp) IS NOT NULL",
-    .read_null_neg("e.totalEnergy"),
-    .read_null_neg("e.zeroCrossingCount")
-  )
-}
-
 ingest_garmin_actigraphy <- function(sense_version) {
   branch <- function(key, offset) {
     sprintf(
@@ -753,48 +563,6 @@ ingest_garmin_actigraphy <- function(sense_version) {
     branch("actigraphy3", 2000000000)
   )
 }
-ingest_heartbeat <- function(sense_version) {
-  sprintf(
-    "INSERT INTO raw.Heartbeat (participant_id, time, period, device_type, device_role_name, source_file_id, source_row_id, source_measurement_id)
-      SELECT
-        m.participant_id,
-        to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0),
-        CAST(s.data->>'period' AS INTEGER),
-        CAST(s.data->>'deviceType' AS TEXT),
-        CAST(s.data->>'deviceRoleName' AS TEXT),
-        m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
-      FROM raw_staging s
-      JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.heartbeat'
-        AND %s
-        AND s.sensorStartTime IS NOT NULL
-",
-    .read_version_filter(sense_version)
-  )
-}
-
-ingest_light <- function(sense_version) {
-  sprintf(
-    "INSERT INTO raw.Light (participant_id, time, end_time, mean_lux, std_lux, min_lux, max_lux, source_file_id, source_row_id, source_measurement_id)
-      SELECT
-        m.participant_id,
-        to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0),
-        to_timestamp(CAST(s.sensorEndTime AS BIGINT) / 1000000.0),
-        CAST(s.data->>'meanLux' AS REAL),
-        CAST(s.data->>'stdLux' AS REAL),
-        CAST(s.data->>'minLux' AS REAL),
-        CAST(s.data->>'maxLux' AS REAL),
-        m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
-      FROM raw_staging s
-      JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.ambientlight'
-        AND %s
-        AND s.sensorStartTime IS NOT NULL
-",
-    .read_version_filter(sense_version)
-  )
-}
-
 ingest_location <- function(sense_version) {
   sprintf(
     "INSERT INTO raw.Location (
@@ -830,79 +598,6 @@ ingest_location <- function(sense_version) {
       "Location",
       "time"
     ),
-    .read_version_filter(sense_version)
-  )
-}
-
-ingest_memory <- function(sense_version) {
-  sprintf(
-    "INSERT INTO raw.Memory (participant_id, time, free_physical_memory, free_virtual_memory, source_file_id, source_row_id, source_measurement_id)
-      SELECT
-        m.participant_id,
-        to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0),
-        CAST(s.data->>'freePhysicalMemory' AS BIGINT),
-        CAST(s.data->>'freeVirtualMemory' AS BIGINT),
-        m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
-      FROM raw_staging s
-      JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.freememory'
-        AND %s
-        AND s.sensorStartTime IS NOT NULL
-",
-    .read_version_filter(sense_version)
-  )
-}
-
-ingest_pedometer <- function(sense_version) {
-  sprintf(
-    "INSERT INTO raw.Pedometer (participant_id, time, step_count, source_file_id, source_row_id, source_measurement_id)
-      SELECT
-        m.participant_id,
-        to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0),
-        CAST(s.data->>'steps' AS INTEGER),
-        m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
-      FROM raw_staging s
-      JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.stepcount'
-        AND %s
-        AND s.sensorStartTime IS NOT NULL
-",
-    .read_version_filter(sense_version)
-  )
-}
-
-ingest_screen <- function(sense_version) {
-  sprintf(
-    "INSERT INTO raw.Screen (participant_id, time, screen_event, source_file_id, source_row_id, source_measurement_id)
-      SELECT
-        m.participant_id,
-        to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0),
-        CAST(s.data->>'screenEvent' AS TEXT),
-        m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
-      FROM raw_staging s
-      JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.screenevent'
-        AND %s
-        AND s.sensorStartTime IS NOT NULL
-",
-    .read_version_filter(sense_version)
-  )
-}
-
-ingest_timezone <- function(sense_version) {
-  sprintf(
-    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id)
-      SELECT
-        m.participant_id,
-        to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0),
-        CAST(s.data->>'timezone' AS TEXT),
-        m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
-      FROM raw_staging s
-      JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.timezone'
-        AND %s
-        AND s.sensorStartTime IS NOT NULL
-",
     .read_version_filter(sense_version)
   )
 }
@@ -961,26 +656,6 @@ ingest_weather <- function(sense_version) {
       "Weather",
       "sunset"
     ),
-    .read_version_filter(sense_version)
-  )
-}
-
-ingest_wifi <- function(sense_version) {
-  sprintf(
-    "INSERT INTO raw.Wifi (participant_id, time, ssid, bssid, ip, source_file_id, source_row_id, source_measurement_id)
-      SELECT
-        m.participant_id,
-        to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0),
-        CAST(s.data->>'ssid' AS TEXT),
-        CAST(s.data->>'bssid' AS TEXT),
-        CAST(s.data->>'ip' AS TEXT),
-        m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
-      FROM raw_staging s
-      JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.wifi'
-        AND %s
-        AND s.sensorStartTime IS NOT NULL
-",
     .read_version_filter(sense_version)
   )
 }

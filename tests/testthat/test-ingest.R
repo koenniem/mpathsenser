@@ -16,6 +16,12 @@ test_that("registered ingest functions generate complete SQL templates", {
       # raw_staging themselves or filter by payload type or sense version
       expect_match(sql, "FROM garmin_parsed")
       expect_no_match(sql, "raw_staging|payload_type|sense_version")
+      # A Garmin array sensor expands exactly the array column its registry
+      # entry names; the same field drives the empty-array skip in
+      # read_mpath_sense(), so it must not drift from the SQL.
+      for (col in registry[[sensor]]$array) {
+        expect_match(sql, sprintf("UNNEST\\(g\\.%s\\)", col))
+      }
     } else {
       expect_match(sql, "m\\.sense_version = 5")
     }
@@ -132,7 +138,7 @@ test_that("scalar ingest SQL executes against a staging fixture", {
      v(source_file, participant_id, file_id, sense_version)"
   )
 
-  sql <- ingest_activity(5L)
+  sql <- new_sensor_registry()[["Activity"]]$fun(5L)
   DBI::dbExecute(db, sql)
 
   activity <- DBI::dbGetQuery(db, "SELECT participant_id, confidence, type FROM Activity")
@@ -235,7 +241,10 @@ test_that("typed array ingest executes", {
     db,
     "CREATE TEMP TABLE file_id_map AS SELECT * FROM (VALUES ('f', 1, 1::UBIGINT, 5::BIGINT)) v(source_file, participant_id, file_id, sense_version)"
   )
-  DBI::dbExecute(db, ingest_garmin_wriststatus(5L))
+  # The batch loop parses the Garmin payloads once into garmin_parsed; the
+  # per-sensor ingest then expands its own array column.
+  DBI::dbExecute(db, .read_garmin_parse_sql(5L))
+  DBI::dbExecute(db, new_sensor_registry()[["GarminWristStatus"]]$fun(5L))
   expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) n FROM GarminWristStatus")$n, 1L)
   close_db(db)
 })

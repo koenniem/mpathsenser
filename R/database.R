@@ -653,97 +653,6 @@ copy_db <- function(
   target_db
 }
 
-#' @noRd
-add_study <- function(db, study_id, data_format) {
-  check_db(db)
-
-  # Filter out NULL values in vectorized inputs
-  valid <- !is.na(study_id) & !is.null(study_id)
-  if (!any(valid)) {
-    return(0)
-  }
-
-  study_id <- study_id[valid]
-  data_format <- data_format[valid]
-
-  dbExecute(
-    db,
-    paste(
-      "INSERT INTO Study(study_id, data_format)",
-      "VALUES($1, $2)",
-      "ON CONFLICT DO NOTHING;"
-    ),
-    list(study_id, data_format)
-  )
-}
-
-#' @noRd
-add_participant <- function(db, participant_id, study_id) {
-  check_db(db)
-
-  # Filter out NULL values in vectorized inputs
-  valid <- !is.na(participant_id) & !is.null(participant_id)
-  if (!any(valid)) {
-    return(0)
-  }
-
-  participant_id <- participant_id[valid]
-  study_id <- study_id[valid]
-
-  dbExecute(
-    db,
-    paste(
-      "INSERT INTO Participant(participant_id, study_id)",
-      "VALUES($1, $2)",
-      "ON CONFLICT DO NOTHING;"
-    ),
-    list(participant_id, study_id)
-  )
-}
-
-#' @noRd
-add_processed_files <- function(
-  db,
-  file_name,
-  participant_id,
-  sense_version = NULL,
-  file_size_bytes = NULL,
-  modified_at = NULL
-) {
-  check_db(db)
-
-  # Filter out NULL values in vectorized inputs
-  valid <- !is.na(file_name) & !is.null(file_name)
-  if (!any(valid)) {
-    return(0)
-  }
-
-  file_name <- file_name[valid]
-  participant_id <- participant_id[valid]
-
-  # NULL parameters are bound as NA so that DBI can bind all values
-  n <- length(file_name)
-  sense_version <- sense_version %||% rep(NA_integer_, n)
-  file_size_bytes <- file_size_bytes %||% rep(NA_real_, n)
-  modified_at <- modified_at %||% as.POSIXct(rep(NA_real_, n), origin = "1970-01-01", tz = "UTC")
-
-  dbExecute(
-    db,
-    paste(
-      "INSERT INTO ProcessedFiles(file_name, participant_id, sense_version, file_size_bytes, modified_at)",
-      "VALUES($1, $2, $3, $4, $5)",
-      "ON CONFLICT DO NOTHING;"
-    ),
-    list(
-      file_name,
-      participant_id,
-      sense_version,
-      file_size_bytes,
-      modified_at
-    )
-  )
-}
-
 #' Re-order the data in a database for faster processing
 #'
 #' @description `r lifecycle::badge("experimental")`
@@ -878,6 +787,7 @@ optimize_db <- function(db, sensors = NULL, .progress = TRUE) {
 }
 
 #' @rdname optimize_db
+#' @export
 optimise_db <- function(db, sensors = NULL, .progress = TRUE) {
   optimize_db(db, sensors, .progress = .progress)
 }

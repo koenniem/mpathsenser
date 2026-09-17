@@ -1,7 +1,7 @@
 -- Database definition for mpathsenser DuckDB databases.
 --
 -- Layout: physical sensor tables live in the `raw` schema; the `main` schema
--- holds the metadata tables (Study, Participant, ProcessedFiles, Meta) and one
+-- holds the metadata tables (Study, Participant, ProcessedFiles) and one
 -- read-only view per sensor (main.<sensor>) that projects the raw table
 -- without the internal provenance columns (source_file_id, source_row_id,
 -- source_measurement_id). The views are created by the R helper
@@ -584,9 +584,3 @@ CREATE TABLE IF NOT EXISTS raw.Wifi(
   source_measurement_id UINTEGER NOT NULL
 );
 
-
-
-CREATE TABLE IF NOT EXISTS Meta(
-  key TEXT PRIMARY KEY,
-  value TEXT
-);

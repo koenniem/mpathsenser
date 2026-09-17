@@ -415,19 +415,19 @@ link <- function(
   # Get the start_time, end_time, and y_time as characters and check their validity
   x <- ungroup(x)
   y <- ungroup(y)
-  start_time <- colnames(select(x, {{ time }}))
+  time <- colnames(select(x, {{ time }}))
   if (!missing(end_time)) {
     end_time <- colnames(select(x, {{ end_time }}))
   }
   y_time <- colnames(select(y, {{ y_time }}))
   by <- colnames(select(x, {{ by }}))
 
-  check_arg(start_time, "character", n = 1)
+  check_arg(time, "character", n = 1)
   check_arg(end_time, "character", n = 1, allow_null = TRUE)
   check_arg(y_time, "character", n = 1)
 
   # Check the time columns
-  check_arg(pull(x, start_time), "POSIXt", arg = "time")
+  check_arg(pull(x, time), "POSIXt", arg = "time")
   if (!is.null(end_time)) {
     check_arg(pull(x, end_time), "POSIXt", arg = "end_time")
   }
@@ -437,7 +437,7 @@ link <- function(
     x = x,
     y = y,
     by = by,
-    start_time = start_time,
+    start_time = time,
     end_time = end_time,
     y_time = y_time,
     offset_before = offset_before,

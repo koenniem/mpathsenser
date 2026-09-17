@@ -18,8 +18,7 @@ test_that("link", {
     by = "participant_id",
     time = "time",
     y_time = "time",
-    offset_before = 1800,
-    split = NULL
+    offset_before = 1800
   )
   true <- tibble::tibble(
     time = rep(
@@ -64,31 +63,6 @@ test_that("link", {
   )
   expect_equal(res, true)
 
-  # Test warning if time and y_time are not specified
-  lifecycle::expect_deprecated(
-    link(
-      x = dat1,
-      y = dat2,
-      by = "participant_id",
-      y_time = "time",
-      offset_before = 1800,
-      split = NULL
-    ),
-    "The `time` argument of `link\\(\\)` must not be missing as of mpathsenser 1.1.2."
-  )
-
-  lifecycle::expect_deprecated(
-    link(
-      x = dat1,
-      y = dat2,
-      by = "participant_id",
-      time = "time",
-      offset_before = 1800,
-      split = NULL
-    ),
-    "The `y_time` argument of `link\\(\\)` must not be missing as of mpathsenser 1.1.2."
-  )
-
   # Test x and y identical
   expect_error(
     link(
@@ -97,8 +71,7 @@ test_that("link", {
       by = "participant_id",
       time = "time",
       y_time = "time",
-      offset_before = 1800,
-      split = NULL
+      offset_before = 1800
     ),
     "`x` and `y` are identical."
   )
@@ -136,18 +109,6 @@ test_that("link", {
       ),
     "`end_time` cannot be combined with `offset_before` or `offset_after`."
   )
-
-  # Test split argument
-  res <- link(
-    x = dat1,
-    y = dat2,
-    by = "participant_id",
-    time = time,
-    y_time = time,
-    offset_before = 1800,
-    split = 6
-  )
-  expect_equal(res, true)
 
   # Scrambled test
   scramble <- function(data) {
@@ -423,8 +384,8 @@ test_that("link", {
     add_after = TRUE
   )
   expect_equal(attr(res$time, "tzone"), "Europe/Brussels")
-  expect_equal(unique(map_chr(res$data, ~ attr(.x$time, "tzone"))), "UTC")
-  expect_equal(unique(map_chr(res$data, ~ attr(.x$original_time, "tzone"))), "UTC")
+  expect_equal(unique(purrr::map_chr(res$data, ~ attr(.x$time, "tzone"))), "UTC")
+  expect_equal(unique(purrr::map_chr(res$data, ~ attr(.x$original_time, "tzone"))), "UTC")
 
   # Make sure link does not add an extra row if first measurement equal start of the interval or
   # vice versa for the end of the interval.
@@ -528,12 +489,6 @@ test_that("link", {
     )
   )
   expect_equal(res, true)
-})
-
-## link_db ===============
-test_that("link_db", {
-  # Check deprecation
-  lifecycle::expect_defunct(link_db(db, "Activity", "Connectivity", offset_after = 1800L))
 })
 
 ## link_gaps =================

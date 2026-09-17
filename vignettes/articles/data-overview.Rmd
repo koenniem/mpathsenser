@@ -259,7 +259,7 @@ schema_table <- function(table) {
 
 This article provides an overview of the tables in an `mpathsenser` database. The database is created by `create_db()` and populated by `read_mpath_sense()`. It is a [DuckDB](https://duckdb.org) database, so all data is stored in a columnar format and queried through SQL (via `dplyr`/`dbplyr` or `DBI`). All timestamps are stored as UTC instants.
 
-The database is split over two schemas. The `main` schema holds the metadata tables (`Study`, `Participant`, `ProcessedFiles`, and `Meta`) plus one read-only view per sensor; the physical sensor tables live in the `raw` schema. The views expose exactly the measurement columns, so user-facing queries (`get_data()`, DBI, dbplyr) never see the internal details. Under the hood, every sensor row additionally carries three provenance columns that stay internal: `source_file_id` (the `ProcessedFiles` id of the file the measurement came from), `source_row_id` (the 1-based position of the JSON entry in its file, i.e. the order in which m-Path Sense wrote the entries — start times are monotone within each sensor, but the file interleaves the sensors, so a time-based order would not reproduce the file order) and `source_measurement_id` (the 1-based position within a nested collection for sensors that unnest arrays, such as Garmin logs, `AppUsage`, or Bluetooth scan results; 1 for ordinary entries). These columns determine which row wins when duplicate measurements are removed. The `participant_id` is stored as an unsigned integer, matching how the m-Path Sense `connectionId` is encoded. The tables below are generated from the schema definition (`dbdef.sql`) that `create_db()` uses, so they always match the initial database schema.
+The database is split over two schemas. The `main` schema holds the metadata tables (`Study`, `Participant`, and `ProcessedFiles`) plus one read-only view per sensor; the physical sensor tables live in the `raw` schema. The views expose exactly the measurement columns, so user-facing queries (`get_data()`, DBI, dbplyr) never see the internal details. Under the hood, every sensor row additionally carries three provenance columns that stay internal: `source_file_id` (the `ProcessedFiles` id of the file the measurement came from), `source_row_id` (the 1-based position of the JSON entry in its file, i.e. the order in which m-Path Sense wrote the entries — start times are monotone within each sensor, but the file interleaves the sensors, so a time-based order would not reproduce the file order) and `source_measurement_id` (the 1-based position within a nested collection for sensors that unnest arrays, such as Garmin logs, `AppUsage`, or Bluetooth scan results; 1 for ordinary entries). These columns determine which row wins when duplicate measurements are removed. The `participant_id` is stored as an unsigned integer, matching how the m-Path Sense `connectionId` is encoded. The tables below are generated from the schema definition (`dbdef.sql`) that `create_db()` uses, so they always match the initial database schema.
 
 The split is enforced for convenience, not secrecy: the raw physical tables are still part of the database and can be queried directly (e.g. `SELECT * FROM raw.Accelerometer`), where the provenance columns and DuckDB's implicit per-row `rowid` are visible. All package functions read through the `main` views, so the internal ordering columns never leak into normal use; the `_local`/`_with_local` views hide them too.
 
@@ -299,14 +299,6 @@ For dashboards or other readers, open a separate read-only connection with `open
 
 The schema tables below describe the columns created by `create_db()`. Sensor tables contain both `TIMESTAMPTZ` measurement timestamps and a `timezone` column. The latter is populated automatically during import when `Timezone` measurements are available.
 
-### Meta
-
-The `Meta` table stores key-value pairs for database metadata.
-
-```{r meta-table, echo=FALSE}
-schema_table("Meta")
-```
-
 ### Study
 
 This table contains information about the study itself. The data from this table can be accessed using `get_studies()`.
@@ -336,7 +328,7 @@ schema_table("ProcessedFiles")
 The tables below describe the physical sensor tables in the `raw` schema, exactly as exposed by the `main.<sensor>` views (which drop the three internal provenance columns). Canonical timestamps are stored as UTC `TIMESTAMPTZ` values, and each row may include an IANA `timezone` for local rendering. Explicitly named local views expose participant-local wall-clock values; `COALESCE(timezone, 'UTC')` ensures unmapped observations still have non-NULL timestamps. The import populates timezone values automatically; `add_timezones_to_db()` can be rerun to normalize existing or selected tables.
 
 ```{r, echo=FALSE, results="asis"}
-metadata_tables <- c("Meta", "Study", "Participant", "ProcessedFiles")
+metadata_tables <- c("Study", "Participant", "ProcessedFiles")
 schema_sensors <- setdiff(names(tables), metadata_tables)
 non_garmin <- setdiff(schema_sensors, grep("^Garmin", schema_sensors, value = TRUE))
 lines <- unlist(lapply(non_garmin, function(s) {

@@ -246,65 +246,43 @@
 }
 
 # SQL fragment that returns a typed list of STRUCTs for a JSON array (or
-# single value, or NULL), tolerating missing keys. The array is transformed
-# directly to a list of typed STRUCTs (schema), which uses far less memory than
-# keeping the elements as JSON values: DuckDB's parsed JSON representation
-# costs roughly 1.5-2 KB per element, which makes ingesting large arrays (e.g.
-# Garmin logs with tens of thousands of values per entry) run out of memory.
-# With a typed schema the transform costs only tens of bytes per element.
+# single value, or NULL) held in `key` of the payload object `expr`, tolerating
+# missing keys. The array is transformed directly to a list of typed STRUCTs
+# (schema), which uses far less memory than keeping the elements as JSON
+# values: DuckDB's parsed JSON representation costs roughly 1.5-2 KB per
+# element, which makes ingesting large arrays (e.g. Garmin logs with tens of
+# thousands of values per entry) run out of memory. With a typed schema the
+# transform costs only tens of bytes per element. Transforming the whole
+# payload once avoids the double parse of expr->'key' followed by
+# json_transform; a missing key yields NULL (and thus no rows).
 #
 # Ingest statements wrap this expression in a lateral (SELECT <expr> AS l)
 # and expand it with UNNEST(j.l) WITH ORDINALITY: the ordinality column is the
 # true 1-based array position (verified stable at threads = 16), whereas a
 # ROW_NUMBER() over UNNEST emission order is scrambled under parallel scans
 # and range()+subscript enumeration is ~4x slower.
-.read_json_array_typed <- function(expr, schema, key = NULL) {
-  obj_schema <- gsub("^\\[|\\]$", "", schema)
-  if (is.null(key)) {
-    paste0(
-      "CASE WHEN json_type(",
-      expr,
-      ") = 'ARRAY' THEN json_transform(",
-      expr,
-      ", '",
-      schema,
-      "')",
-      " WHEN (",
-      expr,
-      ") IS NULL THEN []",
-      " ELSE [json_transform(",
-      expr,
-      ", '",
-      obj_schema,
-      "')] END"
-    )
-  } else {
-    # Single-parse variant: expr is the payload object, key the array field.
-    # Transforming the whole payload once avoids the double parse of
-    # expr->'key' followed by json_transform. Missing keys yield NULL (and
-    # thus no rows) rather than an error.
-    paste0(
-      "CASE WHEN json_type(",
-      expr,
-      ") = 'ARRAY' THEN json_transform(",
-      expr,
-      ", '",
-      schema,
-      "')",
-      " WHEN (",
-      expr,
-      ") IS NULL THEN []",
-      " ELSE json_transform(",
-      expr,
-      ", '{\"",
-      key,
-      "\": ",
-      schema,
-      "}').",
-      key,
-      " END"
-    )
-  }
+.read_json_array_typed <- function(expr, schema, key) {
+  paste0(
+    "CASE WHEN json_type(",
+    expr,
+    ") = 'ARRAY' THEN json_transform(",
+    expr,
+    ", '",
+    schema,
+    "')",
+    " WHEN (",
+    expr,
+    ") IS NULL THEN []",
+    " ELSE json_transform(",
+    expr,
+    ", '{\"",
+    key,
+    "\": ",
+    schema,
+    "}').",
+    key,
+    " END"
+  )
 }
 
 # SQL fragment: cast a possibly-missing numeric value, turning negative
@@ -343,12 +321,10 @@
 
 # Aggregate unknown types across batches into a named count vector
 .read_aggregate_types <- function(unknown_types) {
-  keep <- vapply(unknown_types, \(x) nrow(x) > 0, logical(1))
-  unknown_types <- unknown_types[keep]
-  if (length(unknown_types) == 0) {
+  df <- .read_combine_types(unknown_types)
+  if (nrow(df) == 0) {
     return(character(0))
   }
-  df <- do.call(rbind, unknown_types)
   agg <- stats::aggregate(n ~ payload_type, data = df, FUN = sum)
   out <- agg$n
   names(out) <- agg$payload_type
@@ -480,7 +456,6 @@
     )
     join_t <- paste(join_parts, collapse = " AND ")
     b_key_list <- paste0("b.", keys, collapse = ", ")
-    b_grp <- paste0("b.", keys, collapse = ", ")
 
     # The candidate table holds the key groups worth examining: the duplicated
     # groups of the whole table (file_ids = NULL) or the duplicated key groups
@@ -524,7 +499,7 @@
                GROUP BY %s HAVING COUNT(*) > 1 AND COUNT_IF(f.file_id IS NOT NULL) > 0",
               b_key_list,
               sensor_raw,
-              b_grp
+              b_key_list
             )
           )
           n_dupes <- DBI::dbGetQuery(db, "SELECT COUNT(*) AS n FROM dedup_cand")[[1]]

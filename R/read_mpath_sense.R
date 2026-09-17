@@ -730,7 +730,9 @@ read_mpath_sense <- function(
           }
         }
       )
-      garmin_cols <- unique(unlist(garmin_sensor_array_cols[garmin_sensors]))
+      # The array columns come from the registry entries (`array`), so a sensor
+      # and the column it expands stay in one place.
+      garmin_cols <- unique(unlist(lapply(garmin_sensors, \(s) registry[[s]]$array)))
       n_els <- NULL
       if (length(garmin_cols) > 0) {
         n_els <- DBI::dbGetQuery(
@@ -749,7 +751,7 @@ read_mpath_sense <- function(
         )
       }
       for (sensor_name in garmin_sensors) {
-        cols <- garmin_sensor_array_cols[[sensor_name]]
+        cols <- registry[[sensor_name]]$array
         if (!is.null(cols) && !is.null(n_els) &&
             sum(as.numeric(n_els[1, cols])) == 0) {
           next
