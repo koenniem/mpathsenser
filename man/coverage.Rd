@@ -2,15 +2,18 @@
 % Please edit documentation in R/coverage.R
 \name{coverage}
 \alias{coverage}
-\title{Create a coverage chart of the sampling rate}
+\title{Coverage chart of the sampling rate}
 \usage{
 coverage(
   db,
-  participant_id,
+  participant_id = NULL,
   sensor = NULL,
-  frequency = mpathsenser::freq,
-  relative = TRUE,
-  offset = "None",
+  expected = NULL,
+  by = "hour",
+  cycle = "day",
+  label = TRUE,
+  week_start = getOption("lubridate.week.start", 7),
+  local = TRUE,
   start_date = NULL,
   end_date = NULL
 )
@@ -19,63 +22,81 @@ coverage(
 \item{db}{A valid database connection. Schema must be that as it is created by
 \link{open_db}.}
 
-\item{participant_id}{A single participant ID. Stored as an unsigned integer;
-both an integer/numeric and a character value are accepted.}
+\item{participant_id}{A participant ID, or a vector of participant IDs.
+Stored as an unsigned integer; both an integer/numeric and a character
+value are accepted. Use \code{NULL} for all participants.}
 
 \item{sensor}{A character vector containing one or multiple sensors. See
-\code{\link[mpathsenser]{sensors}} for a list of available sensors. Use \code{NULL} for all
-available sensors.}
+\code{\link[mpathsenser]{sensors}} for a list of available sensors. Use
+\code{NULL} for all available sensors.}
 
-\item{frequency}{A named numeric vector with sensors as names and the number of expected samples
-per hour}
+\item{expected}{Optional named numeric vector with sensors as names and the
+expected sampling interval in seconds. Use \code{\link[=coverage_frequency]{coverage_frequency()}} to
+construct one. When given, only sensors present in \code{expected} are returned
+(explicitly requested sensors that are dropped produce a warning) and the
+coverage is relative to
+the expected number of measurements. Use \code{NULL} for absolute counts.}
 
-\item{relative}{Show absolute number of measurements or relative to the expected number?
-Logical value.}
+\item{by}{The time resolution at which observations are counted. One of
+\code{"minute"}, \code{"hour"}, \code{"day"}, \code{"week"}, or \code{"month"}.}
 
-\item{offset}{Currently not used.}
+\item{cycle}{The cycle within which the counts are averaged, or \code{NULL} to
+return the full series. One of \code{NULL}, \code{"hour"}, \code{"day"}, \code{"week"},
+\code{"month"}, or \code{"year"}. \code{cycle} must be coarser than \code{by}.}
 
-\item{start_date}{A date (or convertible to a date using \code{\link[base:as.Date]{base::as.Date()}}) indicating
-the earliest date to show. Leave empty for all data. Must be used with \code{end_date}.}
+\item{label}{Whether to label \code{cycle = "week"} output with weekday
+abbreviations (as in \code{\link[lubridate:wday]{lubridate::wday()}}). When \code{FALSE}, \code{day_of_week} is
+returned as an integer (1 = \code{week_start}).}
 
-\item{end_date}{A date (or convertible to a date using \code{\link[base:as.Date]{base::as.Date()}}) indicating
-the latest date to show.Leave empty for all data. Must be used with \code{start_date}.}
+\item{week_start}{Day the week starts on: 1 = Monday, 7 = Sunday. Defaults to
+\code{getOption("lubridate.week.start", 7)} and also defines the boundary of
+\code{by = "week"} bins.}
 
-\item{plot}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}} Instead of built-in functionality, use
-\code{\link[=plot.coverage]{plot.coverage()}} to plot the output.}
+\item{local}{Whether to bin observations using the participant-local timezone
+stored in the \code{timezone} column (via the \verb{_with_local} views). Defaults to
+\code{TRUE}; use \code{FALSE} to bin by the canonical UTC timestamps.}
+
+\item{start_date}{A date (or convertible to a date using \code{\link[base:as.Date]{base::as.Date()}})
+indicating the earliest date to include. Leave empty for all data.}
+
+\item{end_date}{A date (or convertible to a date using \code{\link[base:as.Date]{base::as.Date()}})
+indicating the latest date to include. Leave empty for all data.}
 }
 \value{
-A ggplot of the coverage results if \code{plot} is \code{TRUE} or a tibble containing the
-hour, type of measure (i.e. sensor), and (relative) coverage.
+A lazy \code{tbl} of class \code{"coverage"}. Columns are \code{participant_id},
+the cycle position columns (or \code{time} when \code{cycle = NULL}), \code{measure}, and
+\code{coverage}. \code{collect()} rounds \code{coverage} to two digits, turns \code{measure}
+into a factor, and labels \code{day_of_week} when applicable.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-Only applicable to non-reactive sensors with 'continuous' sampling
+Computes the (relative) number of measurements per sensor and participant.
+Only applicable to non-reactive sensors with 'continuous' sampling.
+
+The calculation is performed entirely inside DuckDB and the result is a lazy
+table; call \code{\link[dplyr:collect]{dplyr::collect()}} to bring it into R. Coverage is computed
+\strong{within} each participant, over that participant's own observation span
+(\code{first} to \code{last} measurement). Bins inside the span without observations
+are zero-filled. The first and last bins of the span are prorated in relative
+mode, so a participant who starts in the middle of a day or week can still
+reach 100\% coverage for that bin.
 }
 \examples{
 \dontrun{
-freq <- c(
-  Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
-  AirQuality = 1,
-  AppUsage = 2, # Once every 30 minutes
-  Bluetooth = 60, # Once per minute. Can have multiple measurements.
-  Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
-  Light = 360, # Once per 10 seconds
-  Location = 60, # Once per 60 seconds
-  Memory = 60, # Once per minute
-  Noise = 120,
-  Pedometer = 1,
-  Weather = 1,
-  Wifi = 60 # once per minute
+# Absolute coverage per hour of the day
+coverage(db, participant_id = "12345", sensor = "Accelerometer")
+
+# Relative coverage per week, averaged per day of the week
+coverage(
+  db,
+  sensor = "Accelerometer",
+  expected = coverage_frequency(Accelerometer = 5),
+  by = "day",
+  cycle = "week"
 )
 
-coverage(
-  db = db,
-  participant_id = "12345",
-  sensor = c("Accelerometer", "Gyroscope"),
-  frequency = mpathsenser::freq,
-  start_date = "2021-01-01",
-  end_date = "2021-05-01"
-)
+# The full minute-level series for one participant
+coverage(db, "12345", by = "minute", cycle = NULL)
 }
 }

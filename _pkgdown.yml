@@ -67,6 +67,7 @@ reference:
     contents:
       - coverage
       - plot.coverage
+      - coverage_frequency
 
   - title: Data transformation
     contents:
@@ -90,7 +91,6 @@ reference:
   - title: Miscellaneous
     contents:
       - sensors
-      - freq
 
 development:
   destination: ""

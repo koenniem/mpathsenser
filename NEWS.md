@@ -1,4 +1,5 @@
 # mpathsenser (in-development version)
+* `coverage()` was reworked: the calculation now runs entirely inside DuckDB and returns a lazy tibble, coverage is computed per participant over that participant's own observation span (`participant_id = NULL` returns all participants), and the new `by` and `cycle` arguments control the counting resolution and the averaging cycle. `frequency` and `relative` are replaced by `expected`, a named vector of sampling intervals in seconds (see `coverage_frequency()`); the exported `freq` vector and the unused `offset` argument were removed. Relative coverage now prorates the first and last partial bins, so a participant who starts or ends in the middle of a day or week can still reach full coverage for that bin.
 * `ccopy()`, `fix_jsons()` and `test_jsons()` have been removed. Use
   `base::file.copy()`, `jsonlite::validate()` and `utils::unzip()` (or
   `unzip_data()`) instead.

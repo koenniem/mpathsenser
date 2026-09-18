@@ -216,18 +216,29 @@ A time window can be selected with `start_date` and `end_date` (in `YYYY-MM-DD` 
 
 # Creating a coverage chart
 
-To get a better overview of the data, `coverage()` computes the average number of collected samples per hour for each sensor and participant. An absolute coverage chart shows the average number of samples per hour, while a relative coverage chart expresses this as a percentage of the *expected* sampling rate for that sensor (see `mpathsenser::freq`). The relative chart is useful to see how well the data is being collected for each sensor, the absolute chart to see how much data there is in general.
+To get a better overview of the data, `coverage()` computes the (relative) number of collected samples per sensor and participant. The calculation runs entirely inside DuckDB and returns a lazy table, so it scales to large studies: call `collect()` (or `plot()`) to materialise it. By default coverage is counted per hour of the day, within each participant's own observation span, with missing hours or days inside that span filled with zeros. In relative mode, the first and last partial bins of a participant are prorated so that starting or ending in the middle of a day or week does not cap the coverage.
+
+Use `by` to change the counting resolution (`"minute"`, `"hour"`, `"day"`, `"week"`, or `"month"`) and `cycle` to average the counts within a recurring cycle (`NULL`, `"hour"`, `"day"`, `"week"`, `"month"`, or `"year"`). With `cycle = NULL`, the full zero-filled series is returned instead of a cycle profile. Relative coverage is requested by passing `expected`, a named vector of sampling intervals in seconds; `coverage_frequency()` builds one with sensible defaults. An absolute coverage chart shows the average number of samples per bin, while a relative coverage chart expresses this as a fraction of the expected sampling rate. The relative chart is useful to see how well the data is being collected for each sensor, the absolute chart to see how much data there is in general.
 
 ```{r coverage}
 cov <- coverage(
   db = db,
   participant_id = "12345",
-  sensor = c("Activity", "Battery", "Screen", "Wifi", "Location", "Pedometer"),
-  relative = FALSE
+  sensor = c("Activity", "Battery", "Screen", "Wifi", "Location", "Pedometer")
 )
 ```
 
-The result is a tidy data frame with the average coverage per hour of the day, which can be plotted with the `plot()` method:
+The result is a remote tibble with the average coverage per hour of the day, which can be plotted with the `plot()` method. Use `collect()` to bring the values into R, and `coverage_frequency()` to compute relative coverage:
+
+```{r coverage relative, eval = FALSE}
+cov <- coverage(
+  db = db,
+  participant_id = "12345",
+  sensor = c("Accelerometer", "Battery"),
+  expected = coverage_frequency()
+) |>
+  collect()
+```
 
 ```{r coverage plot, fig.width = 8, fig.height = 5, fig.align = "center", dpi = 100}
 #| fig.alt: Coverage plot showing the average number of samples per hour for

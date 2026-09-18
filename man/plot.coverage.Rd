@@ -4,12 +4,17 @@
 \alias{plot.coverage}
 \title{Plot a coverage overview}
 \usage{
-\method{plot}{coverage}(x, digits = 2, ...)
+\method{plot}{coverage}(x, digits = 2, type = c("auto", "line", "heatmap"), ...)
 }
 \arguments{
-\item{x}{A tibble with the coverage data coming from \code{\link[=coverage]{coverage()}}.}
+\item{x}{A coverage result coming from \code{\link[=coverage]{coverage()}}, either lazy or already
+collected.}
 
 \item{digits}{Number of digits to round the coverage values to. Defaults to 2.}
+
+\item{type}{The plot type. \code{"auto"} (the default) uses a line graph for the
+full series (\code{cycle = NULL}) and a heatmap for cycle profiles. Use
+\code{"line"} or \code{"heatmap"} to force one of the two.}
 
 \item{...}{Other arguments passed on to methods. Not currently used.}
 }
@@ -21,30 +26,7 @@ Plot a coverage overview
 }
 \examples{
 \dontrun{
-freq <- c(
-  Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
-  AirQuality = 1,
-  AppUsage = 2, # Once every 30 minutes
-  Bluetooth = 60, # Once per minute. Can have multiple measurements.
-  Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
-  Light = 360, # Once per 10 seconds
-  Location = 60, # Once per 60 seconds
-  Memory = 60, # Once per minute
-  Noise = 120,
-  Pedometer = 1,
-  Weather = 1,
-  Wifi = 60 # once per minute
-)
-
-data <- coverage(
-  db = db,
-  participant_id = "12345",
-  sensor = c("Accelerometer", "Gyroscope"),
-  frequency = mpathsenser::freq,
-  start_date = "2021-01-01",
-  end_date = "2021-05-01"
-)
-
+data <- coverage(db, participant_id = "12345", sensor = "Accelerometer")
 plot(data)
 }
 }
