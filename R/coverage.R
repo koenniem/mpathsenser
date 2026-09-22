@@ -70,9 +70,17 @@ coverage_frequency <- function(
 #' table; call [dplyr::collect()] to bring it into R. Coverage is computed
 #' **within** each participant, over that participant's own observation span
 #' (`first` to `last` measurement). Bins inside the span without observations
-#' are zero-filled. The first and last bins of the span are prorated in relative
-#' mode, so a participant who starts in the middle of a day or week can still
-#' reach 100% coverage for that bin.
+#' are zero-filled. Only the first and last bins of the participant span are
+#' prorated: for example, if observation starts at 13:50, the 13:00--14:00 bin
+#' can reach 100% based on the eligible final 10 minutes. Interior bins always
+#' use their complete duration.
+#'
+#' The `metric` argument selects what a bin measures. `"count"` (the default)
+#' counts the distinct observation instants in each bin, optionally relative to
+#' the expected sampling rate. `"time"` requires `expected` and measures the
+#' fraction of the eligible time in each bin that is covered by the union of the
+#' observation intervals `[time, time + expected)`; duplicated or overlapping
+#' observations count once, so temporal coverage cannot exceed 1.
 #'
 #' @param db A valid database connection. Schema must be that as it is created by
 #'   [open_db].
@@ -85,9 +93,15 @@ coverage_frequency <- function(
 #' @param expected Optional named numeric vector with sensors as names and the
 #'   expected sampling interval in seconds. Use [coverage_frequency()] to
 #'   construct one. When given, only sensors present in `expected` are returned
-#'   (explicitly requested sensors that are dropped produce a warning) and the
-#'   coverage is relative to
-#'   the expected number of measurements. Use `NULL` for absolute counts.
+#'   (explicitly requested sensors that are dropped produce a warning). For
+#'   `metric = "count"`, coverage is relative to the expected number of
+#'   measurements; for `metric = "time"`, the intervals also define how long
+#'   each observation covers. Use `NULL` for absolute counts.
+#' @param metric What to measure per bin: `"count"` (the default) for the number
+#'   of distinct observations, or `"time"` for the fraction of the eligible time
+#'   covered by the union of the intervals `[time, time + expected)`. `"time"`
+#'   requires `expected`; its eligible span ends one expected interval after the
+#'   last observation, so the terminal observation contributes its full interval.
 #' @param by The time resolution at which observations are counted. One of
 #'   `"minute"`, `"hour"`, `"day"`, `"week"`, or `"month"`.
 #' @param cycle The cycle within which the counts are averaged, or `NULL` to
@@ -101,7 +115,9 @@ coverage_frequency <- function(
 #'   `by = "week"` bins.
 #' @param local Whether to bin observations using the participant-local timezone
 #'   stored in the `timezone` column (via the `_with_local` views). Defaults to
-#'   `TRUE`; use `FALSE` to bin by the canonical UTC timestamps.
+#'   `TRUE`; use `FALSE` to bin by the canonical UTC timestamps. If a timezone
+#'   change makes local time move backwards, the participant span uses the local
+#'   wall-clock hull so the generated spine remains non-empty.
 #' @param start_date A date (or convertible to a date using [base::as.Date()])
 #'   indicating the earliest date to include. Leave empty for all data.
 #' @param end_date A date (or convertible to a date using [base::as.Date()])
@@ -129,12 +145,23 @@ coverage_frequency <- function(
 #'
 #' # The full minute-level series for one participant
 #' coverage(db, "12345", by = "minute", cycle = NULL)
+#'
+#' # Temporal coverage of a sensor expected to sample every 5 seconds
+#' coverage(
+#'   db,
+#'   "12345",
+#'   sensor = "Accelerometer",
+#'   expected = coverage_frequency(Accelerometer = 5),
+#'   metric = "time",
+#'   cycle = NULL
+#' )
 #' }
 coverage <- function(
   db,
   participant_id = NULL,
   sensor = NULL,
   expected = NULL,
+  metric = c("count", "time"),
   by = "hour",
   cycle = "day",
   label = TRUE,
@@ -156,6 +183,7 @@ coverage <- function(
   check_arg(local, "logical", n = 1)
   check_arg(week_start, type = c("numeric", "integerish"), n = 1)
   check_arg(expected, type = "numeric", allow_null = TRUE)
+  metric <- match.arg(metric, c("count", "time"))
 
   # Participants
   participants <- get_participants(db)$participant_id
@@ -207,6 +235,13 @@ coverage <- function(
     }
   }
 
+  if (identical(metric, "time") && is.null(expected)) {
+    cli_abort(c(
+      "{.arg metric} = {.val time} requires {.arg expected}.",
+      i = "Pass {.fn coverage_frequency} to define the expected sampling interval per sensor."
+    ))
+  }
+
   # Time resolution and cycle
   by_rank <- c(minute = 1L, hour = 2L, day = 3L, week = 4L, month = 5L)
   cycle_rank <- c(hour = 2L, day = 3L, week = 4L, month = 5L, year = 6L)
@@ -245,38 +280,53 @@ coverage <- function(
     )
   }
 
-  # Build the lazy query: per-sensor counts, then a raw-SQL wrapper for the
-  # participant spans, zero-filled spine, cycle positions, and relative values.
-  counts <- purrr::map(
+  # Build the lazy query: one relation per sensor (per-bin counts, or distinct
+  # observation instants for the temporal metric), then a raw-SQL wrapper for
+  # the participant spans, zero-filled spine, interval union, cycle positions,
+  # and relative values.
+  relations <- purrr::map(
     sensor,
-    ~ .coverage_counts_branch(
-      db = db,
-      sensor = .x,
-      participant_id = participant_id,
-      by = by,
-      local = local,
-      week_start = week_start,
-      start_date = start_date,
-      end_date = end_date
-    )
+    ~ if (identical(metric, "time")) {
+      .coverage_instants_branch(
+        db = db,
+        sensor = .x,
+        participant_id = participant_id,
+        local = local,
+        start_date = start_date,
+        end_date = end_date
+      )
+    } else {
+      .coverage_counts_branch(
+        db = db,
+        sensor = .x,
+        participant_id = participant_id,
+        by = by,
+        local = local,
+        week_start = week_start,
+        start_date = start_date,
+        end_date = end_date
+      )
+    }
   )
-  counts <- purrr::reduce(counts, dplyr::union_all)
-  counts_sql <- as.character(dbplyr::sql_render(counts))
+  relations <- purrr::reduce(relations, dplyr::union_all)
+  relation_sql <- as.character(dbplyr::sql_render(relations))
 
   query <- .coverage_sql(
-    counts_sql = counts_sql,
+    relation_sql = relation_sql,
     sensor = sensor,
     expected = expected,
     by = by,
     cycle = cycle,
     week_start = week_start,
-    local = local
+    local = local,
+    metric = metric
   )
 
   out <- dplyr::tbl(db, dbplyr::sql(query))
   class(out) <- c("coverage", class(out))
   attr(out, "participant_id") <- participant_id
   attr(out, "expected") <- expected
+  attr(out, "metric") <- metric
   attr(out, "by") <- by
   attr(out, "cycle") <- cycle
   attr(out, "label") <- label
@@ -340,6 +390,7 @@ collect.coverage <- function(x, ...) {
   for (nm in c(
     "participant_id",
     "expected",
+    "metric",
     "by",
     "cycle",
     "label",
@@ -475,7 +526,7 @@ plot.coverage <- function(
         max_coverage = ifelse(.data$max_coverage == 0, 1, .data$max_coverage)
       ) |>
       mutate(scaled_coverage = .data$coverage / max(.data$max_coverage)) |>
-      ungroup(.data$measure)
+      ungroup("measure")
     fill_col <- "scaled_coverage"
   }
 
@@ -610,19 +661,18 @@ plot.coverage <- function(
   positions
 }
 
-# One lazy per-sensor counts branch for the coverage query.
-.coverage_counts_branch <- function(
+# The shared view choice and filters for one sensor branch. Filtering always
+# uses the canonical `time`, also when `local = TRUE`, so the local and UTC
+# branches see exactly the same observations.
+.coverage_filter_branch <- function(
   db,
   sensor,
   participant_id,
-  by,
   local,
-  week_start,
   start_date,
   end_date
 ) {
   view <- if (local) paste0(sensor, "_with_local") else sensor
-  time_col <- if (local) "time_local" else "time"
 
   out <- dplyr::tbl(db, view)
 
@@ -645,6 +695,31 @@ plot.coverage <- function(
     end_limit <- as.Date(end_date) + 1
     out <- dplyr::filter(out, .data$time <= !!end_limit)
   }
+
+  out
+}
+
+# One lazy per-sensor counts branch for the coverage query.
+.coverage_counts_branch <- function(
+  db,
+  sensor,
+  participant_id,
+  by,
+  local,
+  week_start,
+  start_date,
+  end_date
+) {
+  time_col <- if (local) "time_local" else "time"
+
+  out <- .coverage_filter_branch(
+    db = db,
+    sensor = sensor,
+    participant_id = participant_id,
+    local = local,
+    start_date = start_date,
+    end_date = end_date
+  )
 
   out <- dplyr::mutate(
     out,
@@ -674,28 +749,54 @@ plot.coverage <- function(
   dplyr::mutate(out, measure = sensor)
 }
 
-# Wrap the per-sensor counts in the spans/spine/cycle SQL.
+# One lazy per-sensor distinct-instant branch for the temporal coverage metric.
+# Distinctness is on the canonical `time`, so a duplicated (or re-imported)
+# observation cannot create a second interval; the matching local wall-clock
+# value is kept for binning when `local = TRUE`.
+.coverage_instants_branch <- function(
+  db,
+  sensor,
+  participant_id,
+  local,
+  start_date,
+  end_date
+) {
+  out <- .coverage_filter_branch(
+    db = db,
+    sensor = sensor,
+    participant_id = participant_id,
+    local = local,
+    start_date = start_date,
+    end_date = end_date
+  )
+
+  if (local) {
+    out <- dplyr::summarise(
+      out,
+      time_local = min(.data$time_local),
+      .by = c("participant_id", "time")
+    )
+  } else {
+    out <- dplyr::select(out, "participant_id", "time")
+    out <- dplyr::distinct(out)
+  }
+
+  dplyr::mutate(out, measure = sensor)
+}
+
+# Wrap the per-sensor relation in the spans/spine/cycle SQL.
 .coverage_sql <- function(
-  counts_sql,
+  relation_sql,
   sensor,
   expected,
   by,
   cycle,
   week_start,
-  local
+  local,
+  metric
 ) {
   step <- .coverage_sql_step(by)
   first_bin <- .coverage_sql_trunc("first_time", by, week_start)
-  last_bin <- .coverage_sql_trunc("last_time", by, week_start)
-
-  spans <- if (local) {
-    paste(
-      "arg_min(bin_first_local, bin_first) AS first_time,",
-      "arg_max(bin_last_local, bin_last) AS last_time"
-    )
-  } else {
-    "min(bin_first) AS first_time, max(bin_last) AS last_time"
-  }
 
   sensor_list <- paste0(
     "'",
@@ -704,12 +805,8 @@ plot.coverage <- function(
     collapse = ", "
   )
 
-  if (is.null(expected)) {
-    expected_cte <- ""
-    expected_join <- ""
-    interval_col <- ""
-    value <- "n"
-  } else {
+  expected_cte <- ""
+  if (!is.null(expected)) {
     rows <- sprintf(
       "('%s', %s)",
       gsub("'", "''", names(expected)),
@@ -719,9 +816,73 @@ plot.coverage <- function(
       "expected AS (SELECT * FROM (VALUES %s) AS e(measure, interval_seconds)),\n",
       paste(rows, collapse = ", ")
     )
-    expected_join <- "\n  LEFT JOIN expected e ON e.measure = sn.measure"
-    interval_col <- ",\n         e.interval_seconds"
-    value <- "n / (GREATEST(covered_seconds, interval_seconds) / interval_seconds)"
+  }
+
+  if (identical(metric, "time")) {
+    prefix <- .coverage_sql_intervals(
+      relation_sql = relation_sql,
+      expected_cte = expected_cte,
+      by = by,
+      week_start = week_start,
+      local = local
+    )
+    # `last_time` is an exclusive interval end, so the final bin is the one that
+    # contains the last covered instant (`last_time - 1 microsecond`), not a bin
+    # that merely touches that boundary.
+    last_bin <- .coverage_sql_trunc(
+      "last_time - INTERVAL 1 MICROSECOND",
+      by,
+      week_start
+    )
+    # Local wall-clock values can move backwards after a timezone change;
+    # the hull keeps the participant spine non-empty without reordering rows.
+    spans <- "min(seg_start) AS first_time, max(seg_end) AS last_time"
+    spans_from <- "intervals"
+    numerator <- "CAST(COALESCE(c.covered, 0) AS DOUBLE) AS covered"
+    interval_col <- ""
+    value_join <- paste(
+      "  LEFT JOIN bin_coverage c",
+      "    ON c.participant_id = s.participant_id",
+      "   AND c.measure = sn.measure",
+      "   AND c.bin = s.bin",
+      sep = "\n"
+    )
+    # Timestamps are microsecond precision; use one microsecond only as a
+    # zero-duration guard so subsecond expected intervals remain meaningful.
+    value <- "LEAST(covered / GREATEST(covered_seconds, 0.000001), 1)"
+  } else {
+    prefix <- sprintf("counts AS (\n%s\n),\n%s", relation_sql, expected_cte)
+    last_bin <- .coverage_sql_trunc("last_time", by, week_start)
+    spans <- if (local) {
+      # Use the local wall-clock hull: a timezone change can reverse the
+      # chronological endpoint values, which cannot parameterise a series.
+      paste(
+        "min(bin_first_local) AS first_time,",
+        "max(bin_last_local) AS last_time"
+      )
+    } else {
+      "min(bin_first) AS first_time, max(bin_last) AS last_time"
+    }
+    spans_from <- "counts"
+    expected_join <- ""
+    interval_col <- ""
+    if (!is.null(expected)) {
+      expected_join <- "\n   LEFT JOIN expected e ON e.measure = sn.measure"
+      interval_col <- ",\n         e.interval_seconds"
+    }
+    numerator <- "CAST(COALESCE(c.n, 0) AS DOUBLE) AS n"
+    value_join <- paste0(
+      "  LEFT JOIN counts c",
+      "\n    ON c.participant_id = s.participant_id",
+      "\n   AND c.measure = sn.measure",
+      "\n   AND c.bin = s.bin",
+      expected_join
+    )
+    value <- if (is.null(expected)) {
+      "n"
+    } else {
+      "n / (GREATEST(covered_seconds, interval_seconds) / interval_seconds)"
+    }
   }
 
   if (is.null(cycle)) {
@@ -752,45 +913,137 @@ plot.coverage <- function(
 
   sprintf(
     paste(
-      "WITH counts AS (",
-      "%s",
-      "),",
+      "WITH %s",
       "spans AS (",
       "  SELECT participant_id, %s",
-      "  FROM counts",
+      "  FROM %s",
       "  GROUP BY participant_id",
       "),",
       "spine AS (",
       "  SELECT participant_id, unnest(generate_series(%s, %s, %s)) AS bin",
       "  FROM spans",
       "),",
-      "%ssensor_list AS (SELECT unnest([%s]) AS measure),",
+      "sensor_list AS (SELECT unnest([%s]) AS measure),",
       "joined AS (",
       "  SELECT s.participant_id, s.bin, sn.measure,",
-      "         CAST(COALESCE(c.n, 0) AS DOUBLE) AS n,",
-      "         GREATEST(DATE_DIFF('second', GREATEST(s.bin, sp.first_time),",
-      "                   LEAST(s.bin + %s, sp.last_time)), 0) AS covered_seconds%s",
+      "         %s,",
+      "         GREATEST(DATE_DIFF('microsecond', GREATEST(s.bin, sp.first_time),",
+      "                   LEAST(s.bin + %s, sp.last_time)) / 1000000.0, 0) AS covered_seconds%s",
       "  FROM spine s",
       "  JOIN spans sp ON sp.participant_id = s.participant_id",
       "  CROSS JOIN sensor_list sn",
-      "  LEFT JOIN counts c",
-      "    ON c.participant_id = s.participant_id",
-      "   AND c.measure = sn.measure",
-      "   AND c.bin = s.bin%s",
+      "%s",
       ")",
       "%s"
     ),
-    counts_sql,
+    prefix,
     spans,
+    spans_from,
     first_bin,
     last_bin,
     step,
-    expected_cte,
     sensor_list,
+    numerator,
     step,
     interval_col,
-    expected_join,
+    value_join,
     select
+  )
+}
+
+# The temporal CTEs for metric = "time": expand every distinct observation into
+# the half-open interval [seg_start, seg_end), merge intervals per participant
+# and sensor with the gaps-and-islands running maximum, and sum the merged
+# (union) duration per intersecting bin. An interval is clipped to each bin it
+# crosses, so a segment spanning a bin boundary contributes to both bins.
+.coverage_sql_intervals <- function(
+  relation_sql,
+  expected_cte,
+  by,
+  week_start,
+  local
+) {
+  time_col <- if (local) "time_local" else "time"
+  step <- .coverage_sql_step(by)
+  # Bins are generated per island from its first bin to the bin containing its
+  # last covered instant; `- 1 microsecond` keeps a half-open interval that ends
+  # exactly on a boundary out of the next bin.
+  first_seg <- .coverage_sql_trunc("i.seg_start", by, week_start)
+  last_seg <- .coverage_sql_trunc(
+    "i.seg_end - INTERVAL 1 MICROSECOND",
+    by,
+    week_start
+  )
+
+  sprintf(
+    paste(
+      "instants AS (",
+      "%s",
+      "),",
+      "%s",
+      "intervals AS (",
+      "  SELECT i.participant_id, i.measure, i.time,",
+      "         i.%s AS seg_start,",
+      "         i.%s + TO_SECONDS(e.interval_seconds) AS seg_end",
+      "  FROM instants i",
+      "  JOIN expected e ON e.measure = i.measure",
+      "),",
+      "%s,",
+      "bin_coverage AS (",
+      "  SELECT i.participant_id, i.measure, b.bin,",
+      "         SUM(DATE_DIFF('microsecond', GREATEST(i.seg_start, b.bin),",
+      "                       LEAST(i.seg_end, b.bin + %s)) / 1000000.0) AS covered",
+      "  FROM islands i,",
+      "  LATERAL UNNEST(generate_series(%s, %s, %s)) AS b(bin)",
+      "  GROUP BY i.participant_id, i.measure, b.bin",
+      "),",
+      sep = "\n"
+    ),
+    relation_sql,
+    expected_cte,
+    time_col,
+    time_col,
+    .coverage_sql_islands(),
+    step,
+    first_seg,
+    last_seg,
+    step
+  )
+}
+
+# Gaps-and-islands merge for ordered half-open intervals keyed by
+# (participant_id, measure). A segment only starts a new island when it begins
+# after the running maximum of all previous segment ends; using the running
+# maximum (not just the previous end) is what merges nested intervals, and
+# touching intervals (`seg_start == prior_end`) merge because the union duration
+# is unchanged. Expects an `intervals` CTE with (participant_id, measure,
+# seg_start, seg_end).
+.coverage_sql_islands <- function() {
+  paste(
+    "prior AS (",
+    "  SELECT *,",
+    "         MAX(seg_end) OVER (PARTITION BY participant_id, measure",
+    "                            ORDER BY seg_start, seg_end",
+    "                            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prior_end",
+    "  FROM intervals",
+    "),",
+    "marked AS (",
+    "  SELECT *, CASE WHEN prior_end IS NULL OR seg_start > prior_end",
+    "                 THEN 1 ELSE 0 END AS new_island",
+    "  FROM prior",
+    "),",
+    "islands AS (",
+    "  SELECT participant_id, measure, MIN(seg_start) AS seg_start,",
+    "         MAX(seg_end) AS seg_end",
+    "  FROM (",
+    "    SELECT *, SUM(new_island) OVER (PARTITION BY participant_id, measure",
+    "                                   ORDER BY seg_start, seg_end",
+    "                                   ROWS UNBOUNDED PRECEDING) AS grp",
+    "    FROM marked",
+    "  )",
+    "  GROUP BY participant_id, measure, grp",
+    ")",
+    sep = "\n"
   )
 }
 

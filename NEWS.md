@@ -1,5 +1,12 @@
 # mpathsenser (in-development version)
-* `coverage()` was reworked: the calculation now runs entirely inside DuckDB and returns a lazy tibble, coverage is computed per participant over that participant's own observation span (`participant_id = NULL` returns all participants), and the new `by` and `cycle` arguments control the counting resolution and the averaging cycle. `frequency` and `relative` are replaced by `expected`, a named vector of sampling intervals in seconds (see `coverage_frequency()`); the exported `freq` vector and the unused `offset` argument were removed. Relative coverage now prorates the first and last partial bins, so a participant who starts or ends in the middle of a day or week can still reach full coverage for that bin.
+* `coverage()` was reworked: the calculation now runs entirely inside DuckDB and returns a lazy tibble, coverage is computed per participant over that participant's own observation span (`participant_id = NULL` returns all participants), and the new `by` and `cycle` arguments control the counting resolution and the averaging cycle. `frequency` and `relative` are replaced by `expected`, a named vector of sampling intervals in seconds (see `coverage_frequency()`); the exported `freq` vector and the unused `offset` argument were removed. Relative coverage prorates only a participant's first and last partial bins, so a participant whose observations start at 13:50 can still reach full coverage for 13:00--14:00 based on the eligible final 10 minutes; interior bins always use their complete duration.
+* `coverage()` gained `metric = "count" | "time"`. `"count"` is the default and
+  preserves the previous behaviour. `"time"` requires `expected` and reports the
+  fraction of the eligible time in each bin that is covered by the union of the
+  observation intervals `[time, time + expected)`, so duplicated or overlapping
+  observations count once and temporal coverage cannot exceed 1. The eligible
+  span ends one expected interval after the last observation, allowing the
+  terminal observation to contribute its full interval.
 * `ccopy()`, `fix_jsons()` and `test_jsons()` have been removed. Use
   `base::file.copy()`, `jsonlite::validate()` and `utils::unzip()` (or
   `unzip_data()`) instead.
@@ -25,6 +32,7 @@
 * Deduplication now keeps the last recorded row within a file for interval sensors (those with an `end_time`, e.g. `Accelerometer`, `GarminSteps`, `GarminZeroCrossing`) and for Garmin's recalculated point measurements (`GarminBBI`, `GarminEnhancedBBI`, `GarminHeartRate`, `GarminStress`). Interval sensors can repeat a start time with a later `end_time` (the later row is the completed window), and Garmin recalculates the value of an already-recorded timestamp once more data becomes available, so the last recorded measurement is authoritative. All other sensors keep the first row. The deduplication is documented in the workflow vignette.
 * The Garmin `zeroCrossing` array field is read as `deadband` (lowercase), matching the m-Path Sense data, instead of the misspelled `deadBand` variant.
 * Legacy timestamps that m-Path Sense versions <= 6 stored as local wall-clock values (AppUsage `period_start`/`period_end`/`last_foreground`, Bluetooth `start_scan`/`end_scan`, Location `time`, Weather `time`/`sunrise`/`sunset`) are now recognized by both the import SQL and the local-time views. The import script re-interprets their stored strings as UTC wall-clock values (`AT TIME ZONE 'UTC'`, independent of the session timezone), and the views keep their historical clock value instead of shifting them again.
+* `to_local_time()` now checks its arguments in R also inside a lazy `dplyr`/`dbplyr` query: the same R function is registered as the DuckDB translation, so invalid argument classes produce the usual R errors while the query is built instead of a database error at `collect()`. A missing timezone (`NULL` or `NA`) is now interpreted as UTC in R as well, matching the `to_local_time()` SQL macro's fallback.
 * Major rework of the import pipeline: `import()` is replaced by
   `read_mpath_sense()`, which stages the raw JSON payloads directly inside
   DuckDB instead of reading the files into R first. Files are imported in

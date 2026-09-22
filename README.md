@@ -56,7 +56,7 @@ read_mpath_sense(path = path, db = db)
 
 `read_mpath_sense()` returns a message once all files were written to
 the database, or the names of the files that could not be imported.
-Files are imported in batches (`batch_size`, default 100 files at a
+Files are imported in batches (`batch_size`, default 1000 files at a
 time) within transactions, so a file that fails to import does not
 affect the others. If a file fails even on its own, it is reported and
 the rest of the batch is imported normally.
@@ -138,7 +138,11 @@ get_data(db, sensor = "Battery") |>
 
 The `coverage()` function computes how many samples per hour were
 collected for each sensor, either in absolute numbers or relative to the
-expected sampling rate (see `mpathsenser::freq`). The resulting coverage
+expected sampling rate (see `coverage_frequency()`). Set
+`metric = "time"` with `expected` to measure the fraction of time covered
+instead of the number of samples. Only the first and last bins of a
+participant's span are prorated, so a participant starting at 13:50 can
+still reach full coverage for the 13:00--14:00 bin. The resulting coverage
 chart is a quick way to spot participants or sensors with poor data
 collection.
 
@@ -146,8 +150,7 @@ collection.
 cov <- coverage(
   db = db,
   participant_id = "12345",
-  sensor = c("Activity", "Battery", "Screen", "Wifi", "Location", "Pedometer"),
-  relative = FALSE
+  sensor = c("Activity", "Battery", "Screen", "Wifi", "Location", "Pedometer")
 )
 plot(cov)
 ```
