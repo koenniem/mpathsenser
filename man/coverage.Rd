@@ -9,6 +9,7 @@ coverage(
   participant_id = NULL,
   sensor = NULL,
   expected = NULL,
+  metric = c("count", "time"),
   by = "hour",
   cycle = "day",
   label = TRUE,
@@ -33,9 +34,16 @@ value are accepted. Use \code{NULL} for all participants.}
 \item{expected}{Optional named numeric vector with sensors as names and the
 expected sampling interval in seconds. Use \code{\link[=coverage_frequency]{coverage_frequency()}} to
 construct one. When given, only sensors present in \code{expected} are returned
-(explicitly requested sensors that are dropped produce a warning) and the
-coverage is relative to
-the expected number of measurements. Use \code{NULL} for absolute counts.}
+(explicitly requested sensors that are dropped produce a warning). For
+\code{metric = "count"}, coverage is relative to the expected number of
+measurements; for \code{metric = "time"}, the intervals also define how long
+each observation covers. Use \code{NULL} for absolute counts.}
+
+\item{metric}{What to measure per bin: \code{"count"} (the default) for the number
+of distinct observations, or \code{"time"} for the fraction of the eligible time
+covered by the union of the intervals \verb{[time, time + expected)}. \code{"time"}
+requires \code{expected}; its eligible span ends one expected interval after the
+last observation, so the terminal observation contributes its full interval.}
 
 \item{by}{The time resolution at which observations are counted. One of
 \code{"minute"}, \code{"hour"}, \code{"day"}, \code{"week"}, or \code{"month"}.}
@@ -54,7 +62,9 @@ returned as an integer (1 = \code{week_start}).}
 
 \item{local}{Whether to bin observations using the participant-local timezone
 stored in the \code{timezone} column (via the \verb{_with_local} views). Defaults to
-\code{TRUE}; use \code{FALSE} to bin by the canonical UTC timestamps.}
+\code{TRUE}; use \code{FALSE} to bin by the canonical UTC timestamps. If a timezone
+change makes local time move backwards, the participant span uses the local
+wall-clock hull so the generated spine remains non-empty.}
 
 \item{start_date}{A date (or convertible to a date using \code{\link[base:as.Date]{base::as.Date()}})
 indicating the earliest date to include. Leave empty for all data.}
@@ -78,9 +88,17 @@ The calculation is performed entirely inside DuckDB and the result is a lazy
 table; call \code{\link[dplyr:collect]{dplyr::collect()}} to bring it into R. Coverage is computed
 \strong{within} each participant, over that participant's own observation span
 (\code{first} to \code{last} measurement). Bins inside the span without observations
-are zero-filled. The first and last bins of the span are prorated in relative
-mode, so a participant who starts in the middle of a day or week can still
-reach 100\% coverage for that bin.
+are zero-filled. Only the first and last bins of the participant span are
+prorated: for example, if observation starts at 13:50, the 13:00--14:00 bin
+can reach 100\% based on the eligible final 10 minutes. Interior bins always
+use their complete duration.
+
+The \code{metric} argument selects what a bin measures. \code{"count"} (the default)
+counts the distinct observation instants in each bin, optionally relative to
+the expected sampling rate. \code{"time"} requires \code{expected} and measures the
+fraction of the eligible time in each bin that is covered by the union of the
+observation intervals \verb{[time, time + expected)}; duplicated or overlapping
+observations count once, so temporal coverage cannot exceed 1.
 }
 \examples{
 \dontrun{
@@ -98,5 +116,15 @@ coverage(
 
 # The full minute-level series for one participant
 coverage(db, "12345", by = "minute", cycle = NULL)
+
+# Temporal coverage of a sensor expected to sample every 5 seconds
+coverage(
+  db,
+  "12345",
+  sensor = "Accelerometer",
+  expected = coverage_frequency(Accelerometer = 5),
+  metric = "time",
+  cycle = NULL
+)
 }
 }
