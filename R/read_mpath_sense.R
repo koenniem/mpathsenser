@@ -153,7 +153,19 @@ read_mpath_sense <- function(
     file_name = basename(full_paths),
     rel_path = files,
     file_size_bytes = file_info$size,
-    modified_at = as.POSIXct(file_info$mtime, tz = "UTC")
+    # DuckDB stores TIMESTAMPTZ at microsecond precision and rounds a
+    # sub-microsecond value on cast. Normalise the filesystem mtime to whole
+    # microseconds here with the same rounding, so the value inserted into
+    # ProcessedFiles is identical to the one read back by
+    # .read_filter_new_files() on a later run. Without this, a sub-microsecond
+    # mtime can round differently on the two sides, the unchanged file is
+    # treated as new, and its ProcessedFiles insert violates the UNIQUE
+    # constraint.
+    modified_at = as.POSIXct(
+      floor(as.numeric(file_info$mtime) * 1e6 + 0.5) / 1e6,
+      origin = "1970-01-01",
+      tz = "UTC"
+    )
   )
 
   # Empty files contain no mpathinfo and cannot be staged with read_json.

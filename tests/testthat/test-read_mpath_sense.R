@@ -167,6 +167,43 @@ test_that("a corrected file is re-imported and wins on deduplication", {
   unlink(dir, recursive = TRUE)
 })
 
+test_that("sub-microsecond file mtimes do not create duplicate ProcessedFiles rows", {
+  # ProcessedFiles timestamps are stored at microsecond precision. A file
+  # whose mtime has a sub-microsecond fraction must still be recognized as
+  # already processed: normalizing to whole microseconds before the insert
+  # keeps the stored value identical to the filter key of a later run.
+  dir <- tempfile("mtime_test")
+  dir.create(dir)
+  f <- make_test_file(
+    dir,
+    "a.json",
+    sensors = list(list(`__type` = "dk.cachet.carp.activity", confidence = 80, type = "WALKING"))
+  )
+  # 568 ns past the microsecond, i.e. not representable in the microsecond
+  # timestamp DuckDB stores; this is the value that previously made the filter
+  # key and the stored timestamp round apart.
+  Sys.setFileTime(f, as.POSIXct("2026-09-17 12:00:00.050594568", tz = "UTC"))
+  mtime <- file.info(f)$mtime
+
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
+
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT epoch_us(modified_at) FROM ProcessedFiles")[[1]],
+    floor(as.numeric(mtime) * 1e6 + 0.5)
+  )
+
+  # Re-importing the unchanged file must be a no-op, not a UNIQUE collision
+  expect_message(
+    read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE),
+    "No new files to process."
+  )
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM ProcessedFiles")[[1]], 1)
+
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
 test_that("renamed copies are imported and deduplicated by measurement key", {
   dir <- tempfile("import_test")
   dir.create(dir)

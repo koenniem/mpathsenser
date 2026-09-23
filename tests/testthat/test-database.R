@@ -175,6 +175,72 @@ test_that("optimize_db", {
   file.remove(filename)
 })
 
+test_that("optimize_db rewrites unsorted sensor tables", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+
+  # 200 rows in reverse time order, so the physical order violates
+  # (participant_id, time) and the table must be rewritten
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Pedometer
+       (participant_id, time, step_count, timezone, source_file_id, source_row_id,
+        source_measurement_id)
+     SELECT (i % 5)::UINTEGER,
+            TIMESTAMPTZ '2020-01-01' + (interval (200 - i) millisecond),
+            (i * 10)::UINTEGER,
+            'Europe/Brussels',
+            1::UINTEGER, i::UINTEGER, 1::UINTEGER
+     FROM range(1, 201) t(i)"
+  )
+  before <- DBI::dbGetQuery(db, "SELECT * FROM Pedometer ORDER BY participant_id, time")
+  expect_equal(nrow(before), 200)
+
+  expect_no_error(optimize_db(db, sensors = "Pedometer", .progress = FALSE))
+
+  # The rewrite only reorders: the rows are unchanged
+  after <- DBI::dbGetQuery(db, "SELECT * FROM Pedometer ORDER BY participant_id, time")
+  expect_identical(after, before)
+
+  # The physical order now follows (participant_id, time)
+  violations <- DBI::dbGetQuery(
+    db,
+    "SELECT COUNT(*) AS n FROM (
+       SELECT participant_id, time,
+              LAG(participant_id) OVER (ORDER BY rowid) AS previous_participant_id,
+              LAG(time) OVER (ORDER BY rowid) AS previous_time
+       FROM raw.Pedometer
+     ) q
+     WHERE previous_participant_id IS NOT NULL
+       AND (participant_id < previous_participant_id
+         OR (participant_id = previous_participant_id AND time < previous_time))"
+  )$n[[1]]
+  expect_equal(violations, 0)
+
+  # The NOT NULL constraints and the full raw schema survive the rewrite
+  not_null <- DBI::dbGetQuery(
+    db,
+    "SELECT column_name FROM information_schema.columns
+     WHERE table_schema = 'raw' AND table_name = 'Pedometer' AND is_nullable = 'NO'"
+  )$column_name
+  expect_setequal(
+    not_null,
+    c("participant_id", "time", "source_file_id", "source_row_id", "source_measurement_id")
+  )
+  expect_setequal(
+    names(DBI::dbGetQuery(db, "SELECT * FROM raw.Pedometer LIMIT 0")),
+    c(
+      "participant_id", "time", "step_count", "timezone", "source_file_id",
+      "source_row_id", "source_measurement_id"
+    )
+  )
+
+  # No temporary table is left behind and the views keep working
+  expect_false("Pedometer_optimize_tmp" %in% DBI::dbListTables(db, schema = "raw"))
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]], 200)
+
+  cleanup_test_db(db)
+})
+
 test_that("get_processed_files", {
   db <- create_test_db()
   res <- get_processed_files(db)
