@@ -390,3 +390,84 @@ test_that("to_local_time handles DST transition correctly (Europe/Brussels 2025-
   res2 <- to_local_time(x2, "Europe/Brussels")
   expect_equal(format(res2, tz = "UTC"), "2025-03-30 03:30:00")
 })
+
+test_that("to_local_time treats an unknown timezone as UTC", {
+  x <- as.POSIXct("2025-05-10 12:00:00", tz = "UTC")
+
+  expect_equal(to_local_time(x, NULL), x)
+  expect_equal(to_local_time(x, NA), x)
+  expect_equal(to_local_time(x, NA_character_), x)
+})
+
+test_that("to_local_time inside a lazy query matches the R implementation", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Accelerometer (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2025-05-10 12:00:00+00', 'Europe/Brussels', 1, 1, 1),
+     ('1', '2025-05-10 12:00:00+00', 'America/New_York', 1, 2, 1),
+     ('1', '2025-03-30 01:30:00+00', 'Europe/Brussels', 1, 3, 1),
+     ('1', '2025-05-10 12:00:00+00', NULL, 1, 4, 1)"
+  )
+
+  collected <- dplyr::collect(get_data(db, "Accelerometer"))
+  lazy <- get_data(db, "Accelerometer") |>
+    dplyr::mutate(time = to_local_time(time, timezone)) |>
+    dplyr::collect()
+
+  expect_s3_class(lazy$time, "POSIXct")
+  expect_equal(
+    lazy$time,
+    to_local_time(collected$time, collected$timezone)
+  )
+})
+
+test_that("to_local_time validates lazy arguments in R before the query runs", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  tbl <- get_data(db, "Accelerometer")
+
+  expect_error(
+    dbplyr::sql_render(dplyr::mutate(tbl, time = to_local_time(time, 123))),
+    "must be a character"
+  )
+  expect_error(
+    dbplyr::sql_render(dplyr::mutate(tbl, time = to_local_time(TRUE, "UTC"))),
+    "must be a vector of class POSIXt"
+  )
+})
+
+test_that("a collected timestamp can be combined with a lazy timezone column", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Accelerometer (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2025-05-10 12:00:00+00', 'Europe/Brussels', 1, 1, 1)"
+  )
+
+  instant <- as.POSIXct("2025-05-10 12:00:00", tz = "UTC")
+  result <- get_data(db, "Accelerometer") |>
+    dplyr::mutate(time = to_local_time(instant, timezone)) |>
+    dplyr::collect()
+
+  expect_equal(format(result$time, tz = "UTC"), "2025-05-10 14:00:00")
+})
+
+test_that("registering the to_local_time translation keeps other duckdb translations", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  tbl <- get_data(db, "Accelerometer")
+
+  expect_match(
+    dbplyr::sql_render(dplyr::mutate(tbl, x = paste0(timezone, "!"))),
+    "CONCAT_WS"
+  )
+  expect_match(
+    dbplyr::sql_render(dplyr::mutate(tbl, x = as.numeric(timezone))),
+    "TRY_CAST"
+  )
+})
