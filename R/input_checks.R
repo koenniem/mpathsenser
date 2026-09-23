@@ -1,6 +1,6 @@
 # Function for testing if a package in 'suggested' is installed, before running it. This function
 # needs to be at the top of the file to make sure it is skipped when calculating coverage.
-ensure_suggested_package <- function(name, call = rlang::caller_env()) {
+ensure_suggested_package <- function(name, call = caller_env()) {
   if (!requireNamespace(name, quietly = TRUE)) {
     cli_abort(
       c(
@@ -16,12 +16,12 @@ ensure_suggested_package <- function(name, call = rlang::caller_env()) {
 check_db <- function(
   db,
   allow_null = FALSE,
-  arg = rlang::caller_arg(db),
-  call = rlang::caller_env()
+  arg = caller_arg(db),
+  call = caller_env()
 ) {
   rlang::check_required(db, arg = arg, call = call)
 
-  if (allow_null && rlang::is_null(db)) {
+  if (allow_null && is_null(db)) {
     return(invisible(TRUE))
   }
 
@@ -45,7 +45,7 @@ check_db <- function(
       i = "Please import your data to a new database using the latest version of {.pkg mpathsenser}.",
       i = "Or use an older version of {.pkg mpathsenser}."
     )
-    cli::cli_abort(msg, arg = arg, call = call)
+    cli_abort(msg, arg = arg, call = call)
   }
 
   if (!dbIsValid(db)) {
@@ -61,13 +61,13 @@ check_db <- function(
   # sensor. Both layers are required: a missing raw table means the data is
   # gone, and a missing view means queries through main.<sensor> fail.
   if (isTRUE(getOption("mpathsenser.check_missing_sensors", TRUE))) {
-    raw_tables <- DBI::dbGetQuery(
+    raw_tables <- dbGetQuery(
       db,
       "SELECT table_name FROM information_schema.tables
        WHERE table_schema = 'raw' AND table_type = 'BASE TABLE'
          AND NOT ends_with(table_name, '_optimize_tmp')"
     )$table_name
-    main_tables <- DBI::dbGetQuery(
+    main_tables <- dbGetQuery(
       db,
       "SELECT table_name FROM information_schema.tables
        WHERE table_schema = 'main' AND table_type IN ('BASE TABLE', 'VIEW')"
@@ -96,12 +96,12 @@ check_arg <- function(
   type,
   n = NULL,
   allow_null = FALSE,
-  arg = rlang::caller_arg(x),
-  call = rlang::caller_env()
+  arg = caller_arg(x),
+  call = caller_env()
 ) {
   rlang::check_required(x, arg = arg, call = call)
 
-  if (allow_null && rlang::is_null(x)) {
+  if (allow_null && is_null(x)) {
     return(invisible(TRUE))
   }
 
@@ -178,8 +178,8 @@ check_sensors <- function(
   n = NULL,
   allow_null = FALSE,
   include_views = TRUE,
-  arg = rlang::caller_arg(x),
-  call = rlang::caller_env()
+  arg = caller_arg(x),
+  call = caller_env()
 ) {
   check_arg(x, type = "character", allow_null = allow_null, n = n, arg = arg, call = call)
   check_arg(include_views, "logical", n = 1)
@@ -208,7 +208,7 @@ check_sensors <- function(
   sub("_(local|with_local)$", "", x)
 }
 
-check_offset <- function(offset_before, offset_after, call = rlang::caller_env()) {
+check_offset <- function(offset_before, offset_after, call = caller_env()) {
   if (
     (is.null(offset_before) || all(offset_before == 0)) &&
       (is.null(offset_after) || all(offset_after == 0))

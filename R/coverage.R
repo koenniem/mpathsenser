@@ -284,7 +284,7 @@ coverage <- function(
   # observation instants for the temporal metric), then a raw-SQL wrapper for
   # the participant spans, zero-filled spine, interval union, cycle positions,
   # and relative values.
-  relations <- purrr::map(
+  relations <- map(
     sensor,
     ~ if (identical(metric, "time")) {
       .coverage_instants_branch(
@@ -322,7 +322,7 @@ coverage <- function(
     metric = metric
   )
 
-  out <- dplyr::tbl(db, dbplyr::sql(query))
+  out <- tbl(db, sql(query))
   class(out) <- c("coverage", class(out))
   attr(out, "participant_id") <- participant_id
   attr(out, "expected") <- expected
@@ -430,7 +430,7 @@ plot.coverage <- function(
   ensure_suggested_package("ggplot2")
   type <- match.arg(type)
 
-  x <- dplyr::collect(x)
+  x <- collect(x)
   is_relative <- !is.null(attr(x, "expected"))
   participant_id <- attr(x, "participant_id")
   cycle <- attr(x, "cycle")
@@ -674,14 +674,14 @@ plot.coverage <- function(
 ) {
   view <- if (local) paste0(sensor, "_with_local") else sensor
 
-  out <- dplyr::tbl(db, view)
+  out <- tbl(db, view)
 
   if (!is.null(participant_id)) {
-    out <- dplyr::filter(out, .data$participant_id %in% !!as.character(participant_id))
+    out <- filter(out, .data$participant_id %in% !!as.character(participant_id))
   }
 
   if (identical(sensor, "Heartbeat")) {
-    out <- dplyr::filter(
+    out <- filter(
       out,
       is.na(.data$device_role_name) | !grepl("^Secondary", .data$device_role_name)
     )
@@ -689,11 +689,11 @@ plot.coverage <- function(
 
   if (!is.null(start_date)) {
     start_limit <- as.Date(start_date)
-    out <- dplyr::filter(out, .data$time >= !!start_limit)
+    out <- filter(out, .data$time >= !!start_limit)
   }
   if (!is.null(end_date)) {
     end_limit <- as.Date(end_date) + 1
-    out <- dplyr::filter(out, .data$time <= !!end_limit)
+    out <- filter(out, .data$time <= !!end_limit)
   }
 
   out
@@ -721,23 +721,23 @@ plot.coverage <- function(
     end_date = end_date
   )
 
-  out <- dplyr::mutate(
+  out <- mutate(
     out,
-    bin = dbplyr::sql(.coverage_sql_trunc(time_col, by, week_start))
+    bin = sql(.coverage_sql_trunc(time_col, by, week_start))
   )
 
   if (local) {
-    out <- dplyr::summarise(
+    out <- summarise(
       out,
       n = dplyr::n_distinct(.data$time),
       bin_first = min(.data$time),
       bin_last = max(.data$time),
-      bin_first_local = dbplyr::sql("arg_min(time_local, time)"),
-      bin_last_local = dbplyr::sql("arg_max(time_local, time)"),
+      bin_first_local = sql("arg_min(time_local, time)"),
+      bin_last_local = sql("arg_max(time_local, time)"),
       .by = c("participant_id", "bin")
     )
   } else {
-    out <- dplyr::summarise(
+    out <- summarise(
       out,
       n = dplyr::n_distinct(.data$time),
       bin_first = min(.data$time),
@@ -746,7 +746,7 @@ plot.coverage <- function(
     )
   }
 
-  dplyr::mutate(out, measure = sensor)
+  mutate(out, measure = sensor)
 }
 
 # One lazy per-sensor distinct-instant branch for the temporal coverage metric.
@@ -771,17 +771,17 @@ plot.coverage <- function(
   )
 
   if (local) {
-    out <- dplyr::summarise(
+    out <- summarise(
       out,
       time_local = min(.data$time_local),
       .by = c("participant_id", "time")
     )
   } else {
-    out <- dplyr::select(out, "participant_id", "time")
-    out <- dplyr::distinct(out)
+    out <- select(out, "participant_id", "time")
+    out <- distinct(out)
   }
 
-  dplyr::mutate(out, measure = sensor)
+  mutate(out, measure = sensor)
 }
 
 # Wrap the per-sensor relation in the spans/spine/cycle SQL.

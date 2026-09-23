@@ -7,13 +7,16 @@
 to_local_time(x, timezone)
 }
 \arguments{
-\item{x}{A vector of class POSIXt, or a character vector coercible to POSIXt.}
+\item{x}{A vector of class POSIXt, or a character vector coercible to POSIXt.
+Inside a lazy query this is a database column.}
 
 \item{timezone}{A character vector of IANA timezone names, one per
-observation or a single value recycled over \code{x}.}
+observation or a single value recycled over \code{x}. \code{NULL} or \code{NA} means the
+timezone is unknown and the value is interpreted as UTC.}
 }
 \value{
-A POSIXct vector. The clock values represent the local time in
+A POSIXct vector when \code{x} is a collected vector, or a SQL expression
+inside a lazy query. The clock values represent the local time in
 \code{timezone}, but the returned vector has the technical timezone \code{UTC} so
 that R does not shift them again; the \code{timezone} argument carries the
 interpretation.
@@ -22,7 +25,15 @@ interpretation.
 \code{to_local_time()} converts absolute timestamps into the wall-clock time of
 the timezone in which they were measured. It works both on timestamps that
 have already been collected into R and inside a lazy \link[dbplyr:dbplyr]{dbplyr} query, where
-dbplyr translates it to the \code{to_local_time()} macro stored in the database.
+dbplyr calls the same function while building the query and DuckDB applies
+the \code{to_local_time()} macro. Argument checks run in R in both cases.
+}
+\details{
+Inside a lazy query, \code{mutate()} after \code{arrange()} that overwrites the ordered
+column does not keep the arranged row order: the generated SQL's \verb{ORDER BY}
+refers to the new column, so the rows are ordered by the converted values. A
+local \code{dplyr} pipeline keeps the arranged order instead. Convert into a new
+column, or call \code{arrange()} after the conversion, when the order matters.
 }
 \examples{
 x <- as.POSIXct("2025-05-10 12:00:00", tz = "UTC")

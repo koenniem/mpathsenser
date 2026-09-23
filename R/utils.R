@@ -71,7 +71,7 @@ unzip_data <- function(
   }
 
   if (.progress) {
-    cli::cli_progress_bar(
+    cli_progress_bar(
       name = "Unzipping files",
       total = length(zipfiles)
     )
@@ -94,12 +94,12 @@ unzip_data <- function(
     }
 
     if (.progress) {
-      cli::cli_progress_update()
+      cli_progress_update()
     }
   }
 
   if (.progress) {
-    cli::cli_progress_done()
+    cli_progress_done()
   }
 
   if (length(failed) > 0) {

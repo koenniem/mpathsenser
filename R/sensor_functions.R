@@ -60,7 +60,7 @@ get_data <- function(
   check_arg(end_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
 
   sensor <- as.character(sensor)
-  out <- dplyr::tbl(db, sensor)
+  out <- tbl(db, sensor)
   attr(out, "mpathsenser_sensor") <- sensor
 
   if (!is.null(participant_id)) {
@@ -111,7 +111,7 @@ first_date <- function(db, sensor, participant_id = NULL) {
   check_sensors(sensor, n = 1)
   check_arg(sensor, "character", n = 1)
 
-  out <- dplyr::tbl(db, sensor)
+  out <- tbl(db, sensor)
 
   if (!is.null(participant_id)) {
     out <- filter(out, .data$participant_id == participant_id)
@@ -120,7 +120,7 @@ first_date <- function(db, sensor, participant_id = NULL) {
   out |>
     mutate(date = as.Date(.data$time)) |>
     summarise(min_date = min(.data$date, na.rm = TRUE)) |>
-    dplyr::pull(.data$min_date)
+    pull(.data$min_date)
 }
 
 #' Extract the date of the last entry
@@ -148,7 +148,7 @@ last_date <- function(db, sensor, participant_id = NULL) {
   check_sensors(sensor, n = 1)
   check_arg(sensor, c("character", "integerish"), n = 1, allow_null = TRUE)
 
-  out <- dplyr::tbl(db, sensor)
+  out <- tbl(db, sensor)
 
   if (!is.null(participant_id)) {
     out <- filter(out, .data$participant_id == participant_id)
@@ -157,7 +157,7 @@ last_date <- function(db, sensor, participant_id = NULL) {
   out |>
     mutate(date = as.Date(.data$time)) |>
     summarise(max_date = max(.data$date, na.rm = TRUE)) |>
-    dplyr::pull(.data$max_date)
+    pull(.data$max_date)
 }
 
 #' Get installed apps
@@ -255,7 +255,7 @@ app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE, .progress 
   res <- data.frame(app = name, package = rep(NA, length(name)), genre = rep(NA, length(name)))
 
   if (.progress) {
-    cli::cli_progress_bar(total = length(name))
+    cli_progress_bar(total = length(name))
   }
 
   for (i in seq_along(name)) {
@@ -265,7 +265,7 @@ app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE, .progress 
     )
 
     if (.progress) {
-      cli::cli_progress_update()
+      cli_progress_update()
     }
 
     if (length(name) > 1) {
@@ -484,7 +484,7 @@ moving_average <- function(
   query <- paste0(query, ")")
 
   # Get data
-  dplyr::tbl(db, dplyr::sql(query))
+  tbl(db, sql(query))
 }
 
 
@@ -567,7 +567,7 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
   check_sensors(sensor)
 
   # Get the data for each sensor
-  data <- purrr::map(
+  data <- map(
     sensor,
     ~ {
       get_data(db, .x, participant_id) |>
@@ -580,7 +580,7 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 
   # Then, calculate the gap duration
   data |>
-    dbplyr::window_order(.data$participant_id, .data$time) |>
+    window_order(.data$participant_id, .data$time) |>
     group_by(.data$participant_id) |>
     mutate(to = lead(.data$time)) |>
     ungroup() |>
@@ -704,7 +704,7 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
       bind_rows(gaps) |>
       arrange(across(c({{ by }}, "time"))) |>
       distinct() |>
-      tibble::as_tibble() # Ensure consistent output format
+      as_tibble() # Ensure consistent output format
 
     return(data)
   }
@@ -716,7 +716,7 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
   # NA when there is no prior data
   prepared_gaps <- gaps |>
     select({{ by }}, "from", "to") |>
-    mutate(gap_id = dplyr::row_number()) |>
+    mutate(gap_id = row_number()) |>
     tidyr::pivot_longer(
       cols = c("from", "to"),
       names_to = "gap_type",

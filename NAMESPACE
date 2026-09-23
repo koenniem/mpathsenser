@@ -36,17 +36,30 @@ export(sensors)
 export(to_local_time)
 export(unzip_data)
 importFrom(DBI,
+  Id,
   dbConnect,
   dbDisconnect,
   dbExecute,
-  dbIsValid
+  dbExistsTable,
+  dbGetQuery,
+  dbIsValid,
+  dbQuoteIdentifier,
+  dbReadTable,
+  dbRollback,
+  dbWriteTable
 )
 importFrom(cli,
   cli_abort,
   cli_inform,
+  cli_progress_bar,
+  cli_progress_done,
+  cli_progress_update,
   cli_warn
 )
-importFrom(dbplyr,window_order)
+importFrom(dbplyr,
+  sql,
+  window_order
+)
 importFrom(dplyr,
   across,
   all_of,
@@ -60,23 +73,39 @@ importFrom(dplyr,
   if_else,
   lag,
   lead,
+  left_join,
   mutate,
   n,
   pull,
+  rename,
+  row_number,
   select,
   slice,
   summarise,
+  tbl,
   ungroup
 )
+importFrom(duckdb,duckdb)
 importFrom(lifecycle,deprecated)
+importFrom(lubridate,
+  as_datetime,
+  tz
+)
 importFrom(purrr,map)
 importFrom(rlang,
   "%||%",
   ":=",
   .data,
-  .env
+  .env,
+  caller_arg,
+  caller_env,
+  ensym,
+  is_null
 )
-importFrom(tibble,tibble)
+importFrom(tibble,
+  as_tibble,
+  tibble
+)
 importFrom(tidyr,
   complete,
   drop_na,

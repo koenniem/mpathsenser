@@ -11,7 +11,7 @@
     # The message is diagnostic output only: a message that fails to render
     # (e.g. unresolvable glue) must never take down the import, so any error
     # is swallowed here.
-    tryCatch(cli::cli_inform(..., .envir = .envir), error = function(e) NULL)
+    tryCatch(cli_inform(..., .envir = .envir), error = function(e) NULL)
   }
   invisible(NULL)
 }
@@ -89,7 +89,7 @@
     as.numeric(file_meta$modified_at)
   )
 
-  processed <- DBI::dbGetQuery(
+  processed <- dbGetQuery(
     db,
     "SELECT file_name, file_size_bytes, modified_at FROM ProcessedFiles"
   )
@@ -166,17 +166,17 @@
   )
 
   .read_db_transaction(db, {
-    DBI::dbExecute(
+    dbExecute(
       db,
       "INSERT INTO Study (study_id, data_format) VALUES ($1, 'CARP JSON') ON CONFLICT DO NOTHING",
       params = list(meta$study_id)
     )
-    DBI::dbExecute(
+    dbExecute(
       db,
       "INSERT INTO Participant (participant_id, study_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
       params = list(meta$participant_id, meta$study_id)
     )
-    DBI::dbWriteTable(
+    dbWriteTable(
       db,
       name = "empty_meta",
       value = empty_tbl,
@@ -184,7 +184,7 @@
       overwrite = TRUE,
       row.names = FALSE
     )
-    DBI::dbExecute(
+    dbExecute(
       db,
       paste(
         "INSERT INTO ProcessedFiles (file_name, participant_id, sense_version, file_size_bytes, modified_at)",
@@ -194,7 +194,7 @@
         "ON CONFLICT DO NOTHING"
       )
     )
-    DBI::dbExecute(db, "DROP TABLE IF EXISTS empty_meta")
+    dbExecute(db, "DROP TABLE IF EXISTS empty_meta")
   })
 
   skipped_non_numeric
@@ -207,7 +207,7 @@
 .read_meta_from_file_name <- function(file_name) {
   valid_names <- grepl("m_Path_sense", file_name)
 
-  invalid_names <- tibble::tibble(
+  invalid_names <- tibble(
     study_id = NA_character_,
     participant_id = NA_character_,
     file_name = file_name[!valid_names]
@@ -219,13 +219,13 @@
   }
 
   split_file_name <- strsplit(file_name, "_")
-  study_id <- purrr::map(split_file_name, \(x) {
+  study_id <- map(split_file_name, \(x) {
     x[-c(1, seq.int(length(x) - 5, length(x)))]
   })
   study_id <- purrr::map_chr(study_id, \(x) paste0(x, collapse = "_"))
   participant_id <- purrr::map_chr(split_file_name, \(x) x[length(x) - 5])
 
-  out <- tibble::tibble(
+  out <- tibble(
     study_id = study_id,
     participant_id = participant_id,
     file_name = file_name
@@ -349,8 +349,8 @@
   DBI::dbBegin(db)
   committed <- FALSE
   on.exit({
-    if (!committed && DBI::dbIsValid(db)) {
-      try(DBI::dbRollback(db), silent = TRUE)
+    if (!committed && dbIsValid(db)) {
+      try(dbRollback(db), silent = TRUE)
     }
   })
   out <- force(code)
@@ -361,7 +361,7 @@
 
 # Execute one sensor ingest statement inside the current batch transaction.
 .read_ingest <- function(db, sql) {
-  DBI::dbExecute(db, sql)
+  dbExecute(db, sql)
 }
 
 # Deduplicate the sensor tables: per measurement key (participant_id, time,
@@ -416,7 +416,7 @@
   # each full scan into a CPU-bound crawl; the temp table lets DuckDB
   # hash-join (semi-join) the membership test instead.
   if (!is.null(file_ids)) {
-    DBI::dbWriteTable(
+    dbWriteTable(
       db,
       "dedup_files",
       data.frame(file_id = unique(file_ids)),
@@ -424,7 +424,7 @@
       overwrite = TRUE
     )
     on.exit(
-      try(DBI::dbExecute(db, "DROP TABLE IF EXISTS dedup_files"), silent = TRUE),
+      try(dbExecute(db, "DROP TABLE IF EXISTS dedup_files"), silent = TRUE),
       add = TRUE
     )
   }
@@ -469,7 +469,7 @@
       n_removed <- .read_db_transaction(db, {
         if (is.null(file_ids)) {
           # Key groups that occur more than once anywhere in the table
-          DBI::dbExecute(
+          dbExecute(
             db,
             sprintf(
               "CREATE OR REPLACE TEMP TABLE dedup_touched AS
@@ -479,7 +479,7 @@
               key_list
             )
           )
-          n_dupes <- DBI::dbGetQuery(db, "SELECT COUNT(*) AS n FROM dedup_touched")[[1]]
+          n_dupes <- dbGetQuery(db, "SELECT COUNT(*) AS n FROM dedup_touched")[[1]]
         } else {
           # Key groups of the rows just inserted in this run -- but only those
           # that are actually duplicated somewhere in the table (which includes
@@ -491,7 +491,7 @@
           # materializes the (potentially millions of) distinct new keys: the
           # previous DISTINCT-plus-join discovery did both, which made the
           # scoped pass slower than a full-table GROUP BY on bulk imports.
-          DBI::dbExecute(
+          dbExecute(
             db,
             sprintf(
               "CREATE OR REPLACE TEMP TABLE dedup_cand AS
@@ -502,12 +502,12 @@
               b_key_list
             )
           )
-          n_dupes <- DBI::dbGetQuery(db, "SELECT COUNT(*) AS n FROM dedup_cand")[[1]]
+          n_dupes <- dbGetQuery(db, "SELECT COUNT(*) AS n FROM dedup_cand")[[1]]
         }
 
         # No candidate groups in this sensor: nothing to do.
         if (n_dupes == 0L) {
-          DBI::dbExecute(db, sprintf("DROP TABLE IF EXISTS %s", cand_table))
+          dbExecute(db, sprintf("DROP TABLE IF EXISTS %s", cand_table))
           0L
         } else {
           # The winner per candidate key group: the row of the newest file, and
@@ -520,7 +520,7 @@
           # with an identical provenance triple; it never decides between
           # distinct triples. Join to the candidate table so only candidate
           # key groups are considered.
-          DBI::dbExecute(
+          dbExecute(
             db,
             sprintf(
               "CREATE OR REPLACE TEMP TABLE dedup_keep AS
@@ -544,7 +544,7 @@
           # the candidate table is essential: rows whose key group is not a
           # candidate are left untouched, also when they were imported by an
           # earlier run.
-          n_removed <- DBI::dbExecute(
+          n_removed <- dbExecute(
             db,
             sprintf(
               "DELETE FROM %s AS t USING %s d
@@ -555,8 +555,8 @@
               join_t
             )
           )
-          DBI::dbExecute(db, "DROP TABLE IF EXISTS dedup_keep")
-          DBI::dbExecute(db, sprintf("DROP TABLE IF EXISTS %s", cand_table))
+          dbExecute(db, "DROP TABLE IF EXISTS dedup_keep")
+          dbExecute(db, sprintf("DROP TABLE IF EXISTS %s", cand_table))
           n_removed
         }
       })

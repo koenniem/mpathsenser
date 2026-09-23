@@ -55,30 +55,30 @@ sensors <- c(
   temp_directory = NULL
 ) {
   # Canonical instant handling: always display UTC by default
-  DBI::dbExecute(db, "SET timezone = 'UTC'")
+  dbExecute(db, "SET timezone = 'UTC'")
 
   # DuckDB's own query progress bar clashes with the cli progress bars of this
   # package, so it is disabled on all connections
-  DBI::dbExecute(db, "PRAGMA disable_progress_bar")
+  dbExecute(db, "PRAGMA disable_progress_bar")
 
   # Parallel pipelines (e.g. staging large JSON files) use considerably less
   # memory when DuckDB does not need to preserve insertion order. Query results
   # without an explicit ORDER BY are unordered anyway.
-  DBI::dbExecute(db, "SET preserve_insertion_order = false")
+  dbExecute(db, "SET preserve_insertion_order = false")
 
   if (!is.null(threads)) {
-    DBI::dbExecute(db, sprintf("SET threads = %d", as.integer(threads)))
+    dbExecute(db, sprintf("SET threads = %d", as.integer(threads)))
   }
   if (!is.null(memory_limit)) {
-    DBI::dbExecute(db, sprintf("SET memory_limit = '%s'", memory_limit))
+    dbExecute(db, sprintf("SET memory_limit = '%s'", memory_limit))
   }
   if (!is.null(temp_directory)) {
     temp_directory <- gsub("'", "''", temp_directory)
-    DBI::dbExecute(db, sprintf("SET temp_directory = '%s'", temp_directory))
+    dbExecute(db, sprintf("SET temp_directory = '%s'", temp_directory))
   }
 
   # Cache object scans (e.g. when reading parquet files)
-  DBI::dbExecute(db, "SET enable_object_cache = true")
+  dbExecute(db, "SET enable_object_cache = true")
 
   invisible(TRUE)
 }
@@ -95,7 +95,7 @@ sensors <- c(
 .create_sensor_views <- function(db) {
   # Exclude leftover <sensor>_optimize_tmp tables from interrupted
   # optimize_db() runs; those are physical raw tables, not sensors.
-  sensors_raw <- DBI::dbGetQuery(
+  sensors_raw <- dbGetQuery(
     db,
     "SELECT table_name FROM information_schema.tables
      WHERE table_schema = 'raw' AND table_type = 'BASE TABLE'
@@ -116,7 +116,7 @@ sensors <- c(
   # _local/_with_local views add derived columns (e.g. time_local), so their
   # column lists can never match the raw list. They are static SQL from
   # views.sql and are handled by .create_local_views(), not here.
-  sums <- DBI::dbGetQuery(
+  sums <- dbGetQuery(
     db,
     "SELECT
        (SELECT string_agg(c.column_name, ',' ORDER BY c.table_name, c.ordinal_position)
@@ -134,7 +134,7 @@ sensors <- c(
     return(invisible(TRUE))
   }
 
-  existing <- DBI::dbGetQuery(
+  existing <- dbGetQuery(
     db,
     "SELECT table_name AS view_name, string_agg(column_name, ',' ORDER BY ordinal_position) AS cols
      FROM information_schema.columns
@@ -142,7 +142,7 @@ sensors <- c(
      GROUP BY table_name"
   )
   for (sensor in sensors_raw) {
-    want <- DBI::dbGetQuery(
+    want <- dbGetQuery(
       db,
       "SELECT string_agg(column_name, ',' ORDER BY ordinal_position) AS cols
        FROM information_schema.columns
@@ -159,19 +159,19 @@ sensors <- c(
       vapply(
         cols,
         function(c) {
-          as.character(DBI::dbQuoteIdentifier(db, c))
+          as.character(dbQuoteIdentifier(db, c))
         },
         character(1)
       ),
       collapse = ", "
     )
-    DBI::dbExecute(
+    dbExecute(
       db,
       sprintf(
         "CREATE OR REPLACE VIEW main.%s AS SELECT %s FROM raw.%s",
-        as.character(DBI::dbQuoteIdentifier(db, sensor)),
+        as.character(dbQuoteIdentifier(db, sensor)),
         view_cols,
-        as.character(DBI::dbQuoteIdentifier(db, sensor))
+        as.character(dbQuoteIdentifier(db, sensor))
       )
     )
   }
@@ -183,13 +183,13 @@ sensors <- c(
 # them). Databases with the legacy layout (physical sensor tables in main)
 # are unsupported and must be recreated with create_db().
 .has_mpathsenser_schema <- function(db) {
-  n_raw <- DBI::dbGetQuery(
+  n_raw <- dbGetQuery(
     db,
     "SELECT COUNT(*) AS n FROM information_schema.tables
      WHERE table_schema = 'raw' AND table_name = 'Accelerometer'
        AND table_type = 'BASE TABLE'"
   )$n[[1]]
-  n_main_view <- DBI::dbGetQuery(
+  n_main_view <- dbGetQuery(
     db,
     "SELECT COUNT(*) AS n FROM information_schema.tables
      WHERE table_schema = 'main' AND table_name = 'Accelerometer' AND table_type = 'VIEW'"
@@ -203,7 +203,7 @@ sensors <- c(
 # idempotent (CREATE OR REPLACE), but is skipped when they already exist, which
 # lets a read-only connection reopen a database without attempting to write.
 .create_local_views <- function(db) {
-  already <- DBI::dbGetQuery(
+  already <- dbGetQuery(
     db,
     "SELECT COUNT(*) AS n FROM duckdb_functions()
      WHERE function_name = 'to_local_time' AND function_type = 'macro'"
@@ -317,7 +317,7 @@ create_db <- function(
   tryCatch(
     {
       db <- dbConnect(
-        duckdb::duckdb(
+        duckdb(
           allow_extensions = TRUE,
           home = duckdb_home,
           shared_home = shared_home
@@ -470,13 +470,13 @@ open_db <- function(
   }
 
   db <- tryCatch(
-    dbConnect(duckdb::duckdb(), dbdir = path, read_only = read_only, ...),
+    dbConnect(duckdb(), dbdir = path, read_only = read_only, ...),
     error = function(e) {
       # Distinguish the most common cause: the file is open in another process
       # (which still allows read-only connections) from other failures.
       locked <- tryCatch(
         {
-          db2 <- dbConnect(duckdb::duckdb(), dbdir = path, read_only = TRUE)
+          db2 <- dbConnect(duckdb(), dbdir = path, read_only = TRUE)
           dbDisconnect(db2)
           TRUE
         },
@@ -498,7 +498,7 @@ open_db <- function(
   )
 
   if (
-    !DBI::dbExistsTable(db, "Participant") ||
+    !dbExistsTable(db, "Participant") ||
       !.has_mpathsenser_schema(db)
   ) {
     dbDisconnect(db)
@@ -615,7 +615,7 @@ copy_db <- function(
   sensor <- .physical_sensor(sensor)
 
   # Get target database path - for duckdb, we access the path via the driver
-  DBI::dbDisconnect(target_db) # Disconnect to avoid locking issues
+  dbDisconnect(target_db) # Disconnect to avoid locking issues
   target_path <- target_db@driver@dbdir
 
   # Attach new database to old database (DuckDB syntax)
@@ -651,16 +651,16 @@ copy_db <- function(
   # Re-sync the file_id sequence of the target database: copying the rows does
   # not advance the sequence, so without this the next import would collide
   # with the copied file_id values.
-  DBI::dbExecute(source_db, "ALTER TABLE new_db.ProcessedFiles ALTER file_id DROP DEFAULT")
-  DBI::dbExecute(source_db, "DROP SEQUENCE IF EXISTS new_db.processed_files_seq")
-  max_id <- DBI::dbGetQuery(
+  dbExecute(source_db, "ALTER TABLE new_db.ProcessedFiles ALTER file_id DROP DEFAULT")
+  dbExecute(source_db, "DROP SEQUENCE IF EXISTS new_db.processed_files_seq")
+  max_id <- dbGetQuery(
     source_db,
     "SELECT COALESCE(MAX(file_id), 0) + 1 AS m FROM new_db.ProcessedFiles"
   )[[1]]
-  DBI::dbExecute(source_db, sprintf("CREATE SEQUENCE new_db.processed_files_seq START %d", max_id))
+  dbExecute(source_db, sprintf("CREATE SEQUENCE new_db.processed_files_seq START %d", max_id))
   # Use the unqualified sequence name in the default: the expression is stored
   # as-is, and 'new_db.' would not resolve after the database is reopened.
-  DBI::dbExecute(
+  dbExecute(
     source_db,
     "ALTER TABLE new_db.ProcessedFiles ALTER file_id SET DEFAULT nextval('processed_files_seq')"
   )
@@ -669,7 +669,7 @@ copy_db <- function(
   dbExecute(source_db, "DETACH new_db")
 
   # Reopen the target_db
-  target_db <- dbConnect(duckdb::duckdb(), target_path)
+  target_db <- dbConnect(duckdb(), target_path)
 
   target_db
 }
@@ -714,16 +714,29 @@ optimize_db <- function(db, sensors = NULL, .progress = TRUE) {
   if (is.null(sensors)) {
     sensors <- mpathsenser::sensors
   }
+
+  # Only optimize the raw data, not views nor the Timezone table.
   sensors <- setdiff(.physical_sensor(sensors), "Timezone")
 
+  raw_id <- function(name) {
+    Id(schema = "raw", table = name)
+  }
+  # DuckDB's tbl() method probes dbExistsTable() with the schema-qualified
+  # identifier, for which R prints a one-off S4 method-dispatch note on the
+  # first call in a session; swallow that note.
+  lazy_tbl <- function(id) {
+    suppressMessages(tbl(db, id))
+  }
   quote_raw <- function(name) {
-    as.character(DBI::dbQuoteIdentifier(db, DBI::Id(schema = "raw", table = name)))
+    as.character(dbQuoteIdentifier(db, raw_id(name)))
   }
   quote_table <- function(name) {
-    as.character(DBI::dbQuoteIdentifier(db, name))
+    as.character(dbQuoteIdentifier(db, name))
   }
+  # Physical row order is only observable through DuckDB's rowid pseudo-column,
+  # which a lazy table does not expose, so this check stays in SQL.
   is_sorted <- function(sensor) {
-    DBI::dbGetQuery(
+    dbGetQuery(
       db,
       sprintf(
         "SELECT COUNT(*) AS n FROM (
@@ -740,67 +753,71 @@ optimize_db <- function(db, sensors = NULL, .progress = TRUE) {
     )$n[[1]] ==
       0
   }
+  # The NOT NULL columns are read as a lazy dplyr query; restoring them is DDL
+  # (ALTER TABLE), which has no dbplyr equivalent and stays in SQL.
+  info_columns <- lazy_tbl(
+    Id(schema = "information_schema", table = "columns")
+  )
+  not_null_columns <- function(sensor) {
+    filter(
+      info_columns,
+      .data$table_schema == "raw",
+      .data$table_name == sensor,
+      .data$is_nullable == "NO"
+    ) |>
+      arrange(.data$ordinal_position) |>
+      pull(.data$column_name)
+  }
 
   if (.progress && length(sensors) > 0) {
-    cli::cli_progress_bar("Optimizing sensor tables...", total = length(sensors))
-    on.exit(cli::cli_progress_done(), add = TRUE)
+    cli_progress_bar("Optimizing sensor tables...", total = length(sensors))
+    on.exit(cli_progress_done(), add = TRUE)
   }
 
   DBI::dbWithTransaction(db, {
     for (sensor in sensors) {
       if (is_sorted(sensor)) {
         if (.progress) {
-          cli::cli_progress_update()
+          cli_progress_update()
         }
         next
       }
 
-      source <- quote_raw(sensor)
+      source <- lazy_tbl(raw_id(sensor))
+      target <- paste0(sensor, "_optimize_tmp")
       source_table <- quote_table(sensor)
-      temporary_id <- quote_raw(paste0(sensor, "_optimize_tmp"))
 
-      DBI::dbExecute(db, sprintf("DROP TABLE IF EXISTS %s", temporary_id))
-      DBI::dbExecute(
-        db,
-        sprintf("CREATE TABLE %s AS SELECT * FROM %s WHERE FALSE", temporary_id, source)
+      # Materialise the rows in (participant_id, time) order; the NOT NULL
+      # constraints are restored on the copy below.
+      dbExecute(db, sprintf("DROP TABLE IF EXISTS %s", quote_raw(target)))
+      dplyr::compute(
+        arrange(source, .data$participant_id, .data$time),
+        name = raw_id(target),
+        temporary = FALSE,
+        analyze = FALSE
       )
 
-      not_null <- DBI::dbGetQuery(
-        db,
-        "SELECT column_name FROM information_schema.columns
-         WHERE table_schema = 'raw' AND table_name = ? AND is_nullable = 'NO'
-         ORDER BY ordinal_position",
-        params = list(sensor)
-      )$column_name
-      for (column in not_null) {
-        DBI::dbExecute(
+      for (column in not_null_columns(sensor)) {
+        dbExecute(
           db,
           sprintf(
             "ALTER TABLE %s ALTER COLUMN %s SET NOT NULL",
-            temporary_id,
-            as.character(DBI::dbQuoteIdentifier(db, column))
+            quote_raw(target),
+            as.character(dbQuoteIdentifier(db, column))
           )
         )
       }
 
-      DBI::dbExecute(
-        db,
-        sprintf(
-          "INSERT INTO %s SELECT * FROM %s ORDER BY participant_id, time",
-          temporary_id,
-          source
-        )
-      )
-      DBI::dbExecute(db, sprintf("DROP TABLE %s", source))
+      dbExecute(db, sprintf("DROP TABLE %s", quote_raw(sensor)))
       # The temporary table lives in the same (raw) schema as the original, so
       # an unqualified RENAME TO resolves correctly; the identically named
       # main.<sensor> view is unaffected (DuckDB resolves view bodies by name
       # at query time).
-      DBI::dbExecute(
+      dbExecute(
         db,
-        sprintf("ALTER TABLE %s RENAME TO %s", temporary_id, source_table)
+        sprintf("ALTER TABLE %s RENAME TO %s", quote_raw(target), source_table)
       )
-      if (.progress) cli::cli_progress_update()
+      if (.progress) cli_progress_update()
     }
   })
 
@@ -904,7 +921,7 @@ deduplicate_db <- function(db, sensors = NULL, .debug = FALSE) {
 get_processed_files <- function(db) {
   check_db(db)
 
-  DBI::dbReadTable(db, "ProcessedFiles")
+  dbReadTable(db, "ProcessedFiles")
 }
 
 #' Get all participants
@@ -937,9 +954,9 @@ get_participants <- function(db, lazy = FALSE) {
   check_arg(lazy, "logical", n = 1)
 
   if (lazy) {
-    dplyr::tbl(db, "Participant")
+    tbl(db, "Participant")
   } else {
-    DBI::dbReadTable(db, "Participant")
+    dbReadTable(db, "Participant")
   }
 }
 
@@ -972,9 +989,9 @@ get_studies <- function(db, lazy = FALSE) {
   check_arg(lazy, "logical", n = 1)
 
   if (lazy) {
-    dplyr::tbl(db, "Study")
+    tbl(db, "Study")
   } else {
-    DBI::dbReadTable(db, "Study")
+    dbReadTable(db, "Study")
   }
 }
 

@@ -62,9 +62,9 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
   sensors <- sensors[tolower(sensors) != "timezone"]
 
   # Check that the timezone data exists (as the main.Timezone view over raw)
-  if (!DBI::dbExistsTable(db, "Timezone", schema = "main") &&
-    !DBI::dbExistsTable(db, "Timezone", schema = "raw")) {
-    cli::cli_abort(
+  if (!dbExistsTable(db, "Timezone", schema = "main") &&
+    !dbExistsTable(db, "Timezone", schema = "raw")) {
+    cli_abort(
       c(
         "The table `Timezone` does not exist in the database.",
         i = "Check whether timezone measurements appear in your source data.",
@@ -79,7 +79,7 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
   # tables; the main.<sensor> views expose the column automatically).
   for (sensor in sensors) {
     if (!"timezone" %in% DBI::dbListFields(db, sensor, schema = "raw")) {
-      DBI::dbExecute(
+      dbExecute(
         db,
         sprintf("ALTER TABLE raw.%s ADD COLUMN timezone TEXT", sensor)
       )
@@ -130,14 +130,14 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
      FROM compressed"
   )
   on.exit(
-    DBI::dbExecute(db, "DROP TABLE IF EXISTS temp_tz_intervals"),
+    dbExecute(db, "DROP TABLE IF EXISTS temp_tz_intervals"),
     add = TRUE
   )
 
   # Start a progress bar
   if (.progress) {
-    pb <- cli::cli_progress_bar(
-      "Adding timezones...",
+    pb <- cli_progress_bar(
+      "Adding timezones",
       total = length(sensors),
       clear = FALSE
     )
@@ -148,7 +148,7 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
     # are preserved. A measurement matching a participant with no timezone
     # events is not matched (the interval join is an INNER join), so its
     # timezone stays NULL, exactly as with the ASOF version.
-    DBI::dbExecute(
+    dbExecute(
       db,
       sprintf(
         "UPDATE raw.%s s
@@ -164,12 +164,12 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
 
     # Update progress bar
     if (.progress) {
-      cli::cli_progress_update()
+      cli_progress_update()
     }
   }
 
   if (.progress) {
-    cli::cli_progress_done()
+    cli_progress_done()
   }
 
   invisible(TRUE)

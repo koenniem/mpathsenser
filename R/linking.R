@@ -17,15 +17,15 @@ link_impl <- function(
   force(name)
 
   # Filter y to keep only `by` instances that occur in x
-  if (!rlang::is_null(by) && length(by) != 0) {
+  if (!is_null(by) && length(by) != 0) {
     y <- dplyr::semi_join(y, x, by = by)
   }
 
   # Prepare x
   # Create a row_id or rematching later
   x <- x |>
-    tibble::as_tibble() |>
-    mutate(.row_id = dplyr::row_number())
+    as_tibble() |>
+    mutate(.row_id = row_number())
 
   # If no end_time is specified, calculate the start and end time of the interval using offset
   # Else, take the start time and end time as specified by the user
@@ -39,8 +39,8 @@ link_impl <- function(
     # Ensure column names for x and y do not clash
     # also easier to work with
     data <- x |>
-      dplyr::rename(.start_time = .env$start_time) |>
-      dplyr::rename(.end_time = .env$end_time) |>
+      rename(.start_time = .env$start_time) |>
+      rename(.end_time = .env$end_time) |>
       mutate(.start_time = as.integer(.data$.start_time)) |>
       mutate(.end_time = as.integer(.data$.end_time)) |>
       select({{ by }}, ".start_time", ".end_time", ".row_id")
@@ -48,9 +48,9 @@ link_impl <- function(
 
   # Match sensing data with ESM using a left join
   data <- data |>
-    dplyr::left_join(y, by = by, multiple = "all", relationship = "many-to-many") |>
+    left_join(y, by = by, multiple = "all", relationship = "many-to-many") |>
     mutate(across(all_of(y_time), as.integer, .names = ".y_time")) |>
-    tidyr::drop_na(".start_time", ".end_time")
+    drop_na(".start_time", ".end_time")
 
   # The main data, i.e. data exactly within the interval
   data_main <- data |>
@@ -64,10 +64,10 @@ link_impl <- function(
   # Bug: if this happens after merging data_before and data_after, they would be lost in the case
   # no data was retained in data_main as all the row_ids are deleted as well
   data_main <- x |>
-    dplyr::left_join(data_main, by = ".row_id", multiple = "all", relationship = "many-to-many")
+    left_join(data_main, by = ".row_id", multiple = "all", relationship = "many-to-many")
 
   # Add the last measurement before start_time
-  tz <- lubridate::tz(pull(y, {{ y_time }}))
+  tz <- tz(pull(y, {{ y_time }}))
   if (add_before) {
     # Calculate in which groups there is a measurement that equals start_time
     equal_to_start <- data |>
@@ -81,20 +81,20 @@ link_impl <- function(
       dplyr::slice_max(order_by = .data$.y_time, n = 1, with_ties = TRUE) |>
       ungroup() |>
       mutate(across(all_of(y_time), .names = "original_time")) |>
-      mutate({{ y_time }} := lubridate::as_datetime(.data$.start_time, tz = tz)) |>
+      mutate({{ y_time }} := as_datetime(.data$.start_time, tz = tz)) |>
       select(-".y_time") |>
       nest(data_before = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
       select(".row_id", "data_before")
 
     # Add to the main result
     data_main <- data_main |>
-      dplyr::left_join(
+      left_join(
         data_before,
         by = ".row_id",
         multiple = "all",
         relationship = "many-to-many"
       ) |>
-      mutate({{ name }} := purrr::map2(data_before, !!rlang::ensym(name), bind_rows)) |>
+      mutate({{ name }} := purrr::map2(data_before, !!ensym(name), bind_rows)) |>
       select(-"data_before")
   }
 
@@ -112,27 +112,27 @@ link_impl <- function(
       dplyr::slice_min(order_by = .data$.y_time, n = 1, with_ties = TRUE) |>
       ungroup() |>
       mutate(across(all_of(y_time), .names = "original_time")) |>
-      mutate({{ y_time }} := lubridate::as_datetime(.data$.end_time, tz = tz)) |>
+      mutate({{ y_time }} := as_datetime(.data$.end_time, tz = tz)) |>
       select(-".y_time") |>
       nest(data_after = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
       select(".row_id", "data_after")
 
     # Add to the main result
     data_main <- data_main |>
-      dplyr::left_join(
+      left_join(
         data_after,
         by = ".row_id",
         multiple = "all",
         relationship = "many-to-many"
       ) |>
-      mutate({{ name }} := purrr::map2(!!rlang::ensym(name), data_after, bind_rows)) |>
+      mutate({{ name }} := purrr::map2(!!ensym(name), data_after, bind_rows)) |>
       select(-"data_after")
   }
 
   # Create an empty tibble (prototype) by retrieving rows with time before UNIX start (not possible)
   # This is needed to fill in the data entries where there would otherwise be nothing left
   # because nothing matched within the start_time and end_time
-  proto <- tibble::as_tibble(y[0, ]) |>
+  proto <- as_tibble(y[0, ]) |>
     select(-{{ by }})
   if (add_before || add_after) {
     proto$original_time <- as.POSIXct(vector(mode = "double"))
@@ -153,13 +153,13 @@ link_impl <- function(
     mutate(
       {{ name }} := ifelse(
         test = lapply(
-          X = !!rlang::ensym(name),
+          X = !!ensym(name),
           FUN = \(x) {
             is.null(x) || identical(x, NA) || nrow(x) == 0
           }
         ),
         yes = list(proto),
-        no = !!rlang::ensym(name)
+        no = !!ensym(name)
       )
     ) |>
     select(-".row_id")
@@ -552,7 +552,7 @@ link_gaps <- function(
     mutate(end_interval = .data$time_int + offset_after)
 
   data_gaps <- data_gaps |>
-    dplyr::left_join(gaps, by = by, multiple = "all", relationship = "many-to-many") |>
+    left_join(gaps, by = by, multiple = "all", relationship = "many-to-many") |>
     mutate(across(c("from", "to"), as.integer)) |>
     filter(.data$from < .data$end_interval & .data$to > .data$start_interval)
 
@@ -584,12 +584,12 @@ link_gaps <- function(
       from = as.POSIXct(
         vector(mode = "double"),
         origin = "1970-01-01",
-        tz = lubridate::tz(gaps$from)
+        tz = tz(gaps$from)
       ),
       to = as.POSIXct(
         vector(mode = "double"),
         origin = "1970-01-01",
-        tz = lubridate::tz(gaps$to)
+        tz = tz(gaps$to)
       ),
       gap = integer(0)
     )
@@ -601,8 +601,8 @@ link_gaps <- function(
 
   # Merge with ESM data
   data <- data |>
-    tibble::as_tibble() |>
-    dplyr::left_join(
+    as_tibble() |>
+    left_join(
       data_gaps,
       by = c(by, "time"),
       multiple = "all",
@@ -634,7 +634,7 @@ link_intervals <- function(
   check_arg(by, "character", allow_null = TRUE)
   check_arg(name, "character", n = 1)
 
-  tz <- lubridate::tz(pull(y, {{ y_start }}))
+  tz <- tz(pull(y, {{ y_start }}))
 
   # Calculate which values in y are within x's bounds
   if (length(by) == 0 && utils::packageVersion("dplyr") >= "1.1.0") {
@@ -644,7 +644,7 @@ link_intervals <- function(
       !!!by
     )
 
-    res <- dplyr::left_join(x, y, by = join_by, multiple = "all", relationship = "many-to-many")
+    res <- left_join(x, y, by = join_by, multiple = "all", relationship = "many-to-many")
   }
 
   res <- res |>
@@ -659,7 +659,7 @@ link_intervals <- function(
   res <- res |>
     mutate({{ y_start }} := if_else({{ y_start }} < {{ x_start }}, {{ x_start }}, {{ y_start }})) |>
     mutate({{ y_end }} := if_else({{ y_end }} > {{ x_end }}, {{ x_end }}, {{ y_end }})) |>
-    mutate(across(c({{ y_start }}, {{ y_end }}), \(.x) lubridate::as_datetime(.x, tz = tz)))
+    mutate(across(c({{ y_start }}, {{ y_end }}), \(.x) as_datetime(.x, tz = tz)))
 
   out <- x |>
     dplyr::nest_join(
@@ -797,7 +797,7 @@ bin_data <- function(
     ))
   }
 
-  tz <- lubridate::tz(pull(data, {{ start_time }}))
+  tz <- tz(pull(data, {{ start_time }}))
 
   # check that start_time and end_time are a datetime, or try to convert
   if (
@@ -866,8 +866,8 @@ bin_data <- function(
   )
 
   out <- out |>
-    mutate(bin_start = lubridate::as_datetime(.data$bin_start, tz = tz)) |>
-    dplyr::rename({{ .name }} := "bin_start") |>
+    mutate(bin_start = as_datetime(.data$bin_start, tz = tz)) |>
+    rename({{ .name }} := "bin_start") |>
     select(-any_of("bin_end"))
 
   out

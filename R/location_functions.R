@@ -87,7 +87,7 @@ geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1, format 
   check_arg(lon, "numeric")
 
   if (length(lat) != length(lon)) {
-    cli::cli_abort("{.arg lat} and {.arg lon} must have equal length.")
+    cli_abort("{.arg lat} and {.arg lon} must have equal length.")
   }
 
   format <- match.arg(format, c("jsonv2", "geojson", "geocodejson"))

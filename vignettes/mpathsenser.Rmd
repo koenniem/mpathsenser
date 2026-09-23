@@ -89,7 +89,7 @@ With the database in place, importing is a single function call:
 read_mpath_sense(path = path, db = db, .progress = FALSE)
 ```
 
-The import works in batches: all files of a batch are staged and written in a single transaction, so an error in one file does not lose the work of the others. The `batch_size` argument (default 100) controls how many files are processed at once — larger batches are faster but use more memory. The `rows_per_chunk` argument (default 100000) bounds the size of the individual ingest statements, which is useful to keep memory usage in check when a batch contains very large files (e.g. Garmin logs). Setting `.debug = TRUE` prints a detailed log of what the import is doing and how long each step took.
+The import works in batches: all files of a batch are staged and written in a single transaction, so an error in one file does not lose the work of the others. The `batch_size` argument (default 1000) controls how many files are processed at once — a larger batch imports faster because DuckDB can parallelise across more files, but the whole batch is staged in the database at once, so larger batches also use more memory. Setting `.debug = TRUE` prints a detailed log of what the import is doing and how long each step took.
 
 If everything went well, the message says that all files were written to the database. When a file fails, `read_mpath_sense()` returns the names of the problematic files so they can be inspected manually; the remaining files are imported normally.
 
@@ -186,7 +186,18 @@ get_data(db, sensor = "Pedometer", participant_id = "12345") |>
 
 Keep the `timezone` column alongside any timestamp transformed with `to_local_time()`.
 
-`to_local_time()` works both on timestamps already collected into R and inside a lazy query: when applied in a `dplyr` pipeline before `collect()`, dbplyr translates it to the `to_local_time()` macro stored in the database, so the conversion happens in DuckDB. `collect_local()` is a convenience wrapper that collects a lazy table and converts every timestamp column at once, equivalent to collecting the corresponding `_local` view:
+Note that inside a lazy query, `arrange()` followed by a `mutate()` that overwrites the ordered column does not keep the arranged order: the generated SQL's `ORDER BY "time"` then refers to the new (converted) column, so the result is ordered by local time. This applies to any lazy `mutate()` that overwrites an arranged column. To keep the UTC order, convert into a new column instead:
+
+```{r}
+get_data(db, sensor = "Pedometer", participant_id = "12345") |>
+  arrange(participant_id, time) |>
+  mutate(time_local = to_local_time(time, timezone)) |>
+  collect()
+```
+
+To order by local time, call `arrange()` after the conversion (and likewise after `collect()` in the R version).
+
+`to_local_time()` works both on timestamps already collected into R and inside a lazy query: when applied in a `dplyr` pipeline before `collect()`, dbplyr calls the same function while building the query (so its argument checks run in R) and DuckDB applies the `to_local_time()` macro, so the conversion happens in the database. `collect_local()` is a convenience wrapper that collects a lazy table and converts every timestamp column at once, equivalent to collecting the corresponding `_local` view:
 
 ```{r}
 get_data(db, sensor = "Pedometer", participant_id = "12345") |>
@@ -216,9 +227,11 @@ A time window can be selected with `start_date` and `end_date` (in `YYYY-MM-DD` 
 
 # Creating a coverage chart
 
-To get a better overview of the data, `coverage()` computes the (relative) number of collected samples per sensor and participant. The calculation runs entirely inside DuckDB and returns a lazy table, so it scales to large studies: call `collect()` (or `plot()`) to materialise it. By default coverage is counted per hour of the day, within each participant's own observation span, with missing hours or days inside that span filled with zeros. In relative mode, the first and last partial bins of a participant are prorated so that starting or ending in the middle of a day or week does not cap the coverage.
+To get a better overview of the data, `coverage()` computes the (relative) number of collected samples per sensor and participant. The calculation runs entirely inside DuckDB and returns a lazy table, so it scales to large studies: call `collect()` (or `plot()`) to materialise it. By default coverage is counted per hour of the day, within each participant's own observation span, with missing hours or days inside that span filled with zeros. Only the first and last bins of that span are prorated: if a participant's observations start at 13:50, for example, the 13:00--14:00 bin can reach 100% based on the eligible final 10 minutes. Interior bins always use their complete duration.
 
 Use `by` to change the counting resolution (`"minute"`, `"hour"`, `"day"`, `"week"`, or `"month"`) and `cycle` to average the counts within a recurring cycle (`NULL`, `"hour"`, `"day"`, `"week"`, `"month"`, or `"year"`). With `cycle = NULL`, the full zero-filled series is returned instead of a cycle profile. Relative coverage is requested by passing `expected`, a named vector of sampling intervals in seconds; `coverage_frequency()` builds one with sensible defaults. An absolute coverage chart shows the average number of samples per bin, while a relative coverage chart expresses this as a fraction of the expected sampling rate. The relative chart is useful to see how well the data is being collected for each sensor, the absolute chart to see how much data there is in general.
+
+By default `metric = "count"` counts the samples in each bin. Set `metric = "time"` (together with `expected`) to measure instead the fraction of the eligible time in each bin that is covered by the union of the observation intervals `[time, time + expected)`. Bursts of oversampling and duplicated observations then count once, so a sensor sampling far faster than its expected interval reports a lower temporal coverage rather than an inflated one. The eligible span ends one expected interval after the last observation, allowing that terminal observation to contribute its full interval. `metric = "time"` without `expected` is an error.
 
 ```{r coverage}
 cov <- coverage(

@@ -74,8 +74,8 @@
 # can handle (and vice versa).
 .check_timezone <- function(
   timezone,
-  arg = rlang::caller_arg(timezone),
-  call = rlang::caller_env()
+  arg = caller_arg(timezone),
+  call = caller_env()
 ) {
   if (.is_sql_input(timezone) || is.null(timezone)) {
     return(invisible(timezone))

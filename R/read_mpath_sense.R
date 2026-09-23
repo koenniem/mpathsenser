@@ -148,7 +148,7 @@ read_mpath_sense <- function(
   # Register meta data of the file to track provenance
   full_paths <- file.path(path, files)
   file_info <- file.info(full_paths, extra_cols = FALSE)
-  file_meta <- tibble::tibble(
+  file_meta <- tibble(
     source_file = full_paths,
     file_name = basename(full_paths),
     rel_path = files,
@@ -191,12 +191,12 @@ read_mpath_sense <- function(
 
   # Set up a progress bar
   if (.progress) {
-    pb <- cli::cli_progress_bar(
+    pb <- cli_progress_bar(
       total = length(batches),
       format = "Importing data... {cli::pb_bar} {cli::pb_current}/{cli::pb_total} batch{?es} \\
       [{cli::pb_percent}] | {cli::pb_eta_str}"
     )
-    cli::cli_progress_update(inc = 0, force = TRUE)
+    cli_progress_update(inc = 0, force = TRUE)
   }
 
   # Bookkeeping across batches
@@ -227,7 +227,7 @@ read_mpath_sense <- function(
 
     # Update progress bar
     if (.progress) {
-      cli::cli_progress_update(inc = 1, force = TRUE)
+      cli_progress_update(inc = 1, force = TRUE)
     }
   }
 
@@ -288,7 +288,7 @@ read_mpath_sense <- function(
   }
 
   # Close the progress bar
-  cli::cli_progress_done()
+  cli_progress_done()
 
   # Aggregated warnings (never per file, as there may be hundreds of thousands)
   if (length(unknown_versions) > 0) {
@@ -417,7 +417,7 @@ read_mpath_sense <- function(
   # transaction (e.g. a failed batch that was rolled back).
   on.exit(
     try(
-      DBI::dbExecute(
+      dbExecute(
         db,
         "DROP TABLE IF EXISTS raw_staging; DROP TABLE IF EXISTS mpathinfo_map;
        DROP TABLE IF EXISTS file_metadata_map; DROP TABLE IF EXISTS file_id_map;
@@ -492,7 +492,7 @@ read_mpath_sense <- function(
     "Staging {length(batch_paths)} file{?s}.",
     tryCatch(
       {
-        DBI::dbExecute(db, stage_query("array"))
+        dbExecute(db, stage_query("array"))
         TRUE
       },
       error = function(e) FALSE
@@ -500,15 +500,15 @@ read_mpath_sense <- function(
   )
   if (!staged) {
     # Fall back to auto-detection for files that are not JSON arrays
-    DBI::dbExecute(db, stage_query("auto"))
+    dbExecute(db, stage_query("auto"))
   }
   # Derive each row's 1-based position within its file from the physical
   # rowid (see the comment above stage_query()). ROW_NUMBER by rowid within
   # each file is exact regardless of chunk order or band contiguity: read_json
   # emits every file's rows in file order, and the CTAS writer assigns rowids
   # in emission order.
-  DBI::dbExecute(db, "ALTER TABLE raw_staging ADD COLUMN source_row_id BIGINT")
-  DBI::dbExecute(
+  dbExecute(db, "ALTER TABLE raw_staging ADD COLUMN source_row_id BIGINT")
+  dbExecute(
     db,
     "UPDATE raw_staging s
      SET source_row_id = w.rn
@@ -539,7 +539,7 @@ read_mpath_sense <- function(
     "Extracting mpathinfo metadata",
     "Extracting mpathinfo metadata.",
     {
-      DBI::dbExecute(
+      dbExecute(
         db,
         "CREATE OR REPLACE TEMP TABLE mpathinfo_map AS
          SELECT
@@ -613,19 +613,19 @@ read_mpath_sense <- function(
     "Registering Study, Participant, and ProcessedFiles",
     "Registering Study, Participant, and ProcessedFiles.",
     {
-      DBI::dbExecute(
+      dbExecute(
         db,
         "INSERT INTO Study (study_id, data_format)
        SELECT DISTINCT study_id, 'CARP JSON' FROM file_metadata_map
        ON CONFLICT DO NOTHING"
       )
-      DBI::dbExecute(
+      dbExecute(
         db,
         "INSERT INTO Participant (participant_id, study_id)
        SELECT DISTINCT participant_id, study_id FROM file_metadata_map
        ON CONFLICT DO NOTHING"
       )
-      DBI::dbExecute(
+      dbExecute(
         db,
         "CREATE OR REPLACE TEMP TABLE file_id_map AS
        SELECT m.source_file, m.participant_id, m.study_id, m.sense_version,
@@ -634,7 +634,7 @@ read_mpath_sense <- function(
              FROM file_metadata_map
              ORDER BY batch_order) m"
       )
-      DBI::dbExecute(
+      dbExecute(
         db,
         "INSERT INTO ProcessedFiles (file_id, file_name, participant_id, sense_version, file_size_bytes, modified_at)
        SELECT m.file_id, f.file_name, f.participant_id, f.sense_version,
@@ -684,9 +684,11 @@ read_mpath_sense <- function(
     if (is.na(v)) is.na(sv) else !is.na(sv) & sv == v
   }
   has_staged <- function(sensor, v) {
-    any(same_version(v) &
-      staged_by_version$payload_type == type_map[[sensor]] &
-      staged_by_version$n > 0)
+    any(
+      same_version(v) &
+        staged_by_version$payload_type == type_map[[sensor]] &
+        staged_by_version$n > 0
+    )
   }
   # All Garmin sensors share the garminalllogsdata payload type. Their ingest
   # statements read the garmin_parsed temp table (one typed transform of every
@@ -722,7 +724,7 @@ read_mpath_sense <- function(
         "Parsing Garmin payloads for sense version {v}",
         "Parsed {n_payloads} Garmin payload{?s} for sense version {v}.",
         n_payloads <- {
-          DBI::dbExecute(db, .read_garmin_parse_sql(v))
+          dbExecute(db, .read_garmin_parse_sql(v))
           if (isTRUE(.debug)) {
             DBI::dbGetQuery(db, "SELECT COUNT(*) FROM garmin_parsed")[[1]]
           } else {
@@ -752,8 +754,7 @@ read_mpath_sense <- function(
       }
       for (sensor_name in garmin_sensors) {
         cols <- registry[[sensor_name]]$array
-        if (!is.null(cols) && !is.null(n_els) &&
-            sum(as.numeric(n_els[1, cols])) == 0) {
+        if (!is.null(cols) && !is.null(n_els) && sum(as.numeric(n_els[1, cols])) == 0) {
           next
         }
         sql <- registry[[sensor_name]]$fun(v)
