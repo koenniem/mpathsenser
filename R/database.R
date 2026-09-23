@@ -1007,11 +1007,9 @@ get_studies <- function(db, lazy = FALSE) {
 #'   [get_participants()] to retrieve all participants from the database. Leave empty to get data
 #'   for all participants.
 #' @param start_date Optional search window specifying date where to begin search. Must be
-#'   convertible to date using [base::as.Date()]. Use [first_date()] to find the date of the first
-#'   entry for a participant.
+#'   convertible to date using [base::as.Date()].
 #' @param end_date Optional search window specifying date where to end search. Must be convertible
-#'   to date using [base::as.Date()]. Use [last_date()] to find the date of the last entry for a
-#'   participant.
+#'   to date using [base::as.Date()].
 #'
 #' @returns A named vector containing the number of rows for each sensor.
 #' @export

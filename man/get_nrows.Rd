@@ -24,12 +24,10 @@ integer, numeric, or character value is accepted). Use
 for all participants.}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
-convertible to date using \code{\link[base:as.Date]{base::as.Date()}}. Use \code{\link[=first_date]{first_date()}} to find the date of the first
-entry for a participant.}
+convertible to date using \code{\link[base:as.Date]{base::as.Date()}}.}
 
 \item{end_date}{Optional search window specifying date where to end search. Must be convertible
-to date using \code{\link[base:as.Date]{base::as.Date()}}. Use \code{\link[=last_date]{last_date()}} to find the date of the last entry for a
-participant.}
+to date using \code{\link[base:as.Date]{base::as.Date()}}.}
 }
 \value{
 A named vector containing the number of rows for each sensor.

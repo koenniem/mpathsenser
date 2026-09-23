@@ -123,7 +123,7 @@ get_processed_files(db)
 get_nrows(db)
 ```
 
-`get_nrows()` queries every sensor table, so it can be slow on large databases. `first_date()` and `last_date()` give the first and last date for a particular sensor, e.g. to see how much data a participant has collected so far.
+`get_nrows()` queries every sensor table, so it can be slow on large databases.
 
 # Deduplication
 

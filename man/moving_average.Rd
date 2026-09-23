@@ -29,12 +29,10 @@ to the rolling window of observations.}
 integers; integer, numeric, or character values are accepted).}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
-convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
-date of the first entry for a participant.}
+convertible to date using \link[base]{as.Date}.}
 
 \item{end_date}{Optional search window specifying date where to end search. Must be convertible
-to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
-last entry for a participant.}
+to date using \link[base]{as.Date}.}
 }
 \value{
 A tibble with the same columns as the input, modified to be a moving average.

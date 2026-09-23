@@ -24,11 +24,9 @@
 #'   Leave empty to get data for all participants. Participant ids are stored as unsigned
 #'   integers, so an integer, numeric, or character value is accepted.
 #' @param start_date Optional search window specifying date where to begin search. Must be
-#'   convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
-#'   date of the first entry for a participant.
+#'   convertible to date using \link[base]{as.Date}.
 #' @param end_date Optional search window specifying date where to end search. Must be convertible
-#'   to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
-#'   last entry for a participant.
+#'   to date using \link[base]{as.Date}.
 #'
 #' @returns A lazy \code{\link[dplyr]{tbl}} containing the requested data.
 #' @export
@@ -84,80 +82,6 @@ get_data <- function(
 
   # Canonical sensor tables expose absolute TIMESTAMPTZ values directly.
   out
-}
-
-#' Extract the date of the first entry
-#'
-#' @description
-#' `r lifecycle::badge("stable")`
-#'
-#' A helper function for extracting the first date of entry of (of one or all participant) of one
-#' sensor. Note that this function is specific to the first date of a sensor. After all, it
-#' wouldn't make sense to extract the first date for a participant of the accelerometer, while the
-#' first device measurement occurred a day later.
-#'
-#' @inheritParams get_data
-#'
-#' @returns A string in the format 'YYYY-mm-dd' of the first entry date.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' db <- open_db()
-#' first_date(db, "Accelerometer", "12345")
-#' }
-first_date <- function(db, sensor, participant_id = NULL) {
-  check_db(db)
-  check_sensors(sensor, n = 1)
-  check_arg(sensor, "character", n = 1)
-
-  out <- tbl(db, sensor)
-
-  if (!is.null(participant_id)) {
-    out <- filter(out, .data$participant_id == participant_id)
-  }
-
-  out |>
-    mutate(date = as.Date(.data$time)) |>
-    summarise(min_date = min(.data$date, na.rm = TRUE)) |>
-    pull(.data$min_date)
-}
-
-#' Extract the date of the last entry
-#'
-#' @description
-#' `r lifecycle::badge("stable")`
-#'
-#' A helper function for extracting the last date of entry of (of one or all participant) of one
-#' sensor. Note that this function is specific to the last date of a sensor. After all, it
-#' wouldn't make sense to extract the last date for a participant of the device info, while the
-#' last accelerometer measurement occurred a day later.
-#'
-#' @inheritParams get_data
-#'
-#' @returns A string in the format 'YYYY-mm-dd' of the last entry date.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' db <- open_db()
-#' last_date(db, "Accelerometer", "12345")
-#' }
-last_date <- function(db, sensor, participant_id = NULL) {
-  check_db(db)
-  check_sensors(sensor, n = 1)
-  check_arg(sensor, c("character", "integerish"), n = 1, allow_null = TRUE)
-
-  out <- tbl(db, sensor)
-
-  if (!is.null(participant_id)) {
-    out <- filter(out, .data$participant_id == participant_id)
-  }
-
-  out |>
-    mutate(date = as.Date(.data$time)) |>
-    summarise(max_date = max(.data$date, na.rm = TRUE)) |>
-    pull(.data$max_date)
 }
 
 #' Get installed apps

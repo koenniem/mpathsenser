@@ -18,12 +18,10 @@ Leave empty to get data for all participants. Participant ids are stored as unsi
 integers, so an integer, numeric, or character value is accepted.}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
-convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
-date of the first entry for a participant.}
+convertible to date using \link[base]{as.Date}.}
 
 \item{end_date}{Optional search window specifying date where to end search. Must be convertible
-to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
-last entry for a participant.}
+to date using \link[base]{as.Date}.}
 }
 \value{
 A lazy \code{\link[dplyr]{tbl}} containing the requested data.

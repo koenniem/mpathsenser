@@ -66,20 +66,6 @@ test_that("get_data", {
   cleanup_test_db(db)
 })
 
-test_that("first_date", {
-  db <- create_sensor_test_db()
-  expect_equal(first_date(db, "Device"), as.Date("2021-11-13"))
-  expect_equal(first_date(db, "Device", "12345"), as.Date("2021-11-13"))
-  cleanup_test_db(db)
-})
-
-test_that("last_date", {
-  db <- create_sensor_test_db()
-  expect_equal(last_date(db, "Device"), as.Date("2021-11-14"))
-  expect_equal(last_date(db, "Device", "12345"), as.Date("2021-11-14"))
-  cleanup_test_db(db)
-})
-
 test_that("installed_apps", {
   db <- create_sensor_test_db()
   res <- installed_apps(db, "12345")
