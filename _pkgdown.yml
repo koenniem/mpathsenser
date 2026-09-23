@@ -60,8 +60,6 @@ reference:
       - get_processed_files
       - get_studies
       - get_nrows
-      - first_date
-      - last_date
 
   - title: Coverage chart
     contents:

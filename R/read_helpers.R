@@ -310,13 +310,13 @@
   }
 }
 
-# All payload types handled by the registry, plus mpathinfo
+# All normalized payload type suffixes handled by the registry, plus mpathinfo
 .read_known_types <- function() {
   types <- unlist(
     lapply(sensor_registry, \(reg) vapply(reg, \(x) x[["type"]], character(1))),
     use.names = FALSE
   )
-  unique(c(types, "dk.cachet.carp.mpathinfo"))
+  unique(c(types, "mpathinfo"))
 }
 
 # Aggregate unknown types across batches into a named count vector

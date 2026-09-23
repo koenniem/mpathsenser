@@ -106,7 +106,7 @@ ingest_accelerometer <- function(sense_version) {
                m.participant_id, m.file_id
         FROM raw_staging s
         JOIN file_id_map m ON m.source_file = s.source_file
-        WHERE s.payload_type = 'dk.cachet.carp.accelerationfeatures'
+        WHERE s.payload_type = 'accelerationfeatures'
           AND %s
           AND s.sensorStartTime IS NOT NULL
       ) s
@@ -220,7 +220,7 @@ ingest_appusage <- function(sense_version) {
       FROM raw_staging s
       JOIN file_id_map m ON s.source_file = m.source_file
       LEFT JOIN LATERAL json_each(s.data->'usage') AS apps ON TRUE
-      WHERE s.payload_type = 'dk.cachet.carp.appusage'
+      WHERE s.payload_type = 'appusage'
         AND %s
         AND s.sensorStartTime IS NOT NULL
 ",
@@ -285,7 +285,7 @@ ingest_bluetooth <- function(sense_version) {
 ",
     .source_timestamp_import_sql("s.data->>'startScan'", "Bluetooth", "start_scan"),
     .source_timestamp_import_sql("s.data->>'endScan'", "Bluetooth", "end_scan"),
-    .read_staging_payloads("dk.cachet.carp.bluetooth"),
+    .read_staging_payloads("bluetooth"),
     .read_json_array_typed("s.data", array_schemas[["Bluetooth"]], key = "scanResult"),
     .read_version_filter(sense_version)
   )
@@ -319,7 +319,7 @@ ingest_bluetooth_beacon <- function(sense_version) {
       WHERE s.sensorStartTime IS NOT NULL
         AND %s
 ",
-    .read_staging_payloads("dk.cachet.carp.beacondata"),
+    .read_staging_payloads("beacondata"),
     .read_json_array_typed("s.data", array_schemas[["BluetoothBeacon"]], key = "scanResult"),
     .read_version_filter(sense_version)
   )
@@ -346,7 +346,7 @@ ingest_connectivity <- function(sense_version) {
       WHERE s.sensorStartTime IS NOT NULL
         AND %s
 ",
-    .read_staging_payloads("dk.cachet.carp.connectivity"),
+    .read_staging_payloads("connectivity"),
     .read_version_filter(sense_version)
   )
 }
@@ -374,7 +374,7 @@ ingest_device <- function(sense_version) {
         m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
       FROM raw_staging s
       JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.deviceinformation'
+      WHERE s.payload_type = 'deviceinformation'
         AND %s
         AND s.sensorStartTime IS NOT NULL
 ",
@@ -461,7 +461,7 @@ ingest_device <- function(sense_version) {
      CROSS JOIN LATERAL (
        SELECT json_transform(s.data, '%s') AS p
      ) j
-     WHERE s.payload_type = 'dk.cachet.carp.garminalllogsdata'
+     WHERE s.payload_type = 'garminalllogsdata'
        AND %s
        AND s.sensorStartTime IS NOT NULL",
     cols,
@@ -589,7 +589,7 @@ ingest_location <- function(sense_version) {
         m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
       FROM raw_staging s
       JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.location'
+      WHERE s.payload_type = 'location'
         AND %s
         AND s.sensorStartTime IS NOT NULL
 ",
@@ -637,7 +637,7 @@ ingest_weather <- function(sense_version) {
         m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
       FROM raw_staging s
       JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'dk.cachet.carp.weather'
+      WHERE s.payload_type = 'weather'
         AND %s
         AND s.sensorStartTime IS NOT NULL
 ",

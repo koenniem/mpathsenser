@@ -2,13 +2,13 @@
 #
 # The registry is keyed by the senseVersion found in the mpathinfo entry;
 # the "default" parser set is used for versions that are not (yet)
-# registered. Each entry maps a sensor name to the CARP payload type it
-# ingests and the ingest function, which takes the senseVersion and returns
+# registered. Each entry maps a sensor name to its normalized payload type
+# suffix and the ingest function, which takes the senseVersion and returns
 # the SQL statement to execute.
 #
 # Most sensors fit one of two common statement shapes, so their ingest function
 # is built by a shared helper in ingest.R from the spec written here, next to
-# the sensor's payload type:
+# the sensor's normalized payload type suffix:
 #
 #   scalar_sensor()       one row per staged entry, with the values read from
 #                         the payload object (ingest_scalar()).
@@ -18,9 +18,9 @@
 # Sensors whose statement does not fit either shape use their own ingest
 # function, written out in full in ingest.R.
 
-# A sensor whose payload is a single measurement object. `columns` maps the
-# raw.<sensor> column names, in INSERT order, to value expressions over the
-# staged row `s`.
+# A sensor whose payload is a single measurement object. `type` is the
+# normalized sensor-name suffix from `__type`; `columns` maps the raw.<sensor>
+# column names, in INSERT order, to value expressions over the staged row `s`.
 scalar_sensor <- function(sensor, type, columns) {
   list(
     type = type,
@@ -35,7 +35,7 @@ scalar_sensor <- function(sensor, type, columns) {
 # order, to expressions over the unnested element `e`.
 garmin_array_sensor <- function(sensor, array, time, columns) {
   list(
-    type = "dk.cachet.carp.garminalllogsdata",
+    type = "garminalllogsdata",
     array = array,
     fun = ingest_garmin_array(sensor, array, time, columns)
   )
@@ -45,42 +45,42 @@ garmin_array_sensor <- function(sensor, array, time, columns) {
 new_sensor_registry <- function() {
   list(
     "Accelerometer" = list(
-      type = "dk.cachet.carp.accelerationfeatures",
+      type = "accelerationfeatures",
       fun = ingest_accelerometer
     ),
     "Activity" = scalar_sensor(
       "Activity",
-      "dk.cachet.carp.activity",
+      "activity",
       c(
         confidence = "CAST(s.data->>'confidence' AS INTEGER)",
         type = "CAST(s.data->>'type' AS TEXT)"
       )
     ),
-    "AppUsage" = list(type = "dk.cachet.carp.appusage", fun = ingest_appusage),
+    "AppUsage" = list(type = "appusage", fun = ingest_appusage),
     "Battery" = scalar_sensor(
       "Battery",
-      "dk.cachet.carp.batterystate",
+      "batterystate",
       c(
         battery_level = "CAST(s.data->>'batteryLevel' AS INTEGER)",
         battery_status = "CAST(s.data->>'batteryStatus' AS TEXT)"
       )
     ),
     "Bluetooth" = list(
-      type = "dk.cachet.carp.bluetooth",
+      type = "bluetooth",
       fun = ingest_bluetooth
     ),
     "BluetoothBeacon" = list(
-      type = "dk.cachet.carp.beacondata",
+      type = "beacondata",
       fun = ingest_bluetooth_beacon
     ),
     "Connectivity" = list(
-      type = "dk.cachet.carp.connectivity",
+      type = "connectivity",
       fun = ingest_connectivity
     ),
-    "Device" = list(type = "dk.cachet.carp.deviceinformation", fun = ingest_device),
+    "Device" = list(type = "deviceinformation", fun = ingest_device),
     "Error" = scalar_sensor(
       "Error",
-      "dk.cachet.carp.error",
+      "error",
       c(message = "CAST(s.data->>'message' AS TEXT)")
     ),
     "GarminAccelerometer" = garmin_array_sensor(
@@ -95,7 +95,7 @@ new_sensor_registry <- function() {
       )
     ),
     "GarminActigraphy" = list(
-      type = "dk.cachet.carp.garminalllogsdata",
+      type = "garminalllogsdata",
       array = c("actigraphy1", "actigraphy2", "actigraphy3"),
       fun = ingest_garmin_actigraphy
     ),
@@ -141,7 +141,7 @@ new_sensor_registry <- function() {
       )
     ),
     "GarminMeta" = list(
-      type = "dk.cachet.carp.garminalllogsdata",
+      type = "garminalllogsdata",
       fun = ingest_garmin_meta
     ),
     "GarminRespiration" = garmin_array_sensor(
@@ -217,7 +217,7 @@ new_sensor_registry <- function() {
     ),
     "Heartbeat" = scalar_sensor(
       "Heartbeat",
-      "dk.cachet.carp.heartbeat",
+      "heartbeat",
       c(
         period = "CAST(s.data->>'period' AS INTEGER)",
         device_type = "CAST(s.data->>'deviceType' AS TEXT)",
@@ -226,7 +226,7 @@ new_sensor_registry <- function() {
     ),
     "Light" = scalar_sensor(
       "Light",
-      "dk.cachet.carp.ambientlight",
+      "ambientlight",
       c(
         end_time = "to_timestamp(CAST(s.sensorEndTime AS BIGINT) / 1000000.0)",
         mean_lux = "CAST(s.data->>'meanLux' AS REAL)",
@@ -236,12 +236,12 @@ new_sensor_registry <- function() {
       )
     ),
     "Location" = list(
-      type = "dk.cachet.carp.location",
+      type = "location",
       fun = ingest_location
     ),
     "Memory" = scalar_sensor(
       "Memory",
-      "dk.cachet.carp.freememory",
+      "freememory",
       c(
         free_physical_memory = "CAST(s.data->>'freePhysicalMemory' AS BIGINT)",
         free_virtual_memory = "CAST(s.data->>'freeVirtualMemory' AS BIGINT)"
@@ -249,26 +249,26 @@ new_sensor_registry <- function() {
     ),
     "Pedometer" = scalar_sensor(
       "Pedometer",
-      "dk.cachet.carp.stepcount",
+      "stepcount",
       c(step_count = "CAST(s.data->>'steps' AS INTEGER)")
     ),
     "Screen" = scalar_sensor(
       "Screen",
-      "dk.cachet.carp.screenevent",
+      "screenevent",
       c(screen_event = "CAST(s.data->>'screenEvent' AS TEXT)")
     ),
     "Timezone" = scalar_sensor(
       "Timezone",
-      "dk.cachet.carp.timezone",
+      "timezone",
       c(timezone = "CAST(s.data->>'timezone' AS TEXT)")
     ),
     "Weather" = list(
-      type = "dk.cachet.carp.weather",
+      type = "weather",
       fun = ingest_weather
     ),
     "Wifi" = scalar_sensor(
       "Wifi",
-      "dk.cachet.carp.wifi",
+      "wifi",
       c(
         ssid = "CAST(s.data->>'ssid' AS TEXT)",
         bssid = "CAST(s.data->>'bssid' AS TEXT)",
@@ -287,7 +287,7 @@ sensor_registry <- list(
 # Payload types that are known but deliberately not ingested. These are
 # skipped silently (no warning), as they carry no data of interest.
 ignored_sensor_types <- c(
-  "dk.cachet.carp.triggeredtask" # executions of triggered tasks; no measurements
+  "triggeredtask" # executions of triggered tasks; no measurements
 )
 
 # Typed JSON schemas for the array-based sensors. The arrays are transformed

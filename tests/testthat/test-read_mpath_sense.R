@@ -118,6 +118,65 @@ test_that("import populates the database correctly", {
   unlink(dir, recursive = TRUE)
 })
 
+test_that("unprefixed payload types are imported", {
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  jsonlite::write_json(
+    list(
+      list(
+        sensorStartTime = 1765889440388567,
+        data = list(
+          `__type` = "mpathinfo",
+          connectionId = "12345",
+          studyName = "test_study",
+          senseVersion = 5
+        )
+      ),
+      list(
+        sensorStartTime = 1765889441388567,
+        data = list(`__type` = "stepcount", steps = 42)
+      )
+    ),
+    file.path(dir, "unprefixed.json"),
+    auto_unbox = TRUE
+  )
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+
+  expect_message(
+    read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE),
+    "All 1 file was successfully written to the database."
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT step_count FROM Pedometer")$step_count,
+    42L
+  )
+
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
+test_that("entries without __type are not classified", {
+  dir <- tempfile("import_test")
+  dir.create(dir)
+  make_test_file(
+    dir,
+    "missing_type.json",
+    sensors = list(list(steps = 42))
+  )
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+
+  expect_warning(
+    suppressMessages(
+      read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE)
+    ),
+    "Unknown sensor type"
+  )
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Pedometer")[[1]], 0)
+
+  close_db(db)
+  unlink(dir, recursive = TRUE)
+})
+
 test_that("a corrected file is re-imported and wins on deduplication", {
   dir <- tempfile("import_test")
   dir.create(dir)
@@ -919,7 +978,7 @@ test_that("unknown sensor types produce an aggregated warning", {
     suppressMessages(
       res <- read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE)
     ),
-    "Unknown sensor type \"dk.cachet.carp.hyperspacejump\""
+    "Unknown sensor type \"hyperspacejump\""
   )
   expect_equal(res, "")
 

@@ -449,9 +449,11 @@ read_mpath_sense <- function(
   # format = 'auto' reads the file twice (once to detect the format), which
   # roughly doubles the memory needed to stage large files. The payload type
   # is extracted with a regular expression on the serialized JSON instead of
-  # data->>'__type', and the data is kept as VARCHAR rather than JSON, because
-  # parsing the JSON at staging time keeps staging memory bounded; typed
-  # transformations are applied only by the sensor queries that need them.
+  # data->>'__type'. The optional CARP prefix is stripped here, so the staged
+  # value is the sensor name alone; the data is kept as VARCHAR rather than
+  # JSON, because parsing the JSON at staging time keeps staging memory
+  # bounded; typed transformations are applied only by the sensor queries
+  # that need them.
   #
   # Each staged row carries source_row_id: the 1-based position of the JSON
   # array element within its file (the order in which m-Path Sense wrote the
@@ -487,7 +489,7 @@ read_mpath_sense <- function(
     paste0(
       "CREATE OR REPLACE TEMP TABLE raw_staging AS ",
       "SELECT sensorStartTime, sensorEndTime, ",
-      "regexp_extract(data, '\"__type\"\\s*:\\s*\"([^\"]+)\"', 1) AS payload_type, ",
+      "regexp_extract(data, '\"__type\"\\s*:\\s*\"(?:dk\\.cachet\\.carp\\.)?([^\"]+)\"', 1) AS payload_type, ",
       "filename AS source_file, data ",
       "FROM read_json(",
       .read_sql_array(batch_paths),
@@ -560,7 +562,7 @@ read_mpath_sense <- function(
            COALESCE(NULLIF(data->>'studyName', ''), 'Unknown_Study') AS study_id,
            TRY_CAST(data->>'senseVersion' AS INTEGER) AS sense_version
          FROM raw_staging
-         WHERE regexp_extract(data, '\"__type\"\\s*:\\s*\"([^\"]+)\"', 1) = 'dk.cachet.carp.mpathinfo'
+         WHERE payload_type = 'mpathinfo'
          QUALIFY ROW_NUMBER() OVER (PARTITION BY source_file ORDER BY source_row_id) = 1"
       )
       mpath <- DBI::dbGetQuery(
@@ -706,7 +708,7 @@ read_mpath_sense <- function(
   # statements read the garmin_parsed temp table (one typed transform of every
   # staged payload, built once per version below), so a single presence check
   # for the payload type gates the whole block.
-  garmin_type <- "dk.cachet.carp.garminalllogsdata"
+  garmin_type <- "garminalllogsdata"
   garmin_sensors <- intersect(active, names(type_map)[type_map == garmin_type])
   other_sensors <- setdiff(active, garmin_sensors)
   # Dynamically trigger the targeted ingest functions, per senseVersion

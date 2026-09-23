@@ -1,7 +1,13 @@
+test_that("normalized payload types are unique", {
+  types <- c(.read_known_types(), ignored_sensor_types)
+  expect_identical(types, unique(types))
+  expect_length(grep("^dk\\.cachet\\.carp\\.", types), 0L)
+})
+
 test_that("registered ingest functions generate complete SQL templates", {
   registry <- new_sensor_registry()
   garmin <- vapply(registry, \(x) x[["type"]], character(1)) ==
-    "dk.cachet.carp.garminalllogsdata"
+    "garminalllogsdata"
 
   for (sensor in names(registry)) {
     sql <- registry[[sensor]]$fun(5L)
@@ -31,7 +37,7 @@ test_that("registered ingest functions generate complete SQL templates", {
 test_that("ingest functions use staged payload types", {
   registry <- new_sensor_registry()
   garmin <- vapply(registry, \(x) x[["type"]], character(1)) ==
-    "dk.cachet.carp.garminalllogsdata"
+    "garminalllogsdata"
 
   for (sensor in names(registry)) {
     sql <- registry[[sensor]]$fun(6L)
@@ -92,7 +98,7 @@ test_that("phone Accelerometer ingest parses each payload once", {
   # filter + version guard live inside the derived table, before the lateral
   expect_match(sql, "FROM raw_staging s")
   expect_match(sql, "JOIN file_id_map m ON m.source_file = s.source_file", fixed = TRUE)
-  expect_match(sql, "payload_type = 'dk.cachet.carp.accelerationfeatures'", fixed = TRUE)
+  expect_match(sql, "payload_type = 'accelerationfeatures'", fixed = TRUE)
   expect_match(sql, "m.sense_version = 6", fixed = TRUE)
   expect_match(sql, "CROSS JOIN LATERAL", fixed = TRUE)
   # no ->> remains; features come from the transform struct (spot checks)
@@ -108,7 +114,7 @@ test_that("garmin_parse SQL builds one typed transform per staged payload", {
   sql <- .read_garmin_parse_sql(6L)
   expect_match(sql, "CREATE OR REPLACE TEMP TABLE garmin_parsed")
   expect_match(sql, "json_transform\\(s.data")
-  expect_match(sql, "payload_type = 'dk.cachet.carp.garminalllogsdata'")
+  expect_match(sql, "payload_type = 'garminalllogsdata'")
   expect_match(sql, "m\\.sense_version = 6")
   expect_no_match(sql, "%s")
   # every Garmin array schema appears in the transform
@@ -128,7 +134,7 @@ test_that("scalar ingest SQL executes against a staging fixture", {
      SELECT * FROM (VALUES
        (1765889440388567::BIGINT, NULL::BIGINT,
         '{\"__type\": \"dk.cachet.carp.activity\", \"confidence\": 80, \"type\": \"WALKING\"}',
-        'activity.json', 'dk.cachet.carp.activity', 1::BIGINT)
+        'activity.json', 'activity', 1::BIGINT)
      ) v(sensorStartTime, sensorEndTime, data, source_file, payload_type, source_row_id)"
   )
   DBI::dbExecute(
@@ -157,13 +163,13 @@ test_that("AppUsage ingest preserves empty, missing, and populated collections",
      SELECT * FROM (VALUES
        (1765889440388567::BIGINT, NULL::BIGINT,
         '{\"__type\": \"dk.cachet.carp.appusage\", \"usage\": []}',
-        'empty.json', 'dk.cachet.carp.appusage', 1::BIGINT),
+        'empty.json', 'appusage', 1::BIGINT),
        (1765889441388567::BIGINT, NULL::BIGINT,
         '{\"__type\": \"dk.cachet.carp.appusage\"}',
-        'missing.json', 'dk.cachet.carp.appusage', 2::BIGINT),
+        'missing.json', 'appusage', 2::BIGINT),
        (1765889442388567::BIGINT, NULL::BIGINT,
         '{\"__type\": \"dk.cachet.carp.appusage\", \"usage\": [{\"usage\": 100, \"name\": \"AppA\", \"packageName\": \"a\"}]}',
-        'full.json', 'dk.cachet.carp.appusage', 3::BIGINT)
+        'full.json', 'appusage', 3::BIGINT)
      ) v(sensorStartTime, sensorEndTime, data, source_file, payload_type, source_row_id)"
   )
   DBI::dbExecute(
@@ -205,7 +211,7 @@ test_that("AppUsage replaces epoch last foreground timestamps with NULL", {
           {\"name\": \"Offset\", \"lastForeground\": \"1970-01-01T01:00:00.000\"},
           {\"name\": \"Real\", \"lastForeground\": \"2025-12-16T16:30:00.000Z\"}
         ]}',
-        'appusage.json', 'dk.cachet.carp.appusage', 1::BIGINT)
+        'appusage.json', 'appusage', 1::BIGINT)
      ) v(sensorStartTime, sensorEndTime, data, source_file, payload_type, source_row_id)"
   )
   DBI::dbExecute(
@@ -234,7 +240,7 @@ test_that("typed array ingest executes", {
      SELECT * FROM (VALUES
        (1765889440388567::BIGINT,
         '{\"wristStatus\": [{\"timestamp\": 1, \"status\": \"ON_WRIST\", \"macAddress\": \"m\"}]}',
-        'f', 'dk.cachet.carp.garminalllogsdata', 1::BIGINT)
+        'f', 'garminalllogsdata', 1::BIGINT)
      ) v(sensorStartTime, data, source_file, payload_type, source_row_id)"
   )
   DBI::dbExecute(
@@ -257,10 +263,10 @@ test_that("Bluetooth ingest preserves empty and populated scan results", {
      SELECT * FROM (VALUES
        (1765889440388567::BIGINT,
         '{\"__type\": \"dk.cachet.carp.bluetooth\", \"scanResult\": []}',
-        'empty.json', 'dk.cachet.carp.bluetooth', 1::BIGINT),
+        'empty.json', 'bluetooth', 1::BIGINT),
        (1765889441388567::BIGINT,
         '{\"__type\": \"dk.cachet.carp.bluetooth\", \"scanResult\": [{\"rssi\": -72}]}',
-        'full.json', 'dk.cachet.carp.bluetooth', 2::BIGINT)
+        'full.json', 'bluetooth', 2::BIGINT)
      ) v(sensorStartTime, data, source_file, payload_type, source_row_id)"
   )
   DBI::dbExecute(
