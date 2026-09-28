@@ -99,35 +99,55 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
   #
   # After the preceding deduplication there is at most one Timezone row per
   # (participant_id, time), so ordering by time alone is deterministic and no
-  # `rowid` tie-break is needed. `IS NOT DISTINCT FROM` keeps a run of NULL
-  # timezones together; `any_value()` is safe because a run is homogeneous.
-  DBI::dbExecute(
-    db,
-    "CREATE OR REPLACE TEMP TABLE temp_tz_intervals AS
-     WITH run_boundaries AS (
-       SELECT participant_id, time, timezone,
-              CASE WHEN timezone IS NOT DISTINCT FROM
-                        LAG(timezone) OVER (PARTITION BY participant_id ORDER BY time)
-                   THEN 0 ELSE 1 END AS is_start
-       FROM raw.Timezone
-     ),
-     with_grp AS (
-       SELECT participant_id, time, timezone,
-              SUM(is_start) OVER (PARTITION BY participant_id ORDER BY time) AS grp
-       FROM run_boundaries
-     ),
-     compressed AS (
-       SELECT participant_id, MIN(time) AS start_time,
-              any_value(timezone) AS timezone
-       FROM with_grp
-       GROUP BY participant_id, grp
-     )
-     SELECT participant_id,
-            CASE WHEN ROW_NUMBER() OVER (PARTITION BY participant_id ORDER BY start_time) = 1
-                 THEN TIMESTAMPTZ '-infinity' ELSE start_time END AS start_time,
-            LEAD(start_time) OVER (PARTITION BY participant_id ORDER BY start_time) AS end_time,
-            timezone
-     FROM compressed"
+  # `rowid` tie-break is needed. Equal timezones and two consecutive NULLs keep a
+  # run together; `min()` is safe because a run is homogeneous. dbplyr renders
+  # `cumsum()` with an explicit ROWS window frame instead of the RANGE frame the
+  # hand-written SQL used, which is equivalent while event times are unique per
+  # participant.
+  raw_id <- function(name) {
+    Id(schema = "raw", table = name)
+  }
+  # DuckDB's tbl() method probes dbExistsTable() with the schema-qualified
+  # identifier, for which R prints a one-off S4 method-dispatch note on the
+  # first call in a session; swallow that note.
+  lazy_tbl <- function(id) {
+    suppressMessages(tbl(db, id))
+  }
+
+  dbExecute(db, "DROP TABLE IF EXISTS temp_tz_intervals")
+  dplyr::compute(
+    lazy_tbl(raw_id("Timezone")) |>
+      group_by(.data$participant_id) |>
+      window_order(.data$time) |>
+      mutate(
+        prev_timezone = lag(.data$timezone),
+        is_start = if_else(
+          is.na(.data$timezone) & is.na(.data$prev_timezone) |
+            .data$timezone == .data$prev_timezone,
+          0L, 1L
+        ),
+        grp = cumsum(.data$is_start)
+      ) |>
+      group_by(.data$participant_id, .data$grp) |>
+      summarise(
+        start_time = min(.data$time, na.rm = TRUE),
+        timezone = min(.data$timezone, na.rm = TRUE),
+        .groups = "drop"
+      ) |>
+      group_by(.data$participant_id) |>
+      window_order(.data$start_time) |>
+      mutate(
+        end_time = lead(.data$start_time),
+        start_time = if_else(
+          row_number() == 1L,
+          sql("TIMESTAMPTZ '-infinity'"),
+          .data$start_time
+        )
+      ) |>
+      select("participant_id", "start_time", "end_time", "timezone"),
+    name = "temp_tz_intervals",
+    temporary = TRUE,
+    analyze = FALSE
   )
   on.exit(
     dbExecute(db, "DROP TABLE IF EXISTS temp_tz_intervals"),
