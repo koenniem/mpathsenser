@@ -124,6 +124,60 @@ test_that("copy_db", {
   file.remove(filename)
 })
 
+test_that("copy_db handles quoted file paths and DBI path fallback", {
+  dir <- tempfile("copy_db_", tmpdir = testthat::test_path())
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  source_db <- create_test_db()
+  on.exit(cleanup_test_db(source_db), add = TRUE)
+  target_path <- file.path(dir, "copy's.db")
+  target_db <- create_db(NULL, target_path, shared_home = FALSE)
+  on.exit(cleanup_test_db(target_db), add = TRUE)
+  testthat::local_mocked_bindings(
+    dbGetInfo = function(dbObj, ...) list(dbname = NULL),
+    .package = "DBI"
+  )
+
+  target_db <- copy_db(source_db, target_db)
+  expect_equal(get_nrows(source_db), get_nrows(target_db))
+})
+
+test_that("copy_db rejects in-memory targets without disconnecting them", {
+  source_db <- create_test_db()
+  on.exit(cleanup_test_db(source_db), add = TRUE)
+  target_db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(target_db), add = TRUE)
+
+  expect_snapshot(error = TRUE, copy_db(source_db, target_db))
+  expect_true(DBI::dbIsValid(target_db))
+})
+
+test_that("copy_db detaches its target after a copy error", {
+  dir <- tempfile("copy_db_", tmpdir = testthat::test_path())
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  source_db <- create_test_db()
+  on.exit(cleanup_test_db(source_db), add = TRUE)
+  target_db <- create_db(NULL, file.path(dir, "target.db"), shared_home = FALSE)
+  on.exit(cleanup_test_db(target_db), add = TRUE)
+  testthat::local_mocked_bindings(
+    dbExecute = function(conn, statement, ...) {
+      if (grepl("INSERT INTO new_db.Study", statement, fixed = TRUE)) {
+        stop("forced copy failure")
+      }
+      DBI::dbExecute(conn, statement, ...)
+    },
+    .package = "mpathsenser"
+  )
+
+  expect_snapshot(error = TRUE, copy_db(source_db, target_db))
+  databases <- DBI::dbGetQuery(
+    source_db,
+    "SELECT database_name FROM duckdb_databases()"
+  )$database_name
+  expect_false("new_db" %in% databases)
+})
+
 test_that("close_db", {
   db <- create_test_db()
   expect_error(close_db(db), NA)
@@ -229,8 +283,13 @@ test_that("optimize_db rewrites unsorted sensor tables", {
   expect_setequal(
     names(DBI::dbGetQuery(db, "SELECT * FROM raw.Pedometer LIMIT 0")),
     c(
-      "participant_id", "time", "step_count", "timezone", "source_file_id",
-      "source_row_id", "source_measurement_id"
+      "participant_id",
+      "time",
+      "step_count",
+      "timezone",
+      "source_file_id",
+      "source_row_id",
+      "source_measurement_id"
     )
   )
 

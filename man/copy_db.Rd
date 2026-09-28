@@ -9,8 +9,9 @@ copy_db(source_db, target_db, sensor = NULL)
 \arguments{
 \item{source_db}{A mpathsenser database connection from where the data will be transferred.}
 
-\item{target_db}{A mpathsenser database connection where the data will be transferred to.
-\code{\link[=create_db]{create_db()}} to create a new database.}
+\item{target_db}{A mpathsenser database connection to receive the data. Use
+\code{\link[=create_db]{create_db()}} to create a new, file-backed database; in-memory targets are
+not supported.}
 
 \item{sensor}{A character vector containing one or multiple sensors. See
 \code{\link[mpathsenser]{sensors}} for a list of available sensors. Defaults to \code{NULL}, which

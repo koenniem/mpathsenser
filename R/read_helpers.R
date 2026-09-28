@@ -121,49 +121,71 @@
 # Register empty (0-byte) files as processed. Because empty files contain no
 # mpathinfo, the participant and study are parsed from the file name (legacy
 # m-Path Sense naming convention). Returns the relative paths of files that
-# could not be attributed and were skipped.
+# could not be attributed or whose participant id cannot be stored.
 .read_register_empty_files <- function(db, empty_meta) {
+  empty_meta$.input_row <- seq_len(nrow(empty_meta))
   meta <- .read_meta_from_file_name(empty_meta$file_name)
-  # Empty files have no mpathinfo, so the participant is parsed from the file
-  # name (legacy m-Path Sense naming convention). Valid participants are
-  # numeric and non-missing.
-  valid <- !is.na(meta$participant_id) & meta$participant_id != "N/A"
-  if (!any(valid)) {
+  meta$.input_row <- empty_meta$.input_row
+
+  # Keep parser and path metadata aligned by position; basenames are not unique.
+  usable <- !is.na(meta$participant_id) &
+    !meta$participant_id %in% c("", "N/A")
+  skipped_invalid <- meta$.input_row[!usable]
+  if (length(skipped_invalid) > 0) {
     cli_warn(c(
-      "Skipped {length(empty_meta$rel_path)} empty file{?s} with an unrecognised file name.",
+      "Skipped {length(skipped_invalid)} empty file{?s} with an unrecognised file name.",
       i = "Empty files are registered as processed when their name follows the m-Path Sense convention."
     ))
-    return(empty_meta$rel_path)
   }
 
-  meta <- meta[valid, ]
-  meta$participant_id <- suppressWarnings(as.numeric(meta$participant_id))
-  # A participant id that is not numeric cannot be stored as UINTEGER, so drop
-  # those files (reporting them as skipped) while still registering the rest.
-  non_numeric <- !is.finite(meta$participant_id)
-  skipped_non_numeric <- empty_meta$rel_path[valid][non_numeric]
-  if (any(non_numeric)) {
+  participant_id <- suppressWarnings(as.numeric(meta$participant_id))
+  finite_id <- is.finite(participant_id)
+  skipped_non_numeric <- meta$.input_row[usable & !finite_id]
+  if (length(skipped_non_numeric) > 0) {
     cli_warn(c(
-      "Skipped {sum(non_numeric)} empty file{?s} with a non-numeric participant id.",
+      "Skipped {length(skipped_non_numeric)} empty file{?s} with a non-numeric participant id.",
       i = "Participant ids are stored as unsigned integers."
     ))
-    meta <- meta[!non_numeric, ]
   }
-  if (nrow(meta) == 0) {
-    return(c(empty_meta$rel_path[!valid], skipped_non_numeric))
-  }
-  meta <- cbind(
-    meta,
-    empty_meta[valid, c("file_name", "rel_path", "file_size_bytes", "modified_at")]
-  )
 
-  empty_tbl <- data.frame(
-    file_name = meta$file_name,
-    participant_id = meta$participant_id,
-    file_size_bytes = as.numeric(meta$file_size_bytes),
-    modified_at = as.POSIXct(meta$modified_at, tz = "UTC"),
-    stringsAsFactors = FALSE
+  storable_id <- finite_id &
+    participant_id >= 0 &
+    participant_id <= 4294967295 &
+    participant_id == trunc(participant_id)
+  skipped_unrepresentable <- meta$.input_row[usable & finite_id & !storable_id]
+  if (length(skipped_unrepresentable) > 0) {
+    cli_warn(c(
+      "Skipped {length(skipped_unrepresentable)} empty file{?s} with a participant id that cannot be stored as an unsigned integer.",
+      i = "Participant ids must be whole numbers between 0 and 4294967295."
+    ))
+  }
+
+  register_rows <- meta$.input_row[usable & storable_id]
+  skipped_rows <- sort(c(skipped_invalid, skipped_non_numeric, skipped_unrepresentable))
+  skipped_paths <- empty_meta$rel_path[match(skipped_rows, empty_meta$.input_row)]
+  if (length(register_rows) == 0) {
+    return(skipped_paths)
+  }
+
+  meta_rows <- match(register_rows, meta$.input_row)
+  file_rows <- match(register_rows, empty_meta$.input_row)
+  meta <- meta[meta_rows, , drop = FALSE]
+  file_meta <- empty_meta[file_rows, , drop = FALSE]
+  meta$participant_id <- participant_id[meta_rows]
+  meta$study_id[is.na(meta$study_id)] <- "Unknown_Study"
+
+  meta <- dplyr::bind_cols(
+    dplyr::select(meta, study_id, participant_id, .input_row),
+    dplyr::select(file_meta, file_name, rel_path, file_size_bytes, modified_at)
   )
+  empty_tbl <- meta |>
+    dplyr::select(-.input_row) |>
+    dplyr::transmute(
+      file_name,
+      participant_id,
+      file_size_bytes = as.numeric(file_size_bytes),
+      modified_at = as.POSIXct(modified_at, tz = "UTC")
+    )
 
   .read_db_transaction(db, {
     dbExecute(
@@ -197,7 +219,7 @@
     dbExecute(db, "DROP TABLE IF EXISTS empty_meta")
   })
 
-  skipped_non_numeric
+  skipped_paths
 }
 
 # Parse participant and study metadata from m-Path Sense file names. The file
@@ -205,38 +227,42 @@
 # therapistid_study_id_participantid_m_Path_sense_yyyy-mm-dd_HH-MM-SS%OS6.json
 # Note that the study_id may itself contain underscores.
 .read_meta_from_file_name <- function(file_name) {
-  valid_names <- grepl("m_Path_sense", file_name)
-
-  invalid_names <- tibble(
-    study_id = NA_character_,
-    participant_id = NA_character_,
-    file_name = file_name[!valid_names]
-  )
-
-  file_name <- file_name[valid_names]
-  if (length(file_name) == 0) {
-    return(invalid_names)
-  }
-
-  split_file_name <- strsplit(file_name, "_")
-  study_id <- map(split_file_name, \(x) {
-    x[-c(1, seq.int(length(x) - 5, length(x)))]
-  })
-  study_id <- purrr::map_chr(study_id, \(x) paste0(x, collapse = "_"))
-  participant_id <- purrr::map_chr(split_file_name, \(x) x[length(x) - 5])
-
-  out <- tibble(
-    study_id = study_id,
-    participant_id = participant_id,
+  input <- tibble(
+    .input_row = seq_along(file_name),
     file_name = file_name
   )
+  valid_names <- grepl("m_Path_sense", file_name) %in% TRUE
+  recognized <- input[valid_names, , drop = FALSE]
+  split_file_name <- strsplit(recognized$file_name, "_")
 
-  if (nrow(invalid_names) > 0) {
-    out <- rbind(out, invalid_names)
-    out <- out[match(file_name, out$file_name), ]
-  }
+  parsed <- tibble(
+    .input_row = recognized$.input_row,
+    study_id = purrr::map_chr(split_file_name, \(x) {
+      study_start <- length(x) - 5L
+      if (study_start < 2L) {
+        NA_character_
+      } else {
+        study <- x[-c(1L, seq.int(study_start, length(x)))]
+        if (length(study) == 0L) NA_character_ else paste(study, collapse = "_")
+      }
+    }),
+    participant_id = purrr::map_chr(split_file_name, \(x) {
+      participant_idx <- length(x) - 5L
+      if (participant_idx < 1L) NA_character_ else x[[participant_idx]]
+    }),
+    file_name = recognized$file_name
+  )
 
-  out
+  unrecognized <- tibble(
+    .input_row = input$.input_row[!valid_names],
+    study_id = rep(NA_character_, sum(!valid_names)),
+    participant_id = rep(NA_character_, sum(!valid_names)),
+    file_name = input$file_name[!valid_names]
+  )
+
+  dplyr::bind_rows(parsed, unrecognized) |>
+    dplyr::arrange(.input_row) |>
+    dplyr::select(-.input_row)
 }
 
 # Format a character vector of paths as a SQL array literal

@@ -163,18 +163,24 @@ deduplicate = TRUE, optimize = TRUE, .progress, .debug)`.
    `ProcessedFiles` is bit-identical to the one read back later. (A sub-microsecond mtime could
    otherwise round differently on the two sides, a formerly-imported file would look new, and
    its insert would collide with the `ProcessedFiles` UNIQUE constraint.)
-3. **Empty (0-byte) files** cannot be staged and contain no mpathinfo, so
-   `.read_register_empty_files()` parses participant/study from the file name and registers them
-   as processed, so they are reported once instead of on every run.
-4. `.read_filter_new_files()` drops files whose `(file_name, file_size_bytes, modified_at)` key
-   already exists in `ProcessedFiles` and drops intra-run duplicates. It also reports whether the
-   database was empty before the run (used for the deduplication choice below).
+3. **Empty (0-byte) files** cannot be staged and contain no mpathinfo or sensor observations.
+   `.read_register_empty_files()` uses the permissive filename parser only for these files; an
+   absent participant id or an id that cannot be stored as `UINTEGER` is reported and skipped.
+   A missing study id falls back to `Unknown_Study`.
+4. `.read_filter_new_files()` applies the early duplicate heuristic `(file_name, file_size_bytes,
+   modified_at)` to all files before empty-file registration or JSON staging and keeps the first
+   intra-run occurrence. It also reports whether the database was empty before the run (used for
+   the deduplication choice below).
 5. `sensors = NULL` resolves to the full registry through `.read_resolve_sensors()`.
 
-A file is identified by `(file_name, participant_id, file_size_bytes, modified_at)` — there is
-deliberately **no content hash**. A corrected re-upload has a different size or mtime and is
-re-imported; an unchanged file is skipped cheaply; a renamed copy is imported and left to data
-level deduplication.
+`ProcessedFiles` enforces `(file_name, participant_id, file_size_bytes, modified_at)` and there is
+deliberately **no content hash**. The early duplicate heuristic is cheaper and uses only the
+basename, size, and mtime; normal exports encode participant id in the basename. A researcher
+manually renaming different participants' files to the same basename while preserving size and
+mtime could therefore skip one, an accepted edge case. For every non-empty file that passes the
+heuristic, `mpathinfo` is authoritative for participant, study, and sense version: filename
+metadata never validates or overrides it. Renamed copies are imported and sensor-level
+deduplication resolves repeated measurements.
 
 ### 2. Batching and transactions
 
@@ -385,8 +391,8 @@ about deduplication; `deduplicate_db()` returns a named count of removed rows pe
 | Situation | Behaviour |
 |---|---|
 | Unchanged file already in `ProcessedFiles` | skipped silently (no-op re-run) |
-| 0-byte file with a parseable name | registered as processed, reported via `skipped_empty` |
-| 0-byte file with an unrecognised name | reported as unprocessed |
+| 0-byte file with a usable participant id | registered as processed; no sensor rows are staged |
+| 0-byte file with no usable or storable participant id | warned about and returned as unprocessed |
 | No mpathinfo entry | skipped, reported, warning "could not be attributed to a participant" |
 | Non-numeric `connectionId` | skipped, reported (cannot be stored as `UINTEGER`) |
 | Batch fails | batch rolled back; each file retried alone; only truly failing files reported |
@@ -446,7 +452,7 @@ attribute that `get_data()` attaches).
 | `optimize_db()` / `optimise_db()` | Rewrites selected `raw` tables as `ORDER BY participant_id, time` | Improves zonemap pruning and compression. Skips tables already physically sorted (a rowid inversion scan in SQL — physical order is only observable through `rowid`). Rewrites via `dplyr::compute(arrange(...))`, restores `NOT NULL` from `information_schema`, replaces the table with an unqualified `RENAME TO` inside a transaction. Excludes `Timezone`. |
 | `deduplicate_db()` | Full-table dedup pass | Cleans duplicates that predate the current import (e.g. after an interrupt). |
 | `add_timezones_to_db()` | See above | Reusable; only fills NULL cells. |
-| `copy_db()` | Copies metadata + selected sensors into another database | `ATTACH` the target, `INSERT … SELECT` (metadata with `ON CONFLICT DO NOTHING`, raw tables without, since they have no unique constraints), then **re-syncs the target's sequence** (drop default, drop/recreate `processed_files_seq` at `MAX(file_id) + 1`, set default with an unqualified name). |
+| `copy_db()` | Copies metadata + selected sensors into another database | Requires a file-backed target, quotes its path for `ATTACH`, uses `INSERT … SELECT` (metadata with `ON CONFLICT DO NOTHING`, raw tables without, since they have no unique constraints), then **re-syncs the target's sequence** (drop default, drop/recreate `processed_files_seq` at `MAX(file_id) + 1`, set default with an unqualified name). |
 | `check_db()` | Validates a connection and the database layout | Rejects SQLite connections; verifies every sensor exists as a `raw` BASE TABLE *and* a `main` VIEW/BASE TABLE. Can be skipped per session with `options(mpathsenser.check_missing_sensors = FALSE)`. |
 | `unzip_data()` | Extracts delivered `.zip` archives | `.zip` files are not read by the importer; unzip first. |
 
@@ -549,8 +555,8 @@ These are measured behaviours; supporting reproductions and investigation histor
 | Area | File | Key symbols |
 |---|---|---|
 | Import entry point | `R/read_mpath_sense.R` | `read_mpath_sense()`, `.read_mpath_sense_batch()`, `.read_mpath_sense_loop()`, `.read_rollback_stale_transaction()` |
-| Staging, dedup, file filtering | `R/read_helpers.R` | `.read_filter_new_files()`, `.read_register_empty_files()`, `.read_dedup()`, `read_dedup_keys`, `.read_db_transaction()`, `.read_sql_array()`, `.read_json_array_typed()`, `.read_staging_payloads()`, `.read_version_filter()`, `.read_debug_time()` |
-| Sensor statements | `R/ingest.R` | `ingest_scalar()`, `ingest_garmin_array()`, `ingest_accelerometer()`, `ingest_appusage()`, `ingest_bluetooth()`, `ingest_bluetooth_beacon()`, `ingest_connectivity()`, `ingest_device()`, `ingest_garmin_meta()`, `ingest_garmin_actigraphy()`, `ingest_location()`, `ingest_weather()`, `.read_garmin_parse_sql()`, `.accel_feature_exprs()` |
+| Staging, dedup, file filtering | `R/read_helpers.R` | `.read_filter_new_files()`, `.read_register_empty_files()`, `.read_dedup()`, `read_dedup_keys`, `.read_db_transaction()`, `.read_sql_array()`, `.read_json_array_typed()`, `.read_version_filter()`, `.read_debug_time()` |
+| Sensor statements | `R/ingest.R` | `ingest_scalar()`, `ingest_garmin_array()`, `ingest_accelerometer()`, `ingest_appusage()`, `ingest_bluetooth()`, `ingest_bluetooth_beacon()`, `ingest_connectivity()`, `ingest_device()`, `ingest_garmin_meta()`, `ingest_garmin_actigraphy()`, `ingest_location()`, `ingest_weather()`, `.read_garmin_parse_sql()`, `.read_staging_payloads()`, `.accel_feature_exprs()` |
 | Registry | `R/sensor_registry.R` | `scalar_sensor()`, `garmin_array_sensor()`, `new_sensor_registry()`, `sensor_registry`, `array_schemas`, `ignored_sensor_types` |
 | Database lifecycle | `R/database.R` | `create_db()`, `open_db()`, `close_db()`, `copy_db()`, `optimize_db()`, `deduplicate_db()`, `.create_sensor_views()`, `.create_local_views()`, `.has_mpathsenser_schema()`, `.configure_duckdb()`, `sensors` |
 | Schema | `inst/extdata/dbdef.sql` | `raw.*` tables, `Study`, `Participant`, `ProcessedFiles`, `processed_files_seq` |

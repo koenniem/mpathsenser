@@ -168,6 +168,17 @@ read_mpath_sense <- function(
     )
   )
 
+  # Keep only files that were not yet (successfully) imported. Apply this to
+  # empty and non-empty files before registering empties so db_was_empty still
+  # describes the database at the start of this run.
+  .read_debug_time(
+    .debug,
+    "Checking for already imported files",
+    "Found {length(files) - nrow(file_meta)} duplicate file{?s}. Continuing with {nrow(file_meta)} file{?s}.",
+    file_meta <- .read_filter_new_files(db, file_meta)
+  )
+  db_was_empty <- isTRUE(attr(file_meta, "db_was_empty"))
+
   # Empty files contain no mpathinfo and cannot be staged with read_json.
   # Register them as processed (if their name allows attributing them to a
   # participant) so they are not reported on every run.
@@ -181,20 +192,11 @@ read_mpath_sense <- function(
   # Resolve which sensor ingest functions to run
   target_sensors <- .read_resolve_sensors(sensors)
 
-  # Keep only files that were not yet (successfully) imported
-  .read_debug_time(
-    .debug,
-    "Checking for already imported files",
-    "Found {length(files) - nrow(file_meta)} duplicate file{?s}. Continuing with {nrow(file_meta)} file{?s}.",
-    file_meta <- .read_filter_new_files(db, file_meta)
-  )
-
-  # TRUE when the database held no processed files before this run. Used to
-  # choose between the full-table dedup pass and the file-scoped pass.
-  db_was_empty <- isTRUE(attr(file_meta, "db_was_empty"))
-
   if (nrow(file_meta) == 0) {
     cli_inform("No new files to process.")
+    if (length(skipped_empty) > 0) {
+      return(skipped_empty)
+    }
     return(invisible(""))
   }
 

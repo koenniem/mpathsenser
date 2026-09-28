@@ -1,13 +1,18 @@
 # mpathsenser (in-development version)
 * `app_category()` skips missing app names and rate-limits only between actual
   requests.
+* `copy_db()` quotes file-backed target paths and rejects in-memory targets
+  before disconnecting them.
 * `get_data()` accepts `Date` and strict `YYYY-MM-DD` day bounds; `POSIXt`
   inputs are exact inclusive timestamps. Day bounds use UTC for canonical time
   columns and local wall time for `_local` views; the end of a day is exclusive.
-* `to_local_time()` requires timezone vectors to have length one or match the
-  timestamp vector.
+* `read_mpath_sense()` keeps empty-file metadata aligned by input position,
+  reports unusable participant ids without losing valid files in mixed batches,
+  and uses `Unknown_Study` when an empty file has no study-name token.
 * `read_mpath_sense()` now matches payload sensor names whether `__type`
   includes the optional `dk.cachet.carp.` prefix or not.
+* `to_local_time()` requires timezone vectors to have length one or match the
+  timestamp vector.
 * Removed `first_date()` and `last_date()`.
 * Replaced `coverage()` with `coverage_frequency()` for absolute measurement
   counts and `coverage_proportional()` for count, interval, or occupied-slot

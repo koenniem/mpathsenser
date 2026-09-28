@@ -565,8 +565,9 @@ close_db <- function(db) {
 #' @description `r lifecycle::badge("stable")`
 #'
 #' @param source_db A mpathsenser database connection from where the data will be transferred.
-#' @param target_db A mpathsenser database connection where the data will be transferred to.
-#'   [create_db()] to create a new database.
+#' @param target_db A mpathsenser database connection to receive the data. Use
+#'   [create_db()] to create a new, file-backed database; in-memory targets are
+#'   not supported.
 #' @param sensor A character vector containing one or multiple sensors. See
 #'   \code{\link[mpathsenser]{sensors}} for a list of available sensors. Defaults to `NULL`, which
 #'   means all available sensors.
@@ -614,12 +615,31 @@ copy_db <- function(
   }
   sensor <- .physical_sensor(sensor)
 
-  # Get target database path - for duckdb, we access the path via the driver
-  dbDisconnect(target_db) # Disconnect to avoid locking issues
-  target_path <- target_db@driver@dbdir
+  target_path <- DBI::dbGetInfo(target_db)$dbname
+  if (is.null(target_path)) {
+    target_path <- target_db@driver@dbdir
+  }
+  if (
+    length(target_path) != 1L ||
+      is.na(target_path) ||
+      !nzchar(target_path) ||
+      identical(target_path, ":memory:")
+  ) {
+    cli_abort("The target database must have a file-backed path.")
+  }
 
-  # Attach new database to old database (DuckDB syntax)
-  dbExecute(source_db, paste0("ATTACH '", target_path, "' AS new_db"))
+  # Disconnect only after the target path has been validated, then attach it
+  # with DBI quoting so paths containing apostrophes remain valid SQL.
+  DBI::dbDisconnect(target_db)
+  attach_path <- as.character(DBI::dbQuoteString(source_db, target_path))
+  dbExecute(source_db, paste0("ATTACH ", attach_path, " AS new_db"))
+  attached <- TRUE
+  on.exit(
+    if (attached) {
+      try(dbExecute(source_db, "DETACH new_db"), silent = TRUE)
+    },
+    add = TRUE
+  )
 
   # Copy participants, studies, processed_files (using ON CONFLICT DO NOTHING for DuckDB)
   dbExecute(source_db, "INSERT INTO new_db.Study SELECT * FROM Study ON CONFLICT DO NOTHING")
@@ -667,6 +687,7 @@ copy_db <- function(
 
   # Detach
   dbExecute(source_db, "DETACH new_db")
+  attached <- FALSE
 
   # Reopen the target_db
   target_db <- dbConnect(duckdb(), target_path)
@@ -1022,8 +1043,8 @@ get_studies <- function(db, lazy = FALSE) {
 #' # Get the number of rows for all sensors
 #' get_nrows(db, sensor = NULL)
 #'
-#' # Get the number of rows for the Accelerometer and Gyroscope sensors
-#' get_nrows(db, c("Accelerometer", "Gyroscope"))
+#' # Count rows for Accelerometer and Activity
+#' get_nrows(db, c("Accelerometer", "Activity"))
 #'
 #' # Remember to close the connection
 #' close_db(db)

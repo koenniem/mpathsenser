@@ -30,6 +30,22 @@ make_test_file <- function(
   file.path(dir, name)
 }
 
+make_empty_file_meta <- function(dir, rel_paths) {
+  paths <- file.path(dir, rel_paths)
+  for (path in paths) {
+    dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+    file.create(path)
+  }
+  info <- file.info(paths)
+  tibble::tibble(
+    source_file = paths,
+    file_name = basename(paths),
+    rel_path = rel_paths,
+    file_size_bytes = info$size,
+    modified_at = info$mtime
+  )
+}
+
 # Number of rows that violate the (participant_id, time) physical order, i.e.
 # the same check optimize_db() uses to decide whether a table needs rewriting.
 physical_order_violations <- function(db, sensor = "Activity") {
@@ -783,6 +799,308 @@ test_that("file_ids are assigned in deterministic batch order", {
 
   close_db(db)
   unlink(dir, recursive = TRUE)
+})
+
+test_that("filename metadata parsing preserves every input row", {
+  conventional <- c(
+    "1_study_777_m_Path_sense_2025-12-16_16-33-00.000000.json",
+    "1_study_with_underscores_888_m_Path_sense_2025-12-17_16-33-00.000000.json"
+  )
+  parsed <- .read_meta_from_file_name(conventional)
+  expect_equal(
+    parsed,
+    tibble::tibble(
+      study_id = c("study", "study_with_underscores"),
+      participant_id = c("777", "888"),
+      file_name = conventional
+    )
+  )
+
+  unrecognized_names <- c("a.json", "b.json")
+  expect_equal(
+    .read_meta_from_file_name(unrecognized_names),
+    tibble::tibble(
+      study_id = rep(NA_character_, 2),
+      participant_id = rep(NA_character_, 2),
+      file_name = unrecognized_names
+    )
+  )
+
+  mixed_names <- c(conventional[[1]], "not_a_sense_file.json", conventional[[2]])
+  mixed <- .read_meta_from_file_name(mixed_names)
+  expect_equal(mixed$file_name, mixed_names)
+  expect_equal(mixed$study_id, c("study", NA_character_, "study_with_underscores"))
+  expect_equal(mixed$participant_id, c("777", NA_character_, "888"))
+
+  expect_equal(
+    .read_meta_from_file_name(rep(conventional[[1]], 2)),
+    tibble::tibble(
+      study_id = c("study", "study"),
+      participant_id = c("777", "777"),
+      file_name = rep(conventional[[1]], 2)
+    )
+  )
+  expect_equal(.read_meta_from_file_name(conventional[[1]]), parsed[1, ])
+
+  malformed <- .read_meta_from_file_name("m_Path_sense")
+  expect_equal(nrow(malformed), 1L)
+  expect_named(malformed, c("study_id", "participant_id", "file_name"))
+  expect_type(malformed$study_id, "character")
+  expect_type(malformed$participant_id, "character")
+  expect_equal(malformed$study_id, NA_character_)
+  expect_equal(malformed$participant_id, NA_character_)
+
+  expect_equal(
+    .read_meta_from_file_name(character()),
+    tibble::tibble(
+      study_id = character(),
+      participant_id = character(),
+      file_name = character()
+    )
+  )
+})
+
+test_that("empty-file registration falls back when a study token is missing", {
+  dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  empty_meta <- make_empty_file_meta(dir, "1_2_3_4_m_Path_sense")
+
+  expect_no_warning(.read_register_empty_files(db, empty_meta))
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT study_id, data_format FROM Study"),
+    data.frame(study_id = "Unknown_Study", data_format = "CARP JSON")
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT participant_id, study_id FROM Participant"),
+    data.frame(participant_id = 2, study_id = "Unknown_Study")
+  )
+})
+
+test_that("all conventional empty files register in position order", {
+  dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  file_names <- c(
+    "1_study_a_301_m_Path_sense_2025-12-16_10-00-00.000000.json",
+    "1_study_b_302_m_Path_sense_2025-12-17_10-00-00.000000.json"
+  )
+  empty_meta <- make_empty_file_meta(dir, file_names)
+
+  expect_no_warning(skipped <- .read_register_empty_files(db, empty_meta))
+  expect_identical(skipped, character())
+  expect_equal(
+    DBI::dbGetQuery(
+      db,
+      "SELECT file_name, participant_id, file_size_bytes
+       FROM ProcessedFiles ORDER BY file_id"
+    ),
+    data.frame(
+      file_name = file_names,
+      participant_id = c(301, 302),
+      file_size_bytes = c(0, 0)
+    )
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT participant_id, study_id FROM Participant ORDER BY participant_id"),
+    data.frame(participant_id = c(301, 302), study_id = c("study_a", "study_b"))
+  )
+})
+
+test_that("empty-file registration keeps mixed input rows aligned", {
+  dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  file_names <- c(
+    "1_study_a_101_m_Path_sense_2025-12-16_10-00-00.000000.json",
+    "not_a_sense_file.json",
+    "1_study_b_103_m_Path_sense_2025-12-18_10-00-00.000000.json"
+  )
+  empty_meta <- make_empty_file_meta(dir, file_names)
+
+  expect_snapshot(skipped <- .read_register_empty_files(db, empty_meta))
+  expect_equal(skipped, file_names[[2]])
+  expect_equal(
+    DBI::dbGetQuery(
+      db,
+      "SELECT file_name, participant_id, file_size_bytes
+       FROM ProcessedFiles ORDER BY file_id"
+    ),
+    data.frame(
+      file_name = file_names[c(1, 3)],
+      participant_id = c(101, 103),
+      file_size_bytes = c(0, 0)
+    )
+  )
+  expect_equal(
+    DBI::dbGetQuery(
+      db,
+      "SELECT participant_id FROM Participant ORDER BY participant_id"
+    )$participant_id,
+    c(101, 103)
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT study_id FROM Study ORDER BY study_id")$study_id,
+    c("study_a", "study_b")
+  )
+})
+
+test_that("empty-file registration skips a non-numeric id between valid files", {
+  dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  file_names <- c(
+    "1_study_201_m_Path_sense_2025-12-16_10-00-00.000000.json",
+    "1_study_unknown_m_Path_sense_2025-12-17_10-00-00.000000.json",
+    "1_study_203_m_Path_sense_2025-12-18_10-00-00.000000.json"
+  )
+  empty_meta <- make_empty_file_meta(dir, file_names)
+
+  expect_snapshot(skipped <- .read_register_empty_files(db, empty_meta))
+  expect_equal(skipped, file_names[[2]])
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT file_name, participant_id FROM ProcessedFiles ORDER BY file_id"),
+    data.frame(
+      file_name = file_names[c(1, 3)],
+      participant_id = c(201, 203)
+    )
+  )
+})
+
+test_that("empty-file registration enforces the UINTEGER participant range", {
+  dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  file_names <- c(
+    "1_study_4294967295_m_Path_sense_2025-12-16_10-00-00.000000.json",
+    "1_study_4294967296_m_Path_sense_2025-12-17_10-00-00.000000.json",
+    "1_study_1.5_m_Path_sense_2025-12-18_10-00-00.000000.json"
+  )
+  empty_meta <- make_empty_file_meta(dir, file_names)
+
+  expect_snapshot(skipped <- .read_register_empty_files(db, empty_meta))
+  expect_equal(skipped, file_names[c(2, 3)])
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT file_name, participant_id FROM ProcessedFiles"),
+    data.frame(file_name = file_names[[1]], participant_id = 4294967295)
+  )
+})
+
+test_that("duplicate empty basenames in subdirectories register once per path", {
+  dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  file_name <- "1_study_777_m_Path_sense_2025-12-16_10-00-00.000000.json"
+  rel_paths <- file.path(c("left", "right"), file_name)
+  empty_meta <- make_empty_file_meta(dir, rel_paths)
+  Sys.setFileTime(empty_meta$source_file[[1]], as.POSIXct("2020-01-01", tz = "UTC"))
+  Sys.setFileTime(empty_meta$source_file[[2]], as.POSIXct("2020-01-02", tz = "UTC"))
+  empty_meta$modified_at <- as.POSIXct(file.info(empty_meta$source_file)$mtime, tz = "UTC")
+
+  expect_no_warning(skipped <- .read_register_empty_files(db, empty_meta))
+  expect_identical(skipped, character())
+  registered <- DBI::dbGetQuery(
+    db,
+    "SELECT file_name, participant_id, modified_at
+     FROM ProcessedFiles ORDER BY modified_at"
+  )
+  expect_equal(nrow(registered), 2L)
+  expect_equal(registered$file_name, rep(file_name, 2))
+  expect_equal(registered$participant_id, c(777, 777))
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT participant_id, study_id FROM Participant"),
+    data.frame(participant_id = 777, study_id = "study")
+  )
+  expect_equal(as.numeric(registered$modified_at), as.numeric(empty_meta$modified_at))
+})
+
+test_that("read_mpath_sense returns all unrecognized empty paths", {
+  dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  file.create(file.path(dir, c("a.json", "b.json")))
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+
+  expect_snapshot(
+    skipped <- read_mpath_sense(
+      path = dir,
+      db = db,
+      recursive = FALSE,
+      .progress = FALSE
+    )
+  )
+  expect_equal(skipped, c("a.json", "b.json"))
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) AS n FROM ProcessedFiles")$n, 0)
+})
+
+test_that("empty registration preserves the initial empty-database decision", {
+  dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  make_test_file(
+    dir,
+    "measurements.json",
+    connection_id = "301",
+    sensors = list(list(`__type` = "dk.cachet.carp.stepcount", steps = 1))
+  )
+  file.create(
+    file.path(dir, "1_study_302_m_Path_sense_2025-12-16_10-00-00.000000.json")
+  )
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  captured_file_ids <- NA_integer_
+  empty_registration_calls <- 0L
+  register_empty_files <- .read_register_empty_files
+  testthat::local_mocked_bindings(
+    .read_dedup = function(db, sensors, .debug = FALSE, file_ids = NULL) {
+      captured_file_ids <<- file_ids
+    },
+    .read_register_empty_files = function(db, empty_meta) {
+      empty_registration_calls <<- empty_registration_calls + 1L
+      register_empty_files(db, empty_meta)
+    },
+    .package = "mpathsenser"
+  )
+
+  expect_message(
+    read_mpath_sense(
+      path = dir,
+      db = db,
+      recursive = FALSE,
+      deduplicate = TRUE,
+      optimize = FALSE,
+      .progress = FALSE
+    ),
+    "All 2 files were successfully written to the database."
+  )
+  expect_null(captured_file_ids)
+  expect_equal(empty_registration_calls, 1L)
+  expect_message(
+    read_mpath_sense(
+      path = dir,
+      db = db,
+      recursive = FALSE,
+      deduplicate = TRUE,
+      optimize = FALSE,
+      .progress = FALSE
+    ),
+    "No new files to process."
+  )
+  expect_equal(empty_registration_calls, 1L)
+  expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) AS n FROM ProcessedFiles")$n, 2)
 })
 
 test_that("empty files are registered as processed", {

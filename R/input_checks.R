@@ -40,7 +40,7 @@ check_db <- function(
 
   if (inherits(db, "SQLiteConnection")) {
     msg <- c(
-      x = "You provded an SQLite database,",
+      x = "You provided an SQLite database,",
       x = "Support for SQLite was dropped in {.pkg mpathsenser} 1.2.4 in favour of duckdb.",
       i = "Please import your data to a new database using the latest version of {.pkg mpathsenser}.",
       i = "Or use an older version of {.pkg mpathsenser}."

@@ -43,8 +43,8 @@ db <- open_db("path/to/db")
 # Get the number of rows for all sensors
 get_nrows(db, sensor = NULL)
 
-# Get the number of rows for the Accelerometer and Gyroscope sensors
-get_nrows(db, c("Accelerometer", "Gyroscope"))
+# Count rows for Accelerometer and Activity
+get_nrows(db, c("Accelerometer", "Activity"))
 
 # Remember to close the connection
 close_db(db)
