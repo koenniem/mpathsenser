@@ -394,111 +394,209 @@ device_info <- function(db, participant_id = NULL) {
 }
 
 
+.moving_average_window_seconds <- function(window) {
+  rlang::check_required(window)
+
+  if (length(window) != 1L) {
+    cli_abort("{.arg window} must have length one.", arg = "window")
+  }
+
+  if (is.character(window)) {
+    window <- tryCatch(
+      suppressWarnings(lubridate::as.period(window)),
+      error = function(e) NULL
+    )
+  }
+
+  if (lubridate::is.period(window)) {
+    calendar_fields <- c(window@year, window@month)
+    if (anyNA(calendar_fields)) {
+      cli_abort("{.arg window} must be a valid duration.", arg = "window")
+    }
+    if (any(calendar_fields != 0)) {
+      cli_abort(
+        "{.arg window} cannot include calendar-dependent years or months.",
+        arg = "window"
+      )
+    }
+    seconds <- lubridate::period_to_seconds(window)
+  } else if (lubridate::is.duration(window)) {
+    seconds <- as.numeric(window, units = "seconds")
+  } else if (is.numeric(window)) {
+    seconds <- as.numeric(window)
+  } else {
+    cli_abort(
+      "{.arg window} must be seconds, a character duration, or a lubridate Period/Duration.",
+      arg = "window"
+    )
+  }
+
+  if (length(seconds) != 1L || !is.finite(seconds) || seconds <= 0) {
+    cli_abort("{.arg window} must be a finite, positive duration.", arg = "window")
+  }
+
+  as.numeric(seconds)
+}
+
 #' Moving average for values in an mpathsenser database
 #'
 #' @description `r lifecycle::badge("experimental")`
 #'
-#' @inheritParams get_data
-#' @param cols Character vectors of the columns in the \code{sensor} table to average over.
-#' @param n The number of seconds to average over. The index of the result will be centered compared
-#'   to the rolling window of observations.
-#' @param participant_id A vector identifying one or multiple participants (stored as unsigned
-#'   integers; integer, numeric, or character values are accepted).
-#' @param start_date An optional single character or `POSIXt` value marking the
-#'   start of the search window.
-#' @param end_date An optional single character or `POSIXt` value marking the
-#'   end of the search window.
+#'   Calculate sample-weighted averages over centered elapsed-time windows.
 #'
-#' @returns A tibble with the same columns as the input, modified to be a moving average.
+#' @inheritParams get_data
+#' @param cols A non-empty, unique character vector of numeric sensor columns to average.
+#' @param window The total centered window width. A positive finite number is
+#'   interpreted as seconds; a character value is parsed by
+#'   [lubridate::as.period()], or supply a lubridate `Period` or `Duration`.
+#'   Periods containing years or months are not allowed. Days and smaller units
+#'   are treated as fixed elapsed durations.
+#' @param participant_id A vector identifying one or more participants (stored
+#'   as unsigned integers; integer, numeric, or character values are accepted).
+#'
+#' @details For a target observation at time `t`, the closed window is
+#'   `[t - window / 2, t + window / 2]`. Every source observation in that
+#'   interval contributes once, so the result is sample-weighted rather than
+#'   time-weighted and is suitable for irregularly sampled data. A row 80 seconds
+#'   after a target is excluded by `window = 60`, even if it is the next row.
+#'
+#'   Missing measurements are ignored as in SQL `AVG`; if a window contains no
+#'   non-missing values, the result is `NA_real_`. Duplicate timestamps remain
+#'   separate observations and each target row receives one result. Windows are
+#'   partitioned by participant and never combine participants.
+#'
+#'   Participant and date filters are applied by [get_data()] before window
+#'   membership is calculated. Rows outside those filters cannot contribute to
+#'   a boundary target. Character and `Date` bounds select whole days under
+#'   [get_data()]'s timezone rules; `POSIXt` bounds select exact instants.
+#'   Window membership uses the selected view's `time`: canonical instants for
+#'   physical sensors and `_with_local` views, wall-clock values for `_local`
+#'   views. Use canonical time when windows must reflect elapsed seconds across
+#'   daylight-saving transitions.
+#'
+#'   The result is a lazy dbplyr table with exactly `participant_id`, `datetime`
+#'   (the target `time`), and the requested averages in `cols` order. No sensor
+#'   observations are collected until the caller requests them.
+#'
+#' @returns A lazy table with one row per filtered sensor observation.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' path <- system.file("testdata", "test.db", package = "mpathsenser")
-#' db <- open_db(NULL, path)
-#' moving_average(
-#'   db = db,
-#'   sensor = "Light",
-#'   cols = c("mean_lux", "max_lux"),
-#'   n = 5, # seconds
-#'   participant_id = "12345"
-#' )
-#' close_db(db)
+#' local({
+#'   db <- create_db(path = NULL, db_name = ":memory:")
+#'   on.exit(close_db(db), add = TRUE)
+#'
+#'   DBI::dbExecute(
+#'     db,
+#'     "INSERT INTO raw.Accelerometer
+#'        (participant_id, time, x_mean, source_file_id, source_row_id,
+#'         source_measurement_id)
+#'      VALUES
+#'        (12345, TIMESTAMPTZ '2024-01-01 00:00:00+00', 1, 1, 1, 1),
+#'        (12345, TIMESTAMPTZ '2024-01-01 00:00:10+00', 2, 1, 2, 1),
+#'        (12345, TIMESTAMPTZ '2024-01-01 00:01:30+00', 3, 1, 3, 1)"
+#'   )
+#'
+#'   # At 00:00:10, the 00:01:30 row is outside the centered 60-second window.
+#'   moving_average(
+#'     db,
+#'     sensor = "Accelerometer",
+#'     cols = "x_mean",
+#'     window = 60,
+#'     participant_id = 12345
+#'   ) |>
+#'     dplyr::collect()
+#' })
 #' }
 moving_average <- function(
   db,
   sensor,
   cols,
-  n,
+  window,
   participant_id = NULL,
   start_date = NULL,
   end_date = NULL
 ) {
   lifecycle::signal_stage("experimental", "moving_average()")
-  check_db(db)
-  check_sensors(sensor, n = 1, include_views = TRUE)
+  window_seconds <- .moving_average_window_seconds(window)
   check_arg(cols, "character")
-  check_arg(n, "numeric")
-  check_arg(participant_id, c("character", "integerish", "numeric"), allow_null = TRUE)
-  check_arg(start_date, c("character", "POSIXt"), n = 1, allow_null = TRUE)
-  check_arg(end_date, c("character", "POSIXt"), n = 1, allow_null = TRUE)
-
-  # SELECT
-  query <- "SELECT \"participant_id\", \"datetime\", "
-
-  # Calculate moving average (use epoch() for DuckDB instead of UNIXEPOCH)
-  avgs <- lapply(cols, function(x) {
-    paste0(
-      "avg(\"",
-      x,
-      "\") OVER (",
-      "PARTITION BY \"participant_id\" ",
-      "ORDER BY epoch(\"datetime\") ",
-      "RANGE BETWEEN ",
-      n / 2,
-      " PRECEDING ",
-      "AND ",
-      n / 2,
-      " FOLLOWING",
-      ") AS \"",
-      x,
-      "\""
+  if (
+    length(cols) == 0L ||
+      anyNA(cols) ||
+      any(!nzchar(cols)) ||
+      anyDuplicated(cols) > 0L
+  ) {
+    cli_abort(
+      "{.arg cols} must be a non-empty vector of unique, non-missing column names.",
+      arg = "cols"
     )
-  })
+  }
 
-  avgs <- paste0(avgs, collapse = ", ")
-  query <- paste0(query, avgs)
+  filtered_data <- get_data(db, sensor, participant_id, start_date, end_date)
+  sensor_columns <- DBI::dbGetQuery(
+    db,
+    "SELECT column_name, data_type
+     FROM information_schema.columns
+     WHERE table_schema = 'main' AND lower(table_name) = lower(?)
+     ORDER BY ordinal_position",
+    params = list(sensor)
+  )
+  numeric_columns <- grepl(
+    "^(U?TINYINT|U?SMALLINT|U?INTEGER|U?BIGINT|U?HUGEINT|FLOAT|REAL|DOUBLE|DECIMAL|NUMERIC|BIGNUM)([[:space:]]|\\(|$)",
+    toupper(sensor_columns$data_type)
+  )
+  invalid_cols <- cols[
+    !(cols %in% sensor_columns$column_name[numeric_columns]) |
+      cols %in% c("participant_id", "time")
+  ]
+  if (length(invalid_cols) > 0L) {
+    cli_abort(
+      c(
+        "{.arg cols} must name existing numeric measurement columns, excluding {.var participant_id} and {.var time}.",
+        "x" = "Invalid column{?s}: {.field {invalid_cols}}."
+      ),
+      arg = "cols"
+    )
+  }
 
-  # FROM
-  query <- paste0(
-    query,
-    " FROM (SELECT \"participant_id\", \"time\" AS \"datetime\", ",
-    paste0("\"", cols, "\"", collapse = ", "),
-    " FROM \"",
-    sensor,
-    "\""
+  data <- filtered_data |>
+    select("participant_id", "time", all_of(cols))
+
+  # dbplyr's numeric window frames render ROWS, so use a quoted DuckDB RANGE frame.
+  quoted_participant <- as.character(DBI::dbQuoteIdentifier(db, "participant_id"))
+  quoted_time <- as.character(DBI::dbQuoteIdentifier(db, "time"))
+  quoted_datetime <- as.character(DBI::dbQuoteIdentifier(db, "datetime"))
+  quoted_source <- as.character(DBI::dbQuoteIdentifier(db, "moving_average_source"))
+  quoted_cols <- as.character(DBI::dbQuoteIdentifier(db, cols))
+  quoted_half_window <- as.character(DBI::dbQuoteLiteral(db, window_seconds / 2))
+  window_expressions <- sprintf(
+    paste(
+      "AVG(%s) OVER (PARTITION BY %s ORDER BY epoch(%s)",
+      "RANGE BETWEEN %s PRECEDING AND %s FOLLOWING) AS %s"
+    ),
+    quoted_cols,
+    quoted_participant,
+    quoted_time,
+    quoted_half_window,
+    quoted_half_window,
+    quoted_cols
   )
 
-  # Where
-  if (!is.null(participant_id)) {
-    query <- paste0(
-      query,
-      " WHERE (",
-      paste0("\"participant_id\" = '", participant_id, "'", collapse = " OR "),
-      ")"
-    )
-  }
+  select_expressions <- c(
+    quoted_participant,
+    sprintf("%s AS %s", quoted_time, quoted_datetime),
+    paste(window_expressions, collapse = ", ")
+  )
 
-  if (!is.null(start_date) && !is.null(end_date)) {
-    end_date <- as.Date(end_date) + 1
-    query <- paste0(query, " AND (\"time\" BETWEEN '", start_date, "' AND '", end_date, "')")
-  }
+  query <- sprintf(
+    "SELECT %s FROM (%s) AS %s",
+    paste(select_expressions, collapse = ", "),
+    dbplyr::sql_render(data),
+    quoted_source
+  )
 
-  # Closing parenthesis
-  query <- paste0(query, ")")
-
-  # Get data
-  tbl(db, sql(query))
+  tbl(db, dbplyr::sql(query))
 }
 
 

@@ -475,7 +475,7 @@ well as physical ones.
 | `coverage()` / `collect.coverage()` / `plot.coverage()` / `coverage_frequency()` | Coverage per bin (`by = minute/hour/day/week/month`), optionally averaged within a recurring `cycle`, using `metric = "count"` for distinct samples or `metric = "time"` for the union of expected-length observation intervals. All aggregation is built by the `.coverage_sql*()` helpers and executed inside DuckDB; missing bins are zero-filled within each participant's observation span, and only the first/last partial bins are prorated. |
 | `identify_gaps()` / `add_gaps()` | Finds gaps in a sensor stream and annotates data with them. |
 | `link()` / `link_gaps()` / `bin_data()` | Links measurements to a time scale (e.g. ESM questionnaires), links gaps to data, and bins time series. |
-| `moving_average()` | Moving average over a sensor column. |
+| `moving_average()` | Lazy, participant-partitioned sample averages over closed centered elapsed-time windows; applies `get_data()` filters first and calculates membership with a DuckDB `RANGE` window. |
 | `device_info()` / `installed_apps()` / `app_category()` | Device metadata, installed apps, and Google Play category lookup (network, rate-limited). |
 | `haversine()`, `location_variance()`, `geocode_rev()` | Distance, location variance, reverse geocoding (network: Nominatim). |
 | `sensors` | Character vector of the 32 physical sensor names. |

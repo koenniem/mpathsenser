@@ -8,7 +8,7 @@ moving_average(
   db,
   sensor,
   cols,
-  n,
+  window,
   participant_id = NULL,
   start_date = NULL,
   end_date = NULL
@@ -20,37 +20,88 @@ moving_average(
 \item{sensor}{The name of a sensor or its derived \verb{_local} or \verb{_with_local} view.
 See \link[mpathsenser]{sensors} for the physical sensor names.}
 
-\item{cols}{Character vectors of the columns in the \code{sensor} table to average over.}
+\item{cols}{A non-empty, unique character vector of numeric sensor columns to average.}
 
-\item{n}{The number of seconds to average over. The index of the result will be centered compared
-to the rolling window of observations.}
+\item{window}{The total centered window width. A positive finite number is
+interpreted as seconds; a character value is parsed by
+\code{\link[lubridate:as.period]{lubridate::as.period()}}, or supply a lubridate \code{Period} or \code{Duration}.
+Periods containing years or months are not allowed. Days and smaller units
+are treated as fixed elapsed durations.}
 
-\item{participant_id}{A vector identifying one or multiple participants (stored as unsigned
-integers; integer, numeric, or character values are accepted).}
+\item{participant_id}{A vector identifying one or more participants (stored
+as unsigned integers; integer, numeric, or character values are accepted).}
 
-\item{start_date}{An optional single character or \code{POSIXt} value marking the
-start of the search window.}
+\item{start_date}{An optional inclusive lower bound. Character values must use
+\code{YYYY-MM-DD}; a \code{Date} selects that whole calendar day. These date-only
+bounds use UTC for canonical \code{time} columns (including \verb{_with_local}) and
+local wall time for \verb{_local} views. A \code{POSIXt} value is an exact instant for
+canonical \code{time}; \verb{_local} views use its clock fields in its timezone, or
+UTC when no timezone attribute is set.}
 
-\item{end_date}{An optional single character or \code{POSIXt} value marking the
-end of the search window.}
+\item{end_date}{An optional upper bound with the same types and timezone rules
+as \code{start_date}. A character or \code{Date} value includes the whole day, ending
+just before the following midnight; a \code{POSIXt} value includes its exact
+timestamp.}
 }
 \value{
-A tibble with the same columns as the input, modified to be a moving average.
+A lazy table with one row per filtered sensor observation.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+
+Calculate sample-weighted averages over centered elapsed-time windows.
+}
+\details{
+For a target observation at time \code{t}, the closed window is
+\verb{[t - window / 2, t + window / 2]}. Every source observation in that
+interval contributes once, so the result is sample-weighted rather than
+time-weighted and is suitable for irregularly sampled data. A row 80 seconds
+after a target is excluded by \code{window = 60}, even if it is the next row.
+
+Missing measurements are ignored as in SQL \code{AVG}; if a window contains no
+non-missing values, the result is \code{NA_real_}. Duplicate timestamps remain
+separate observations and each target row receives one result. Windows are
+partitioned by participant and never combine participants.
+
+Participant and date filters are applied by \code{\link[=get_data]{get_data()}} before window
+membership is calculated. Rows outside those filters cannot contribute to
+a boundary target. Character and \code{Date} bounds select whole days under
+\code{\link[=get_data]{get_data()}}'s timezone rules; \code{POSIXt} bounds select exact instants.
+Window membership uses the selected view's \code{time}: canonical instants for
+physical sensors and \verb{_with_local} views, wall-clock values for \verb{_local}
+views. Use canonical time when windows must reflect elapsed seconds across
+daylight-saving transitions.
+
+The result is a lazy dbplyr table with exactly \code{participant_id}, \code{datetime}
+(the target \code{time}), and the requested averages in \code{cols} order. No sensor
+observations are collected until the caller requests them.
 }
 \examples{
 \dontrun{
-path <- system.file("testdata", "test.db", package = "mpathsenser")
-db <- open_db(NULL, path)
-moving_average(
-  db = db,
-  sensor = "Light",
-  cols = c("mean_lux", "max_lux"),
-  n = 5, # seconds
-  participant_id = "12345"
-)
-close_db(db)
+local({
+  db <- create_db(path = NULL, db_name = ":memory:")
+  on.exit(close_db(db), add = TRUE)
+
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Accelerometer
+       (participant_id, time, x_mean, source_file_id, source_row_id,
+        source_measurement_id)
+     VALUES
+       (12345, TIMESTAMPTZ '2024-01-01 00:00:00+00', 1, 1, 1, 1),
+       (12345, TIMESTAMPTZ '2024-01-01 00:00:10+00', 2, 1, 2, 1),
+       (12345, TIMESTAMPTZ '2024-01-01 00:01:30+00', 3, 1, 3, 1)"
+  )
+
+  # At 00:00:10, the 00:01:30 row is outside the centered 60-second window.
+  moving_average(
+    db,
+    sensor = "Accelerometer",
+    cols = "x_mean",
+    window = 60,
+    participant_id = 12345
+  ) |>
+    dplyr::collect()
+})
 }
 }

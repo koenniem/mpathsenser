@@ -6,6 +6,9 @@
 * `get_data()` accepts `Date` and strict `YYYY-MM-DD` day bounds; `POSIXt`
   inputs are exact inclusive timestamps. Day bounds use UTC for canonical time
   columns and local wall time for `_local` views; the end of a day is exclusive.
+* `moving_average()` replaces the experimental `n` argument with elapsed-time
+  `window` (for example, `n = 60` becomes `window = 60`) and returns a lazy,
+  sample-weighted centered average after participant/date filtering.
 * `read_mpath_sense()` keeps empty-file metadata aligned by input position,
   reports unusable participant ids without losing valid files in mixed batches,
   and uses `Unknown_Study` when an empty file has no study-name token.

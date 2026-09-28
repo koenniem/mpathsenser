@@ -294,26 +294,369 @@ test_that("device_info", {
   cleanup_test_db(db)
 })
 
-test_that("moving_average", {
+test_that("moving_average averages observations in centered time windows", {
   db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
 
-  expect_error(
-    moving_average(db, "Accelerometer", cols = "x_mean", participant_id = "12345", n = 2),
-    NA
+  main_times <- as.POSIXct(
+    c(
+      "2024-01-01 00:00:00",
+      "2024-01-01 00:00:01",
+      "2024-01-01 00:00:20",
+      "2024-01-01 00:00:31",
+      "2024-01-01 00:00:32",
+      "2024-01-01 00:01:00",
+      "2024-01-01 23:59:40",
+      "2024-01-01 23:59:50",
+      "2024-01-02 00:00:00",
+      "2024-01-02 00:00:10",
+      "2024-01-03 11:59:30",
+      "2024-01-03 12:00:00",
+      "2024-01-03 12:00:00",
+      "2024-01-03 12:00:30",
+      "2024-01-03 12:00:00"
+    ),
+    tz = "UTC"
   )
-  res <- moving_average(
-    db = db,
+  boundary_center <- as.POSIXct("2024-01-04 00:00:10", tz = "UTC")
+  boundary_times <- boundary_center + c(-1.01, -1, 0, 1, 1.01)
+  isolated_time <- as.POSIXct("2024-01-05 00:00:00", tz = "UTC")
+  fractional_center <- as.POSIXct("2024-01-06 00:00:10", tz = "UTC")
+  fractional_times <- fractional_center + c(-0.51, -0.5, 0, 0.5, 0.51)
+  participant_ids <- c(
+    rep(1001L, 10),
+    rep(2002L, 4),
+    3003L,
+    rep(4004L, 5),
+    5005L,
+    rep(6006L, 5)
+  )
+  synthetic_rows <- tibble::tibble(
+    participant_id = participant_ids,
+    time = c(main_times, boundary_times, isolated_time, fractional_times),
+    x_mean = c(
+      0,
+      10,
+      20,
+      30,
+      40,
+      60,
+      80,
+      90,
+      100,
+      110,
+      4,
+      8,
+      2,
+      14,
+      1000,
+      100,
+      10,
+      0,
+      20,
+      200,
+      42,
+      100,
+      10,
+      0,
+      20,
+      200
+    ),
+    y_mean = c(
+      100,
+      NA_real_,
+      30,
+      40,
+      50,
+      NA,
+      NA,
+      NA,
+      NA,
+      NA,
+      2,
+      6,
+      0,
+      10,
+      1000,
+      1,
+      2,
+      3,
+      4,
+      5,
+      NA_real_,
+      1,
+      2,
+      3,
+      4,
+      5
+    ),
+    source_file_id = rep(1L, length(participant_ids)),
+    source_row_id = seq_along(participant_ids),
+    source_measurement_id = rep(1L, length(participant_ids))
+  )
+
+  DBI::dbWriteTable(db, "moving_average_rows", synthetic_rows, temporary = TRUE)
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Accelerometer
+       (participant_id, time, x_mean, y_mean, source_file_id, source_row_id,
+        source_measurement_id)
+     SELECT participant_id, CAST(time AS TIMESTAMPTZ), x_mean, y_mean,
+            source_file_id, source_row_id, source_measurement_id
+     FROM moving_average_rows"
+  )
+
+  participants <- c(1001L, 2002L, 3003L, 4004L, 5005L, 6006L)
+  reference_average <- function(data, window_seconds, cols) {
+    results <- lapply(seq_len(nrow(data)), function(i) {
+      in_window <- data$participant_id == data$participant_id[[i]] &
+        abs(as.numeric(data$time) - as.numeric(data$time[[i]])) <= window_seconds / 2
+      averages <- lapply(cols, function(column) {
+        value <- mean(data[[column]][in_window], na.rm = TRUE)
+        if (is.nan(value)) NA_real_ else value
+      })
+      names(averages) <- cols
+      tibble::as_tibble(c(
+        list(participant_id = data$participant_id[[i]], datetime = data$time[i]),
+        averages
+      ))
+    })
+
+    dplyr::bind_rows(results) |>
+      dplyr::arrange(.data$participant_id, .data$datetime)
+  }
+
+  lazy <- moving_average(
+    db,
+    sensor = "Accelerometer",
+    cols = c("x_mean", "y_mean"),
+    window = 60,
+    participant_id = participants
+  )
+  expect_s3_class(lazy, "tbl_lazy")
+  sql <- as.character(dbplyr::sql_render(lazy))
+  expect_true(grepl("RANGE BETWEEN", sql, fixed = TRUE))
+  expect_false(grepl("ROWS BETWEEN", sql, fixed = TRUE))
+  expect_false(grepl("LEFT JOIN", sql, fixed = TRUE))
+
+  actual <- dplyr::collect(lazy) |>
+    dplyr::arrange(.data$participant_id, .data$datetime)
+  expected <- reference_average(synthetic_rows, 60, c("x_mean", "y_mean"))
+  expect_identical(names(actual), c("participant_id", "datetime", "x_mean", "y_mean"))
+  expect_equal(actual, expected)
+
+  result_for_window <- function(window) {
+    moving_average(
+      db,
+      sensor = "Accelerometer",
+      cols = "x_mean",
+      window = window,
+      participant_id = participants
+    ) |>
+      dplyr::collect() |>
+      dplyr::arrange(.data$participant_id, .data$datetime)
+  }
+  numeric_result <- result_for_window(120)
+  expect_equal(result_for_window("2 minutes"), numeric_result)
+  expect_equal(result_for_window(lubridate::dminutes(120)), numeric_result)
+  expect_equal(result_for_window(lubridate::minutes(2)), numeric_result)
+  expect_equal(result_for_window(lubridate::period(days = 1)), result_for_window(86400))
+
+  boundary_result <- moving_average(
+    db,
     sensor = "Accelerometer",
     cols = "x_mean",
-    participant_id = "12345",
-    n = 2,
-    start_date = "2021-11-14",
-    end_date = "2021-11-14"
-  ) %>%
+    window = 2,
+    participant_id = 4004L
+  ) |>
     dplyr::collect()
-  expect_true(nrow(res) > 0)
+  boundary_value <- boundary_result$x_mean[
+    as.numeric(boundary_result$datetime) == as.numeric(boundary_center)
+  ]
+  expect_equal(boundary_value, 10)
 
-  cleanup_test_db(db)
+  fractional_query <- moving_average(
+    db,
+    sensor = "Accelerometer",
+    cols = "x_mean",
+    window = 1,
+    participant_id = 6006L
+  )
+  fractional_sql <- as.character(dbplyr::sql_render(fractional_query))
+  expect_true(grepl("RANGE BETWEEN 0.5 PRECEDING AND 0.5 FOLLOWING", fractional_sql, fixed = TRUE))
+  fractional_result <- dplyr::collect(fractional_query)
+  fractional_value <- fractional_result$x_mean[
+    as.numeric(fractional_result$datetime) == as.numeric(fractional_center)
+  ]
+  expect_equal(fractional_value, 10)
+
+  duplicate_result <- moving_average(
+    db,
+    sensor = "Accelerometer",
+    cols = "x_mean",
+    window = 60,
+    participant_id = 2002L
+  ) |>
+    dplyr::collect()
+  tied_values <- duplicate_result$x_mean[
+    as.numeric(duplicate_result$datetime) ==
+      as.numeric(as.POSIXct("2024-01-03 12:00:00", tz = "UTC"))
+  ]
+  expect_equal(nrow(duplicate_result), 4L)
+  expect_equal(sort(tied_values), c(7, 7))
+
+  isolated_result <- moving_average(
+    db,
+    sensor = "Accelerometer",
+    cols = "x_mean",
+    window = 60,
+    participant_id = 5005L
+  ) |>
+    dplyr::collect()
+  expect_equal(nrow(isolated_result), 1L)
+  expect_equal(isolated_result$x_mean, 42)
+
+  day_start <- moving_average(
+    db,
+    sensor = "Accelerometer",
+    cols = c("x_mean", "y_mean"),
+    window = 60,
+    participant_id = 1001L,
+    start_date = "2024-01-02"
+  ) |>
+    dplyr::collect() |>
+    dplyr::arrange(.data$datetime)
+  day_end <- moving_average(
+    db,
+    sensor = "Accelerometer",
+    cols = "x_mean",
+    window = 60,
+    participant_id = 1001L,
+    end_date = "2024-01-01"
+  ) |>
+    dplyr::collect()
+  both_bounds <- moving_average(
+    db,
+    sensor = "Accelerometer",
+    cols = c("x_mean", "y_mean"),
+    window = 60,
+    participant_id = 1001L,
+    start_date = "2024-01-02",
+    end_date = "2024-01-02"
+  ) |>
+    dplyr::collect() |>
+    dplyr::arrange(.data$datetime)
+
+  midnight <- as.POSIXct("2024-01-02 00:00:00", tz = "UTC")
+  previous_evening <- as.POSIXct("2024-01-01 23:59:50", tz = "UTC")
+  expect_equal(nrow(day_start), 2L)
+  expect_equal(nrow(day_end), 8L)
+  expect_equal(both_bounds, day_start)
+  expect_equal(day_start$x_mean[as.numeric(day_start$datetime) == as.numeric(midnight)], 105)
+  expect_true(all(is.na(day_start$y_mean)))
+  expect_equal(day_end$x_mean[as.numeric(day_end$datetime) == as.numeric(previous_evening)], 85)
+
+  separated <- moving_average(
+    db,
+    sensor = "Accelerometer",
+    cols = "x_mean",
+    window = 60,
+    participant_id = c(2002L, 3003L)
+  ) |>
+    dplyr::collect()
+  expect_equal(separated$x_mean[separated$participant_id == 3003], 1000)
+
+  quoted_participant <- moving_average(
+    db,
+    sensor = "Accelerometer",
+    cols = "x_mean",
+    window = 60,
+    participant_id = "1001' OR 1=1 --"
+  )
+  quoted_sql <- as.character(dbplyr::sql_render(quoted_participant))
+  expect_true(grepl("IN ('1001'' OR 1=1 --')", quoted_sql, fixed = TRUE))
+  expect_snapshot(error = TRUE, dplyr::collect(quoted_participant))
+})
+
+test_that("moving_average uses the selected view's time domain", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Accelerometer
+       (participant_id, time, timezone, x_mean, source_file_id, source_row_id,
+        source_measurement_id)
+     VALUES
+       (7007, TIMESTAMPTZ '2024-03-31 00:59:30+00', 'Europe/Brussels', 2, 1, 100, 1),
+       (7007, TIMESTAMPTZ '2024-03-31 01:00:30+00', 'Europe/Brussels', 4, 1, 101, 1)"
+  )
+
+  canonical <- moving_average(
+    db,
+    sensor = "Accelerometer",
+    cols = "x_mean",
+    window = 120,
+    participant_id = 7007L
+  ) |>
+    dplyr::collect()
+  with_local <- moving_average(
+    db,
+    sensor = "Accelerometer_with_local",
+    cols = "x_mean",
+    window = 120,
+    participant_id = 7007L
+  ) |>
+    dplyr::collect()
+  local_wall_time <- moving_average(
+    db,
+    sensor = "Accelerometer_local",
+    cols = "x_mean",
+    window = 120,
+    participant_id = 7007L
+  ) |>
+    dplyr::collect()
+
+  expect_equal(sort(canonical$x_mean), c(3, 3))
+  expect_equal(sort(with_local$x_mean), c(3, 3))
+  expect_equal(sort(local_wall_time$x_mean), c(2, 4))
+})
+
+test_that("moving_average validates windows, columns, and date filters", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
+
+  expect_snapshot(error = TRUE, moving_average(db, "Accelerometer", "x_mean"))
+  expect_snapshot(error = TRUE, moving_average(db, "Accelerometer", "x_mean", window = 0))
+  expect_snapshot(error = TRUE, moving_average(db, "Accelerometer", "x_mean", window = -1))
+  expect_snapshot(error = TRUE, moving_average(db, "Accelerometer", "x_mean", window = Inf))
+  expect_snapshot(error = TRUE, moving_average(db, "Accelerometer", "x_mean", window = c(1, 2)))
+  expect_snapshot(error = TRUE, moving_average(db, "Accelerometer", "x_mean", window = "nonsense"))
+  expect_snapshot(
+    error = TRUE,
+    moving_average(db, "Accelerometer", "x_mean", window = lubridate::period(months = 1))
+  )
+  expect_snapshot(
+    error = TRUE,
+    moving_average(db, "Accelerometer", "x_mean", window = lubridate::period(years = 1))
+  )
+  expect_snapshot(error = TRUE, moving_average(db, "Accelerometer", character(), window = 60))
+  expect_snapshot(
+    error = TRUE,
+    moving_average(db, "Accelerometer", c("x_mean", "x_mean"), window = 60)
+  )
+  expect_snapshot(error = TRUE, moving_average(db, "Accelerometer", "absent", window = 60))
+  expect_snapshot(
+    error = TRUE,
+    moving_average(db, "Accelerometer", c("timezone", "participant_id", "time"), window = 60)
+  )
+  expect_snapshot(
+    error = TRUE,
+    moving_average(db, "Accelerometer", "x_mean", window = 60, start_date = "foo")
+  )
+  expect_snapshot(
+    error = TRUE,
+    moving_average(db, "Accelerometer", "x_mean", window = 60, end_date = "foo")
+  )
 })
 
 test_that("identify_gaps", {
