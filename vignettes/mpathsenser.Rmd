@@ -58,7 +58,7 @@ unzip_data(path = "path/to/data") # extract .zip files, if any
 
 # Example data
 
-The package ships with a small example dataset in `inst/extdata/example`, which mimics what m-Path Sense exports: two participants (`12345` and `67890`) in a study called `cravings_study`, with three days of data for the main participant. The files follow the m-Path Sense naming convention and contain the common sensors (activity, battery, screen, wifi, location, app usage, Garmin heart rate and stress, and several others).
+The package ships with a small example dataset in `inst/extdata/example`, which mimics what m-Path Sense exports: two participants (`12345` and `67890`) in a study called `demo_study`, with three days of data for the main participant. The files follow the m-Path Sense naming convention and contain the common sensors (activity, battery, screen, wifi, location, app usage, Garmin heart rate and stress, and several others).
 
 ```{r example data}
 path <- system.file("extdata", "example", package = "mpathsenser")
@@ -227,28 +227,39 @@ A time window can be selected with `start_date` and `end_date` (in `YYYY-MM-DD` 
 
 # Creating a coverage chart
 
-To get a better overview of the data, `coverage()` computes the (relative) number of collected samples per sensor and participant. The calculation runs entirely inside DuckDB and returns a lazy table, so it scales to large studies: call `collect()` (or `plot()`) to materialise it. By default coverage is counted per hour of the day, within each participant's own observation span, with missing hours or days inside that span filled with zeros. Only the first and last bins of that span are prorated: if a participant's observations start at 13:50, for example, the 13:00--14:00 bin can reach 100% based on the eligible final 10 minutes. Interior bins always use their complete duration.
+Use `coverage_frequency()` for absolute counts of distinct measurement times and `coverage_proportional()` to compare measurements or covered time with expected sampling intervals. Both calculations run inside DuckDB and return lazy, zero-filled series within each participant's observation span. Call `collect()` to materialise the values.
 
-Use `by` to change the counting resolution (`"minute"`, `"hour"`, `"day"`, `"week"`, or `"month"`) and `cycle` to average the counts within a recurring cycle (`NULL`, `"hour"`, `"day"`, `"week"`, `"month"`, or `"year"`). With `cycle = NULL`, the full zero-filled series is returned instead of a cycle profile. Relative coverage is requested by passing `expected`, a named vector of sampling intervals in seconds; `coverage_frequency()` builds one with sensible defaults. An absolute coverage chart shows the average number of samples per bin, while a relative coverage chart expresses this as a fraction of the expected sampling rate. The relative chart is useful to see how well the data is being collected for each sensor, the absolute chart to see how much data there is in general.
+The `by` argument accepts calendar-aligned bins (`"minute"`, `"hour"`, `"day"`, `"week"`, or `"month"`) or a custom fixed width in seconds. Monthly bins follow calendar months; numeric widths are fixed durations. `coverage_frequency()` defaults to `"hour"` and requires a non-`NULL` value. `coverage_proportional()` requires a named `expected` vector in seconds; use `coverage_expected()` for the default intervals. Its `by = NULL` default bins each sensor at its own expected interval, so multiple sensors may use different widths. The `metric` can be `"count"` (distinct measurements divided by expected measurements), `"interval"` (the fraction of eligible time covered by the union of `[time, time + expected)`), or `"bin"` (the fraction of expected-interval slots containing an observation). A slot is counted once in the output bin containing its scheduled start. If an explicit `by` is shorter than a sensor's expected interval, that sensor's bin width is raised to the expected interval with a warning; other sensors keep the requested width. Overlapping intervals count once.
 
-By default `metric = "count"` counts the samples in each bin. Set `metric = "time"` (together with `expected`) to measure instead the fraction of the eligible time in each bin that is covered by the union of the observation intervals `[time, time + expected)`. Bursts of oversampling and duplicated observations then count once, so a sensor sampling far faster than its expected interval reports a lower temporal coverage rather than an inflated one. The eligible span ends one expected interval after the last observation, allowing that terminal observation to contribute its full interval. `metric = "time"` without `expected` is an error.
+The coverage functions always return the full time series. `plot()` defaults to that full series; use `cycle = "hour"`, `"day"`, `"week"`, `"month"`, or `"year"` for an average calendar profile. The cycle only changes the plot. For an average per hour of each date, for example, use dplyr directly:
+
+```{r coverage summary, eval = FALSE}
+coverage_frequency(db, sensor = "Accelerometer", by = "minute") |>
+  mutate(date = as.Date(time), hour = lubridate::hour(time)) |>
+  group_by(participant_id, measure, date, hour) |>
+  summarise(coverage = mean(coverage, na.rm = TRUE), .groups = "drop")
+```
+
+On iOS, `AppUsage`, `Light`, `Memory`, and `Screen` coverage is `NA` rather than zero. If `Device` platform information is missing, a warning explains that availability cannot be determined.
+
 
 ```{r coverage}
-cov <- coverage(
+cov <- coverage_frequency(
   db = db,
   participant_id = "12345",
-  sensor = c("Activity", "Battery", "Screen", "Wifi", "Location", "Pedometer")
+  sensor = c("Activity", "Battery", "Screen", "Wifi", "Location", "Pedometer"),
+  by = "hour"
 )
 ```
 
-The result is a remote tibble with the average coverage per hour of the day, which can be plotted with the `plot()` method. Use `collect()` to bring the values into R, and `coverage_frequency()` to compute relative coverage:
+The result is a remote tibble with the full per-hour series. Use `plot()` to average it into a daily profile, or `collect()` to bring the values into R. Use `coverage_proportional()` for coverage relative to expected intervals:
 
 ```{r coverage relative, eval = FALSE}
-cov <- coverage(
+cov_relative <- coverage_proportional(
   db = db,
   participant_id = "12345",
   sensor = c("Accelerometer", "Battery"),
-  expected = coverage_frequency()
+  expected = coverage_expected()
 ) |>
   collect()
 ```
@@ -256,7 +267,7 @@ cov <- coverage(
 ```{r coverage plot, fig.width = 8, fig.height = 5, fig.align = "center", dpi = 100}
 #| fig.alt: Coverage plot showing the average number of samples per hour for
 #|   each sensor.
-plot(cov)
+plot(cov, cycle = "day")
 ```
 
 # Closing the database

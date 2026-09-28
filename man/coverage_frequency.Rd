@@ -2,41 +2,84 @@
 % Please edit documentation in R/coverage.R
 \name{coverage_frequency}
 \alias{coverage_frequency}
-\title{Construct an expected-interval vector for coverage()}
+\title{Count sensor measurements over time bins}
 \usage{
 coverage_frequency(
-  Accelerometer = 120,
-  AppUsage = 300,
-  Battery = 120,
-  Bluetooth = 600,
-  Connectivity = 120,
-  Device = 60,
-  Error = 300,
-  Heartbeat = 300,
-  Light = 120,
-  Location = 120,
-  Memory = 160,
-  Timezone = 1800,
-  Weather = 120,
-  Wifi = 120
+  db,
+  participant_id = NULL,
+  sensor = NULL,
+  by = "hour",
+  local = TRUE,
+  start_date = NULL,
+  end_date = NULL,
+  week_start = getOption("lubridate.week.start", 7)
 )
 }
 \arguments{
-\item{Accelerometer, AppUsage, Battery, Bluetooth, Connectivity, Device, Error, Heartbeat, Light, Location, Memory, Timezone, Weather, Wifi}{Expected interval in seconds for that sensor. The defaults are the current
-m-Path Sense defaults and can be overridden individually.}
+\item{db}{A valid database connection. Schema must be that created by
+\link{open_db}.}
+
+\item{participant_id}{A participant ID, or a vector of participant IDs.
+Stored as an unsigned integer; integer, numeric, and character values are
+accepted. Use \code{NULL} for all participants.}
+
+\item{sensor}{A character vector of sensors. Use \code{NULL} for all available
+sensors.}
+
+\item{by}{Bin width: one of \code{"minute"}, \code{"hour"}, \code{"day"}, \code{"week"}, or
+\code{"month"}, or a positive number of seconds. Defaults to \code{"hour"}.}
+
+\item{local}{Whether bins use participant-local wall-clock time from the
+\verb{_with_local} views. Defaults to \code{TRUE}; use \code{FALSE} for UTC bins.}
+
+\item{start_date, end_date}{Optional dates delimiting the included
+observations. Values must be dates or date strings.}
+
+\item{week_start}{Day the week starts on: 1 = Monday, 7 = Sunday. Defaults to
+\code{getOption("lubridate.week.start", 7)}.}
 }
 \value{
-A named numeric vector of intervals in seconds, suitable for the
-\code{expected} argument of \code{\link[=coverage]{coverage()}}.
+A lazy \code{tbl} of class \code{"coverage"} with \code{participant_id}, \code{time}
+(the bin start), \code{measure}, and \code{coverage} (the absolute measurement count).
+Bins with no observations are zero-filled within each participant's span.
 }
 \description{
-\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 
-\code{coverage_frequency()} is a convenience helper for the \code{expected} argument of
-\code{\link[=coverage]{coverage()}}. Each argument is the expected number of seconds between two
-consecutive measurements of that sensor, matching the interval with which
-m-Path Sense samples the sensor.
+\code{coverage_frequency()} returns the absolute number of distinct measurement
+times in each bin, per participant and sensor. Bins may use calendar-aligned
+units (\code{"minute"}, \code{"hour"}, \code{"day"}, \code{"week"}, or \code{"month"}) or a custom
+fixed width in seconds. Monthly bins follow actual calendar months. The
+result is a lazy DuckDB table; use \code{collect()} to materialise it. For iOS
+participants, \code{AppUsage}, \code{Light}, \code{Memory}, and
+\code{Screen} are marked \code{NA}; missing \code{Device} platform information produces a
+warning because availability cannot be determined.
+
+The full series is returned. To plot an average daily profile, pass the
+result to \code{plot(..., cycle = "day")}. To calculate another summary yourself,
+use dplyr verbs on the returned lazy table before collecting it.
 }
 \examples{
-coverage_frequency(Weather = 1200)
+\dontrun{
+frequency <- coverage_frequency(
+  db,
+  participant_id = "12345",
+  sensor = "Accelerometer",
+  by = "hour"
+)
+plot(frequency, cycle = "day")
+
+# Average coverage for each hour of each day with dplyr
+coverage_frequency(db, sensor = "Accelerometer", by = "minute") |>
+  dplyr::mutate(date = as.Date(time), hour = lubridate::hour(time)) |>
+  dplyr::group_by(participant_id, measure, date, hour) |>
+  dplyr::summarise(coverage = mean(coverage, na.rm = TRUE), .groups = "drop")
 }
+}
+\seealso{
+Other coverage functions:
+\code{\link[=coverage_expected]{coverage_expected()}},
+\code{\link[=coverage_proportional]{coverage_proportional()}},
+\code{\link[=plot.coverage]{plot.coverage()}}
+}
+\concept{coverage functions}

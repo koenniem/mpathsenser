@@ -80,20 +80,20 @@ files.
 ``` r
 get_participants(db)
 #>   participant_id       study_id
-#> 1          67890 cravings_study
-#> 2          12345 cravings_study
+#> 1          67890 demo_study
+#> 2          12345 demo_study
 ```
 
 ``` r
 # Number of rows per sensor table
 get_nrows(db)
-#>         Accelerometer              Activity              AppUsage               Battery             Bluetooth       BluetoothBeacon          Connectivity                Device 
-#>                    14                    10                    38                    10                     0                     0                    10                     9 
-#>                 Error   GarminAccelerometer      GarminActigraphy             GarminBBI     GarminEnhancedBBI       GarminGyroscope       GarminHeartRate            GarminMeta 
-#>                     0                     0                     0                     0                     0                     0                    90                     3 
-#>     GarminRespiration GarminSkinTemperature            GarminSPO2           GarminSteps          GarminStress     GarminWristStatus    GarminZeroCrossing             Heartbeat 
-#>                     0                     0                     0                     0                    30                     0                     0                    10 
-#>                 Light              Location                Memory             Pedometer                Screen              Timezone               Weather                  Wifi 
+#>         Accelerometer              Activity              AppUsage               Battery             Bluetooth       BluetoothBeacon          Connectivity                Device
+#>                    14                    10                    38                    10                     0                     0                    10                     9
+#>                 Error   GarminAccelerometer      GarminActigraphy             GarminBBI     GarminEnhancedBBI       GarminGyroscope       GarminHeartRate            GarminMeta
+#>                     0                     0                     0                     0                     0                     0                    90                     3
+#>     GarminRespiration GarminSkinTemperature            GarminSPO2           GarminSteps          GarminStress     GarminWristStatus    GarminZeroCrossing             Heartbeat
+#>                     0                     0                     0                     0                    30                     0                     0                    10
+#>                 Light              Location                Memory             Pedometer                Screen              Timezone               Weather                  Wifi
 #>                    10                    10                    10                    10                    10                    10                    10                    10
 ```
 
@@ -130,29 +130,40 @@ get_data(db, sensor = "Battery") |>
 #> # A tibble: 2 × 2
 #>   participant_id battery_level
 #>   <chr>                  <dbl>
-#> 1 67890                   42  
+#> 1 67890                   42
 #> 2 12345                   64.6
 ```
 
 ## Coverage chart
 
-The `coverage()` function computes how many samples per hour were
-collected for each sensor, either in absolute numbers or relative to the
-expected sampling rate (see `coverage_frequency()`). Set
-`metric = "time"` with `expected` to measure the fraction of time covered
-instead of the number of samples. Only the first and last bins of a
-participant's span are prorated, so a participant starting at 13:50 can
-still reach full coverage for the 13:00--14:00 bin. The resulting coverage
-chart is a quick way to spot participants or sensors with poor data
-collection.
+Use `coverage_frequency()` for absolute counts of distinct measurement
+times and `coverage_proportional()` for proportions relative to expected
+sampling intervals. `coverage_proportional()` requires a named `expected`
+vector; `coverage_expected()` provides the defaults. Its `metric` can be
+`"count"` (distinct measurements), `"interval"` (the union of
+`[time, time + expected)` intervals), or `"bin"` (expected-interval slots
+with at least one observation). `by` accepts calendar bins (`"minute"`,
+`"hour"`, `"day"`, `"week"`, or `"month"`) or a custom width in seconds.
+Monthly bins follow calendar months; numeric widths are fixed durations.
+`coverage_frequency()` defaults to `"hour"`, while `coverage_proportional()`
+defaults to each sensor's expected interval. If an explicit `by` is shorter
+than a sensor's expected interval, that sensor's bins are widened to the
+expected interval and a warning is issued; other sensors keep the requested
+width. Both functions return lazy, participant-specific series with gaps
+zero-filled. `plot()`
+defaults to the full time series; pass `cycle = "hour"`, `"day"`, `"week"`,
+`"month"`, or `"year"` to plot an average calendar profile. The cycle changes
+the plot only. On iOS, `AppUsage`, `Light`, `Memory`, and `Screen` coverage is
+`NA`; missing device-platform information triggers a warning.
 
 ``` r
-cov <- coverage(
+cov <- coverage_frequency(
   db = db,
   participant_id = "12345",
-  sensor = c("Activity", "Battery", "Screen", "Wifi", "Location", "Pedometer")
+  sensor = c("Activity", "Battery", "Screen", "Wifi", "Location", "Pedometer"),
+  by = "hour"
 )
-plot(cov)
+plot(cov, cycle = "day")
 ```
 
 <img src="man/figures/coverage-1.png" alt="" width="100%" style="display: block; margin: auto;" />

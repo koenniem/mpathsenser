@@ -33,6 +33,6 @@
 ^\.positai$
 ^\.claude$
 ^\.posit$
-AGENTS\.MD
-^\.pi$
+AGENTS\.md
+^ARCHITECTURE\.md$
 ^\.devcontainer$

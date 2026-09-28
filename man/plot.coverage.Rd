@@ -4,17 +4,36 @@
 \alias{plot.coverage}
 \title{Plot a coverage overview}
 \usage{
-\method{plot}{coverage}(x, digits = 2, type = c("auto", "line", "heatmap"), ...)
+\method{plot}{coverage}(
+  x,
+  digits = 2,
+  type = c("auto", "line", "heatmap"),
+  cycle = NULL,
+  label = TRUE,
+  week_start = NULL,
+  ...
+)
 }
 \arguments{
-\item{x}{A coverage result coming from \code{\link[=coverage]{coverage()}}, either lazy or already
-collected.}
+\item{x}{A coverage result from \code{\link[=coverage_frequency]{coverage_frequency()}} or
+\code{\link[=coverage_proportional]{coverage_proportional()}}, either lazy or already collected.}
 
-\item{digits}{Number of digits to round the coverage values to. Defaults to 2.}
+\item{digits}{Number of digits to show in heatmap labels. Defaults to 2.}
 
-\item{type}{The plot type. \code{"auto"} (the default) uses a line graph for the
-full series (\code{cycle = NULL}) and a heatmap for cycle profiles. Use
-\code{"line"} or \code{"heatmap"} to force one of the two.}
+\item{type}{The plot type. \code{"auto"} (the default) uses a line graph when
+\code{cycle = NULL} and a heatmap otherwise. Use \code{"line"} or \code{"heatmap"} to
+force one of the two.}
+
+\item{cycle}{The calendar cycle used to average the values for plotting:
+\code{NULL}, \code{"hour"}, \code{"day"}, \code{"week"}, \code{"month"}, or \code{"year"}. Defaults to
+\code{NULL}, which plots the full time series. This only changes the plot; use
+dplyr \code{summarise()} on the returned table for other summaries.}
+
+\item{label}{Whether to label weekday positions with abbreviations, as in
+\code{\link[lubridate:wday]{lubridate::wday()}}.}
+
+\item{week_start}{Day the week starts on: 1 = Monday, 7 = Sunday. Defaults
+to the value used when constructing \code{x} (or \code{getOption("lubridate.week.start", 7)}).}
 
 \item{...}{Other arguments passed on to methods. Not currently used.}
 }
@@ -26,10 +45,14 @@ Plot a coverage overview
 }
 \examples{
 \dontrun{
-data <- coverage(db, participant_id = "12345", sensor = "Accelerometer")
-plot(data)
+plot(coverage_frequency(db, sensor = "Accelerometer"), cycle = "day")
+plot(coverage_proportional(db, coverage_expected()))
 }
 }
 \seealso{
-\code{\link[=coverage]{coverage()}}
+Other coverage functions:
+\code{\link[=coverage_expected]{coverage_expected()}},
+\code{\link[=coverage_frequency]{coverage_frequency()}},
+\code{\link[=coverage_proportional]{coverage_proportional()}}
 }
+\concept{coverage functions}

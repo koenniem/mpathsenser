@@ -2,14 +2,17 @@
 * `read_mpath_sense()` now matches payload sensor names whether `__type`
   includes the optional `dk.cachet.carp.` prefix or not.
 * Removed `first_date()` and `last_date()`.
-* `coverage()` was reworked: the calculation now runs entirely inside DuckDB and returns a lazy tibble, coverage is computed per participant over that participant's own observation span (`participant_id = NULL` returns all participants), and the new `by` and `cycle` arguments control the counting resolution and the averaging cycle. `frequency` and `relative` are replaced by `expected`, a named vector of sampling intervals in seconds (see `coverage_frequency()`); the exported `freq` vector and the unused `offset` argument were removed. Relative coverage prorates only a participant's first and last partial bins, so a participant whose observations start at 13:50 can still reach full coverage for 13:00--14:00 based on the eligible final 10 minutes; interior bins always use their complete duration.
-* `coverage()` gained `metric = "count" | "time"`. `"count"` is the default and
-  preserves the previous behaviour. `"time"` requires `expected` and reports the
-  fraction of the eligible time in each bin that is covered by the union of the
-  observation intervals `[time, time + expected)`, so duplicated or overlapping
-  observations count once and temporal coverage cannot exceed 1. The eligible
-  span ends one expected interval after the last observation, allowing the
-  terminal observation to contribute its full interval.
+* Replaced `coverage()` with `coverage_frequency()` for absolute measurement
+  counts and `coverage_proportional()` for count, interval, or occupied-slot
+  proportions. `coverage_proportional()` requires named expected intervals; use
+  `coverage_expected()` for the defaults. `metric = "interval"` measures the
+  union of observation intervals; `metric = "bin"` counts each expected slot at
+  most once. An explicit `by` narrower than a sensor's expected interval is
+  widened for that sensor with a warning, so sensors may use different bin
+  widths. Calendar bins, participant-specific zero-filled series, and plotting
+  behavior are otherwise unchanged. Coverage for the iOS-unavailable sensors
+  `AppUsage`, `Light`, `Memory`, and `Screen` is `NA` for iOS participants;
+  missing device-platform data produces a warning.
 * `ccopy()`, `fix_jsons()` and `test_jsons()` have been removed. Use
   `base::file.copy()`, `jsonlite::validate()` and `utils::unzip()` (or
   `unzip_data()`) instead.

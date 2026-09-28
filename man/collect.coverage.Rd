@@ -7,13 +7,13 @@
 \method{collect}{coverage}(x, ...)
 }
 \arguments{
-\item{x}{A lazy coverage table created by \code{\link[=coverage]{coverage()}}.}
+\item{x}{A lazy coverage table created by \code{\link[=coverage_frequency]{coverage_frequency()}} or
+\code{\link[=coverage_proportional]{coverage_proportional()}}.}
 
 \item{...}{Passed on to the underlying \code{collect()} method.}
 }
 \value{
-A tibble with rounded coverage values, factorised \code{measure}, and
-labelled \code{day_of_week} when applicable.
+A tibble with rounded coverage values and factorised \code{measure}.
 }
 \description{
 Materialise a coverage result

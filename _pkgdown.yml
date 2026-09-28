@@ -61,11 +61,12 @@ reference:
       - get_studies
       - get_nrows
 
-  - title: Coverage chart
+  - title: Coverage
     contents:
-      - coverage
-      - plot.coverage
       - coverage_frequency
+      - coverage_proportional
+      - coverage_expected
+      - plot.coverage
 
   - title: Data transformation
     contents:
