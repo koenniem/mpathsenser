@@ -1,7 +1,9 @@
 link_impl <- function(
   x,
   y,
-  by,
+  by_join,
+  by_x,
+  by_y,
   start_time,
   end_time,
   y_time,
@@ -16,9 +18,13 @@ link_impl <- function(
   force(add_after)
   force(name)
 
-  # Filter y to keep only `by` instances that occur in x
-  if (!is_null(by) && length(by) != 0) {
-    y <- dplyr::semi_join(y, x, by = by)
+  # Restrict keyed joins to y rows represented in x.
+  if (length(by_x) > 0L) {
+    y <- dplyr::semi_join(
+      y,
+      x,
+      by = stats::setNames(by_x, by_y)
+    )
   }
 
   # Prepare x
@@ -34,7 +40,7 @@ link_impl <- function(
       mutate(across(.env$start_time, as.integer, .names = ".x_time")) |>
       mutate(.start_time = .data$.x_time - offset_before) |>
       mutate(.end_time = .data$.x_time + offset_after) |>
-      select({{ by }}, ".start_time", ".end_time", ".row_id")
+      select(all_of(c(by_x, ".start_time", ".end_time", ".row_id")))
   } else {
     # Ensure column names for x and y do not clash
     # also easier to work with
@@ -43,21 +49,32 @@ link_impl <- function(
       rename(.end_time = .env$end_time) |>
       mutate(.start_time = as.integer(.data$.start_time)) |>
       mutate(.end_time = as.integer(.data$.end_time)) |>
-      select({{ by }}, ".start_time", ".end_time", ".row_id")
+      select(all_of(c(by_x, ".start_time", ".end_time", ".row_id")))
   }
 
-  # Match sensing data with ESM using a left join
+  # Match sensing data with ESM using keyed or cross-join semantics.
+  if (length(by_x) == 0L) {
+    data <- dplyr::cross_join(data, y)
+  } else {
+    data <- dplyr::left_join(
+      data,
+      y,
+      by = by_join,
+      multiple = "all",
+      relationship = "many-to-many"
+    )
+  }
+
   data <- data |>
-    left_join(y, by = by, multiple = "all", relationship = "many-to-many") |>
     mutate(across(all_of(y_time), as.integer, .names = ".y_time")) |>
     drop_na(".start_time", ".end_time")
 
   # The main data, i.e. data exactly within the interval
   data_main <- data |>
     filter(.data$.y_time >= .data$.start_time & .data$.y_time <= .data$.end_time) |>
-    arrange(across(c({{ by }}, ".y_time"))) |>
+    arrange(across(all_of(c(by_x, ".y_time")))) |>
     select(-".y_time") |>
-    nest({{ name }} := !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
+    nest(!!name := !c(all_of(by_x), ".start_time", ".end_time", ".row_id")) |>
     select(all_of(c(".row_id", name)))
 
   # Merge back with original data
@@ -83,7 +100,7 @@ link_impl <- function(
       mutate(across(all_of(y_time), .names = "original_time")) |>
       mutate({{ y_time }} := as_datetime(.data$.start_time, tz = tz)) |>
       select(-".y_time") |>
-      nest(data_before = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
+      nest(data_before = !c(all_of(by_x), ".start_time", ".end_time", ".row_id")) |>
       select(".row_id", "data_before")
 
     # Add to the main result
@@ -114,7 +131,7 @@ link_impl <- function(
       mutate(across(all_of(y_time), .names = "original_time")) |>
       mutate({{ y_time }} := as_datetime(.data$.end_time, tz = tz)) |>
       select(-".y_time") |>
-      nest(data_after = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
+      nest(data_after = !c(all_of(by_x), ".start_time", ".end_time", ".row_id")) |>
       select(".row_id", "data_after")
 
     # Add to the main result
@@ -129,42 +146,38 @@ link_impl <- function(
       select(-"data_after")
   }
 
-  # Create an empty tibble (prototype) by retrieving rows with time before UNIX start (not possible)
-  # This is needed to fill in the data entries where there would otherwise be nothing left
-  # because nothing matched within the start_time and end_time
+  # Build the empty nested result from y's payload columns, excluding its join keys.
   proto <- as_tibble(y[0, ]) |>
-    select(-{{ by }})
-  if (add_before || add_after) {
-    proto$original_time <- as.POSIXct(vector(mode = "double"))
+    select(-all_of(by_y))
 
-    # In case data_main is empty, applying the solution below leads to NA in the next step causing
-    # proto not to be applied (since it's not null)
-    if (nrow(data_main) > 0) {
-      # Add column original_time in cases where it's missing
-      for (i in seq_len(nrow(data_main))) {
-        if (!any("original_time" == colnames(pull(data_main, all_of(name))[[i]]))) {
-          data_main$data[[i]]$original_time <- as.POSIXct(NA, tz = tz)
-        }
-      }
-    }
+  add_original_time <- add_before || add_after
+  if (add_original_time) {
+    proto$original_time <- as.POSIXct(double(0), tz = tz)
   }
 
-  res <- data_main |>
+  data_main |>
     mutate(
-      {{ name }} := ifelse(
-        test = lapply(
-          X = !!ensym(name),
-          FUN = \(x) {
-            is.null(x) || identical(x, NA) || nrow(x) == 0
-          }
-        ),
-        yes = list(proto),
-        no = !!ensym(name)
-      )
+      !!name := purrr::map(.data[[name]], function(nested) {
+        is_empty <- is.null(nested) ||
+          (is.atomic(nested) && length(nested) == 1L && is.na(nested)) ||
+          (is.data.frame(nested) && nrow(nested) == 0L)
+
+        if (is_empty) {
+          return(proto)
+        }
+
+        if (add_original_time && !"original_time" %in% names(nested)) {
+          nested$original_time <- as.POSIXct(
+            rep(NA_real_, nrow(nested)),
+            origin = "1970-01-01",
+            tz = tz
+          )
+        }
+
+        nested
+      })
     ) |>
     select(-".row_id")
-
-  res
 }
 
 #' Link y to the time scale of x
@@ -220,10 +233,9 @@ link_impl <- function(
 #' @param x,y A pair of data frames or data frame extensions (e.g. a tibble). Both `x` and `y` must
 #'   have a column called `time`.
 #' @param by A character vector indicating the variable(s) to match by, typically the participant
-#'   IDs. If NULL, the default, `*_join()` will perform a natural join, using all variables in
-#'   common across `x` and `y`. Therefore, all data will be mapped to each other based on the time
-#'   stamps of `x` and `y`. A message lists the variables so that you can check they're correct;
-#'   suppress the message by supplying by explicitly.
+#'   IDs. `NULL` (the default) and `character()` use no equality keys: `x` and `y` are cross-joined
+#'   before interval filtering. Supply participant or group columns to prevent data from different
+#'   participants or groups from being matched.
 #'
 #'   To join by different variables on `x` and `y`, use a named vector. For example, `by = c('a' =
 #'   'b')` will match `x$a` to `y$b`.
@@ -317,13 +329,8 @@ link_impl <- function(
 #'   add_after = TRUE
 #' )
 #'
-#' # If you participant_id is not important to you
-#' # (i.e. the measurements are interchangeable),
-#' # you can ignore them by leaving by empty.
-#' # However, in this case we'll receive a warning
-#' # since x and y have no other columns in common
-#' # (except time, of course). Thus, we can perform
-#' # a cross-join:
+#' # If participants are interchangeable, omit the join keys to cross-join x and y.
+#' # This can match measurements across participants.
 #' link(
 #'   x = x,
 #'   y = y,
@@ -422,7 +429,36 @@ link <- function(
     end_time <- colnames(select(x, {{ end_time }}))
   }
   y_time <- colnames(select(y, {{ y_time }}))
-  by <- colnames(select(x, {{ by }}))
+  by_join <- by
+  if (is.null(by_join) || length(by_join) == 0L) {
+    by_join <- character()
+    by_x <- character()
+    by_y <- character()
+  } else {
+    by_y <- unname(by_join)
+    by_x <- by_y
+    by_names <- names(by_join)
+    if (!is.null(by_names)) {
+      named <- !is.na(by_names) & nzchar(by_names)
+      by_x[named] <- by_names[named]
+    }
+
+    if (anyNA(by_x) || any(!nzchar(by_x)) || anyDuplicated(by_x) > 0L) {
+      cli_abort("{.arg by} must map to non-empty, unique column names in {.arg x}.")
+    }
+    if (anyNA(by_y) || any(!nzchar(by_y)) || anyDuplicated(by_y) > 0L) {
+      cli_abort("{.arg by} must map to non-empty, unique column names in {.arg y}.")
+    }
+
+    missing_by_x <- setdiff(by_x, names(x))
+    if (length(missing_by_x) > 0L) {
+      cli_abort("Missing column{?s} in {.arg x}: {.var {missing_by_x}}.")
+    }
+    missing_by_y <- setdiff(by_y, names(y))
+    if (length(missing_by_y) > 0L) {
+      cli_abort("Missing column{?s} in {.arg y}: {.var {missing_by_y}}.")
+    }
+  }
 
   check_arg(time, "character", n = 1)
   check_arg(end_time, "character", n = 1, allow_null = TRUE)
@@ -438,7 +474,9 @@ link <- function(
   link_impl(
     x = x,
     y = y,
-    by = by,
+    by_join = by_join,
+    by_x = by_x,
+    by_y = by_y,
     start_time = time,
     end_time = end_time,
     y_time = y_time,
@@ -650,9 +688,19 @@ link_intervals <- function(
   res <- res |>
     mutate(across(c({{ y_start }}, {{ y_end }}), as.integer)) |>
     filter(
-      ((is.na({{ y_end }} & {{ y_start }} >= {{ x_start }} & {{ y_start }} < {{ x_end }})) &
-        (is.na({{ y_start }} & {{ y_end }} >= {{ x_start }} & {{ y_end }} < {{ x_end }}))) |
-        ({{ y_start }} < {{ x_end }} & {{ y_end }} > {{ x_start }})
+      (!is.na({{ y_start }}) &
+        !is.na({{ y_end }}) &
+        {{ y_start }} < {{ x_end }} &
+        {{ y_end }} > {{ x_start }}) |
+        (!is.na({{ y_start }}) &
+          is.na({{ y_end }}) &
+          {{ y_start }} >= {{ x_start }} &
+          {{ y_start }} < {{ x_end }}) |
+        (is.na({{ y_start }}) &
+          !is.na({{ y_end }}) &
+          {{ y_end }} >= {{ x_start }} &
+          {{ y_end }} < {{ x_end }}) |
+        (is.na({{ y_start }}) & is.na({{ y_end }}))
     )
 
   # Set gaps time stamps out of the interval to the interval's bounds

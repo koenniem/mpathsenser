@@ -1167,3 +1167,238 @@ test_that("bin_data", {
 
   expect_equal(lubridate::hour(res$bin), c(0, 0))
 })
+
+test_that("link preserves custom nested names and prototypes", {
+  tz <- "Europe/Brussels"
+  x <- tibble::tibble(
+    participant_id = c("p1", "p2"),
+    time = as.POSIXct(
+      c("2022-05-10 12:00:00", "2022-05-10 12:00:00"),
+      tz = tz
+    )
+  )
+  y <- tibble::tibble(
+    person_id = "p1",
+    time = as.POSIXct(
+      c(
+        "2022-05-10 11:58:00",
+        "2022-05-10 11:59:30",
+        "2022-05-10 12:00:00",
+        "2022-05-10 12:00:30",
+        "2022-05-10 12:02:00"
+      ),
+      tz = tz
+    ),
+    value = 1:5
+  )
+
+  link_args <- list(
+    x = x,
+    y = y,
+    by = c(participant_id = "person_id"),
+    time = "time",
+    y_time = "time",
+    offset_before = 60L,
+    offset_after = 60L,
+    add_before = TRUE,
+    add_after = TRUE
+  )
+  default <- do.call(link, link_args)
+  custom <- do.call(link, c(link_args, list(name = "sensing")))
+
+  expect_named(custom, c("participant_id", "time", "sensing"))
+  expect_identical(dplyr::rename(custom, data = sensing), default)
+  expect_true(all(purrr::map_lgl(custom$sensing, \(nested) {
+    "original_time" %in% names(nested)
+  })))
+  expect_equal(
+    custom$sensing[[1]],
+    tibble::tibble(
+      time = as.POSIXct(
+        c(
+          "2022-05-10 11:59:00",
+          "2022-05-10 11:59:30",
+          "2022-05-10 12:00:00",
+          "2022-05-10 12:00:30",
+          "2022-05-10 12:01:00"
+        ),
+        tz = tz
+      ),
+      value = 1:5,
+      original_time = as.POSIXct(
+        c("2022-05-10 11:58:00", NA, NA, NA, "2022-05-10 12:02:00"),
+        tz = tz
+      )
+    )
+  )
+  expect_identical(
+    custom$sensing[[2]],
+    tibble::tibble(
+      time = as.POSIXct(double(0), origin = "1970-01-01", tz = tz),
+      value = integer(0),
+      original_time = as.POSIXct(double(0), origin = "1970-01-01", tz = tz)
+    )
+  )
+  expect_identical(attr(custom$sensing[[1]]$original_time, "tzone"), tz)
+})
+
+test_that("link maps named keys and treats empty keys as a cross join", {
+  t0 <- as.POSIXct("2022-05-10 12:00:00", tz = "UTC")
+  x <- tibble::tibble(
+    participant = c("p1", "p2"),
+    device = c("phone", "tablet"),
+    time = rep(t0, 2)
+  )
+  y <- tibble::tibble(
+    person = c("p1", "p1", "p2", "p2"),
+    machine = c("phone", "tablet", "phone", "tablet"),
+    time = rep(as.POSIXct("2022-05-10 11:59:00", tz = "UTC"), 4),
+    value = 1:4
+  )
+
+  single_key <- link(
+    x,
+    y,
+    by = c(participant = "person"),
+    time = time,
+    y_time = time,
+    offset_before = 60L
+  )
+  expect_equal(purrr::map(single_key$data, "value"), list(1:2, 3:4))
+
+  named_keys <- link(
+    x,
+    y,
+    by = c(participant = "person", device = "machine"),
+    time = time,
+    y_time = time,
+    offset_before = 60L
+  )
+  expect_equal(purrr::map(named_keys$data, "value"), list(1L, 4L))
+
+  y_mixed <- dplyr::rename(y, device = machine)
+  mixed_keys <- link(
+    x,
+    y_mixed,
+    by = c(participant = "person", "device"),
+    time = time,
+    y_time = time,
+    offset_before = 60L
+  )
+  expect_equal(purrr::map(mixed_keys$data, "value"), list(1L, 4L))
+
+  x_same <- dplyr::rename(x, participant_id = participant)
+  y_same <- dplyr::rename(y, participant_id = person, device = machine)
+  unnamed_keys <- link(
+    x_same,
+    y_same,
+    by = c("participant_id", "device"),
+    time = time,
+    y_time = time,
+    offset_before = 60L
+  )
+  expect_equal(purrr::map(unnamed_keys$data, "value"), list(1L, 4L))
+
+  cross_null <- link(x, y, time = time, y_time = time, offset_before = 60L)
+  cross_empty <- link(
+    x,
+    y,
+    by = character(),
+    time = time,
+    y_time = time,
+    offset_before = 60L
+  )
+  expect_identical(cross_null, cross_empty)
+  expect_equal(purrr::map_int(cross_null$data, nrow), c(4L, 4L))
+
+  expect_error(
+    link(
+      x,
+      y,
+      by = c(missing = "person"),
+      time = time,
+      y_time = time,
+      offset_before = 60L
+    ),
+    "Missing column.*`x`"
+  )
+  expect_error(
+    link(
+      x,
+      y,
+      by = c(participant = "missing"),
+      time = time,
+      y_time = time,
+      offset_before = 60L
+    ),
+    "Missing column.*`y`"
+  )
+  expect_error(
+    link(
+      x,
+      y,
+      by = c("participant", "participant"),
+      time = time,
+      y_time = time,
+      offset_before = 60L
+    ),
+    "unique column names in `x`"
+  )
+})
+
+test_that("link_intervals keeps the characterized overlap cases", {
+  x <- tibble::tibble(x_start = 10L, x_end = 20L)
+  cases <- c(
+    "inside",
+    "overlap_left",
+    "overlap_right",
+    "span",
+    "before",
+    "after",
+    "touch_left",
+    "touch_right",
+    "missing_end_before",
+    "missing_end_inside",
+    "missing_end_after",
+    "missing_start_before",
+    "missing_start_inside",
+    "missing_start_after",
+    "both_missing"
+  )
+  y <- tibble::tibble(
+    case = cases,
+    y_start = as.POSIXct(
+      c(12, 5, 18, 5, 1, 21, 5, 20, 5, 15, 25, NA_real_, NA_real_, NA_real_, NA_real_),
+      origin = "1970-01-01",
+      tz = "UTC"
+    ),
+    y_end = as.POSIXct(
+      c(18, 12, 25, 25, 9, 30, 10, 25, NA_real_, NA_real_, NA_real_, 9, 15, 25, NA_real_),
+      origin = "1970-01-01",
+      tz = "UTC"
+    )
+  )
+
+  result <- link_intervals(
+    x,
+    x_start = x_start,
+    x_end = x_end,
+    y,
+    y_start = y_start,
+    y_end = y_end,
+    by = character()
+  )
+
+  expect_setequal(
+    result$data[[1]]$case,
+    c(
+      "inside",
+      "overlap_left",
+      "overlap_right",
+      "span",
+      "missing_end_inside",
+      "missing_start_inside",
+      "both_missing"
+    )
+  )
+})

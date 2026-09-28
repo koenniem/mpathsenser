@@ -24,10 +24,9 @@ link(
 have a column called \code{time}.}
 
 \item{by}{A character vector indicating the variable(s) to match by, typically the participant
-IDs. If NULL, the default, \verb{*_join()} will perform a natural join, using all variables in
-common across \code{x} and \code{y}. Therefore, all data will be mapped to each other based on the time
-stamps of \code{x} and \code{y}. A message lists the variables so that you can check they're correct;
-suppress the message by supplying by explicitly.
+IDs. \code{NULL} (the default) and \code{character()} use no equality keys: \code{x} and \code{y} are cross-joined
+before interval filtering. Supply participant or group columns to prevent data from different
+participants or groups from being matched.
 
 To join by different variables on \code{x} and \code{y}, use a named vector. For example, \code{by = c('a' = 'b')} will match \code{x$a} to \code{y$b}.
 
@@ -178,13 +177,8 @@ link(
   add_after = TRUE
 )
 
-# If you participant_id is not important to you
-# (i.e. the measurements are interchangeable),
-# you can ignore them by leaving by empty.
-# However, in this case we'll receive a warning
-# since x and y have no other columns in common
-# (except time, of course). Thus, we can perform
-# a cross-join:
+# If participants are interchangeable, omit the join keys to cross-join x and y.
+# This can match measurements across participants.
 link(
   x = x,
   y = y,

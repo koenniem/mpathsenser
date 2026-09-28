@@ -58,7 +58,7 @@ mk_block <- function(pid, day, hour, minutes, apps = NULL) {
       data = list(
         `__type` = "dk.cachet.carp.mpathinfo",
         connectionId = pid,
-        studyName = "cravings_study",
+        studyName = "demo_study",
         senseVersion = 5
       )
     ),

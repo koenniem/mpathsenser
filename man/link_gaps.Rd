@@ -22,10 +22,9 @@ retrieving gap data from an mpathsenser database. It should at least contain the
 and \code{to} (both in a date-time format), as well as any specified columns in \code{by}.}
 
 \item{by}{A character vector indicating the variable(s) to match by, typically the participant
-IDs. If NULL, the default, \verb{*_join()} will perform a natural join, using all variables in
-common across \code{x} and \code{y}. Therefore, all data will be mapped to each other based on the time
-stamps of \code{x} and \code{y}. A message lists the variables so that you can check they're correct;
-suppress the message by supplying by explicitly.
+IDs. \code{NULL} (the default) and \code{character()} use no equality keys: \code{x} and \code{y} are cross-joined
+before interval filtering. Supply participant or group columns to prevent data from different
+participants or groups from being matched.
 
 To join by different variables on \code{x} and \code{y}, use a named vector. For example, \code{by = c('a' = 'b')} will match \code{x$a} to \code{y$b}.
 
