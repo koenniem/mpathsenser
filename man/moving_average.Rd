@@ -28,11 +28,11 @@ to the rolling window of observations.}
 \item{participant_id}{A vector identifying one or multiple participants (stored as unsigned
 integers; integer, numeric, or character values are accepted).}
 
-\item{start_date}{Optional search window specifying date where to begin search. Must be
-convertible to date using \link[base]{as.Date}.}
+\item{start_date}{An optional single character or \code{POSIXt} value marking the
+start of the search window.}
 
-\item{end_date}{Optional search window specifying date where to end search. Must be convertible
-to date using \link[base]{as.Date}.}
+\item{end_date}{An optional single character or \code{POSIXt} value marking the
+end of the search window.}
 }
 \value{
 A tibble with the same columns as the input, modified to be a moving average.

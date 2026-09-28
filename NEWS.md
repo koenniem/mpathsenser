@@ -1,4 +1,11 @@
 # mpathsenser (in-development version)
+* `app_category()` skips missing app names and rate-limits only between actual
+  requests.
+* `get_data()` accepts `Date` and strict `YYYY-MM-DD` day bounds; `POSIXt`
+  inputs are exact inclusive timestamps. Day bounds use UTC for canonical time
+  columns and local wall time for `_local` views; the end of a day is exclusive.
+* `to_local_time()` requires timezone vectors to have length one or match the
+  timestamp vector.
 * `read_mpath_sense()` now matches payload sensor names whether `__type`
   includes the optional `dk.cachet.carp.` prefix or not.
 * Removed `first_date()` and `last_date()`.

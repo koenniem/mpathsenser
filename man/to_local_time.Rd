@@ -10,9 +10,11 @@ to_local_time(x, timezone)
 \item{x}{A vector of class POSIXt, or a character vector coercible to POSIXt.
 Inside a lazy query this is a database column.}
 
-\item{timezone}{A character vector of IANA timezone names, one per
-observation or a single value recycled over \code{x}. \code{NULL} or \code{NA} means the
-timezone is unknown and the value is interpreted as UTC.}
+\item{timezone}{A character vector of IANA timezone names. For collected
+vectors, supply one value or one value per observation; both may be empty.
+A single value is recycled over \code{x}. In a lazy query, supply a database
+column. \code{NULL} or \code{NA} means the timezone is unknown and the value is
+interpreted as UTC.}
 }
 \value{
 A POSIXct vector when \code{x} is a collected vector, or a SQL expression

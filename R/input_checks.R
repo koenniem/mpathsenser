@@ -116,6 +116,7 @@ check_arg <- function(
       "numeric",
       "factor",
       "POSIXt",
+      "Date",
       "data.frame",
       "list"
     ),
@@ -133,6 +134,7 @@ check_arg <- function(
       numeric = rlang::is_double(x, n) || rlang::is_integer(x, n),
       factor = is.factor(x) && (is.null(n) || length(x) == n),
       POSIXt = inherits(x, "POSIXt") && (is.null(n) || length(x) == n),
+      Date = inherits(x, "Date") && (is.null(n) || length(x) == n),
       data.frame = is.data.frame(x),
       list = rlang::is_list(x, n)
     )

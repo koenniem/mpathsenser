@@ -363,6 +363,35 @@ test_that("to_local_time handles vector recycling for timezone", {
   expect_true(all(result > x))
 })
 
+test_that("to_local_time validates timezone-vector lengths", {
+  x <- as.POSIXct(
+    c("2025-05-10 12:00:00", "2025-05-10 13:00:00", "2025-05-10 14:00:00"),
+    tz = "UTC"
+  )
+
+  expect_error(
+    to_local_time(x, c("Europe/Brussels", "America/New_York")),
+    "must have length 1 or match the length of `x`"
+  )
+  expect_error(
+    to_local_time(x[1:2], c("Europe/Brussels", "America/New_York", "UTC")),
+    "must have length 1 or match the length of `x`"
+  )
+  expect_error(
+    to_local_time(x[1:2], c(NA, NA, NA)),
+    "must have length 1 or match the length of `x`"
+  )
+
+  expect_equal(to_local_time(x, rep(NA, length(x))), x)
+})
+
+test_that("to_local_time accepts zero-length timezone and timestamp vectors", {
+  x <- as.POSIXct(numeric(), origin = "1970-01-01", tz = "UTC")
+
+  expect_identical(to_local_time(x, character()), x)
+  expect_identical(to_local_time(x, "UTC"), x)
+})
+
 test_that("to_local_time preserves NA values", {
   x <- as.POSIXct(c("2025-05-10 12:00:00", NA), tz = "UTC")
   tzs <- c("Europe/Brussels", "Europe/Brussels")

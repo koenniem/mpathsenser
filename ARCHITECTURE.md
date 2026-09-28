@@ -464,7 +464,7 @@ well as physical ones.
 
 | Function | Contract |
 |---|---|
-| `get_data(db, sensor, participant_id, start_date, end_date)` | Returns a **lazy** dbplyr table over `main.<sensor>` (or a `_local`/`_with_local` view), with the sensor name attached as `mpathsenser_sensor`. `end_date` is inclusive (one day is added). Filtering happens in DuckDB. |
+| `get_data(db, sensor, participant_id, start_date, end_date)` | Returns a **lazy** dbplyr table over `main.<sensor>` (or a `_local`/`_with_local` view), with the sensor name attached as `mpathsenser_sensor`. Character/`Date` bounds select whole days: UTC for canonical `time` (including `_with_local`) and local wall time for `_local`. `POSIXt` bounds are exact inclusive timestamps; `_local` uses the timestamp's displayed wall-clock fields. Day-end bounds exclude the following midnight. Filtering happens in DuckDB. |
 | `get_nrows()`, `get_participants()`, `get_studies()`, `get_processed_files()` | Database introspection; `get_nrows()` counts per sensor and is the slow one on large databases. |
 | `coverage()` / `collect.coverage()` / `plot.coverage()` / `coverage_frequency()` | Coverage per bin (`by = minute/hour/day/week/month`), optionally averaged within a recurring `cycle`, using `metric = "count"` for distinct samples or `metric = "time"` for the union of expected-length observation intervals. All aggregation is built by the `.coverage_sql*()` helpers and executed inside DuckDB; missing bins are zero-filled within each participant's observation span, and only the first/last partial bins are prorated. |
 | `identify_gaps()` / `add_gaps()` | Finds gaps in a sensor stream and annotates data with them. |

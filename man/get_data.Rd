@@ -17,11 +17,17 @@ See \link[mpathsenser]{sensors} for the physical sensor names.}
 Leave empty to get data for all participants. Participant ids are stored as unsigned
 integers, so an integer, numeric, or character value is accepted.}
 
-\item{start_date}{Optional search window specifying date where to begin search. Must be
-convertible to date using \link[base]{as.Date}.}
+\item{start_date}{An optional inclusive lower bound. Character values must use
+\code{YYYY-MM-DD}; a \code{Date} selects that whole calendar day. These date-only
+bounds use UTC for canonical \code{time} columns (including \verb{_with_local}) and
+local wall time for \verb{_local} views. A \code{POSIXt} value is an exact instant for
+canonical \code{time}; \verb{_local} views use its clock fields in its timezone, or
+UTC when no timezone attribute is set.}
 
-\item{end_date}{Optional search window specifying date where to end search. Must be convertible
-to date using \link[base]{as.Date}.}
+\item{end_date}{An optional upper bound with the same types and timezone rules
+as \code{start_date}. A character or \code{Date} value includes the whole day, ending
+just before the following midnight; a \code{POSIXt} value includes its exact
+timestamp.}
 }
 \value{
 A lazy \code{\link[dplyr]{tbl}} containing the requested data.

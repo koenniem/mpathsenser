@@ -95,13 +95,23 @@
 # handle them separately, so this function assumes clean UTC input.
 .to_local_time_r <- function(x, timezone) {
   .check_timezone(timezone)
-  if (is.null(timezone) || (is.logical(timezone) && all(is.na(timezone)))) {
-    timezone <- NA_character_
-  }
-
   x <- .check_timestamp(x)
 
-  timezone <- rep(timezone, length.out = length(x))
+  if (is.null(timezone)) {
+    timezone <- rep(NA_character_, length(x))
+  } else {
+    timezone_length <- length(timezone)
+    if (timezone_length != 1L && timezone_length != length(x)) {
+      cli_abort("{.arg timezone} must have length 1 or match the length of {.arg x}.")
+    }
+
+    if (is.logical(timezone) && all(is.na(timezone))) {
+      timezone <- as.character(timezone)
+    }
+    if (timezone_length == 1L) {
+      timezone <- rep(timezone, length(x))
+    }
+  }
   out <- x
   local <- !is.na(x) & !is.na(timezone)
   # with_tz() does not recycle a vector of timezones, so convert each distinct
@@ -160,9 +170,11 @@ sql_translation.duckdb_connection <- function(con) {
 #'
 #' @param x A vector of class POSIXt, or a character vector coercible to POSIXt.
 #'   Inside a lazy query this is a database column.
-#' @param timezone A character vector of IANA timezone names, one per
-#'   observation or a single value recycled over `x`. `NULL` or `NA` means the
-#'   timezone is unknown and the value is interpreted as UTC.
+#' @param timezone A character vector of IANA timezone names. For collected
+#'   vectors, supply one value or one value per observation; both may be empty.
+#'   A single value is recycled over `x`. In a lazy query, supply a database
+#'   column. `NULL` or `NA` means the timezone is unknown and the value is
+#'   interpreted as UTC.
 #'
 #' @returns A POSIXct vector when `x` is a collected vector, or a SQL expression
 #'   inside a lazy query. The clock values represent the local time in

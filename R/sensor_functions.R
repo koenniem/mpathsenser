@@ -1,3 +1,39 @@
+.normalize_get_data_date <- function(x, arg) {
+  if (is.null(x)) {
+    return(NULL)
+  }
+  if (inherits(x, c("Date", "POSIXt"))) {
+    value <- if (inherits(x, "Date")) as.numeric(x) else as.numeric(as.POSIXct(x, tz = "UTC"))
+    if (is.na(x) || !is.finite(value)) {
+      cli_abort(
+        c(
+          "{.arg {arg}} must be a non-missing, finite date or timestamp.",
+          x = "You supplied {.val {x}}."
+        ),
+        arg = arg
+      )
+    }
+    return(x)
+  }
+
+  date <- as.Date(NA_character_)
+  if (isTRUE(grepl("^\\d{4}-\\d{2}-\\d{2}$", x))) {
+    date <- suppressWarnings(as.Date(x, format = "%Y-%m-%d"))
+  }
+
+  if (is.na(date) || format(date, "%Y-%m-%d") != x) {
+    cli_abort(
+      c(
+        "{.arg {arg}} must be a valid date in {.val YYYY-MM-DD} format.",
+        x = "You supplied {.val {x}}."
+      ),
+      arg = arg
+    )
+  }
+
+  date
+}
+
 #' Extract data from an m-Path Sense database
 #'
 #' @description `r lifecycle::badge("stable")`
@@ -23,10 +59,16 @@
 #'   \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 #'   Leave empty to get data for all participants. Participant ids are stored as unsigned
 #'   integers, so an integer, numeric, or character value is accepted.
-#' @param start_date Optional search window specifying date where to begin search. Must be
-#'   convertible to date using \link[base]{as.Date}.
-#' @param end_date Optional search window specifying date where to end search. Must be convertible
-#'   to date using \link[base]{as.Date}.
+#' @param start_date An optional inclusive lower bound. Character values must use
+#'   `YYYY-MM-DD`; a `Date` selects that whole calendar day. These date-only
+#'   bounds use UTC for canonical `time` columns (including `_with_local`) and
+#'   local wall time for `_local` views. A `POSIXt` value is an exact instant for
+#'   canonical `time`; `_local` views use its clock fields in its timezone, or
+#'   UTC when no timezone attribute is set.
+#' @param end_date An optional upper bound with the same types and timezone rules
+#'   as `start_date`. A character or `Date` value includes the whole day, ending
+#'   just before the following midnight; a `POSIXt` value includes its exact
+#'   timestamp.
 #'
 #' @returns A lazy \code{\link[dplyr]{tbl}} containing the requested data.
 #' @export
@@ -54,10 +96,13 @@ get_data <- function(
   check_sensors(sensor, n = 1, include_views = TRUE)
   check_arg(participant_id, type = c("character", "integerish", "numeric"), allow_null = TRUE)
   check_arg(sensor, "character", n = 1)
-  check_arg(start_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
-  check_arg(end_date, type = c("character", "POSIXt"), n = 1, allow_null = TRUE)
+  check_arg(start_date, type = c("character", "Date", "POSIXt"), n = 1, allow_null = TRUE)
+  check_arg(end_date, type = c("character", "Date", "POSIXt"), n = 1, allow_null = TRUE)
+  start_date <- .normalize_get_data_date(start_date, "start_date")
+  end_date <- .normalize_get_data_date(end_date, "end_date")
 
   sensor <- as.character(sensor)
+  local_view <- grepl("_local$", tolower(sensor)) && !grepl("_with_local$", tolower(sensor))
   out <- tbl(db, sensor)
   attr(out, "mpathsenser_sensor") <- sensor
 
@@ -66,18 +111,55 @@ get_data <- function(
     out <- filter(out, .data$participant_id %in% p_id)
   }
 
-  maybe_date <- function(x) {
-    !is.na(as.Date(as.character(x), tz = "UTC", format = "%Y-%m-%d"))
+  local_boundary <- function(x) {
+    if (inherits(x, "POSIXt")) {
+      time_zone <- attr(x, "tzone")
+      if (
+        length(time_zone) == 0L ||
+          is.na(time_zone[[1]]) ||
+          !nzchar(time_zone[[1]])
+      ) {
+        time_zone <- "UTC"
+      } else {
+        time_zone <- time_zone[[1]]
+      }
+      clock <- format(
+        as.POSIXct(x, tz = "UTC"),
+        format = "%Y-%m-%d %H:%M:%OS6",
+        tz = time_zone
+      )
+      return(as.POSIXct(clock, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC"))
+    }
+
+    as.POSIXct(x, tz = "UTC")
   }
 
-  if (!is.null(start_date) && maybe_date(start_date)) {
-    out <- filter(out, .data$time >= start_date)
+  # dbplyr renders POSIXct values as timezone-naive TIMESTAMP literals. Build
+  # an epoch-based TIMESTAMPTZ expression so DuckDB's session timezone cannot
+  # shift bounds used with canonical UTC columns.
+  utc_boundary <- function(x) {
+    epoch <- as.numeric(as.POSIXct(x, tz = "UTC"))
+    quoted_epoch <- DBI::dbQuoteLiteral(db, epoch)
+    dbplyr::sql(paste0("to_timestamp(", as.character(quoted_epoch), ")"))
   }
 
-  if (!is.null(end_date) && maybe_date(end_date)) {
-    # Add one day to end_date to make sure we include all data for that date
-    end_date <- as.Date(as.character(end_date), tz = "UTC", format = "%Y-%m-%d") + 1
-    out <- filter(out, .data$time <= end_date)
+  if (!is.null(start_date)) {
+    start_boundary <- if (local_view) local_boundary(start_date) else utc_boundary(start_date)
+    out <- filter(out, .data$time >= start_boundary)
+  }
+
+  if (!is.null(end_date)) {
+    if (inherits(end_date, "POSIXt")) {
+      end_boundary <- if (local_view) local_boundary(end_date) else utc_boundary(end_date)
+      out <- filter(out, .data$time <= end_boundary)
+    } else {
+      end_boundary <- if (local_view) {
+        local_boundary(end_date + 1)
+      } else {
+        utc_boundary(end_date + 1)
+      }
+      out <- filter(out, .data$time < end_boundary)
+    }
   }
 
   # Canonical sensor tables expose absolute TIMESTAMPTZ values directly.
@@ -132,7 +214,7 @@ installed_apps <- function(db, participant_id = NULL) {
 #' This function scrapes the Google Play Store by using \code{name} as the search term. From there
 #' it selects the first result in the list and its corresponding category and package name.
 #'
-#' @param name The name of the app to search for.
+#' @param name Character app names to search for; missing values are skipped.
 #' @param num Which result should be selected in the list of search results. Defaults to one.
 #' @param rate_limit The time interval to keep between queries, in seconds. If the rate limit is too
 #' low, the Google Play Store may reject further requests or even ban your entirely.
@@ -182,18 +264,22 @@ app_category <- function(name, num = 1, rate_limit = 5, exact = TRUE, .progress 
     cli_progress_bar(total = length(name))
   }
 
+  requested <- FALSE
   for (i in seq_along(name)) {
-    res[i, 2:3] <- tryCatch(
-      app_category_impl(name[i], num, exact),
-      error = \(e) list(package = NA, genre = NA)
-    )
+    if (!is.na(name[i])) {
+      if (requested) {
+        Sys.sleep(rate_limit)
+      }
+
+      res[i, 2:3] <- tryCatch(
+        app_category_impl(name[i], num, exact),
+        error = \(e) list(package = NA, genre = NA)
+      )
+      requested <- TRUE
+    }
 
     if (.progress) {
       cli_progress_update()
-    }
-
-    if (length(name) > 1) {
-      Sys.sleep(rate_limit)
     }
   }
 
@@ -318,6 +404,10 @@ device_info <- function(db, participant_id = NULL) {
 #'   to the rolling window of observations.
 #' @param participant_id A vector identifying one or multiple participants (stored as unsigned
 #'   integers; integer, numeric, or character values are accepted).
+#' @param start_date An optional single character or `POSIXt` value marking the
+#'   start of the search window.
+#' @param end_date An optional single character or `POSIXt` value marking the
+#'   end of the search window.
 #'
 #' @returns A tibble with the same columns as the input, modified to be a moving average.
 #' @export

@@ -66,6 +66,124 @@ test_that("get_data", {
   cleanup_test_db(db)
 })
 
+test_that("get_data rejects invalid date strings", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
+
+  expect_snapshot(
+    error = TRUE,
+    get_data(db, "Activity", start_date = "2021-02-30")
+  )
+  expect_snapshot(
+    error = TRUE,
+    get_data(db, "Activity", end_date = "2021-11-14 trailing")
+  )
+  expect_error(get_data(db, "Activity", start_date = "foo"), "valid date")
+  expect_error(get_data(db, "Activity", start_date = NA), "must be a character")
+  expect_error(get_data(db, "Activity", start_date = as.Date(NA)), "must be a non-missing")
+  expect_error(
+    get_data(db, "Activity", end_date = as.POSIXct(NA, tz = "UTC")),
+    "must be a non-missing"
+  )
+})
+
+test_that("get_data supports date ranges and exact POSIXt bounds", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
+  DBI::dbExecute(db, "SET timezone = 'America/New_York'")
+
+  character_result <- get_data(
+    db,
+    "Activity",
+    participant_id = "12345",
+    start_date = "2021-11-14",
+    end_date = "2021-11-14"
+  ) |>
+    dplyr::collect()
+  date_result <- get_data(
+    db,
+    "Activity",
+    participant_id = "12345",
+    start_date = as.Date("2021-11-14"),
+    end_date = as.Date("2021-11-14")
+  ) |>
+    dplyr::collect()
+  instant <- as.POSIXct("2021-11-14 09:00:00", tz = "America/New_York")
+  posix_result <- get_data(
+    db,
+    "Activity",
+    participant_id = "12345",
+    start_date = instant,
+    end_date = instant
+  ) |>
+    dplyr::collect()
+
+  expect_equal(date_result, character_result)
+  expect_equal(posix_result$confidence, 100L)
+  expect_equal(
+    as.numeric(posix_result$time),
+    as.numeric(as.POSIXct("2021-11-14 14:00:00", tz = "UTC"))
+  )
+})
+
+test_that("get_data uses local wall dates only for _local views", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
+  DBI::dbExecute(db, "SET timezone = 'America/New_York'")
+  DBI::dbExecute(db, "UPDATE raw.Activity SET timezone = 'Europe/Brussels'")
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Activity
+     (participant_id, time, timezone, confidence, type, source_file_id, source_row_id, source_measurement_id)
+     VALUES
+       ('12345', '2021-11-14 23:30:00+00', 'Europe/Brussels', 80, 'STILL', 1, 100, 1),
+       ('12345', '2021-11-15 00:00:00+00', 'Europe/Brussels', 81, 'STILL', 1, 101, 1)"
+  )
+
+  utc_day <- get_data(db, "Activity", "12345", end_date = "2021-11-14") |>
+    dplyr::arrange(.data$time) |>
+    dplyr::select(confidence, time) |>
+    dplyr::collect()
+  unfiltered <- get_data(db, "Activity", "12345") |>
+    dplyr::select("time") |>
+    dplyr::collect()
+  local_day <- get_data(db, "Activity_local", "12345", end_date = "2021-11-14") |>
+    dplyr::arrange(.data$time) |>
+    dplyr::select(confidence) |>
+    dplyr::collect()
+  with_local_day <- get_data(db, "Activity_with_local", "12345", end_date = "2021-11-14") |>
+    dplyr::arrange(.data$time) |>
+    dplyr::select(confidence) |>
+    dplyr::collect()
+  local_instant <- as.POSIXct("2021-11-14 15:00:00", tz = "Europe/Brussels")
+  local_exact <- get_data(
+    db,
+    "Activity_local",
+    "12345",
+    start_date = local_instant,
+    end_date = local_instant
+  ) |>
+    dplyr::select(confidence) |>
+    dplyr::collect()
+
+  expect_equal(utc_day$confidence, c(NA_integer_, 100L, 99L, 80L))
+  expect_equal(local_day$confidence, c(NA_integer_, 100L, 99L))
+  expect_equal(with_local_day$confidence, c(NA_integer_, 100L, 99L, 80L))
+  expect_equal(local_exact$confidence, 100L)
+  expect_equal(
+    format(utc_day$time, tz = "UTC"),
+    c(
+      "2021-11-14 13:59:59",
+      "2021-11-14 14:00:00",
+      "2021-11-14 14:00:01",
+      "2021-11-14 23:30:00"
+    )
+  )
+  next_midnight <- as.POSIXct("2021-11-15 00:00:00", tz = "UTC")
+  expect_false(any(as.numeric(utc_day$time) == as.numeric(next_midnight)))
+  expect_true(any(as.numeric(unfiltered$time) == as.numeric(next_midnight)))
+})
+
 test_that("installed_apps", {
   db <- create_sensor_test_db()
   res <- installed_apps(db, "12345")
@@ -91,6 +209,33 @@ test_that("installed_apps", {
   )
   expect_equal(res, true)
   cleanup_test_db(db)
+})
+
+test_that("app_category skips missing names and rate-limits requests", {
+  requests <- character()
+  sleeps <- numeric()
+  local_mocked_bindings(
+    app_category_impl = function(name, num, exact) {
+      requests <<- c(requests, name)
+      list(package = paste0("pkg.", name), genre = paste0("genre.", name))
+    },
+    .package = "mpathsenser"
+  )
+  local_mocked_bindings(
+    Sys.sleep = function(time) {
+      sleeps <<- c(sleeps, time)
+    },
+    .package = "base"
+  )
+  app_names <- c("first", NA_character_, "second", NA_character_, "third")
+
+  result <- app_category(app_names, rate_limit = 1.5, .progress = FALSE)
+
+  expect_identical(requests, c("first", "second", "third"))
+  expect_identical(sleeps, c(1.5, 1.5))
+  expect_identical(result$app, app_names)
+  expect_equal(result$package, c("pkg.first", NA, "pkg.second", NA, "pkg.third"))
+  expect_equal(result$genre, c("genre.first", NA, "genre.second", NA, "genre.third"))
 })
 
 test_that("app_category", {

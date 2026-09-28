@@ -80,7 +80,10 @@ test_that("check_db recognizes missing sensors", {
 
   # A leftover <sensor>_optimize_tmp table from an interrupted optimize_db()
   # run must be ignored by both the sensor check and view creation.
-  DBI::dbExecute(db, "CREATE TABLE raw.Pedometer_optimize_tmp AS SELECT * FROM raw.Pedometer WHERE FALSE")
+  DBI::dbExecute(
+    db,
+    "CREATE TABLE raw.Pedometer_optimize_tmp AS SELECT * FROM raw.Pedometer WHERE FALSE"
+  )
   expect_true(check_db(db))
   expect_no_error(.create_sensor_views(db))
   expect_false(DBI::dbExistsTable(db, "Pedometer_optimize_tmp", schema = "main"))
@@ -123,6 +126,7 @@ test_that("check_arg", {
   expect_true(check_arg(1.12, type = "numeric"))
   expect_true(check_arg(as.factor(iris$Species), type = "factor"))
   expect_true(check_arg(Sys.time(), type = "POSIXt"))
+  expect_true(check_arg(as.Date("2025-01-01"), type = "Date"))
   expect_true(check_arg(data.frame(), type = "data.frame"))
   expect_true(check_arg(list(), type = "list"))
 
@@ -137,6 +141,7 @@ test_that("check_arg", {
   expect_true(check_arg(1.12, type = "numeric", n = 1))
   expect_true(check_arg(as.factor(iris$Species)[1], type = "factor", n = 1))
   expect_true(check_arg(Sys.time(), type = "POSIXt", n = 1))
+  expect_true(check_arg(as.Date("2025-01-01"), type = "Date", n = 1))
   expect_true(check_arg(list(foo = "bar"), type = "list", n = 1))
 
   # Test non-working cases
@@ -171,6 +176,10 @@ test_that("check_arg", {
   expect_error(
     check_arg(TRUE, type = "POSIXt", arg = "x"),
     "Argument `x` must be a POSIXt."
+  )
+  expect_error(
+    check_arg(as.Date(c("2025-01-01", "2025-01-02")), type = "Date", n = 1, arg = "x"),
+    "Argument `x` must be a Date of length 1."
   )
   expect_error(
     check_arg(TRUE, type = "data.frame", arg = "x"),
