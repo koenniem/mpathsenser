@@ -484,3 +484,85 @@ test_that("add_gaps", {
   expect_equal(res, true)
   expect_equal(res_continue, true)
 })
+
+test_that("add_gaps handles multi-column and variable-held keys", {
+  dat <- tibble::tibble(
+    participant_id = c("p1", "p1", "p2"),
+    device = c("a", "a", "b"),
+    time = as.POSIXct(
+      c(
+        "2022-05-10 10:00:00",
+        "2022-05-10 10:30:00",
+        "2022-05-10 10:00:00"
+      ),
+      tz = "UTC"
+    ),
+    event = c("early", "late", "other")
+  )
+  gaps <- tibble::tibble(
+    participant_id = c("p1", "p1", "missing"),
+    device = c("a", "a", "z"),
+    from = as.POSIXct(
+      c(
+        "2022-05-10 10:10:00",
+        "2022-05-10 10:40:00",
+        "2022-05-10 10:05:00"
+      ),
+      tz = "UTC"
+    ),
+    to = as.POSIXct(
+      c(
+        "2022-05-10 10:20:00",
+        "2022-05-10 10:50:00",
+        "2022-05-10 10:15:00"
+      ),
+      tz = "UTC"
+    )
+  )
+  by_cols <- c("participant_id", "device")
+
+  expected <- tibble::tibble(
+    participant_id = c("p1", "p1", "p1", "p1", "p2"),
+    device = c("a", "a", "a", "a", "b"),
+    time = as.POSIXct(
+      c(
+        "2022-05-10 10:00:00",
+        "2022-05-10 10:10:00",
+        "2022-05-10 10:30:00",
+        "2022-05-10 10:40:00",
+        "2022-05-10 10:00:00"
+      ),
+      tz = "UTC"
+    ),
+    event = c("early", NA, "late", NA, "other")
+  )
+  expected_continue <- tibble::tibble(
+    participant_id = c("p1", "p1", "p1", "p1", "p1", "p1", "p2"),
+    device = c("a", "a", "a", "a", "a", "a", "b"),
+    time = as.POSIXct(
+      c(
+        "2022-05-10 10:00:00",
+        "2022-05-10 10:10:00",
+        "2022-05-10 10:20:00",
+        "2022-05-10 10:30:00",
+        "2022-05-10 10:40:00",
+        "2022-05-10 10:50:00",
+        "2022-05-10 10:00:00"
+      ),
+      tz = "UTC"
+    ),
+    event = c("early", NA, "early", "late", NA, "late", "other")
+  )
+
+  for (continue in c(FALSE, TRUE)) {
+    target <- if (continue) expected_continue else expected
+    expect_identical(
+      add_gaps(dat, gaps, by = c("participant_id", "device"), continue = continue),
+      target
+    )
+    expect_identical(
+      add_gaps(dat, gaps, by = by_cols, continue = continue),
+      target
+    )
+  }
+})

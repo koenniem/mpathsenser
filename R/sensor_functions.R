@@ -614,7 +614,7 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
     }
 
     # Remove gaps that do not occur in the data based on the `by` column
-    gaps <- dplyr::semi_join(gaps, data, by = rlang::as_name(rlang::enquo(by)))
+    gaps <- dplyr::semi_join(gaps, data, by = by)
   }
 
   # If we don't want to continue the previous measurement after the gap, we can simply add the
@@ -731,10 +731,21 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
   data <- dplyr::nest_join(
     data,
     lead_data,
-    by = c(rlang::as_name(rlang::enquo(by)), "row_id"),
+    by = c(by, "row_id"),
     name = "data2"
   ) |>
-    mutate(data = ifelse(!is.na(.data$gap_type) & .data$gap_type == "to", .data$data2, .data$data))
+    mutate(
+      data = purrr::pmap(
+        list(
+          !is.na(.data$gap_type) & .data$gap_type == "to",
+          .data$data,
+          .data$data2
+        ),
+        function(is_gap_end, d1, d2) {
+          if (is_gap_end) d2 else d1
+        }
+      )
+    )
 
   # Lastly, unnest the data to get the original (and modified for "to") nested data, and ungroup
   # and cleanup
