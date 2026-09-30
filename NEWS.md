@@ -1,4 +1,6 @@
 # mpathsenser (in-development version)
+* `add_gaps()` supports multiple grouping columns and preserves fill-column
+  types, including POSIXct, when adding continued gap rows.
 * `app_category()` skips missing app names and rate-limits only between actual
   requests.
 * `copy_db()` quotes file-backed target paths and rejects in-memory targets
@@ -6,6 +8,9 @@
 * `get_data()` accepts `Date` and strict `YYYY-MM-DD` day bounds; `POSIXt`
   inputs are exact inclusive timestamps. Day bounds use UTC for canonical time
   columns and local wall time for `_local` views; the end of a day is exclusive.
+* `link()` supports named x-to-y keys and custom nested-column names. `by = NULL`
+  and `character()` now mean a cross join before interval filtering; supply
+  participant or group keys to avoid cross-participant matching.
 * `moving_average()` replaces the experimental `n` argument with elapsed-time
   `window` (for example, `n = 60` becomes `window = 60`) and returns a lazy,
   sample-weighted centered average after participant/date filtering.

@@ -1054,3 +1054,37 @@ test_that("add_gaps handles multi-column and variable-held keys", {
     )
   }
 })
+
+test_that("add_gaps preserves fill column types", {
+  dat <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct("2022-05-10 10:00:00", tz = "UTC"),
+    last_seen = as.POSIXct("2022-05-10 09:55:00", tz = "UTC")
+  )
+  gaps <- tibble::tibble(
+    participant_id = "p1",
+    from = as.POSIXct("2022-05-10 10:10:00", tz = "UTC"),
+    to = as.POSIXct("2022-05-10 10:20:00", tz = "UTC")
+  )
+
+  result <- add_gaps(
+    dat,
+    gaps,
+    by = "participant_id",
+    continue = TRUE,
+    fill = list(last_seen = as.POSIXct("2022-05-10 09:45:00", tz = "UTC"))
+  )
+
+  expected <- tibble::tibble(
+    participant_id = rep("p1", 3),
+    time = as.POSIXct(
+      c("2022-05-10 10:00:00", "2022-05-10 10:10:00", "2022-05-10 10:20:00"),
+      tz = "UTC"
+    ),
+    last_seen = as.POSIXct(
+      c("2022-05-10 09:55:00", "2022-05-10 09:45:00", "2022-05-10 09:55:00"),
+      tz = "UTC"
+    )
+  )
+  expect_identical(result, expected)
+})
