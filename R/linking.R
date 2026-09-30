@@ -596,8 +596,12 @@ link_gaps <- function(
 
   # Set gaps time stamps out of the interval to the interval's bounds
   data_gaps <- data_gaps |>
-    mutate(from = ifelse(.data$from < .data$start_interval, .data$start_interval, .data$from)) |>
-    mutate(to = ifelse(.data$to > .data$end_interval, .data$end_interval, .data$to)) |>
+    mutate(
+      from = dplyr::if_else(.data$from < .data$start_interval, .data$start_interval, .data$from)
+    ) |>
+    mutate(
+      to = dplyr::if_else(.data$to > .data$end_interval, .data$end_interval, .data$to)
+    ) |>
     mutate(gap = .data$to - .data$from)
 
   if (raw_data) {
@@ -646,7 +650,7 @@ link_gaps <- function(
       multiple = "all",
       relationship = "many-to-many"
     ) |>
-    mutate(gap = ifelse(is.na(.data$gap), 0, .data$gap))
+    mutate(gap = dplyr::if_else(is.na(.data$gap), 0L, .data$gap))
 
   if (raw_data) {
     data <- data |>
@@ -835,7 +839,7 @@ bin_data <- function(
   if (!is.null(by) && is.character(by)) {
     by <- match.arg(by, c("sec", "min", "hour", "day"))
     by_duration <- c(sec = 1L, min = 60L, hour = 3600L, day = 86400L)
-    by_duration <- by_duration[grepl(by, names(by_duration))]
+    by_duration <- by_duration[[by]]
   } else if (is.numeric(by) && !fixed) {
     by_duration <- by
   } else {

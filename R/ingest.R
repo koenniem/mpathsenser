@@ -72,7 +72,7 @@ accel_payload_order <- c(
 # doubles and integers are read from the single typed transform (j.p.<key>).
 .accel_feature_exprs <- function(prefix = "j.p.") {
   is_int <- accel_payload_order %in% accel_int_fields
-  type <- ifelse(is_int, "INTEGER", "REAL")
+  type <- dplyr::if_else(is_int, "INTEGER", "REAL")
   stats::setNames(
     sprintf("CAST(%s%s AS %s)", prefix, accel_payload_order, type),
     unname(accel_col_map[accel_payload_order])

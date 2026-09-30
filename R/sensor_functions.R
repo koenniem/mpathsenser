@@ -835,7 +835,7 @@ add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
       values_to = "time"
     ) |>
     mutate(!!!fill) |>
-    mutate(across(names(fill), ~ ifelse(gap_type == "to", NA, .x)))
+    mutate(across(names(fill), ~ dplyr::if_else(gap_type == "to", .x[NA_integer_], .x)))
 
   # Assign groups numbers to the data based on their time stamp and by column In principle, each row
   # is its own group, but if their are multiple measurements with the same time stamp they will get

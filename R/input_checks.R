@@ -164,14 +164,7 @@ check_arg <- function(
 }
 
 with_article <- function(x) {
-  article <- lapply(x, function(y) {
-    if (any(grepl("^[aeiouAEIOU]", y))) {
-      return("an")
-    } else {
-      return("a")
-    }
-  })
-  article <- unlist(article)
+  article <- dplyr::if_else(grepl("^[aeiouAEIOU]", x), "an", "a")
   paste(article, x, collapse = " or ")
 }
 

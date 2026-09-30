@@ -295,3 +295,11 @@ test_that("check_offset", {
     "`offset_after` must be a positive period \\(i.e. greater than 0\\)."
   )
 })
+
+test_that("with_article", {
+  expect_identical(with_article("integer"), "an integer")
+  expect_identical(with_article(c("integer", "double")), "an integer or a double")
+  expect_identical(with_article("Integer"), "an Integer")
+  expect_identical(with_article("double"), "a double")
+  expect_identical(with_article(character(0)), "")
+})
