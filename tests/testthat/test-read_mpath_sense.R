@@ -268,6 +268,21 @@ test_that("sub-microsecond file mtimes do not create duplicate ProcessedFiles ro
     floor(as.numeric(mtime) * 1e6 + 0.5)
   )
 
+  file_meta <- tibble::tibble(
+    source_file = f,
+    file_name = basename(f),
+    rel_path = basename(f),
+    file_size_bytes = file.info(f)$size,
+    modified_at = as.POSIXct(
+      floor(as.numeric(mtime) * 1e6 + 0.5) / 1e6,
+      origin = "1970-01-01",
+      tz = "UTC"
+    )
+  )
+  filtered <- .read_filter_new_files(db, file_meta)
+  expect_equal(nrow(filtered), 0L)
+  expect_false(attr(filtered, "db_was_empty"))
+
   # Re-importing the unchanged file must be a no-op, not a UNIQUE collision
   expect_message(
     read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE),
@@ -1701,6 +1716,122 @@ test_that("dedup chooses a full-table pass on an empty database and a scoped pas
 
   close_db(db)
   unlink(dir, recursive = TRUE)
+})
+
+test_that("file filtering keeps first input keys and reports an empty ledger", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+
+  modified_at <- as.POSIXct(
+    c("2026-01-01 00:00:00", "2026-01-01 00:00:00", "2026-01-01 00:00:01"),
+    tz = "UTC"
+  )
+  file_meta <- tibble::tibble(
+    source_file = c("source/first.json", "source/duplicate.json", "source/last.json"),
+    file_name = c("same.json", "same.json", "other.json"),
+    rel_path = c("first.json", "duplicate.json", "other.json"),
+    file_size_bytes = c(12, 12, 13),
+    modified_at = modified_at
+  )
+
+  filtered <- .read_filter_new_files(db, file_meta)
+  expect_identical(filtered$rel_path, c("first.json", "other.json"))
+  expect_identical(attr(filtered, "db_was_empty"), TRUE)
+  expect_identical(names(filtered), names(file_meta))
+  expect_false(".input_row" %in% names(filtered))
+
+  empty <- .read_filter_new_files(db, file_meta[FALSE, , drop = FALSE])
+  expect_equal(nrow(empty), 0L)
+  expect_identical(names(empty), names(file_meta))
+  expect_identical(empty$modified_at, file_meta$modified_at[FALSE])
+  expect_identical(attr(empty, "db_was_empty"), TRUE)
+  expect_equal(
+    DBI::dbGetQuery(
+      db,
+      "SELECT COUNT(*) AS n FROM duckdb_tables()
+       WHERE table_name = 'mpathsenser_read_filter_new_keys'"
+    )$n[[1]],
+    0L
+  )
+})
+
+test_that("file filtering preserves ledger matches, eligibility, and input order", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  DBI::dbExecute(db, "INSERT INTO Study (study_id, data_format) VALUES ('synthetic', 'CARP JSON')")
+  DBI::dbExecute(db, "INSERT INTO Participant (participant_id, study_id) VALUES (1, 'synthetic')")
+  DBI::dbExecute(
+    db,
+    "INSERT INTO ProcessedFiles
+       (file_name, participant_id, sense_version, file_size_bytes, modified_at)
+     VALUES
+       ('old-a.json', 1, 5, 100, TIMESTAMPTZ '2025-01-01 00:00:00+00'),
+       ('old-c.json', 1, 5, 300, TIMESTAMPTZ '2025-01-01 00:00:02+00'),
+       ('missing.json', 1, 5, NULL, NULL)"
+  )
+
+  time <- as.POSIXct("2025-01-01 00:00:00", tz = "UTC")
+  file_meta <- tibble::tibble(
+    source_file = paste0("source-", seq_len(8L), ".json"),
+    file_name = c(
+      "old-a.json",
+      "new-b.json",
+      "old-c.json",
+      "new-b.json",
+      "new-d.json",
+      "renamed-a.json",
+      "old-a.json",
+      "old-a.json"
+    ),
+    rel_path = c(
+      "old-a",
+      "new-b-first",
+      "old-c",
+      "new-b-duplicate",
+      "new-d",
+      "renamed-a",
+      "changed-size",
+      "changed-mtime"
+    ),
+    file_size_bytes = c(100, 200, 300, 200, 400, 100, 101, 100),
+    modified_at = time + c(0, 1, 2, 1, 3, 0, 0, 1)
+  )
+
+  filtered <- .read_filter_new_files(db, file_meta)
+  expect_identical(
+    filtered$rel_path,
+    c("new-b-first", "new-d", "renamed-a", "changed-size", "changed-mtime")
+  )
+  expect_identical(attr(filtered, "db_was_empty"), FALSE)
+  expect_false(".input_row" %in% names(filtered))
+
+  all_matched <- .read_filter_new_files(db, file_meta[c(1, 3), , drop = FALSE])
+  expect_equal(nrow(all_matched), 0L)
+  expect_identical(names(all_matched), names(file_meta))
+  expect_identical(attr(all_matched, "db_was_empty"), FALSE)
+
+  no_matches <- .read_filter_new_files(db, file_meta[c(5:8), , drop = FALSE])
+  expect_identical(no_matches$rel_path, file_meta$rel_path[5:8])
+
+  null_key <- tibble::tibble(
+    source_file = "source-missing.json",
+    file_name = "missing.json",
+    rel_path = "missing",
+    file_size_bytes = NA_real_,
+    modified_at = as.POSIXct(NA_real_, origin = "1970-01-01", tz = "UTC")
+  )
+  filtered_null_key <- .read_filter_new_files(db, null_key)
+  expect_equal(nrow(filtered_null_key), 0L)
+  expect_identical(attr(filtered_null_key, "db_was_empty"), FALSE)
+
+  expect_equal(
+    DBI::dbGetQuery(
+      db,
+      "SELECT COUNT(*) AS n FROM duckdb_tables()
+       WHERE table_name = 'mpathsenser_read_filter_new_keys'"
+    )$n[[1]],
+    0L
+  )
 })
 
 test_that("deduplication resolves cross-file duplicates by newest file first", {

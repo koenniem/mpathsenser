@@ -83,38 +83,53 @@
 # data-level deduplication afterwards (newest file wins per measurement key)
 # keeps the sensor tables clean.
 .read_filter_new_files <- function(db, file_meta) {
-  key_new <- paste(
-    file_meta$file_name,
-    file_meta$file_size_bytes,
-    as.numeric(file_meta$modified_at)
-  )
-
-  processed <- dbGetQuery(
+  db_was_empty <- dbGetQuery(
     db,
-    "SELECT file_name, file_size_bytes, modified_at FROM ProcessedFiles"
-  )
-  if (nrow(processed) > 0) {
-    key_old <- paste(
-      processed$file_name,
-      processed$file_size_bytes,
-      as.numeric(as.POSIXct(processed$modified_at, tz = "UTC"))
-    )
-    keep <- !key_new %in% key_old
-    file_meta <- file_meta[keep, , drop = FALSE]
-    key_new <- key_new[keep]
-  }
+    "SELECT NOT EXISTS (SELECT 1 FROM ProcessedFiles) AS db_was_empty"
+  )[["db_was_empty"]][[1L]]
 
   # Drop intra-run duplicates (the same name, size, and modification time in
   # the same run): the first occurrence is imported, later ones add nothing.
-  file_meta <- file_meta[!duplicated(key_new), , drop = FALSE]
+  if (nrow(file_meta) == 0L) {
+    attr(file_meta, "db_was_empty") <- isTRUE(db_was_empty)
+    return(file_meta)
+  }
 
-  # Report whether the database held no processed files when this run started.
+  key_columns <- c("file_name", "file_size_bytes", "modified_at")
+  file_keys <- file_meta[key_columns]
+  file_keys$.input_row <- seq_len(nrow(file_meta))
+  file_keys <- file_keys[!duplicated(file_keys[key_columns]), , drop = FALSE]
+
+  # Keep the large processed-file ledger in DuckDB; only the current batch's
+  # keys and the surviving input positions cross the R boundary.
+  on.exit(
+    dbExecute(db, "DROP TABLE IF EXISTS temp.mpathsenser_read_filter_new_keys"),
+    add = TRUE
+  )
+  DBI::dbWriteTable(
+    db,
+    name = "mpathsenser_read_filter_new_keys",
+    value = file_keys,
+    temporary = TRUE,
+    overwrite = TRUE,
+    row.names = FALSE
+  )
+
+  surviving_rows <- dbGetQuery(
+    db,
+    'SELECT n.".input_row"
+     FROM temp.mpathsenser_read_filter_new_keys AS n
+     ANTI JOIN ProcessedFiles AS p
+       ON p.file_name IS NOT DISTINCT FROM n.file_name
+      AND p.file_size_bytes IS NOT DISTINCT FROM CAST(n.file_size_bytes AS UBIGINT)
+      AND p.modified_at IS NOT DISTINCT FROM CAST(n.modified_at AS TIMESTAMPTZ)
+     ORDER BY n.".input_row"'
+  )[[".input_row"]]
+  file_meta <- file_meta[surviving_rows, , drop = FALSE]
+
   # read_mpath_sense() uses this to choose between a full-table dedup pass and
-  # the file-scoped pass: in a database that was empty before the run every
-  # duplicate key group necessarily involves a row of this run, so the two
-  # passes find exactly the same candidates and the full-table pass can skip
-  # the per-row flagging join against the run's file_ids.
-  attr(file_meta, "db_was_empty") <- nrow(processed) == 0
+  # the file-scoped pass. The value must describe the table before this run.
+  attr(file_meta, "db_was_empty") <- isTRUE(db_was_empty)
   file_meta
 }
 
@@ -175,16 +190,16 @@
   meta$study_id[is.na(meta$study_id)] <- "Unknown_Study"
 
   meta <- dplyr::bind_cols(
-    dplyr::select(meta, study_id, participant_id, .input_row),
-    dplyr::select(file_meta, file_name, rel_path, file_size_bytes, modified_at)
+    dplyr::select(meta, all_of(c("study_id", "participant_id", ".input_row"))),
+    dplyr::select(file_meta, all_of(c("file_name", "rel_path", "file_size_bytes", "modified_at")))
   )
   empty_tbl <- meta |>
-    dplyr::select(-.input_row) |>
+    dplyr::select(-".input_row") |>
     dplyr::transmute(
-      file_name,
-      participant_id,
-      file_size_bytes = as.numeric(file_size_bytes),
-      modified_at = as.POSIXct(modified_at, tz = "UTC")
+      .data$file_name,
+      .data$participant_id,
+      file_size_bytes = as.numeric(.data$file_size_bytes),
+      modified_at = as.POSIXct(.data$modified_at, tz = "UTC")
     )
 
   .read_db_transaction(db, {
@@ -261,8 +276,8 @@
   )
 
   dplyr::bind_rows(parsed, unrecognized) |>
-    dplyr::arrange(.input_row) |>
-    dplyr::select(-.input_row)
+    dplyr::arrange(.data$.input_row) |>
+    dplyr::select(-".input_row")
 }
 
 # Format a character vector of paths as a SQL array literal

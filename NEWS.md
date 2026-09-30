@@ -50,17 +50,18 @@
   plain append keeps it constant. File filtering still relies on
   `.read_filter_new_files()`, so unchanged files are still skipped and
   corrected files are still re-imported with a new `file_id`.
-* Deduplication now keeps the last recorded row within a file for interval sensors (those with an `end_time`, e.g. `Accelerometer`, `GarminSteps`, `GarminZeroCrossing`) and for Garmin's recalculated point measurements (`GarminBBI`, `GarminEnhancedBBI`, `GarminHeartRate`, `GarminStress`). Interval sensors can repeat a start time with a later `end_time` (the later row is the completed window), and Garmin recalculates the value of an already-recorded timestamp once more data becomes available, so the last recorded measurement is authoritative. All other sensors keep the first row. The deduplication is documented in the workflow vignette.
+* Deduplication keeps the newest file and, within that file, the last row in source order for each duplicate measurement key. This preserves completed interval windows and Garmin's recalculated point measurements; rows whose keys are unique in a corrected re-upload remain in the database.
 * The Garmin `zeroCrossing` array field is read as `deadband` (lowercase), matching the m-Path Sense data, instead of the misspelled `deadBand` variant.
 * Legacy timestamps that m-Path Sense versions <= 6 stored as local wall-clock values (AppUsage `period_start`/`period_end`/`last_foreground`, Bluetooth `start_scan`/`end_scan`, Location `time`, Weather `time`/`sunrise`/`sunset`) are now recognized by both the import SQL and the local-time views. The import script re-interprets their stored strings as UTC wall-clock values (`AT TIME ZONE 'UTC'`, independent of the session timezone), and the views keep their historical clock value instead of shifting them again.
 * `to_local_time()` now checks its arguments in R also inside a lazy `dplyr`/`dbplyr` query: the same R function is registered as the DuckDB translation, so invalid argument classes produce the usual R errors while the query is built instead of a database error at `collect()`. A missing timezone (`NULL` or `NA`) is now interpreted as UTC in R as well, matching the `to_local_time()` SQL macro's fallback.
 * Major rework of the import pipeline: `import()` is replaced by
   `read_mpath_sense()`, which stages the raw JSON payloads directly inside
   DuckDB instead of reading the files into R first. Files are imported in
-  per-batch transactions with automatic isolation of failing files; duplicate
-  files are detected by content hash, and on deduplication the newest file wins
-  per measurement key. Sensor tables link to their source file through
-  `source_file_id`.
+  per-batch transactions with automatic isolation of failing files. Unchanged
+  files are filtered by the filename, size, and modification-time heuristic;
+  renamed copies may be imported and sensor-level deduplication keeps the
+  newest file per measurement key. Sensor tables link to their source file
+  through `source_file_id`.
 * `read_mpath_sense()` stages all files of a batch together for maximum
   throughput. Interrupted imports are rolled back cleanly, and any leftover
   transaction is rolled back automatically on the next run. `.debug = TRUE`

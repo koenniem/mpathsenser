@@ -169,8 +169,10 @@ deduplicate = TRUE, optimize = TRUE, .progress, .debug)`.
    A missing study id falls back to `Unknown_Study`.
 4. `.read_filter_new_files()` applies the early duplicate heuristic `(file_name, file_size_bytes,
    modified_at)` to all files before empty-file registration or JSON staging and keeps the first
-   intra-run occurrence. It also reports whether the database was empty before the run (used for
-   the deduplication choice below).
+   intra-run occurrence. It stages only the incoming keys and their input ordinals in a temporary
+   DuckDB table, anti-joins against `ProcessedFiles`, and collects only surviving ordinals; the
+   ledger is never materialized in R. It also reports whether the database was empty before the run
+   (used for the deduplication choice below).
 5. `sensors = NULL` resolves to the full registry through `.read_resolve_sensors()`.
 
 `ProcessedFiles` enforces `(file_name, participant_id, file_size_bytes, modified_at)` and there is
