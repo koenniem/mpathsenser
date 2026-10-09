@@ -1,4 +1,4 @@
-#' Assign timezones to canonical measurements in an m-Path Sense database
+#' Assign timezones to measurements in an m-Path Sense database
 #'
 #' @description `r lifecycle::badge("experimental")`
 #'
@@ -62,8 +62,10 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
   sensors <- sensors[tolower(sensors) != "timezone"]
 
   # Check that the timezone data exists (as the main.Timezone view over raw)
-  if (!dbExistsTable(db, "Timezone", schema = "main") &&
-    !dbExistsTable(db, "Timezone", schema = "raw")) {
+  if (
+    !dbExistsTable(db, "Timezone", schema = "main") &&
+      !dbExistsTable(db, "Timezone", schema = "raw")
+  ) {
     cli_abort(
       c(
         "The table `Timezone` does not exist in the database.",
@@ -122,9 +124,11 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
       mutate(
         prev_timezone = lag(.data$timezone),
         is_start = if_else(
-          is.na(.data$timezone) & is.na(.data$prev_timezone) |
+          is.na(.data$timezone) &
+            is.na(.data$prev_timezone) |
             .data$timezone == .data$prev_timezone,
-          0L, 1L
+          0L,
+          1L
         ),
         grp = cumsum(.data$is_start)
       ) |>

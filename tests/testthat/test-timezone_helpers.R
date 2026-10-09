@@ -262,7 +262,7 @@ test_that("add_timezones_to_db is idempotent on an already-normalized table", {
   close_db(db)
 })
 
-test_that("canonical tables retain UTC and explicit local views expose local values", {
+test_that("physical tables retain UTC and explicit local views expose local values", {
   db <- create_db(NULL, ":memory:", shared_home = FALSE)
   DBI::dbExecute(
     db,

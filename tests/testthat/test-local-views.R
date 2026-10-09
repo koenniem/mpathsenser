@@ -110,7 +110,7 @@ test_that("legacy local wall-clock timestamps are not shifted by the views", {
   )
   expect_equal(format(view$time_local, tz = "UTC"), "2025-01-15 12:00:00")
   expect_equal(format(view$period_start_local, tz = "UTC"), "2025-01-15 12:00:00")
-  # The canonical table still holds the (UTC-masquerading) original value.
+  # The UTC column still holds the (UTC-masquerading) original value.
   expect_equal(format(view$period_start, tz = "UTC"), "2025-01-15 12:00:00")
 })
 

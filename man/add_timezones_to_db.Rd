@@ -2,7 +2,7 @@
 % Please edit documentation in R/add_timezones_to_db.R
 \name{add_timezones_to_db}
 \alias{add_timezones_to_db}
-\title{Assign timezones to canonical measurements in an m-Path Sense database}
+\title{Assign timezones to measurements in an m-Path Sense database}
 \usage{
 add_timezones_to_db(db, sensors = NULL, .progress = TRUE)
 }

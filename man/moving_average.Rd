@@ -33,9 +33,9 @@ as unsigned integers; integer, numeric, or character values are accepted).}
 
 \item{start_date}{An optional inclusive lower bound. Character values must use
 \code{YYYY-MM-DD}; a \code{Date} selects that whole calendar day. These date-only
-bounds use UTC for canonical \code{time} columns (including \verb{_with_local}) and
+bounds use UTC for \code{time} columns (including \verb{_with_local}) and
 local wall time for \verb{_local} views. A \code{POSIXt} value is an exact instant for
-canonical \code{time}; \verb{_local} views use its clock fields in its timezone, or
+\code{time}; \verb{_local} views use its clock fields in its timezone, or
 UTC when no timezone attribute is set.}
 
 \item{end_date}{An optional upper bound with the same types and timezone rules
@@ -67,9 +67,9 @@ Participant and date filters are applied by \code{\link[=get_data]{get_data()}} 
 membership is calculated. Rows outside those filters cannot contribute to
 a boundary target. Character and \code{Date} bounds select whole days under
 \code{\link[=get_data]{get_data()}}'s timezone rules; \code{POSIXt} bounds select exact instants.
-Window membership uses the selected view's \code{time}: canonical instants for
+Window membership uses the selected view's \code{time}: UTC instants for
 physical sensors and \verb{_with_local} views, wall-clock values for \verb{_local}
-views. Use canonical time when windows must reflect elapsed seconds across
+views. Use UTC time when windows must reflect elapsed seconds across
 daylight-saving transitions.
 
 The result is a lazy dbplyr table with exactly \code{participant_id}, \code{datetime}

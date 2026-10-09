@@ -26,8 +26,8 @@ Three layers, in the order data passes through them:
 
 | Layer | Responsibility | Lives in |
 |---|---|---|
-| **Import pipeline** | Turn JSON files into canonical sensor rows, at bounded memory, with provenance | `R/read_mpath_sense.R`, `R/read_helpers.R`, `R/ingest.R`, `R/sensor_registry.R` |
-| **Database** | Store canonical rows plus metadata, and expose them read-only | `inst/extdata/dbdef.sql`, `inst/extdata/views.sql`, `R/database.R`, `R/add_timezones_to_db.R`, `R/timestamp_helpers.R` |
+| **Import pipeline** | Turn JSON files into sensor rows, at bounded memory, with provenance | `R/read_mpath_sense.R`, `R/read_helpers.R`, `R/ingest.R`, `R/sensor_registry.R` |
+| **Database** | Store sensor rows plus metadata, and expose them read-only | `inst/extdata/dbdef.sql`, `inst/extdata/views.sql`, `R/database.R`, `R/add_timezones_to_db.R`, `R/timestamp_helpers.R` |
 | **Query & analysis API** | Lazy extraction, coverage, linking, gaps, location, device info | `R/sensor_functions.R`, `R/coverage.R`, `R/linking.R`, `R/location_functions.R` |
 
 Two design stances run through all of it:
@@ -56,7 +56,7 @@ flowchart TD
     end
 
     subgraph DB["Database (DuckDB)"]
-        RAW[("raw.&lt;sensor&gt;<br/>canonical rows + provenance")]
+        RAW[("raw.&lt;sensor&gt;<br/>sensor rows + provenance")]
         META_T[("Study / Participant<br/>ProcessedFiles")]
         VIEWS["main.&lt;sensor&gt; views<br/>measurement columns only"]
         LOCAL["_local / _with_local views<br/>+ to_local_time() macro"]
@@ -144,7 +144,7 @@ version. The legacy columns are stored as UTC instants at import time and then r
 `AT TIME ZONE 'UTC'` so their historical wall-clock value is preserved without shifting it
 twice — see `R/timestamp_helpers.R` and the header comment in `views.sql`.
 
-Canonical timestamps are always absolute `TIMESTAMPTZ` UTC instants. Local values are only ever
+Timestamps are always absolute `TIMESTAMPTZ` UTC instants. Local values are only ever
 produced by the `_local`/`_with_local` views, `to_local_time()` or `collect_local()`.
 
 ## Import pipeline
@@ -406,7 +406,7 @@ problem files.
 
 ## Timezones and local time
 
-Canonical storage is `TIMESTAMPTZ` (absolute instant) plus an observation-level `timezone` column
+Storage is `TIMESTAMPTZ` (absolute instant) plus an observation-level `timezone` column
 (IANA name) on applicable sensor tables. Both facts are kept on purpose: the instant answers *when*
 it happened, the timezone answers *how the participant's clock read then*, and DST transitions can
 make two distinct instants share a local clock value.
@@ -458,21 +458,23 @@ attribute that `get_data()` attaches).
 | `check_db()` | Validates a connection and the database layout | Rejects SQLite connections; verifies every sensor exists as a `raw` BASE TABLE *and* a `main` VIEW/BASE TABLE. Can be skipped per session with `options(mpathsenser.check_missing_sensors = FALSE)`. |
 | `unzip_data()` | Extracts delivered `.zip` archives | `.zip` files are not read by the importer; unzip first. |
 
-`check_arg()`, `check_sensors()`, `check_db()` and `check_offset()` in `R/input_checks.R` are the
-argument layer for every exported function. `check_arg()` is deliberately used everywhere: R's lazy
-evaluation otherwise surfaces a type error deep inside a query pipeline, and an explicit check names
-the offending argument at the call site.
+`check_arg()`, `check_db()`, `check_participants()`, `check_sensors()`, `check_dates()`,
+`check_week_start()` and `check_offset()` in `R/input_checks.R` are the argument layer for every
+exported function. `check_arg()` is deliberately used everywhere: R's lazy evaluation otherwise
+surfaces a type error deep inside a query pipeline, and an explicit check names the offending
+argument at the call site.
 
 `.physical_sensor()` maps any user- or view-level sensor name back to the physical table name
-(strips `_local` / `_with_local`); all write paths (`deduplicate_db()`, `optimize_db()`,
-`add_timezones_to_db()`, `copy_db()`) go through it, and `check_sensors()` accepts view names as
-well as physical ones.
+(strips `_local` / `_with_local`, case-insensitively); all write paths (`deduplicate_db()`,
+`optimize_db()`, `add_timezones_to_db()`, `copy_db()`) go through it, and `check_sensors()` accepts
+view names as well as physical ones. `check_sensors(resolve = TRUE)` additionally returns the
+canonical base sensor names, which the coverage code uses to normalise its `sensor` argument.
 
 ## Query and analysis layer
 
 | Function | Contract |
 |---|---|
-| `get_data(db, sensor, participant_id, start_date, end_date)` | Returns a **lazy** dbplyr table over `main.<sensor>` (or a `_local`/`_with_local` view), with the sensor name attached as `mpathsenser_sensor`. Character/`Date` bounds select whole days: UTC for canonical `time` (including `_with_local`) and local wall time for `_local`. `POSIXt` bounds are exact inclusive timestamps; `_local` uses the timestamp's displayed wall-clock fields. Day-end bounds exclude the following midnight. Filtering happens in DuckDB. |
+| `get_data(db, sensor, participant_id, start_date, end_date)` | Returns a **lazy** dbplyr table over `main.<sensor>` (or a `_local`/`_with_local` view), with the sensor name attached as `mpathsenser_sensor`. Character/`Date` bounds select whole days: UTC for `time` (including `_with_local`) and local wall time for `_local`. `POSIXt` bounds are exact inclusive timestamps; `_local` uses the timestamp's displayed wall-clock fields. Day-end bounds exclude the following midnight. Filtering happens in DuckDB. |
 | `get_nrows()`, `get_participants()`, `get_studies()`, `get_processed_files()` | Database introspection; `get_nrows()` counts per sensor and is the slow one on large databases. |
 | `coverage()` / `collect.coverage()` / `plot.coverage()` / `coverage_frequency()` | Coverage per bin (`by = minute/hour/day/week/month`), optionally averaged within a recurring `cycle`, using `metric = "count"` for distinct samples or `metric = "time"` for the union of expected-length observation intervals. All aggregation is built by the `.coverage_sql*()` helpers and executed inside DuckDB; missing bins are zero-filled within each participant's observation span, and only the first/last partial bins are prorated. |
 | `identify_gaps()` / `add_gaps()` | Finds gaps in a sensor stream and annotates data with them. |
@@ -516,7 +518,7 @@ functions that make external HTTP requests and both rate-limit themselves.
 * The `ProcessedFiles` UNIQUE constraint, the microsecond mtime normalisation and the plain
   `INSERT` are one mechanism — changing one of them requires revisiting the others.
 * Timezone filling only ever writes NULL cells.
-* Canonical timestamps stay `TIMESTAMPTZ`; local values are explicit (`_local` views,
+* Timestamps stay `TIMESTAMPTZ`; local values are explicit (`_local` views,
   `to_local_time()`, `collect_local()`).
 * `create_db()` and `open_db()` install and load the `icu` and `json` extensions explicitly
   (`.ensure_duckdb_extensions()`); never rely on DuckDB autoloading.
@@ -567,7 +569,7 @@ These are measured behaviours; supporting reproductions and investigation histor
 | Local views & macro | `inst/extdata/views.sql` | `to_local_time` macro, `<sensor>_local`, `<sensor>_with_local` |
 | Timezones | `R/add_timezones_to_db.R` | `add_timezones_to_db()`, `temp_tz_intervals` |
 | Timestamps | `R/timestamp_helpers.R` | `to_local_time()`, `collect_local()`, `.to_local_time_r()`, `.to_local_time_sql()`, `.source_timestamp_import_sql()`, `.source_timestamp_fixes`, `sql_translation.duckdb_connection` |
-| Argument checks | `R/input_checks.R` | `check_arg()`, `check_db()`, `check_sensors()`, `.physical_sensor()`, `check_offset()`, `ensure_suggested_package()` |
+| Argument checks | `R/input_checks.R` | `check_arg()`, `check_db()`, `check_participants()`, `check_sensors()`, `.physical_sensor()`, `.standard_sensor_names()`, `check_dates()`, `.is_date()`, `check_week_start()`, `check_offset()`, `ensure_suggested_package()` |
 | Query API | `R/sensor_functions.R` | `get_data()`, `identify_gaps()`, `add_gaps()`, `moving_average()`, `device_info()`, `installed_apps()`, `app_category()` |
 | Coverage | `R/coverage.R` | `coverage()`, `collect.coverage()`, `plot.coverage()`, `coverage_frequency()`, `.coverage_sql()` |
 | Linking/ESM | `R/linking.R` | `link()`, `link_gaps()`, `bin_data()`, `link_intervals()` |
@@ -584,7 +586,7 @@ These are measured behaviours; supporting reproductions and investigation histor
 | **Provenance triple** | `source_file_id`, `source_row_id`, `source_measurement_id` — where a row came from and how late it was written. |
 | **Scoped dedup** | Dedup restricted to key groups involving rows imported by the current run. |
 | **`file_id`** | `ProcessedFiles` identity, assigned in chronological batch order; higher = newer, which decides dedup winners. |
-| **Canonical timestamp** | Absolute UTC `TIMESTAMPTZ` instant, as stored in `raw.*` and exposed by `main.*`. |
+| **UTC timestamp** | Absolute `TIMESTAMPTZ` instant, as stored in `raw.*` and exposed by `main.*`. |
 | **Local view** | `_local` / `_with_local` view exposing participant-local wall-clock values. |
 | **Legacy columns** | The few timestamps that m-Path Sense ≤ 6 wrote as local wall-clock values (`AppUsage`, `Bluetooth`, `Location`, `Weather`). |
 | **senseVersion** | Version reported by the m-Path Sense export; selects the parser set in `sensor_registry`. |

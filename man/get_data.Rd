@@ -19,9 +19,9 @@ integers, so an integer, numeric, or character value is accepted.}
 
 \item{start_date}{An optional inclusive lower bound. Character values must use
 \code{YYYY-MM-DD}; a \code{Date} selects that whole calendar day. These date-only
-bounds use UTC for canonical \code{time} columns (including \verb{_with_local}) and
+bounds use UTC for \code{time} columns (including \verb{_with_local}) and
 local wall time for \verb{_local} views. A \code{POSIXt} value is an exact instant for
-canonical \code{time}; \verb{_local} views use its clock fields in its timezone, or
+\code{time}; \verb{_local} views use its clock fields in its timezone, or
 UTC when no timezone attribute is set.}
 
 \item{end_date}{An optional upper bound with the same types and timezone rules
@@ -46,7 +46,7 @@ functions such as \code{\link[dplyr:filter]{dplyr::filter()}} or \code{\link[dpl
 functions will be executed in-database, and will therefore be much faster than having to first
 pull all data into R and then possibly removing a large part of it. Importantly, data can
 pulled into R using \code{\link[dplyr:collect]{dplyr::collect()}}. Measurement timestamps are
-returned as canonical absolute \code{TIMESTAMPTZ} values. Use \code{\link[=collect_local]{collect_local()}}
+returned as absolute \code{TIMESTAMPTZ} values. Use \code{\link[=collect_local]{collect_local()}}
 or the explicit \verb{_local} views for participant-local wall-clock values.
 }
 \examples{

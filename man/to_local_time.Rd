@@ -2,7 +2,7 @@
 % Please edit documentation in R/timestamp_helpers.R
 \name{to_local_time}
 \alias{to_local_time}
-\title{Convert canonical timestamps to participant-local wall-clock values}
+\title{Convert UTC timestamps to participant-local wall-clock values}
 \usage{
 to_local_time(x, timezone)
 }

@@ -160,7 +160,7 @@ sql_translation.duckdb_connection <- function(con) {
   variant
 }
 
-#' Convert canonical timestamps to participant-local wall-clock values
+#' Convert UTC timestamps to participant-local wall-clock values
 #'
 #' `to_local_time()` converts absolute timestamps into the wall-clock time of
 #' the timezone in which they were measured. It works both on timestamps that

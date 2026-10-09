@@ -6,8 +6,8 @@
 * `copy_db()` quotes file-backed target paths and rejects in-memory targets
   before disconnecting them.
 * `get_data()` accepts `Date` and strict `YYYY-MM-DD` day bounds; `POSIXt`
-  inputs are exact inclusive timestamps. Day bounds use UTC for canonical time
-  columns and local wall time for `_local` views; the end of a day is exclusive.
+  inputs are exact inclusive timestamps. Day bounds use UTC for `time` columns
+  and local wall time for `_local` views; the end of a day is exclusive.
 * `link()` supports named x-to-y keys and custom nested-column names. `by = NULL`
   and `character()` now mean a cross join before interval filtering; supply
   participant or group keys to avoid cross-participant matching.

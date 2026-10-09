@@ -48,7 +48,7 @@
 #'   functions will be executed in-database, and will therefore be much faster than having to first
 #'   pull all data into R and then possibly removing a large part of it. Importantly, data can
 #'   pulled into R using [dplyr::collect()]. Measurement timestamps are
-#'   returned as canonical absolute `TIMESTAMPTZ` values. Use [collect_local()]
+#'   returned as absolute `TIMESTAMPTZ` values. Use [collect_local()]
 #'   or the explicit `_local` views for participant-local wall-clock values.
 #'
 #'
@@ -61,9 +61,9 @@
 #'   integers, so an integer, numeric, or character value is accepted.
 #' @param start_date An optional inclusive lower bound. Character values must use
 #'   `YYYY-MM-DD`; a `Date` selects that whole calendar day. These date-only
-#'   bounds use UTC for canonical `time` columns (including `_with_local`) and
+#'   bounds use UTC for `time` columns (including `_with_local`) and
 #'   local wall time for `_local` views. A `POSIXt` value is an exact instant for
-#'   canonical `time`; `_local` views use its clock fields in its timezone, or
+#'   `time`; `_local` views use its clock fields in its timezone, or
 #'   UTC when no timezone attribute is set.
 #' @param end_date An optional upper bound with the same types and timezone rules
 #'   as `start_date`. A character or `Date` value includes the whole day, ending
@@ -136,7 +136,7 @@ get_data <- function(
 
   # dbplyr renders POSIXct values as timezone-naive TIMESTAMP literals. Build
   # an epoch-based TIMESTAMPTZ expression so DuckDB's session timezone cannot
-  # shift bounds used with canonical UTC columns.
+  # shift bounds used with UTC columns.
   utc_boundary <- function(x) {
     epoch <- as.numeric(as.POSIXct(x, tz = "UTC"))
     quoted_epoch <- DBI::dbQuoteLiteral(db, epoch)
@@ -162,7 +162,7 @@ get_data <- function(
     }
   }
 
-  # Canonical sensor tables expose absolute TIMESTAMPTZ values directly.
+  # Physical sensor tables expose absolute TIMESTAMPTZ values directly.
   out
 }
 
@@ -469,9 +469,9 @@ device_info <- function(db, participant_id = NULL) {
 #'   membership is calculated. Rows outside those filters cannot contribute to
 #'   a boundary target. Character and `Date` bounds select whole days under
 #'   [get_data()]'s timezone rules; `POSIXt` bounds select exact instants.
-#'   Window membership uses the selected view's `time`: canonical instants for
+#'   Window membership uses the selected view's `time`: UTC instants for
 #'   physical sensors and `_with_local` views, wall-clock values for `_local`
-#'   views. Use canonical time when windows must reflect elapsed seconds across
+#'   views. Use UTC time when windows must reflect elapsed seconds across
 #'   daylight-saving transitions.
 #'
 #'   The result is a lazy dbplyr table with exactly `participant_id`, `datetime`

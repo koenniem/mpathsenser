@@ -93,7 +93,7 @@ sensors <- c(
   memory_limit = NULL,
   temp_directory = NULL
 ) {
-  # Canonical instant handling: always display UTC by default
+  # Display timestamps in UTC by default
   dbExecute(db, "SET timezone = 'UTC'")
 
   # DuckDB's own query progress bar clashes with the cli progress bars of this
@@ -238,7 +238,7 @@ sensors <- c(
 
 # Define the to_local_time() macro and the per-sensor _local/_with_local views
 # from the static SQL file. Views live in SQL, not in R, so they are generated
-# once against the canonical schema and stay in sync with it. Creating them is
+# once against the schema definition and stay in sync with it. Creating them is
 # idempotent (CREATE OR REPLACE), but is skipped when they already exist, which
 # lets a read-only connection reopen a database without attempting to write.
 .create_local_views <- function(db) {

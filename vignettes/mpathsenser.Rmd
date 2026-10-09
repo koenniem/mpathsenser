@@ -168,15 +168,15 @@ For a large database this rewrite takes on the order of seconds per table (the d
 
 # Assigning timezones and representing timestamps
 
-Canonical sensor timestamps are stored as UTC `TIMESTAMPTZ` absolute instants in the physical `raw` tables and are exposed unchanged by the `main` schema views. The explicitly named `_with_local` and `_local` views expose participant-local wall-clock `TIMESTAMP` values. If the m-Path Sense data contains `Timezone` measurements (the app records the timezone of the phone), the import automatically assigns an IANA timezone to every measurement based on the timezone active at its start time. `add_timezones_to_db()` can be rerun for existing or selected tables:
+Sensor timestamps are stored as UTC `TIMESTAMPTZ` absolute instants in the physical `raw` tables and are exposed unchanged by the `main` schema views. The explicitly named `_with_local` and `_local` views expose participant-local wall-clock `TIMESTAMP` values. If the m-Path Sense data contains `Timezone` measurements (the app records the timezone of the phone), the import automatically assigns an IANA timezone to every measurement based on the timezone active at its start time. `add_timezones_to_db()` can be rerun for existing or selected tables:
 
 ```{r timezones}
 add_timezones_to_db(db, .progress = FALSE)
 ```
 
-DuckDB retains both pieces of information: canonical `TIMESTAMPTZ` answers when the observation occurred, while `timezone` records the participant's IANA timezone at that instant. This preserves distinct instants even when they have the same local clock time during an autumn DST transition; the explicit local views present the corresponding local wall-clock values.
+DuckDB retains both pieces of information: the UTC `TIMESTAMPTZ` answers when the observation occurred, while `timezone` records the participant's IANA timezone at that instant. This preserves distinct instants even when they have the same local clock time during an autumn DST transition; the explicit local views present the corresponding local wall-clock values.
 
-R datetime vectors have one technical timezone attribute, so `to_local_time()` is the helper to convert canonical timestamps to the wall-clock value in the observation's timezone. It stores the result with technical timezone `UTC` to prevent automatic shifting. This `UTC` attribute does not mean the displayed values are UTC; the separate `timezone` column supplies their interpretation:
+R datetime vectors have one technical timezone attribute, so `to_local_time()` is the helper to convert UTC timestamps to the wall-clock value in the observation's timezone. It stores the result with technical timezone `UTC` to prevent automatic shifting. This `UTC` attribute does not mean the displayed values are UTC; the separate `timezone` column supplies their interpretation:
 
 ```{r}
 get_data(db, sensor = "Pedometer", participant_id = "12345") |>

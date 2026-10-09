@@ -1,5 +1,5 @@
--- Derived local-time views for canonical sensor tables.
--- Canonical timestamps are absolute UTC TIMESTAMPTZ instants in main.<sensor>.
+-- Derived local-time views for the sensor tables.
+-- Timestamps are absolute UTC TIMESTAMPTZ instants in main.<sensor>.
 -- Each sensor gains two views:
 --
 --   <sensor>_with_local  all columns, plus one localized column per timestamp
@@ -19,7 +19,7 @@
 -- timestamps (AppUsage period_start/period_end/last_foreground, Bluetooth
 -- start_scan/end_scan, Location time, Weather time/sunrise/sunset) as local
 -- wall-clock values rather than UTC instants. Those columns are represented as
--- UTC TIMESTAMPTZ in the canonical table (via AT TIME ZONE 'UTC'
+-- UTC TIMESTAMPTZ in the underlying table (via AT TIME ZONE 'UTC'
 -- at import time) but must NOT be shifted again when producing local values;
 -- the CASE below keeps their historical clock value.
 -- This workaround is removed once these timestamps are truly UTC.

@@ -281,7 +281,7 @@ read_mpath_sense <- function(
     }
 
     # Add the observation timezone after all files have been ingested and
-    # deduplicated. This keeps the canonical timestamp as TIMESTAMPTZ while
+    # deduplicated. This keeps the timestamp as TIMESTAMPTZ while
     # making newly imported databases immediately usable.
     has_timezones <- DBI::dbGetQuery(
       db,

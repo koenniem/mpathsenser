@@ -325,7 +325,7 @@ schema_table("ProcessedFiles")
 
 ## Sensor-specific tables
 
-The tables below describe the physical sensor tables in the `raw` schema, exactly as exposed by the `main.<sensor>` views (which drop the three internal provenance columns). Canonical timestamps are stored as UTC `TIMESTAMPTZ` values, and each row may include an IANA `timezone` for local rendering. Explicitly named local views expose participant-local wall-clock values; `COALESCE(timezone, 'UTC')` ensures unmapped observations still have non-NULL timestamps. The import populates timezone values automatically; `add_timezones_to_db()` can be rerun to normalize existing or selected tables.
+The tables below describe the physical sensor tables in the `raw` schema, exactly as exposed by the `main.<sensor>` views (which drop the three internal provenance columns). Timestamps are stored as UTC `TIMESTAMPTZ` values, and each row may include an IANA `timezone` for local rendering. Explicitly named local views expose participant-local wall-clock values; `COALESCE(timezone, 'UTC')` ensures unmapped observations still have non-NULL timestamps. The import populates timezone values automatically; `add_timezones_to_db()` can be rerun to normalize existing or selected tables.
 
 ```{r, echo=FALSE, results="asis"}
 metadata_tables <- c("Study", "Participant", "ProcessedFiles")

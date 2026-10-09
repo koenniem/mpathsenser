@@ -591,7 +591,7 @@ test_that("moving_average uses the selected view's time domain", {
        (7007, TIMESTAMPTZ '2024-03-31 01:00:30+00', 'Europe/Brussels', 4, 1, 101, 1)"
   )
 
-  canonical <- moving_average(
+  utc_result <- moving_average(
     db,
     sensor = "Accelerometer",
     cols = "x_mean",
@@ -616,7 +616,7 @@ test_that("moving_average uses the selected view's time domain", {
   ) |>
     dplyr::collect()
 
-  expect_equal(sort(canonical$x_mean), c(3, 3))
+  expect_equal(sort(utc_result$x_mean), c(3, 3))
   expect_equal(sort(with_local$x_mean), c(3, 3))
   expect_equal(sort(local_wall_time$x_mean), c(2, 4))
 })
