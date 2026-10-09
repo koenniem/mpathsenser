@@ -95,10 +95,12 @@ platform information is missing.
 }
 \examples{
 \dontrun{
+db <- example_db()
+
 proportional <- coverage_proportional(
   db,
   expected = coverage_expected(),
-  participant_id = "12345"
+  participant_id = "372780"
 )
 plot(proportional, cycle = "day")
 

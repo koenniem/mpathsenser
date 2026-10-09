@@ -1,4 +1,7 @@
 # mpathsenser (in-development version)
+* The package ships a new example capture: 27 zipped JSON files from an
+  Android participant in `inst/extdata/example/`, plus `example_db()` for a
+  ready-to-use in-memory database built from a committed parquet snapshot.
 * `add_gaps()` supports multiple grouping columns and preserves fill-column
   types, including POSIXct, when adding continued gap rows.
 * `app_category()` skips missing app names and rate-limits only between actual

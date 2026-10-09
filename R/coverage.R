@@ -100,9 +100,11 @@ coverage_expected <- function(
 #'
 #' @examples
 #' \dontrun{
+#' db <- example_db()
+#'
 #' frequency <- coverage_frequency(
 #'   db,
-#'   participant_id = "12345",
+#'   participant_id = "372780",
 #'   sensor = "Accelerometer",
 #'   by = "hour"
 #' )
@@ -211,10 +213,12 @@ coverage_frequency <- function(
 #'
 #' @examples
 #' \dontrun{
+#' db <- example_db()
+#'
 #' proportional <- coverage_proportional(
 #'   db,
 #'   expected = coverage_expected(),
-#'   participant_id = "12345"
+#'   participant_id = "372780"
 #' )
 #' plot(proportional, cycle = "day")
 #'
@@ -332,6 +336,8 @@ collect.coverage <- function(x, ...) {
 #'
 #' @examples
 #' \dontrun{
+#' db <- example_db()
+#'
 #' plot(coverage_frequency(db, sensor = "Accelerometer"), cycle = "day")
 #' plot(coverage_proportional(db, coverage_expected()))
 #' }

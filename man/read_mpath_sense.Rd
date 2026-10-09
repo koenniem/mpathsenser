@@ -97,6 +97,17 @@ threads. Since a DuckDB database allows only a single writer at a time, do
 not run multiple imports into the same database concurrently.
 }
 
+\examples{
+zip_dir <- system.file("extdata", "example", package = "mpathsenser")
+path <- file.path(tempdir(), "mpathsenser-example")
+unzip_data(zip_dir, to = path, overwrite = TRUE, .progress = FALSE)
+
+db <- create_db(NULL, ":memory:")
+read_mpath_sense(path, db, .progress = FALSE)
+get_nrows(db)
+close_db(db)
+
+}
 \seealso{
 \code{\link[=create_db]{create_db()}} for creating a database for this function to use;
 \code{\link[=close_db]{close_db()}} for closing this database; \code{\link[=optimize_db]{optimize_db()}} to re-order the

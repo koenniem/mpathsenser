@@ -85,6 +85,16 @@
 #'   data in the sensor tables for faster future processing;
 #'   [add_timezones_to_db()] to assign a timezone to each measurement.
 #'
+#' @examples
+#' zip_dir <- system.file("extdata", "example", package = "mpathsenser")
+#' path <- file.path(tempdir(), "mpathsenser-example")
+#' unzip_data(zip_dir, to = path, overwrite = TRUE, .progress = FALSE)
+#'
+#' db <- create_db(NULL, ":memory:")
+#' read_mpath_sense(path, db, .progress = FALSE)
+#' get_nrows(db)
+#' close_db(db)
+#'
 #' @export
 read_mpath_sense <- function(
   path = getwd(),

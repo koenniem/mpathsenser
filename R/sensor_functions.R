@@ -74,16 +74,15 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' # Open a database
-#' db <- open_db()
+#' db <- example_db()
 #'
 #' # Retrieve some data
-#' get_data(db, "Accelerometer", "12345")
+#' get_data(db, "Pedometer", participant_id = 372780)
 #'
 #' # Or within a specific window
-#' get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
-#' }
+#' get_data(db, "Pedometer", participant_id = 372780, "2026-09-30", "2026-10-01")
+#'
+#' close_db(db)
 #'
 get_data <- function(
   db,
@@ -186,13 +185,13 @@ get_data <- function(
 #'
 #' @examples
 #' \dontrun{
-#' db <- open_db()
+#' db <- example_db()
 #'
 #' # Get installed apps for all participants
 #' installed_apps(db)
 #'
 #' # Get installed apps for a single participant
-#' installed_apps(db, "12345")
+#' installed_apps(db, 372780)
 #' }
 installed_apps <- function(db, participant_id = NULL) {
   check_db(db)
@@ -377,14 +376,14 @@ app_category_impl <- function(name, num, exact) {
 #'
 #' @examples
 #' \dontrun{
-#' # Open the database
-#' db <- open_db("path/to/db")
+#' # Open the example database
+#' db <- example_db()
 #'
 #' # Get device info for all participants
 #' device_info(db)
 #'
 #' # Get device info for a specific participant
-#' device_info(db, participant_id = 1)
+#' device_info(db, participant_id = 372780)
 #' }
 device_info <- function(db, participant_id = NULL) {
   get_data(db, "Device", participant_id = participant_id) |>

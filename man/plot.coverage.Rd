@@ -45,6 +45,8 @@ Plot a coverage overview
 }
 \examples{
 \dontrun{
+db <- example_db()
+
 plot(coverage_frequency(db, sensor = "Accelerometer"), cycle = "day")
 plot(coverage_proportional(db, coverage_expected()))
 }

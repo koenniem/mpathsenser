@@ -275,7 +275,7 @@ The initial sensor tables have no unique constraints: duplicate measurements are
 library(dplyr)
 
 get_data(db, sensor = "Battery") |>
-  filter(participant_id == "12345") |>
+  filter(participant_id == "372780") |>
   summarise(mean_battery = mean(battery_level, na.rm = TRUE)) |>
   collect()
 ```

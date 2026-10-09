@@ -22,13 +22,13 @@ A tibble containing device info for each participant
 }
 \examples{
 \dontrun{
-# Open the database
-db <- open_db("path/to/db")
+# Open the example database
+db <- example_db()
 
 # Get device info for all participants
 device_info(db)
 
 # Get device info for a specific participant
-device_info(db, participant_id = 1)
+device_info(db, participant_id = 372780)
 }
 }

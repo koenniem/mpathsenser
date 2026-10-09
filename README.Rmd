@@ -41,18 +41,24 @@ remotes::install_github("koenniem/mpathsenser")
 
 ## Importing m-Path Sense data
 
-Importing data always follows the same three steps: point to the folder with the JSON files, create a database, and read the files into it. This package ships with a small example dataset (two participants, three days of data) that mimics what m-Path Sense exports, which we use throughout this README. Your own data works exactly the same: simply set `path` to the folder that contains the files exported by the app.
+Importing data always follows the same steps: unpack the archives exported by m-Path Sense, point to the folder with the JSON files, create a database, and read the files into it. This package ships with a small example capture (one Android participant, about a day and a half of data) that we use throughout this README. Your own data works exactly the same: extract the `.zip` files with `unzip_data()` and set `path` to the folder that contains the extracted JSON files.
 
 ```{r setup, include = FALSE}
 library(mpathsenser)
-path <- system.file("extdata", "example", package = "mpathsenser")
+zip_dir <- system.file("extdata", "example", package = "mpathsenser")
+path <- file.path(tempdir(), "mpathsenser-example")
+unzip_data(zip_dir, to = path, overwrite = TRUE, .progress = FALSE)
 db <- create_db(NULL, file.path(tempdir(), "readme.db"), overwrite = TRUE)
 read_mpath_sense(path = path, db = db, .progress = FALSE)
 ```
 
 ```{r, eval = FALSE}
-# The folder with the JSON files exported by m-Path Sense
-path <- system.file("extdata", "example", package = "mpathsenser")
+# The folder with the ZIP archives transferred by m-Path Sense
+zip_dir <- system.file("extdata", "example", package = "mpathsenser")
+
+# Extract the JSON files to a normal folder
+path <- file.path(tempdir(), "mpathsenser-example")
+unzip_data(zip_dir, to = path)
 
 # Create a new database (an in-memory database is fine for experiments)
 db <- create_db(NULL, file.path(tempdir(), "study.db"))
@@ -64,6 +70,12 @@ read_mpath_sense(path = path, db = db)
 `read_mpath_sense()` returns a message once all files were written to the database, or the names of the files that could not be imported. Files are imported in batches (`batch_size`, default 1000 files at a time) within transactions, so a file that fails to import does not affect the others. If a file fails even on its own, it is reported and the rest of the batch is imported normally.
 
 Re-running `read_mpath_sense()` on the same folder skips the files that were already imported, and only processes the new ones. Files are tracked in the `ProcessedFiles` table by their name, size, and modification time, so corrected files that were re-uploaded (same name, different content) are imported again. Duplicate measurements are then removed automatically, keeping the row of the newest file per measurement — see the [Get started vignette](https://koenniem.github.io/mpathsenser/articles/mpathsenser.html) for details.
+
+If you only want to explore the package before importing your own data, `example_db()` opens the same capture as a ready-to-use in-memory database:
+
+```{r, eval = FALSE}
+db <- example_db()
+```
 
 ## Inspecting the database
 
@@ -85,7 +97,7 @@ Data is extracted with `get_data()`, which returns a lazy [dbplyr](https://dbply
 ```{r}
 library(dplyr)
 
-get_data(db, sensor = "Pedometer", participant_id = "12345") |>
+get_data(db, sensor = "Pedometer", participant_id = "372780") |>
   collect()
 ```
 
@@ -104,7 +116,7 @@ Use `coverage_frequency()` for absolute counts of distinct measurement times and
 ```{r coverage, fig.width = 8, fig.height = 4.5, fig.align = "center", dpi = 100}
 cov <- coverage_frequency(
   db = db,
-  participant_id = "12345",
+  participant_id = "372780",
   sensor = c("Activity", "Battery", "Screen", "Wifi", "Location", "Pedometer"),
   by = "hour"
 )

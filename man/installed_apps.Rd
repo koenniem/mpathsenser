@@ -26,12 +26,12 @@ throughout the study.
 }
 \examples{
 \dontrun{
-db <- open_db()
+db <- example_db()
 
 # Get installed apps for all participants
 installed_apps(db)
 
 # Get installed apps for a single participant
-installed_apps(db, "12345")
+installed_apps(db, 372780)
 }
 }

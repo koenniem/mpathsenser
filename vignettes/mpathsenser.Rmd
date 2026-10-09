@@ -33,39 +33,46 @@ library(ggplot2)
 
 The m-Path Sense app continuously collects data in the background (e.g. accelerometer data, screen events, battery level, or data from paired Garmin devices) and writes it to JSON files. A JSON file is really just a text file with a specific format: it contains a list of entries, where each entry has a `sensorStartTime` (in microseconds since the Unix epoch) and a `data` object. The `__type` field inside `data` says which sensor produced the entry. When a file reaches a certain size (5 MB by default), it is zipped and transferred to the study server.
 
-Let's look at the first entry of one of the example files:
+Let's look at an entry from one of the example files:
 
 ```{r peek}
-con <- file(
-  system.file(
-    "extdata",
-    "example",
-    "1_example_study_12345_m_Path_sense_2025-12-13_08-00-00.000000.json",
-    package = "mpathsenser"
-  )
+zip <- system.file(
+  "extdata",
+  "example",
+  "409460__372780_m_Path_sense_2026-09-30_08-59-23349831.zip",
+  package = "mpathsenser"
 )
+con <- unz(zip, "409460__372780_m_Path_sense_2026-09-30_08-59-23349831.json")
 cat(substr(readLines(con, warn = FALSE)[2], 1, 220), "\n...")
 close(con)
 ```
 
-Because data is written as it comes in, a file is only properly closed when the app is shut down gracefully. If the app is killed, the file may end without its closing bracket and can no longer be read by a JSON parser. Verify such files with `jsonlite::validate()` before importing them, and use `unzip_data()` to extract the `.zip` archives that m-Path Sense may deliver:
+Because data is written as it comes in, a file is only properly closed when the app is shut down gracefully. If the app is killed, the file may end without its closing bracket and can no longer be read by a JSON parser. m-Path Sense transfers its files as `.zip` archives, so use `unzip_data()` to extract them and verify the extracted files with `jsonlite::validate()` before importing:
 
 ```{r, eval = FALSE}
 unzip_data(path = "path/to/data") # extract .zip files, if any
 ```
 
-`read_mpath_sense()` itself reads plain JSON files; there is no need to unzip or fix files that are already valid.
+`read_mpath_sense()` reads the extracted `.json` files; there is no need to fix files that are already valid.
 
 # Example data
 
-The package ships with a small example dataset in `inst/extdata/example`, which mimics what m-Path Sense exports: two participants (`12345` and `67890`) in a study called `demo_study`, with three days of data for the main participant. The files follow the m-Path Sense naming convention and contain the common sensors (activity, battery, screen, wifi, location, app usage, Garmin heart rate and stress, and several others).
+The package ships with a real example capture in `inst/extdata/example`: 27 ZIP files from one Android participant (`372780`), collected on 30 September and 1 October 2026. They follow the m-Path Sense naming convention and contain the common Android sensors (activity, battery, screen, Wi-Fi, location, app usage, and several others). The participant did not pair a Garmin device, so the Garmin tables stay empty.
 
 ```{r example data}
-path <- system.file("extdata", "example", package = "mpathsenser")
+zip_dir <- system.file("extdata", "example", package = "mpathsenser")
+list.files(zip_dir)
+```
+
+`unzip_data()` extracts the archives to a normal folder. We use the session's temporary directory, so the installed package stays untouched:
+
+```{r example unzip}
+path <- file.path(tempdir(), "mpathsenser-example")
+unzip_data(zip_dir, to = path, overwrite = TRUE, .progress = FALSE)
 list.files(path)
 ```
 
-There is no need to copy these files anywhere: `read_mpath_sense()` only reads from this folder, and we will create the database elsewhere.
+There is no need to copy these extracts anywhere else: `read_mpath_sense()` only reads from `path`, and we will create the database elsewhere.
 
 # Creating a database
 
@@ -179,7 +186,7 @@ DuckDB retains both pieces of information: the UTC `TIMESTAMPTZ` answers when th
 R datetime vectors have one technical timezone attribute, so `to_local_time()` is the helper to convert UTC timestamps to the wall-clock value in the observation's timezone. It stores the result with technical timezone `UTC` to prevent automatic shifting. This `UTC` attribute does not mean the displayed values are UTC; the separate `timezone` column supplies their interpretation:
 
 ```{r}
-get_data(db, sensor = "Pedometer", participant_id = "12345") |>
+get_data(db, sensor = "Pedometer", participant_id = "372780") |>
   collect() |>
   mutate(time = to_local_time(time, timezone))
 ```
@@ -189,7 +196,7 @@ Keep the `timezone` column alongside any timestamp transformed with `to_local_ti
 Note that inside a lazy query, `arrange()` followed by a `mutate()` that overwrites the ordered column does not keep the arranged order: the generated SQL's `ORDER BY "time"` then refers to the new (converted) column, so the result is ordered by local time. This applies to any lazy `mutate()` that overwrites an arranged column. To keep the UTC order, convert into a new column instead:
 
 ```{r}
-get_data(db, sensor = "Pedometer", participant_id = "12345") |>
+get_data(db, sensor = "Pedometer", participant_id = "372780") |>
   arrange(participant_id, time) |>
   mutate(time_local = to_local_time(time, timezone)) |>
   collect()
@@ -200,7 +207,7 @@ To order by local time, call `arrange()` after the conversion (and likewise afte
 `to_local_time()` works both on timestamps already collected into R and inside a lazy query: when applied in a `dplyr` pipeline before `collect()`, dbplyr calls the same function while building the query (so its argument checks run in R) and DuckDB applies the `to_local_time()` macro, so the conversion happens in the database. `collect_local()` is a convenience wrapper that collects a lazy table and converts every timestamp column at once, equivalent to collecting the corresponding `_local` view:
 
 ```{r}
-get_data(db, sensor = "Pedometer", participant_id = "12345") |>
+get_data(db, sensor = "Pedometer", participant_id = "372780") |>
   collect_local()
 ```
 
@@ -210,7 +217,7 @@ get_data(db, sensor = "Pedometer", participant_id = "12345") |>
 
 ```{r get data}
 # All screen events of one participant
-get_data(db, sensor = "Screen", participant_id = "12345") |>
+get_data(db, sensor = "Screen", participant_id = "372780") |>
   count(screen_event) |>
   collect()
 ```
@@ -246,7 +253,7 @@ On iOS, `AppUsage`, `Light`, `Memory`, and `Screen` coverage is `NA` rather than
 ```{r coverage}
 cov <- coverage_frequency(
   db = db,
-  participant_id = "12345",
+  participant_id = "372780",
   sensor = c("Activity", "Battery", "Screen", "Wifi", "Location", "Pedometer"),
   by = "hour"
 )
@@ -257,7 +264,7 @@ The result is a remote tibble with the full per-hour series. Use `plot()` to ave
 ```{r coverage relative, eval = FALSE}
 cov_relative <- coverage_proportional(
   db = db,
-  participant_id = "12345",
+  participant_id = "372780",
   sensor = c("Accelerometer", "Battery"),
   expected = coverage_expected()
 ) |>

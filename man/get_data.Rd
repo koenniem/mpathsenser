@@ -50,15 +50,14 @@ returned as absolute \code{TIMESTAMPTZ} values. Use \code{\link[=collect_local]{
 or the explicit \verb{_local} views for participant-local wall-clock values.
 }
 \examples{
-\dontrun{
-# Open a database
-db <- open_db()
+db <- example_db()
 
 # Retrieve some data
-get_data(db, "Accelerometer", "12345")
+get_data(db, "Pedometer", participant_id = 372780)
 
 # Or within a specific window
-get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
-}
+get_data(db, "Pedometer", participant_id = 372780, "2026-09-30", "2026-10-01")
+
+close_db(db)
 
 }

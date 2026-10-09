@@ -61,9 +61,11 @@ use dplyr verbs on the returned lazy table before collecting it.
 }
 \examples{
 \dontrun{
+db <- example_db()
+
 frequency <- coverage_frequency(
   db,
-  participant_id = "12345",
+  participant_id = "372780",
   sensor = "Accelerometer",
   by = "hour"
 )
