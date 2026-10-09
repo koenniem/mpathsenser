@@ -168,9 +168,11 @@ coverage_frequency <- function(
 #' participant span; a sensor with no observations is anchored at the span start.
 #' The denominator counts eligible slot starts. A slot crossing an output-bin
 #' boundary belongs to the bin containing its start, and the span ends at the
-#' latest occupied slot's end. For iOS participants, `AppUsage`, `Light`,
-#' `Memory`, and `Screen` are marked `NA`; a warning is issued when `Device`
-#' platform information is missing.
+#' latest occupied slot's end. The last returned bin is always the one containing
+#' the last included observation, so a trailing expected window is attributed to
+#' that bin rather than adding a later bin. For iOS participants, `AppUsage`,
+#' `Light`, `Memory`, and `Screen` are marked `NA`; a warning is issued when
+#' `Device` platform information is missing.
 #'
 #' `expected` is required, but it may be supplied directly or constructed with
 #' [coverage_expected()].
@@ -880,8 +882,13 @@ plot.coverage <- function(
   adjustments <- purrr::map_chr(too_small, \(measure) {
     expected_width <- .coverage_seconds_label(expected[[measure]])
     paste0(
-      measure, ": ", requested_width, " is shorter than ", expected_width,
-      "; using ", expected_width
+      measure,
+      ": ",
+      requested_width,
+      " is shorter than ",
+      expected_width,
+      "; using ",
+      expected_width
     )
   })
   cli_warn(c(
@@ -1012,16 +1019,19 @@ plot.coverage <- function(
 ) {
   is_interval <- identical(metric, "interval")
   is_bin_metric <- identical(metric, "bin")
+  # Interval and bin spans reach the end of the last expected window, but their
+  # cells stop at the last observation's bin, so no trailing bin is emitted.
   post_span_ctes <- ""
 
   if (is_interval) {
     data_ctes <- .coverage_sql_intervals(relation_sql)
     span_sql <- paste(
       "SELECT participant_id, MIN(seg_start) AS first_time,",
-      "       MAX(seg_end) AS last_time",
+      "       MAX(seg_end) AS last_time,",
+      "       MAX(seg_start) AS last_observed",
       "FROM intervals GROUP BY participant_id"
     )
-    last_boundary <- "sp.last_time - INTERVAL 1 MICROSECOND"
+    last_boundary <- "sp.last_observed"
     value_join <- paste(
       "LEFT JOIN bin_coverage bc",
       "  ON bc.participant_id = s.participant_id",
@@ -1043,11 +1053,12 @@ plot.coverage <- function(
     data_ctes <- .coverage_sql_slots(relation_sql)
     span_sql <- paste(
       "SELECT participant_id, MIN(bin_time) AS first_time,",
-      "       MAX(slot_start + TO_SECONDS(expected_seconds)) AS last_time",
+      "       MAX(slot_start + TO_SECONDS(expected_seconds)) AS last_time,",
+      "       MAX(bin_time) AS last_observed",
       "FROM observed_slots GROUP BY participant_id"
     )
     post_span_ctes <- paste0(",\n", .coverage_sql_slot_bins())
-    last_boundary <- "sp.last_time - INTERVAL 1 MICROSECOND"
+    last_boundary <- "sp.last_observed"
     slot_anchor <- "COALESCE(a.slot_anchor, sp.first_time)"
     joined_values <- paste(
       "CAST(COALESCE(sb.n, 0) AS DOUBLE) AS n",
@@ -1369,21 +1380,26 @@ plot.coverage <- function(
     year = if (weekly_bins) "week_of_year" else "month"
   )
 
-  if (identical(cycle, "year") && !weekly_bins &&
-    .coverage_bin_is_finer_than(bin_spec, "month", x)) {
+  if (
+    identical(cycle, "year") && !weekly_bins && .coverage_bin_is_finer_than(bin_spec, "month", x)
+  ) {
     positions <- c(positions, "day_of_month")
   }
-  if (cycle %in% c("day", "week", "month", "year") &&
-    .coverage_bin_is_finer_than(bin_spec, "day", x)) {
+  if (
+    cycle %in% c("day", "week", "month", "year") && .coverage_bin_is_finer_than(bin_spec, "day", x)
+  ) {
     positions <- c(positions, "hour")
   }
-  if (cycle %in% c("day", "week", "month", "year") &&
-    .coverage_bin_is_finer_than(bin_spec, "hour", x)) {
+  if (
+    cycle %in% c("day", "week", "month", "year") && .coverage_bin_is_finer_than(bin_spec, "hour", x)
+  ) {
     positions <- c(positions, "minute")
   }
-  if (any(purrr::map_lgl(specs, \(spec) {
-    !is.character(spec) && any(spec < 60 | spec %% 60 != 0)
-  }))) {
+  if (
+    any(purrr::map_lgl(specs, \(spec) {
+      !is.character(spec) && any(spec < 60 | spec %% 60 != 0)
+    }))
+  ) {
     positions <- c(positions, "second")
   }
   positions

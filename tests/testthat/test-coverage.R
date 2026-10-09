@@ -261,7 +261,7 @@ test_that("coverage_proportional uses each expected interval as its default bin"
   expect_equal(wide$coverage[wide$measure == "Battery"], 2)
 })
 
-test_that("coverage_proportional interval unions overlaps and splits by bin", {
+test_that("coverage_proportional interval unions overlaps in the last bin", {
   db <- coverage_db()
   on.exit(cleanup_test_db(db), add = TRUE)
   insert_measurements(
@@ -280,8 +280,10 @@ test_that("coverage_proportional interval unions overlaps and splits by bin", {
     local = FALSE
   ))
 
-  expect_equal(nrow(res), 2)
-  expect_equal(res$coverage, c(1, 1))
+  # The second observation's window reaches 00:00:19, but the output stops at
+  # its own bin; the overlapping windows union to full coverage there.
+  expect_equal(nrow(res), 1)
+  expect_equal(res$coverage, 1)
   expect_lte(max(res$coverage), 1)
   expect_equal(attr(res, "metric"), "interval")
 
@@ -292,8 +294,8 @@ test_that("coverage_proportional interval unions overlaps and splits by bin", {
     metric = "interval",
     local = FALSE
   ))
-  expect_equal(nrow(default_bins), 2)
-  expect_equal(default_bins$coverage, c(1, 1))
+  expect_equal(nrow(default_bins), 1)
+  expect_equal(default_bins$coverage, 1)
   expect_equal(attr(default_bins, "by"), c(Accelerometer = 10))
 })
 

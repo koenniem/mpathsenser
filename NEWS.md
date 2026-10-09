@@ -32,7 +32,9 @@
   union of observation intervals; `metric = "bin"` counts each expected slot at
   most once. An explicit `by` narrower than a sensor's expected interval is
   widened for that sensor with a warning, so sensors may use different bin
-  widths. Calendar bins, participant-specific zero-filled series, and plotting
+  widths. The last bin is always the one containing the last included
+  observation; a trailing expected window no longer adds a later bin.
+  Calendar bins, participant-specific zero-filled series, and plotting
   behavior are otherwise unchanged. Coverage for the iOS-unavailable sensors
   `AppUsage`, `Light`, `Memory`, and `Screen` is `NA` for iOS participants;
   missing device-platform data produces a warning.
