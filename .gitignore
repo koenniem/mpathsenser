@@ -12,9 +12,10 @@ inst/extdata/*.drawio*
 revdep/
 /doc/
 /Meta/
-.positai
 .posit
-
+.Rprofile
 .pi/
 .devcontainer/
-.mcp.json
+todos/
+.vscode/
+graphify-out

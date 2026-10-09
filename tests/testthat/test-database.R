@@ -94,6 +94,42 @@ test_that("open_db", {
   file.remove(db_path)
 })
 
+test_that("open_db loads required DuckDB extensions without autoloading", {
+  db <- create_test_db(path = tempfile())
+  db_path <- db@driver@dbdir
+  close_db(db)
+  gc() # Force garbage collection to ensure file handles are released
+
+  # A fresh DuckDB version has no extensions installed yet, and autoloading
+  # fails when it cannot install icu from scratch. With autoloading disabled,
+  # open_db() must install and load icu and json itself.
+  db <- open_db(db_path, config = list(autoload_known_extensions = "false"))
+  loaded <- dbGetQuery(
+    db,
+    "SELECT extension_name FROM duckdb_extensions() WHERE loaded"
+  )$extension_name
+  expect_true(all(c("icu", "json") %in% loaded))
+  close_db(db)
+  gc()
+
+  # Read-only connections cannot write to the database, but must still install
+  # and load the extensions before the session settings run.
+  db <- open_db(
+    db_path,
+    read_only = TRUE,
+    config = list(autoload_known_extensions = "false")
+  )
+  on.exit(close_db(db), add = TRUE)
+  loaded <- dbGetQuery(
+    db,
+    "SELECT extension_name FROM duckdb_extensions() WHERE loaded"
+  )$extension_name
+  expect_true(all(c("icu", "json") %in% loaded))
+
+  close_db(db)
+  file.remove(db_path)
+})
+
 test_that("copy_db", {
   # Create a test database
   db <- create_test_db()

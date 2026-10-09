@@ -46,6 +46,45 @@ sensors <- c(
 )
 
 
+# Make sure the extensions this package relies on are installed and loaded on
+# the connection. DuckDB can autoload them, but on a freshly installed DuckDB
+# version autoloading attempts the download itself and can fail with a confusing
+# error. Installing and loading explicitly avoids that path. ICU provides the
+# UTC session timezone set below, json the JSON functions used when importing.
+.ensure_duckdb_extensions <- function(db) {
+  available <- dbGetQuery(
+    db,
+    "SELECT extension_name, installed, loaded FROM duckdb_extensions()
+     WHERE extension_name IN ('icu', 'json')"
+  )
+
+  for (extension in c("icu", "json")) {
+    state <- available[available$extension_name == extension, ]
+    if (nrow(state) > 0 && isTRUE(state$loaded[[1]])) {
+      next
+    }
+
+    tryCatch(
+      {
+        if (nrow(state) == 0 || !isTRUE(state$installed[[1]])) {
+          dbExecute(db, sprintf("INSTALL %s", extension))
+        }
+        dbExecute(db, sprintf("LOAD %s", extension))
+      },
+      error = function(cnd) {
+        cli_abort(c(
+          "Could not make the DuckDB extension {.val {extension}} available.",
+          x = conditionMessage(cnd),
+          i = "{.pkg mpathsenser} requires this extension.",
+          i = "Install it manually with {.code INSTALL {extension}; LOAD {extension}}."
+        ))
+      }
+    )
+  }
+
+  invisible(TRUE)
+}
+
 # Configure connection defaults for DuckDB. Session-level settings, so they
 # apply to the connection only.
 .configure_duckdb <- function(
@@ -331,8 +370,8 @@ create_db <- function(
     }
   )
 
-  # Install the json and icu extension
-  dbExecute(db, "INSTALL json; INSTALL icu;")
+  # Make sure the extensions this package relies on are installed and loaded
+  .ensure_duckdb_extensions(db)
 
   # Populate the db with empty tables
   tryCatch(
@@ -504,6 +543,9 @@ open_db <- function(
     dbDisconnect(db)
     cli_abort("The file {.path {path}} does not appear to be an {.pkg mpathsenser} database.")
   }
+
+  # The extensions are loaded before the session settings below, which need ICU
+  .ensure_duckdb_extensions(db)
 
   .configure_duckdb(
     db,

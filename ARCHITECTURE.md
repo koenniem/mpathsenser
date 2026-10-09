@@ -518,6 +518,8 @@ functions that make external HTTP requests and both rate-limit themselves.
 * Timezone filling only ever writes NULL cells.
 * Canonical timestamps stay `TIMESTAMPTZ`; local values are explicit (`_local` views,
   `to_local_time()`, `collect_local()`).
+* `create_db()` and `open_db()` install and load the `icu` and `json` extensions explicitly
+  (`.ensure_duckdb_extensions()`); never rely on DuckDB autoloading.
 * Keep the `[Xms]` debug timing format (`R/read_helpers.R`, `.read_debug_time()`): downstream log
   parsing depends on it.
 
@@ -560,7 +562,7 @@ These are measured behaviours; supporting reproductions and investigation histor
 | Staging, dedup, file filtering | `R/read_helpers.R` | `.read_filter_new_files()`, `.read_register_empty_files()`, `.read_dedup()`, `read_dedup_keys`, `.read_db_transaction()`, `.read_sql_array()`, `.read_json_array_typed()`, `.read_version_filter()`, `.read_debug_time()` |
 | Sensor statements | `R/ingest.R` | `ingest_scalar()`, `ingest_garmin_array()`, `ingest_accelerometer()`, `ingest_appusage()`, `ingest_bluetooth()`, `ingest_bluetooth_beacon()`, `ingest_connectivity()`, `ingest_device()`, `ingest_garmin_meta()`, `ingest_garmin_actigraphy()`, `ingest_location()`, `ingest_weather()`, `.read_garmin_parse_sql()`, `.read_staging_payloads()`, `.accel_feature_exprs()` |
 | Registry | `R/sensor_registry.R` | `scalar_sensor()`, `garmin_array_sensor()`, `new_sensor_registry()`, `sensor_registry`, `array_schemas`, `ignored_sensor_types` |
-| Database lifecycle | `R/database.R` | `create_db()`, `open_db()`, `close_db()`, `copy_db()`, `optimize_db()`, `deduplicate_db()`, `.create_sensor_views()`, `.create_local_views()`, `.has_mpathsenser_schema()`, `.configure_duckdb()`, `sensors` |
+| Database lifecycle | `R/database.R` | `create_db()`, `open_db()`, `close_db()`, `copy_db()`, `optimize_db()`, `deduplicate_db()`, `.create_sensor_views()`, `.create_local_views()`, `.has_mpathsenser_schema()`, `.ensure_duckdb_extensions()`, `.configure_duckdb()`, `sensors` |
 | Schema | `inst/extdata/dbdef.sql` | `raw.*` tables, `Study`, `Participant`, `ProcessedFiles`, `processed_files_seq` |
 | Local views & macro | `inst/extdata/views.sql` | `to_local_time` macro, `<sensor>_local`, `<sensor>_with_local` |
 | Timezones | `R/add_timezones_to_db.R` | `add_timezones_to_db()`, `temp_tz_intervals` |
