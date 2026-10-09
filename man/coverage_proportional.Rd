@@ -86,9 +86,11 @@ anchored at its first included observation and extended across the shared
 participant span; a sensor with no observations is anchored at the span start.
 The denominator counts eligible slot starts. A slot crossing an output-bin
 boundary belongs to the bin containing its start, and the span ends at the
-latest occupied slot's end. For iOS participants, \code{AppUsage}, \code{Light},
-\code{Memory}, and \code{Screen} are marked \code{NA}; a warning is issued when \code{Device}
-platform information is missing.
+latest occupied slot's end. The last returned bin is always the one containing
+the last included observation, so a trailing expected window is attributed to
+that bin rather than adding a later bin. For iOS participants, \code{AppUsage},
+\code{Light}, \code{Memory}, and \code{Screen} are marked \code{NA}; a warning is issued when
+\code{Device} platform information is missing.
 
 \code{expected} is required, but it may be supplied directly or constructed with
 \code{\link[=coverage_expected]{coverage_expected()}}.
