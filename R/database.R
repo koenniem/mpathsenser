@@ -51,14 +51,17 @@ sensors <- c(
 # version autoloading attempts the download itself and can fail with a confusing
 # error. Installing and loading explicitly avoids that path. ICU provides the
 # UTC session timezone set below, json the JSON functions used when importing.
-.ensure_duckdb_extensions <- function(db) {
+.ensure_duckdb_extensions <- function(db, extensions = c("icu", "json")) {
   available <- dbGetQuery(
     db,
-    "SELECT extension_name, installed, loaded FROM duckdb_extensions()
-     WHERE extension_name IN ('icu', 'json')"
+    sprintf(
+      "SELECT extension_name, installed, loaded FROM duckdb_extensions()
+       WHERE extension_name IN (%s)",
+      paste(sprintf("'%s'", extensions), collapse = ", ")
+    )
   )
 
-  for (extension in c("icu", "json")) {
+  for (extension in extensions) {
     state <- available[available$extension_name == extension, ]
     if (nrow(state) > 0 && isTRUE(state$loaded[[1]])) {
       next
@@ -134,22 +137,29 @@ sensors <- c(
 .create_sensor_views <- function(db) {
   # Exclude leftover <sensor>_optimize_tmp tables from interrupted
   # optimize_db() runs; those are physical raw tables, not sensors.
-  sensors_raw <- dbGetQuery(
+  #
+  # One grouped query for every raw table's columns: a per-sensor round trip in
+  # the fallback loop below dominated creation cost (32 queries, ~1.9 s
+  # measured).
+  raw_columns <- dbGetQuery(
     db,
-    "SELECT table_name FROM information_schema.tables
-     WHERE table_schema = 'raw' AND table_type = 'BASE TABLE'
-       AND NOT ends_with(table_name, '_optimize_tmp')"
-  )$table_name
-  if (length(sensors_raw) == 0) {
+    "SELECT table_name, string_agg(column_name, ',' ORDER BY ordinal_position) AS cols
+     FROM information_schema.columns
+     WHERE table_schema = 'raw'
+       AND column_name NOT IN ('source_file_id', 'source_row_id', 'source_measurement_id')
+       AND NOT ends_with(table_name, '_optimize_tmp')
+     GROUP BY table_name"
+  )
+  if (nrow(raw_columns) == 0) {
     return(invisible(FALSE))
   }
 
   # Fast path: the common case is a complete database whose views are
-  # current. Unconditional (re)creation costs ~0.4 s (measured), so first
-  # compare one checksum per layer: the sorted raw column list (minus
+  # current. Unconditional (re)creation costs a full pass over all views, so
+  # first compare one checksum per layer: the sorted raw column list (minus
   # provenance) against the sorted main-sensor-view column list. A single
   # information_schema scan (~10 ms) suffices; any drift falls back to the
-  # per-view loop below, which (re)creates only the views that differ.
+  # grouped loop below, which (re)creates only the views that differ.
   #
   # Only the 32 main.<sensor> base views participate in the checksum: the
   # _local/_with_local views add derived columns (e.g. time_local), so their
@@ -180,40 +190,38 @@ sensors <- c(
      WHERE table_schema = 'main'
      GROUP BY table_name"
   )
-  for (sensor in sensors_raw) {
-    want <- dbGetQuery(
-      db,
-      "SELECT string_agg(column_name, ',' ORDER BY ordinal_position) AS cols
-       FROM information_schema.columns
-       WHERE table_schema = 'raw' AND table_name = ?
-         AND column_name NOT IN ('source_file_id', 'source_row_id', 'source_measurement_id')",
-      params = list(sensor)
-    )$cols[[1]]
-    have <- existing$cols[existing$view_name == sensor]
-    if (length(have) == 1 && !is.na(have) && identical(have, want)) {
-      next
-    }
-    cols <- strsplit(want, ",", fixed = TRUE)[[1]]
-    view_cols <- paste0(
-      vapply(
-        cols,
-        function(c) {
-          as.character(dbQuoteIdentifier(db, c))
-        },
-        character(1)
-      ),
-      collapse = ", "
-    )
-    dbExecute(
-      db,
-      sprintf(
-        "CREATE OR REPLACE VIEW main.%s AS SELECT %s FROM raw.%s",
-        as.character(dbQuoteIdentifier(db, sensor)),
-        view_cols,
-        as.character(dbQuoteIdentifier(db, sensor))
+  # One transaction for the whole pass: a catalog commit per view is what made
+  # view creation slow.
+  dbWithTransaction(db, {
+    for (i in seq_len(nrow(raw_columns))) {
+      sensor <- raw_columns$table_name[[i]]
+      want <- raw_columns$cols[[i]]
+      have <- existing$cols[existing$view_name == sensor]
+      if (length(have) == 1 && !is.na(have) && identical(have, want)) {
+        next
+      }
+      cols <- strsplit(want, ",", fixed = TRUE)[[1]]
+      view_cols <- paste0(
+        vapply(
+          cols,
+          function(c) {
+            as.character(dbQuoteIdentifier(db, c))
+          },
+          character(1)
+        ),
+        collapse = ", "
       )
-    )
-  }
+      dbExecute(
+        db,
+        sprintf(
+          "CREATE OR REPLACE VIEW main.%s AS SELECT %s FROM raw.%s",
+          as.character(dbQuoteIdentifier(db, sensor)),
+          view_cols,
+          as.character(dbQuoteIdentifier(db, sensor))
+        )
+      )
+    }
+  })
   invisible(TRUE)
 }
 
@@ -257,7 +265,9 @@ sensors <- c(
     fn <- system.file("extdata", "views.sql", package = "mpathsenser")
   }
   script <- paste0(readLines(fn, warn = FALSE), collapse = "\n")
-  dbExecute(db, script)
+  # One transaction keeps the 64 views from committing one catalog entry at a
+  # time; creation is all-or-nothing anyway.
+  dbWithTransaction(db, dbExecute(db, script))
   invisible(TRUE)
 }
 
@@ -383,7 +393,9 @@ create_db <- function(
         fn <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
       }
       script <- paste0(readLines(fn, warn = FALSE), collapse = "\n")
-      dbExecute(db, script)
+      # One transaction avoids a catalog commit per statement; the schema is
+      # all-or-nothing anyway.
+      dbWithTransaction(db, dbExecute(db, script))
     },
     error = function(e) {
       # nocov start
@@ -619,8 +631,8 @@ close_db <- function(db) {
 #' @export
 #'
 #' @examples
-#' # First create two databases in a temporary directory
-#' db1 <- create_db(tempdir(), "mydb1.db")
+#' # The source can be in memory; the target must be file-backed.
+#' db1 <- create_db(NULL, ":memory:")
 #' db2 <- create_db(tempdir(), "mydb2.db")
 #'
 #' # Populate the first database with some data
@@ -641,7 +653,6 @@ close_db <- function(db) {
 #' # Cleanup
 #' close_db(db1)
 #' close_db(db2)
-#' file.remove(file.path(tempdir(), "mydb1.db"))
 #' file.remove(file.path(tempdir(), "mydb2.db"))
 copy_db <- function(
   source_db,

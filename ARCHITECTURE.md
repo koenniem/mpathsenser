@@ -68,7 +68,7 @@ flowchart TD
         TZ["add_timezones_to_db()<br/>interval join"]
     end
 
-    API["Query API<br/>get_data() / coverage() / link()"]
+    API["Query API<br/>get_data() / coverage_frequency() / link()"]
 
     JSON --> SEL --> STAGE --> META --> REG --> DISPATCH
     DISPATCH -->|"scalar + hand-written SQL"| RAW
@@ -476,7 +476,7 @@ canonical base sensor names, which the coverage code uses to normalise its `sens
 |---|---|
 | `get_data(db, sensor, participant_id, start_date, end_date)` | Returns a **lazy** dbplyr table over `main.<sensor>` (or a `_local`/`_with_local` view), with the sensor name attached as `mpathsenser_sensor`. Character/`Date` bounds select whole days: UTC for `time` (including `_with_local`) and local wall time for `_local`. `POSIXt` bounds are exact inclusive timestamps; `_local` uses the timestamp's displayed wall-clock fields. Day-end bounds exclude the following midnight. Filtering happens in DuckDB. |
 | `get_nrows()`, `get_participants()`, `get_studies()`, `get_processed_files()` | Database introspection; `get_nrows()` counts per sensor and is the slow one on large databases. |
-| `coverage_frequency()` / `coverage_proportional()` / `collect.coverage()` / `plot.coverage()` | Coverage per bin (`by = minute/hour/day/week/month` or fixed seconds), optionally averaged within a recurring `cycle`. `coverage_proportional()` uses `metric = "count"` for distinct samples, `"interval"` for the union of expected-length observation intervals, or `"bin"` for occupied expected slots; `by` below a sensor's `expected` widens per sensor with a warning. All aggregation is built by the `.coverage_sql*()` helpers and executed inside DuckDB; missing bins are zero-filled within each participant's observation span, first/last partial bins are prorated, and the last returned bin is always the one containing the last included observation, so a trailing expected window is folded into it rather than adding a later bin. |
+| `coverage_frequency()` / `coverage_proportional()` / `collect.coverage()` / `plot.coverage()` | Coverage per bin (`by = minute/hour/day/week/month` or fixed seconds), optionally averaged within a recurring `cycle`. `coverage_proportional()` uses `metric = "count"` for distinct samples, `"interval"` for the union of expected-length observation intervals, or `"bin"` for occupied expected slots. Calendar units keep their actual boundaries; a fixed `by` below a sensor's `expected` is widened per sensor with a warning. The builders return a lazy `tbl` of class `"coverage"`: chronology, durations, and slot grids use canonical UTC, while each observation is assigned to the local bin of the timezone that applies at its instant (timezone episodes tracked per participant; missing timezones inherit the active episode and otherwise fall back to UTC, and a same-instant conflict is resolved by the largest timezone name). Bins a sensor did not touch are zero-filled within each participant's span, the last returned bin is the one containing the last included observation (a trailing expected window is folded into it), and interval/bin values are `NA` when a bin has no eligible time. Aggregation is expressed with dbplyr over the DuckDB tables; `collect.coverage()` materialises, rounds, factorises, and restores the metadata. |
 | `identify_gaps()` / `add_gaps()` | Finds gaps in a sensor stream and annotates data with them. |
 | `link()` / `link_gaps()` / `bin_data()` | Links measurements to a time scale (e.g. ESM questionnaires), links gaps to data, and bins time series. |
 | `moving_average()` | Lazy, participant-partitioned sample averages over closed centered elapsed-time windows; applies `get_data()` filters first and calculates membership with a DuckDB `RANGE` window. |
@@ -572,7 +572,7 @@ These are measured behaviours; supporting reproductions and investigation histor
 | Timestamps | `R/timestamp_helpers.R` | `to_local_time()`, `collect_local()`, `.to_local_time_r()`, `.to_local_time_sql()`, `.source_timestamp_import_sql()`, `.source_timestamp_fixes`, `sql_translation.duckdb_connection` |
 | Argument checks | `R/input_checks.R` | `check_arg()`, `check_db()`, `check_participants()`, `check_sensors()`, `.physical_sensor()`, `.standard_sensor_names()`, `check_dates()`, `.is_date()`, `check_week_start()`, `check_offset()`, `ensure_suggested_package()` |
 | Query API | `R/sensor_functions.R` | `get_data()`, `identify_gaps()`, `add_gaps()`, `moving_average()`, `device_info()`, `installed_apps()`, `app_category()` |
-| Coverage | `R/coverage.R` | `coverage()`, `collect.coverage()`, `plot.coverage()`, `coverage_frequency()`, `.coverage_sql()` |
+| Coverage | `R/coverage.R` | `coverage_expected()`, `coverage_frequency()`, `coverage_proportional()`, `collect.coverage()`, `plot.coverage()`, `.coverage_*` helpers |
 | Linking/ESM | `R/linking.R` | `link()`, `link_gaps()`, `bin_data()`, `link_intervals()` |
 | Location | `R/location_functions.R` | `haversine()`, `location_variance()`, `geocode_rev()` |
 | Utilities | `R/utils.R` | `unzip_data()` |

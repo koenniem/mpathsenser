@@ -15,12 +15,12 @@ import_sensor_fixture <- function() {
   file.copy(sensor_fixture_path(), file.path(dir, "tests.json"))
   db <- create_db(NULL, ":memory:", shared_home = FALSE)
   testthat::expect_warning(
-    read_mpath_sense(
+    suppressMessages(read_mpath_sense(
       path = dir,
       db = db,
       recursive = FALSE,
       .progress = FALSE
-    ),
+    )),
     "Unknown sensor type"
   )
   unlink(dir, recursive = TRUE)

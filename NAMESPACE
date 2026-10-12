@@ -46,6 +46,7 @@ importFrom(DBI,
   dbQuoteIdentifier,
   dbReadTable,
   dbRollback,
+  dbWithTransaction,
   dbWriteTable
 )
 importFrom(cli,
@@ -66,16 +67,21 @@ importFrom(dplyr,
   any_of,
   arrange,
   bind_rows,
+  coalesce,
   collect,
+  cross_join,
   distinct,
   filter,
   group_by,
   if_else,
+  inner_join,
+  join_by,
   lag,
   lead,
   left_join,
   mutate,
   n,
+  n_distinct,
   pull,
   rename,
   row_number,
@@ -83,15 +89,31 @@ importFrom(dplyr,
   slice,
   summarise,
   tbl,
-  ungroup
+  transmute,
+  ungroup,
+  union_all
 )
 importFrom(duckdb,duckdb)
 importFrom(lifecycle,deprecated)
 importFrom(lubridate,
   as_datetime,
-  tz
+  ceiling_date,
+  floor_date,
+  hour,
+  mday,
+  minute,
+  month,
+  second,
+  tz,
+  wday,
+  yday
 )
-importFrom(purrr,map)
+importFrom(purrr,
+  map,
+  map_chr,
+  map_lgl,
+  reduce
+)
 importFrom(rlang,
   "%||%",
   ":=",
@@ -99,7 +121,9 @@ importFrom(rlang,
   .env,
   caller_arg,
   caller_env,
+  enexpr,
   ensym,
+  expr,
   is_null
 )
 importFrom(tibble,

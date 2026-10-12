@@ -173,11 +173,13 @@ check_sensors <- function(
   n = NULL,
   allow_null = FALSE,
   include_views = TRUE,
+  resolve = FALSE,
   arg = caller_arg(x),
   call = caller_env()
 ) {
   check_arg(x, type = "character", allow_null = allow_null, n = n, arg = arg, call = call)
   check_arg(include_views, "logical", n = 1)
+  check_arg(resolve, "logical", n = 1)
   valid_sensors <- sensors
   if (include_views) {
     valid_sensors <- c(
@@ -196,11 +198,86 @@ check_sensors <- function(
     cli_abort(msg, arg = arg, call = call)
   }
 
-  return(invisible(TRUE))
+  if (!resolve) {
+    return(invisible(TRUE))
+  }
+
+  # `resolve = TRUE` returns canonical base names instead: NULL means every
+  # sensor, view suffixes are stripped, and duplicates collapse.
+  if (is_null(x)) {
+    return(sensors)
+  }
+  resolved <- unique(.standard_sensor_names(.physical_sensor(x)))
+  if (length(resolved) == 0L) {
+    cli_abort("No valid sensors to compute coverage for.", arg = arg, call = call)
+  }
+  resolved
 }
 
 .physical_sensor <- function(x) {
-  sub("_(local|with_local)$", "", x)
+  sub("_(local|with_local)$", "", x, ignore.case = TRUE)
+}
+
+# Convert sensor names to the package's spelling, leaving unknown names unchanged.
+.standard_sensor_names <- function(x) {
+  lookup <- stats::setNames(sensors, tolower(sensors))
+  standard <- unname(lookup[tolower(x)])
+  standard[is.na(standard)] <- x[is.na(standard)]
+  standard
+}
+
+# Return the database's participants and reject unknown requested IDs.
+check_participants <- function(db, participant_id) {
+  participants <- as.character(get_participants(db)$participant_id)
+  if (length(participants) == 0L) {
+    cli_abort("The database does not contain any participants.")
+  }
+  if (!is.null(participant_id)) {
+    unknown <- setdiff(as.character(participant_id), participants)
+    if (length(unknown) > 0L) {
+      cli_abort(
+        "Participant{?s} {.val {unknown}} could not be found in the {.pkg mpathsenser} database."
+      )
+    }
+  }
+  participants
+}
+
+# Validate the optional date window and normalise it to Date or NULL.
+check_dates <- function(start_date, end_date) {
+  if (!.is_date(start_date) || !.is_date(end_date)) {
+    cli_abort(
+      "{.arg start_date} and {.arg end_date} must be {.val NULL}, a date string, or a {.cls Date}."
+    )
+  }
+  list(
+    start_date = if (is.null(start_date)) NULL else as.Date(start_date),
+    end_date = if (is.null(end_date)) NULL else as.Date(end_date)
+  )
+}
+
+# TRUE for NULL, or for a length-one value coercible to a non-NA Date.
+.is_date <- function(x) {
+  if (is.null(x)) {
+    return(TRUE)
+  }
+  if (!inherits(x, "Date") && !is.character(x)) {
+    return(FALSE)
+  }
+  date <- try(as.Date(x), silent = TRUE)
+  if (!inherits(date, "Date") || length(date) != 1L || is.na(date)) {
+    return(FALSE)
+  }
+  TRUE
+}
+
+# Validate the week start as a whole number from 1 (Monday) to 7 (Sunday).
+check_week_start <- function(week_start) {
+  check_arg(week_start, type = c("numeric", "integerish"), n = 1)
+  if (!rlang::is_integerish(week_start) || week_start < 1 || week_start > 7) {
+    cli_abort("{.arg week_start} must be a whole number between 1 (Monday) and 7 (Sunday).")
+  }
+  as.integer(week_start)
 }
 
 check_offset <- function(offset_before, offset_after, call = caller_env()) {

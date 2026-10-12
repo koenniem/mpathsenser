@@ -78,7 +78,9 @@ location_variance <- function(lat, lon) {
 #'
 #' @examples
 #' # Frankfurt Airport
-#' geocode_rev(50.037936, 8.5599631)
+#' \donttest{
+#'   geocode_rev(50.037936, 8.5599631)
+#' }
 geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1, format = "jsonv2") {
   check_arg(email, "character", n = 1, allow_null = TRUE)
   check_arg(rate_limit, "double", n = 1)
@@ -112,10 +114,14 @@ geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1, format 
 
     query <- paste0(
       base_url,
-      "?lat=", lat[idx],
-      "&lon=", lon[idx],
-      "&zoom=", zoom,
-      "&format=", format,
+      "?lat=",
+      lat[idx],
+      "&lon=",
+      lon[idx],
+      "&zoom=",
+      zoom,
+      "&format=",
+      format,
       if (nzchar(email)) {
         paste0("&email=", utils::URLencode(email, reserved = TRUE))
       } else {

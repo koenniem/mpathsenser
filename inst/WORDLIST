@@ -1,7 +1,6 @@
 ASOF
 AirQuality
 AppUsage
-BluetoothBeacon
 CMD
 Codecov
 Deduplicate
@@ -31,16 +30,15 @@ SQLite
 TMPDIR
 TextMessage
 Timezone
-Wifi
-YYYY
+Wi
 actigraphy
+behavior
 booleans
 centered
 cleanup
 cli
 db
 dbplyr
-dd
 deduplicated
 deduplicating
 deduplication
@@ -51,12 +49,12 @@ future’
 geocodejson
 geocoding
 geojson
-ggplot
 hotfix
 jsons
 jsonv
 kilometers
 lifecycle
+lubridate
 mpathinfo
 nominatim
 rlang
@@ -67,6 +65,5 @@ timezone
 timezones
 unnest
 upsert
-wifi
 zonemap
 zonemaps

@@ -575,7 +575,10 @@ test_that("moving_average averages observations in centered time windows", {
   )
   quoted_sql <- as.character(dbplyr::sql_render(quoted_participant))
   expect_true(grepl("IN ('1001'' OR 1=1 --')", quoted_sql, fixed = TRUE))
-  expect_snapshot(error = TRUE, dplyr::collect(quoted_participant))
+  # The value stays quoted, so DuckDB refuses the non-numeric string instead of
+  # executing it. Match only the stable part; the internal error type differs
+  # across DuckDB builds.
+  expect_error(dplyr::collect(quoted_participant), "Could not convert string")
 })
 
 test_that("moving_average uses the selected view's time domain", {

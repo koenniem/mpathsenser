@@ -28,14 +28,18 @@
 * Replaced `coverage()` with `coverage_frequency()` for absolute measurement
   counts and `coverage_proportional()` for count, interval, or occupied-slot
   proportions. `coverage_proportional()` requires named expected intervals; use
-  `coverage_expected()` for the defaults. `metric = "interval"` measures the
-  union of observation intervals; `metric = "bin"` counts each expected slot at
-  most once. An explicit `by` narrower than a sensor's expected interval is
-  widened for that sensor with a warning, so sensors may use different bin
-  widths. The last bin is always the one containing the last included
-  observation; a trailing expected window no longer adds a later bin.
-  Calendar bins, participant-specific zero-filled series, and plotting
-  behavior are otherwise unchanged. Coverage for the iOS-unavailable sensors
+  `coverage_expected()` for the defaults, whose named overrides may be supplied
+  in any case. `metric = "interval"` measures the union of observation
+  intervals; `metric = "bin"` counts each expected slot at most once. An
+  explicit fixed `by` narrower than a sensor's expected interval is widened
+  for that sensor with a warning, so sensors may use different bin widths;
+  calendar units keep their actual boundaries. Local bins follow the timezone
+  that applies at each observation instant, so timezone changes and DST folds
+  are handled per observation: a local bin that occurs twice sums its
+  numerators and denominators. Date filters are half-open and, with
+  `local = TRUE`, select the applicable local calendar day. The last bin is
+  always the one containing the last included observation; a trailing expected
+  window no longer adds a later bin. Coverage for the iOS-unavailable sensors
   `AppUsage`, `Light`, `Memory`, and `Screen` is `NA` for iOS participants;
   missing device-platform data produces a warning.
 * `ccopy()`, `fix_jsons()` and `test_jsons()` have been removed. Use

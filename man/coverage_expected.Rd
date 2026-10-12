@@ -18,12 +18,18 @@ coverage_expected(
   Memory = 160,
   Timezone = 1800,
   Weather = 120,
-  Wifi = 120
+  Wifi = 120,
+  ...
 )
 }
 \arguments{
 \item{Accelerometer, AppUsage, Battery, Bluetooth, Connectivity, Device, Error, Heartbeat, Light, Location, Memory, Timezone, Weather, Wifi}{Expected interval in seconds for that sensor. Defaults are the current
 m-Path Sense intervals.}
+
+\item{...}{Additional sensor intervals, named with sensor names. Names are
+matched case-insensitively, for example \code{accelerometer = 60}. Unknown or
+duplicate names, and a sensor supplied both as a formal argument and in
+\code{...}, throw an error.}
 }
 \value{
 A named numeric vector of expected intervals in seconds.

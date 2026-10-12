@@ -17,7 +17,7 @@
 #' @examples
 #' db <- example_db()
 #' get_participants(db)
-#' get_nrows(db)
+#' get_nrows(db, c("Accelerometer", "Pedometer"))
 #' close_db(db)
 example_db <- function() {
   snapshot_dir <- .example_db_snapshot_dir()
@@ -64,6 +64,10 @@ example_db <- function() {
 # Metadata first: Participant and ProcessedFiles reference Study, and the raw
 # tables reference Participant.
 .load_example_snapshot <- function(db, dir) {
+  # Load parquet explicitly: the first read_parquet() otherwise pays the
+  # extension autoload check.
+  .ensure_duckdb_extensions(db, "parquet")
+
   for (table in c("Study", "Participant", "ProcessedFiles")) {
     .load_example_table(db, "main", table, dir)
   }

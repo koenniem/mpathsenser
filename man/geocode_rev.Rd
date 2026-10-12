@@ -41,5 +41,7 @@ many subsequent requests will get you blocked as well.
 
 \examples{
 # Frankfurt Airport
-geocode_rev(50.037936, 8.5599631)
+\donttest{
+  geocode_rev(50.037936, 8.5599631)
+}
 }

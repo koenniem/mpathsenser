@@ -100,11 +100,17 @@ not run multiple imports into the same database concurrently.
 \examples{
 zip_dir <- system.file("extdata", "example", package = "mpathsenser")
 path <- file.path(tempdir(), "mpathsenser-example")
-unzip_data(zip_dir, to = path, overwrite = TRUE, .progress = FALSE)
+dir.create(path, showWarnings = FALSE)
+
+# Import a few of the bundled capture files. example_db() opens the full
+# example capture instead.
+files <- head(list.files(zip_dir, full.names = TRUE), 4)
+invisible(file.copy(files, path))
+unzip_data(path, to = path, overwrite = TRUE, .progress = FALSE)
 
 db <- create_db(NULL, ":memory:")
 read_mpath_sense(path, db, .progress = FALSE)
-get_nrows(db)
+get_nrows(db, c("Accelerometer", "Pedometer"))
 close_db(db)
 
 }

@@ -36,10 +36,11 @@ named in \code{expected}.}
 
 \item{by}{Bin width: one of \code{"minute"}, \code{"hour"}, \code{"day"}, \code{"week"}, or
 \code{"month"}, or a positive number of seconds. \code{NULL} (the default) uses each
-sensor's expected interval separately. If an explicit width is smaller
-than a sensor's expected interval, it is raised to that interval for that
-sensor and a warning is issued. A calendar-month width is compared using
-the shortest month (28 days); an adjusted month bin becomes fixed-width.}
+sensor's expected interval separately. If an explicit fixed width is
+smaller than a sensor's expected interval, it is raised to that interval
+for that sensor and a warning is issued. Calendar units keep their actual
+boundaries; a calendar month is not replaced by a fixed width even when it
+can be shorter than the expected interval.}
 
 \item{metric}{What to compare: \code{"count"} (the default) for the proportion of
 expected measurements, \code{"interval"} for the fraction of eligible time
@@ -70,11 +71,11 @@ DuckDB table with one value per bin, participant, and sensor.
 
 By default, each sensor's bin width equals its expected interval.
 Alternatively, \code{by} may be one of \code{"minute"}, \code{"hour"}, \code{"day"}, \code{"week"},
-or \code{"month"} for
-calendar-aligned bins, or a positive number of seconds for fixed-width bins.
-When an explicit \code{by} is shorter than a sensor's expected interval, that
-sensor's bin width is raised to the expected interval and a warning reports
-the adjustment; other sensors keep the requested width.
+or \code{"month"} for calendar-aligned bins, or a positive number of seconds for
+fixed-width bins. A fixed-width \code{by} shorter than a sensor's expected
+interval is raised to that interval for that sensor, and a warning reports
+the adjustment; other sensors keep the requested width. Calendar units keep
+their actual boundaries and are never widened.
 
 With \code{metric = "count"}, each value is the distinct measurement count divided
 by the expected number of measurements in the eligible part of that bin.
@@ -86,12 +87,15 @@ anchored at its first included observation and extended across the shared
 participant span; a sensor with no observations is anchored at the span start.
 The denominator counts eligible slot starts. A slot crossing an output-bin
 boundary belongs to the bin containing its start, and the span ends at the
-latest occupied slot's end. For iOS participants, \code{AppUsage}, \code{Light},
-\code{Memory}, and \code{Screen} are marked \code{NA}; a warning is issued when \code{Device}
-platform information is missing.
+latest occupied slot's end. The last returned bin is always the one containing
+the last included observation, so a trailing expected window is attributed to
+that bin rather than adding a later bin. For iOS participants, \code{AppUsage},
+\code{Light}, \code{Memory}, and \code{Screen} are marked \code{NA}; a warning is issued when
+\code{Device} platform information is missing.
 
 \code{expected} is required, but it may be supplied directly or constructed with
-\code{\link[=coverage_expected]{coverage_expected()}}.
+\code{\link[=coverage_expected]{coverage_expected()}}. Sensor names in \code{expected} are matched
+case-insensitively, and the output always uses the canonical capitalisation.
 }
 \examples{
 \dontrun{

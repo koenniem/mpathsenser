@@ -25,8 +25,8 @@ input \code{target_db}.
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
 \examples{
-# First create two databases in a temporary directory
-db1 <- create_db(tempdir(), "mydb1.db")
+# The source can be in memory; the target must be file-backed.
+db1 <- create_db(NULL, ":memory:")
 db2 <- create_db(tempdir(), "mydb2.db")
 
 # Populate the first database with some data
@@ -47,6 +47,5 @@ get_data(db2, "Activity")
 # Cleanup
 close_db(db1)
 close_db(db2)
-file.remove(file.path(tempdir(), "mydb1.db"))
 file.remove(file.path(tempdir(), "mydb2.db"))
 }

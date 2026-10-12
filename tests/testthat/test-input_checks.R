@@ -267,6 +267,96 @@ test_that("check_sensors", {
   )
 })
 
+test_that("check_sensors resolves sensor names", {
+  # NULL expands to every sensor in canonical spelling.
+  expect_identical(
+    check_sensors(NULL, allow_null = TRUE, resolve = TRUE),
+    sensors
+  )
+  # Case and view suffixes are resolved to the canonical base name and
+  # duplicates collapse.
+  expect_identical(
+    check_sensors(
+      c("accelerometer", "Accelerometer_WITH_LOCAL"),
+      resolve = TRUE
+    ),
+    "Accelerometer"
+  )
+  expect_identical(
+    check_sensors(c("Accelerometer", "accelerometer"), resolve = TRUE),
+    "Accelerometer"
+  )
+  # Unknown names and empty selections still abort.
+  expect_error(
+    check_sensors("foo", resolve = TRUE),
+    ".*Sensor `foo` could not be found\\..*"
+  )
+  expect_error(
+    check_sensors(character(), resolve = TRUE),
+    "No valid sensors"
+  )
+})
+
+test_that(".physical_sensor strips view suffixes case-insensitively", {
+  expect_identical(.physical_sensor("Accelerometer"), "Accelerometer")
+  expect_identical(.physical_sensor("Accelerometer_local"), "Accelerometer")
+  expect_identical(.physical_sensor("Accelerometer_WITH_LOCAL"), "Accelerometer")
+})
+
+test_that("check_participants", {
+  db <- create_db(NULL, tempfile("participants", fileext = ".duckdb"), shared_home = FALSE)
+  on.exit(cleanup_test_db(db), add = TRUE)
+  DBI::dbExecute(db, "INSERT INTO Study (study_id, data_format) VALUES ('foo', NULL)")
+  DBI::dbExecute(
+    db,
+    "INSERT INTO Participant (participant_id, study_id) VALUES ('12345', 'foo')"
+  )
+
+  expect_identical(check_participants(db, NULL), "12345")
+  expect_identical(check_participants(db, "12345"), "12345")
+  expect_error(
+    check_participants(db, "999"),
+    "could not be found"
+  )
+
+  empty <- create_db(NULL, tempfile("empty", fileext = ".duckdb"), shared_home = FALSE)
+  on.exit(cleanup_test_db(empty), add = TRUE)
+  expect_error(
+    check_participants(empty, NULL),
+    "The database does not contain any participants."
+  )
+})
+
+test_that("check_dates", {
+  expect_identical(
+    check_dates(NULL, NULL),
+    list(start_date = NULL, end_date = NULL)
+  )
+  expect_identical(
+    check_dates("2024-01-01", as.Date("2024-02-02")),
+    list(start_date = as.Date("2024-01-01"), end_date = as.Date("2024-02-02"))
+  )
+  expect_error(check_dates(as.Date(NA), NULL), "must be.*NULL.*date string")
+  expect_error(check_dates(1, NULL), "must be.*NULL.*date string")
+})
+
+test_that("is_date", {
+  expect_true(.is_date(NULL))
+  expect_true(.is_date("2024-01-01"))
+  expect_true(.is_date(as.Date("2024-01-01")))
+  expect_false(.is_date(as.Date(NA)))
+  expect_false(.is_date(1))
+  expect_false(.is_date(c("2024-01-01", "2024-01-02")))
+})
+
+test_that("check_week_start", {
+  expect_identical(check_week_start(7), 7L)
+  expect_identical(check_week_start(1), 1L)
+  expect_error(check_week_start(8), "whole number between 1 \\(Monday\\) and 7 \\(Sunday\\)")
+  expect_error(check_week_start(2.5), "whole number between")
+  expect_error(check_week_start("Monday"), "must be a numeric")
+})
+
 test_that("check_offset", {
   expect_error(
     check_offset(TRUE, 0),

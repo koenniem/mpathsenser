@@ -80,6 +80,29 @@ create_test_db <- function(path = ":memory:") {
   db
 }
 
+# A prepared schema-and-views database reused by tests that only need an empty
+# database. create_db() spends seconds on the schema and views, so build it
+# once per session and hand out copies instead.
+test_db_template <- local({
+  path <- NULL
+  function() {
+    if (is.null(path) || !file.exists(path)) {
+      path <<- tempfile(fileext = ".duckdb")
+      db <- create_db(NULL, path, shared_home = FALSE)
+      close_db(db)
+    }
+    path
+  }
+})
+
+# A fresh copy of the prepared database. Tests that write data must clean up
+# with cleanup_test_db().
+fresh_test_db <- function() {
+  path <- tempfile(fileext = ".duckdb")
+  file.copy(test_db_template(), path)
+  open_db(path, shared_home = FALSE)
+}
+
 # Clean up a test database
 cleanup_test_db <- function(db) {
   if (is.null(db) || !inherits(db, "duckdb_connection")) {
@@ -250,4 +273,3 @@ create_sensor_test_db <- function(path = ":memory:") {
   unlink(dir, recursive = TRUE)
   db
 }
-

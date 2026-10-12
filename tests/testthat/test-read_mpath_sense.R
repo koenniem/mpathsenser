@@ -76,7 +76,7 @@ test_that("import populates the database correctly", {
       list(`__type` = "dk.cachet.carp.stepcount", steps = 42)
     )
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   expect_message(
     read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE),
@@ -156,7 +156,7 @@ test_that("unprefixed payload types are imported", {
     file.path(dir, "unprefixed.json"),
     auto_unbox = TRUE
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   expect_message(
     read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE),
@@ -179,7 +179,7 @@ test_that("entries without __type are not classified", {
     "missing_type.json",
     sensors = list(list(steps = 42))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   expect_warning(
     suppressMessages(
@@ -205,7 +205,7 @@ test_that("a corrected file is re-imported and wins on deduplication", {
       batteryStatus = "CHARGING"
     ))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
 
   # Correct the file: change the battery level and add a new measurement
@@ -260,7 +260,7 @@ test_that("sub-microsecond file mtimes do not create duplicate ProcessedFiles ro
   Sys.setFileTime(f, as.POSIXct("2026-09-17 12:00:00.050594568", tz = "UTC"))
   mtime <- file.info(f)$mtime
 
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
 
   expect_equal(
@@ -304,7 +304,7 @@ test_that("renamed copies are imported and deduplicated by measurement key", {
   )
   # Identical content under a different name, in the same run
   file.copy(file.path(dir, "a.json"), file.path(dir, "copy.json"))
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   # Both files are imported; the data-level deduplication removes the
   # duplicate measurement, keeping the newest file's row
@@ -348,7 +348,7 @@ test_that("renamed copies are imported and deduplicated by measurement key", {
 })
 
 test_that("end-time sensor deduplication keeps the last same-file row", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   DBI::dbExecute(
     db,
     "INSERT INTO raw.Accelerometer (
@@ -369,7 +369,7 @@ test_that("end-time sensor deduplication keeps the last same-file row", {
 })
 
 test_that("interval sensors keep the newest file when end times differ", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   # The same start time occurs in two files: file 1 has the short window, the
   # newer file 2 has an updated (longer) end time. The newest file must win.
   DBI::dbExecute(
@@ -393,7 +393,7 @@ test_that("interval sensors keep the newest file when end times differ", {
 })
 
 test_that("Garmin point sensors keep the last recorded row within a file", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   # Two measurements with the same key in one file: the one later in source
   # order (higher source_row_id / source_measurement_id) wins, regardless of
   # physical insertion order.
@@ -459,7 +459,7 @@ test_that("Garmin point sensors keep the last recorded row within a file", {
 })
 
 test_that("Garmin point sensors keep the newest file when split across files", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   # The same timestamp with different values in two files: the newer file wins.
   DBI::dbExecute(
     db,
@@ -480,7 +480,7 @@ test_that("Garmin point sensors keep the newest file when split across files", {
 })
 
 test_that("non-Garmin point sensors keep the last row of a file", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   DBI::dbExecute(
     db,
     "INSERT INTO raw.Activity (
@@ -510,7 +510,7 @@ test_that("non-Garmin point sensors keep the last row of a file", {
 })
 
 test_that("GarminSteps keeps the newest end time for a repeated start time", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   DBI::dbExecute(
     db,
     "INSERT INTO raw.GarminSteps (
@@ -538,7 +538,7 @@ test_that("deduplication does not remove data imported in earlier runs", {
     connection_id = "12345",
     sensors = list(list(`__type` = "dk.cachet.carp.activity", confidence = 80, type = "WALKING"))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
 
   # A second run imports a file with different measurements: the
@@ -563,7 +563,7 @@ test_that("deduplication does not remove data imported in earlier runs", {
 })
 
 test_that("deduplication is an upsert: newest file and last row win", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   # A plain point sensor with the same key in two files. The newest file (2)
   # must win, and within that file the row latest in source order must win.
   DBI::dbExecute(
@@ -596,7 +596,7 @@ test_that("deduplicate_db removes duplicates on demand", {
     "a.json",
     sensors = list(list(`__type` = "dk.cachet.carp.activity", confidence = 80, type = "WALKING"))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
   expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM Activity")[[1]], 1)
 
@@ -649,7 +649,7 @@ test_that("deduplicate and optimize flags control the post-import passes", {
   )
 
   import_activity <- function(...) {
-    db <- create_db(NULL, ":memory:", shared_home = FALSE)
+    db <- fresh_test_db()
     suppressMessages(
       read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE, ...)
     )
@@ -700,7 +700,7 @@ test_that("duplicate timezone events are deduplicated at import", {
       list(`__type` = "dk.cachet.carp.timezone", timezone = "Europe/Brussels")
     )
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
   # The timezone interval matcher assumes one event per participant and
   # instant, so duplicate timezone events are removed like any other sensor.
@@ -717,7 +717,7 @@ test_that("read_mpath_sense validates the deduplicate and optimize flags", {
     "a.json",
     sensors = list(list(`__type` = "dk.cachet.carp.stepcount", steps = 1))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   expect_error(
     read_mpath_sense(
       path = dir,
@@ -750,7 +750,7 @@ test_that("files are processed oldest to newest", {
     connection_id = "11",
     sensors = list(list(`__type` = "dk.cachet.carp.stepcount", steps = 2))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(
     read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE, batch_size = 1)
   )
@@ -785,7 +785,7 @@ test_that("file_ids are assigned in deterministic batch order", {
     connection_id = "33",
     sensors = list(list(`__type` = "dk.cachet.carp.stepcount", steps = 3))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(
     path = dir,
     db = db,
@@ -879,7 +879,7 @@ test_that("empty-file registration falls back when a study token is missing", {
   dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
   dir.create(dir)
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   on.exit(close_db(db), add = TRUE)
   empty_meta <- make_empty_file_meta(dir, "1_2_3_4_m_Path_sense")
 
@@ -898,7 +898,7 @@ test_that("all conventional empty files register in position order", {
   dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
   dir.create(dir)
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   on.exit(close_db(db), add = TRUE)
   file_names <- c(
     "1_study_a_301_m_Path_sense_2025-12-16_10-00-00.000000.json",
@@ -930,7 +930,7 @@ test_that("empty-file registration keeps mixed input rows aligned", {
   dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
   dir.create(dir)
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   on.exit(close_db(db), add = TRUE)
   file_names <- c(
     "1_study_a_101_m_Path_sense_2025-12-16_10-00-00.000000.json",
@@ -970,7 +970,7 @@ test_that("empty-file registration skips a non-numeric id between valid files", 
   dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
   dir.create(dir)
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   on.exit(close_db(db), add = TRUE)
   file_names <- c(
     "1_study_201_m_Path_sense_2025-12-16_10-00-00.000000.json",
@@ -994,7 +994,7 @@ test_that("empty-file registration enforces the UINTEGER participant range", {
   dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
   dir.create(dir)
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   on.exit(close_db(db), add = TRUE)
   file_names <- c(
     "1_study_4294967295_m_Path_sense_2025-12-16_10-00-00.000000.json",
@@ -1015,7 +1015,7 @@ test_that("duplicate empty basenames in subdirectories register once per path", 
   dir <- tempfile("empty_meta_", tmpdir = testthat::test_path())
   dir.create(dir)
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   on.exit(close_db(db), add = TRUE)
   file_name <- "1_study_777_m_Path_sense_2025-12-16_10-00-00.000000.json"
   rel_paths <- file.path(c("left", "right"), file_name)
@@ -1046,7 +1046,7 @@ test_that("read_mpath_sense returns all unrecognized empty paths", {
   dir.create(dir)
   on.exit(unlink(dir, recursive = TRUE), add = TRUE)
   file.create(file.path(dir, c("a.json", "b.json")))
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   on.exit(close_db(db), add = TRUE)
 
   expect_snapshot(
@@ -1074,7 +1074,7 @@ test_that("empty registration preserves the initial empty-database decision", {
   file.create(
     file.path(dir, "1_study_302_m_Path_sense_2025-12-16_10-00-00.000000.json")
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   on.exit(close_db(db), add = TRUE)
   captured_file_ids <- NA_integer_
   empty_registration_calls <- 0L
@@ -1127,7 +1127,7 @@ test_that("empty files are registered as processed", {
     sensors = list(list(`__type` = "dk.cachet.carp.stepcount", steps = 1))
   )
   file.create(file.path(dir, "1234_study_777_m_Path_sense_2025-12-16_16-33-00.000000.json"))
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   expect_message(
     read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE),
@@ -1161,15 +1161,18 @@ test_that("a broken file is isolated and reported", {
     '[\n  {"sensorStartTime": 1, "data": {"__type": "dk.cachet.carp.mpathinfo", "connectionId": "1", "studyName": "s", "senseVersion": 5}},\n  {"sensorStartTime": 1, "data": {"__type": "dk.cachet.carp.stepcount", "steps": 1}}\n',
     file.path(dir, "broken.json")
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
-  res <- suppressMessages(read_mpath_sense(
-    path = dir,
-    db = db,
-    recursive = FALSE,
-    .progress = FALSE,
-    batch_size = 2
-  ))
+  warnings <- capture_warnings(
+    res <- suppressMessages(read_mpath_sense(
+      path = dir,
+      db = db,
+      recursive = FALSE,
+      .progress = FALSE,
+      batch_size = 2
+    ))
+  )
+  expect_match(warnings, "Some files could not be written to the database.", all = FALSE)
   expect_equal(res, "broken.json")
 
   # The good file was still imported
@@ -1202,12 +1205,13 @@ test_that("files without mpathinfo are skipped and reported", {
     file.path(dir, "no_mpathinfo.json"),
     auto_unbox = TRUE
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
-  expect_warning(
-    res <- read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE),
-    "could not be attributed to a participant"
+  warnings <- capture_warnings(
+    res <- read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE)
   )
+  expect_match(warnings, "could not be attributed to a participant", all = FALSE)
+  expect_match(warnings, "Some files could not be written to the database.", all = FALSE)
   expect_equal(res, "no_mpathinfo.json")
   expect_equal(
     DBI::dbGetQuery(db, "SELECT COUNT(*) FROM ProcessedFiles")[[1]],
@@ -1242,7 +1246,7 @@ test_that("ingest dispatch runs each sensor once per sense version with rows", {
       batteryStatus = "OK"
     ))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(
     path = dir,
     db = db,
@@ -1276,7 +1280,7 @@ test_that("unknown senseVersion produces an aggregated warning", {
     version = 99,
     sensors = list(list(`__type` = "dk.cachet.carp.stepcount", steps = 3))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   # The unknown version falls back to the default parser
   expect_warning(
@@ -1305,7 +1309,7 @@ test_that("unknown sensor types produce an aggregated warning", {
     "a.json",
     sensors = list(list(`__type` = "dk.cachet.carp.hyperspacejump", distance = 42))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   expect_warning(
     suppressMessages(
@@ -1333,8 +1337,8 @@ test_that("batch_size 1 and 100 give the same result", {
     )
   }
 
-  db1 <- create_db(NULL, ":memory:", shared_home = FALSE)
-  db2 <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db1 <- fresh_test_db()
+  db2 <- fresh_test_db()
   suppressMessages(read_mpath_sense(
     path = dir,
     db = db1,
@@ -1396,7 +1400,7 @@ test_that("deduplication keys include the table-specific extras", {
       ))
     ))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
   apps <- DBI::dbGetQuery(db, "SELECT app, usage FROM AppUsage ORDER BY app")
@@ -1442,7 +1446,7 @@ test_that("empty and missing AppUsage collections preserve measurements", {
     )),
     start_time = 1765889442388567
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
   apps <- DBI::dbGetQuery(
@@ -1472,7 +1476,7 @@ test_that("known but useless sensor types are silently ignored", {
       list(`__type` = "dk.cachet.carp.stepcount", steps = 3)
     )
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   # No warning for the ignored type, unlike unknown sensor types
   expect_no_warning(
@@ -1503,7 +1507,7 @@ test_that("a missing Garmin array key yields no rows instead of an error", {
       )
     ))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   expect_message(
     read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE),
@@ -1554,7 +1558,7 @@ test_that("empty Bluetooth scan results preserve the scan measurement", {
       )
     )
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
 
   bluetooth <- DBI::dbGetQuery(
@@ -1592,15 +1596,20 @@ test_that("garmin ingest is skipped for arrays absent from the batch payloads", 
       heartRate = list(list(timestamp = 1765889440388567, beatsPerMinute = 60))
     ))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   # Sensors whose array carries no element in any payload of the batch are
   # not dispatched at all (they would only run a zero-row unnest over
   # garmin_parsed; in the 106k-file run those calls cost ~104 s in total).
-  expect_output(
-    read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE, .debug = TRUE),
-    "Ingested 1 row into GarminBBI"
+  # Debug output mixes stdout (per-sensor timings) and stderr (batch rule,
+  # completion summaries); capture both so nothing leaks.
+  stdout <- capture.output(
+    messages <- capture.output(
+      read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE, .debug = TRUE),
+      type = "message"
+    )
   )
+  expect_match(c(stdout, messages), "Ingested 1 row into GarminBBI", all = FALSE)
   expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM GarminHeartRate")[[1]], 1)
   expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM GarminStress")[[1]], 0)
   expect_equal(DBI::dbGetQuery(db, "SELECT COUNT(*) FROM GarminSkinTemperature")[[1]], 0)
@@ -1620,12 +1629,17 @@ test_that("debug mode reports progress per file and per sensor", {
     "a.json",
     sensors = list(list(`__type` = "dk.cachet.carp.stepcount", steps = 3))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
-  expect_output(
-    read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE, .debug = TRUE),
-    "Ingested 1 row into Pedometer"
+  # Debug output mixes stdout (per-sensor timings) and stderr (batch rule,
+  # completion summaries); capture both so nothing leaks.
+  stdout <- capture.output(
+    messages <- capture.output(
+      read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE, .debug = TRUE),
+      type = "message"
+    )
   )
+  expect_match(c(stdout, messages), "Ingested 1 row into Pedometer", all = FALSE)
 
   close_db(db)
   unlink(dir, recursive = TRUE)
@@ -1639,7 +1653,7 @@ test_that("an unfinished transaction is rolled back before importing", {
     "a.json",
     sensors = list(list(`__type` = "dk.cachet.carp.stepcount", steps = 1))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
 
   # Simulate an interrupted import that left a transaction open
   DBI::dbExecute(db, "BEGIN")
@@ -1658,7 +1672,7 @@ test_that("an unfinished transaction is rolled back before importing", {
 })
 
 test_that("deduplication keeps the newest provenance triple regardless of rowid", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   # Insert rows in reverse source order: the physically-first row has the
   # higher source_row_id, so physical order (rowid) opposes source order.
   # Deduplication must resolve by provenance, not by rowid.
@@ -1684,7 +1698,7 @@ test_that("deduplication keeps the newest provenance triple regardless of rowid"
 })
 
 test_that("dedup chooses a full-table pass on an empty database and a scoped pass otherwise", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   meta <- tibble::tibble(
     source_file = "/tmp/f.json",
     file_name = "f.json",
@@ -1719,7 +1733,7 @@ test_that("dedup chooses a full-table pass on an empty database and a scoped pas
 })
 
 test_that("file filtering keeps first input keys and reports an empty ledger", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   on.exit(close_db(db), add = TRUE)
 
   modified_at <- as.POSIXct(
@@ -1756,7 +1770,7 @@ test_that("file filtering keeps first input keys and reports an empty ledger", {
 })
 
 test_that("file filtering preserves ledger matches, eligibility, and input order", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   on.exit(close_db(db), add = TRUE)
   DBI::dbExecute(db, "INSERT INTO Study (study_id, data_format) VALUES ('synthetic', 'CARP JSON')")
   DBI::dbExecute(db, "INSERT INTO Participant (participant_id, study_id) VALUES (1, 'synthetic')")
@@ -1835,7 +1849,7 @@ test_that("file filtering preserves ledger matches, eligibility, and input order
 })
 
 test_that("deduplication resolves cross-file duplicates by newest file first", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   # file 2 is newer; within file 2 the later source row wins even when it was
   # physically inserted earlier than the older file's rows.
   DBI::dbExecute(
@@ -1861,7 +1875,7 @@ test_that("deduplication resolves cross-file duplicates by newest file first", {
 })
 
 test_that("main sensor views hide the provenance columns and are read-only", {
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   DBI::dbExecute(
     db,
     "INSERT INTO raw.Activity (
@@ -1917,7 +1931,7 @@ test_that("views stay consistent after dedup, optimize, and timezone fills", {
       list(`__type` = "dk.cachet.carp.timezone", timezone = "Europe/Brussels")
     )
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
 
   # A duplicate measurement in a second file (renamed copy)
@@ -1959,8 +1973,8 @@ test_that("source_row_id ordinals are consecutive and deterministic across batch
       )
     )
   }
-  db1 <- create_db(NULL, ":memory:", shared_home = FALSE)
-  db2 <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db1 <- fresh_test_db()
+  db2 <- fresh_test_db()
   suppressMessages(read_mpath_sense(
     path = dir,
     db = db1,
@@ -2013,7 +2027,7 @@ test_that("Garmin array element ordinals follow the array order", {
       )
     ))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
 
   hr <- DBI::dbGetQuery(
@@ -2046,7 +2060,7 @@ test_that("Garmin recalculated duplicates: later array element and later file wi
       )
     ))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
 
   # The automatic post-import dedup already resolved the in-file duplicate.
@@ -2230,7 +2244,7 @@ test_that("source_row_id is the file position even when sensor times interleave"
     )
   )
   jsonlite::write_json(entries, file.path(dir, "interleaved.json"), auto_unbox = TRUE)
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
 
   ped <- DBI::dbGetQuery(
@@ -2270,7 +2284,7 @@ test_that("duplicates keep the later file position within the newest file", {
       list(`__type` = "dk.cachet.carp.activity", confidence = 90, type = "RUNNING")
     )
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
 
   act <- DBI::dbGetQuery(db, "SELECT confidence, type, source_row_id FROM raw.Activity")
@@ -2296,7 +2310,7 @@ test_that("editing a file and re-importing overwrites the corrected measurement"
     "a.json",
     sensors = list(list(`__type` = "dk.cachet.carp.activity", confidence = 50, type = "WALKING"))
   )
-  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  db <- fresh_test_db()
   suppressMessages(read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE))
   expect_equal(DBI::dbGetQuery(db, "SELECT confidence FROM Activity")$confidence, 50L)
 

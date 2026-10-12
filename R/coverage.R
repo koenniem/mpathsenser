@@ -1,3 +1,15 @@
+# Coverage: absolute counts and proportional coverage per sensor and bin.
+#
+# Times, durations, and slot grids use UTC; each observation is assigned to
+# the bin of the timezone that applies at its instant. A local bin that
+# occurs twice, such as on both sides of a DST fold, sums both contributions.
+
+# -- constants -----------------------------------------------------------------
+
+.coverage_ios_sensors <- c("AppUsage", "Light", "Memory", "Screen")
+
+# -- public entry points -------------------------------------------------------
+
 #' Construct expected sampling intervals
 #'
 #' @description
@@ -10,6 +22,10 @@
 #' @param Accelerometer,AppUsage,Battery,Bluetooth,Connectivity,Device,Error,Heartbeat,Light,Location,Memory,Timezone,Weather,Wifi
 #'   Expected interval in seconds for that sensor. Defaults are the current
 #'   m-Path Sense intervals.
+#' @param ... Additional sensor intervals, named with sensor names. Names are
+#'   matched case-insensitively, for example `accelerometer = 60`. Unknown or
+#'   duplicate names, and a sensor supplied both as a formal argument and in
+#'   `...`, throw an error.
 #'
 #' @returns A named numeric vector of expected intervals in seconds.
 #' @family coverage functions
@@ -32,9 +48,10 @@ coverage_expected <- function(
   Memory = 160,
   Timezone = 1800,
   Weather = 120,
-  Wifi = 120
+  Wifi = 120,
+  ...
 ) {
-  intervals <- c(
+  values <- list(
     Accelerometer = Accelerometer,
     AppUsage = AppUsage,
     Battery = Battery,
@@ -51,8 +68,55 @@ coverage_expected <- function(
     Wifi = Wifi
   )
 
-  if (!is.numeric(intervals) || any(!is.finite(intervals)) || any(intervals <= 0)) {
-    cli_abort("All {.fn coverage_expected} intervals must be positive, finite numbers.")
+  # Validate every interval on its own before concatenation, so logical or
+  # otherwise coercible overrides cannot slip through.
+  for (name in names(values)) {
+    values[[name]] <- .coverage_check_expected_override(name, values[[name]])
+  }
+
+  intervals <- unlist(values, use.names = TRUE)
+
+  # Track which sensors arrived through a formal argument so a `...` override
+  # for the same sensor can be rejected.
+  call_names <- setdiff(names(formals()), "...")
+  env <- environment()
+  supplied <- call_names[vapply(
+    call_names,
+    \(name) !eval(bquote(missing(.(as.name(name)))), envir = env),
+    logical(1)
+  )]
+
+  overrides <- list(...)
+  if (length(overrides) > 0L) {
+    override_names <- names(overrides)
+    if (is.null(override_names) || any(!nzchar(override_names))) {
+      cli_abort("Every override in {.arg ...} must be named with a sensor name.")
+    }
+
+    standard <- .standard_sensor_names(override_names)
+    unknown <- standard[!standard %in% sensors]
+    if (length(unknown) > 0L) {
+      cli_abort("Sensor{?s} {.val {unknown}} could not be found.")
+    }
+
+    duplicated <- standard[duplicated(standard)]
+    if (length(duplicated) > 0L) {
+      cli_abort("Sensor{?s} {.val {duplicated}} {?was/were} supplied more than once.")
+    }
+
+    clashes <- intersect(standard, supplied)
+    if (length(clashes) > 0L) {
+      cli_abort(
+        "Sensor{?s} {.val {clashes}} {?was/were} supplied as {?a/}formal argument and in {.arg ...}."
+      )
+    }
+
+    for (i in seq_along(overrides)) {
+      intervals[[standard[[i]]]] <- .coverage_check_expected_override(
+        standard[[i]],
+        overrides[[i]]
+      )
+    }
   }
 
   intervals
@@ -126,19 +190,38 @@ coverage_frequency <- function(
   end_date = NULL,
   week_start = getOption("lubridate.week.start", 7)
 ) {
-  .coverage_build(
+  # Check the arguments against the database before building the query.
+  validated <- .coverage_validate_frequency(
     db = db,
     participant_id = participant_id,
     sensor = sensor,
-    expected = NULL,
-    metric = NULL,
     by = by,
     local = local,
-    week_start = week_start,
     start_date = start_date,
     end_date = end_date,
-    coverage_type = "frequency"
+    week_start = week_start
   )
+
+  # Collect the validated arguments into one `spec` list, with the package's
+  # sensor names and the bin width for each sensor.
+  spec <- .coverage_normalise_spec(validated)
+
+  # Local dates and bins require the timezone for each observation. When all
+  # observations are in UTC, no timezone-specific handling is needed.
+  spec <- .coverage_resolve_local(spec)
+
+  # Build the observation relation for each selected sensor and combine them.
+  observations <- .coverage_relation_observations(spec)
+
+  # Build the timezone episodes, offset segments, and observation span, and
+  # apply the date filter on the local calendar.
+  context <- .coverage_observation_context(spec, observations)
+
+  # Count measurements per bin.
+  coverage <- .coverage_assemble_count(spec, context, proportional = FALSE)
+
+  # Attach the class and attributes used by collection and plotting.
+  .coverage_table(spec, coverage)
 }
 
 #' Calculate proportional sensor coverage
@@ -152,11 +235,11 @@ coverage_frequency <- function(
 #'
 #' By default, each sensor's bin width equals its expected interval.
 #' Alternatively, `by` may be one of `"minute"`, `"hour"`, `"day"`, `"week"`,
-#' or `"month"` for
-#' calendar-aligned bins, or a positive number of seconds for fixed-width bins.
-#' When an explicit `by` is shorter than a sensor's expected interval, that
-#' sensor's bin width is raised to the expected interval and a warning reports
-#' the adjustment; other sensors keep the requested width.
+#' or `"month"` for calendar-aligned bins, or a positive number of seconds for
+#' fixed-width bins. A fixed-width `by` shorter than a sensor's expected
+#' interval is raised to that interval for that sensor, and a warning reports
+#' the adjustment; other sensors keep the requested width. Calendar units keep
+#' their actual boundaries and are never widened.
 #'
 #' With `metric = "count"`, each value is the distinct measurement count divided
 #' by the expected number of measurements in the eligible part of that bin.
@@ -175,7 +258,8 @@ coverage_frequency <- function(
 #' `Device` platform information is missing.
 #'
 #' `expected` is required, but it may be supplied directly or constructed with
-#' [coverage_expected()].
+#' [coverage_expected()]. Sensor names in `expected` are matched
+#' case-insensitively, and the output always uses the canonical capitalisation.
 #'
 #' @param db A valid database connection. Schema must be that created by
 #'   [open_db].
@@ -191,10 +275,11 @@ coverage_frequency <- function(
 #'   named in `expected`.
 #' @param by Bin width: one of `"minute"`, `"hour"`, `"day"`, `"week"`, or
 #'   `"month"`, or a positive number of seconds. `NULL` (the default) uses each
-#'   sensor's expected interval separately. If an explicit width is smaller
-#'   than a sensor's expected interval, it is raised to that interval for that
-#'   sensor and a warning is issued. A calendar-month width is compared using
-#'   the shortest month (28 days); an adjusted month bin becomes fixed-width.
+#'   sensor's expected interval separately. If an explicit fixed width is
+#'   smaller than a sensor's expected interval, it is raised to that interval
+#'   for that sensor and a warning is issued. Calendar units keep their actual
+#'   boundaries; a calendar month is not replaced by a fixed width even when it
+#'   can be shorter than the expected interval.
 #' @param metric What to compare: `"count"` (the default) for the proportion of
 #'   expected measurements, `"interval"` for the fraction of eligible time
 #'   covered by the union of observation intervals, or `"bin"` for the
@@ -245,19 +330,43 @@ coverage_proportional <- function(
   week_start = getOption("lubridate.week.start", 7)
 ) {
   metric <- match.arg(metric)
-  .coverage_build(
+  # Check the arguments and drop sensors without an `expected` interval.
+  validated <- .coverage_validate_proportional(
     db = db,
+    expected = expected,
     participant_id = participant_id,
     sensor = sensor,
-    expected = expected,
-    metric = metric,
     by = by,
+    metric = metric,
     local = local,
-    week_start = week_start,
     start_date = start_date,
     end_date = end_date,
-    coverage_type = "proportional"
+    week_start = week_start
   )
+
+  # Collect the validated arguments into one `spec` list, including `expected`.
+  spec <- .coverage_normalise_spec(validated)
+
+  # Skip timezone handling when all observations are in UTC.
+  spec <- .coverage_resolve_local(spec)
+
+  # Build the observation relation for each selected sensor and combine them.
+  observations <- .coverage_relation_observations(spec)
+
+  # Build the timezone episodes, offset segments, and observation span, and
+  # apply the date filter on the local calendar.
+  context <- .coverage_observation_context(spec, observations)
+
+  # `metric` selects what the numerator and denominator count.
+  coverage <- switch(
+    spec$metric,
+    count = .coverage_assemble_count(spec, context, proportional = TRUE),
+    interval = .coverage_assemble_interval(spec, context),
+    bin = .coverage_assemble_bin(spec, context)
+  )
+
+  # Attach the class and attributes used by collection and plotting.
+  .coverage_table(spec, coverage)
 }
 
 #' Materialise a coverage result
@@ -272,8 +381,14 @@ coverage_proportional <- function(
 collect.coverage <- function(x, ...) {
   requested <- attr(x, "participant_id")
   out <- NextMethod()
+  # Sort in R: arranging the lazy coverage table and then collecting it would
+  # redispatch to this method. Only the aggregated bins are sorted here;
+  # transformed queries that dropped the bin columns are left as they are.
+  if (all(c("participant_id", "time", "measure") %in% names(out))) {
+    out <- arrange(out, .data$participant_id, .data$time, .data$measure)
+  }
 
-  if (nrow(out) == 0) {
+  if (nrow(out) == 0L) {
     if (is.null(requested)) {
       cli_abort("No observations found for the requested sensors and time range.")
     }
@@ -282,10 +397,11 @@ collect.coverage <- function(x, ...) {
     )
   }
 
+  # Warn when an explicitly requested participant produced no observations.
   if (!is.null(requested) && "participant_id" %in% names(out)) {
     present <- unique(as.character(out$participant_id))
     missing <- setdiff(as.character(requested), present)
-    if (length(missing) > 0) {
+    if (length(missing) > 0L) {
       cli_warn(c(
         "No data found for participant{?s} {.val {missing}}; skipping.",
         i = "Only participants with observations are returned."
@@ -293,14 +409,16 @@ collect.coverage <- function(x, ...) {
     }
   }
 
+  # Round values for display, factor the measures, and restore metadata/class.
   out$coverage <- round(out$coverage, 2)
   out$measure <- factor(
     out$measure,
     levels = rev(sort(unique(as.character(out$measure))))
   )
 
-  class(out) <- c("coverage", class(out))
-  for (nm in c(
+  class(out) <- unique(c("coverage", class(out)))
+
+  for (name in c(
     "participant_id",
     "coverage_type",
     "expected",
@@ -309,8 +427,9 @@ collect.coverage <- function(x, ...) {
     "week_start",
     "local"
   )) {
-    attr(out, nm) <- attr(x, nm)
+    attr(out, name) <- attr(x, name)
   }
+
   out
 }
 
@@ -361,56 +480,69 @@ plot.coverage <- function(
   }
   check_arg(label, "logical", n = 1)
 
+  # Collect first so plotting works on plain data frame columns.
   x <- collect(x)
+
   if (is.null(week_start)) {
     week_start <- attr(x, "week_start")
   }
   if (is.null(week_start)) {
     week_start <- getOption("lubridate.week.start", 7)
   }
-  week_start <- .coverage_validate_week_start(week_start)
+
+  week_start <- check_week_start(week_start)
+
   is_proportional <- identical(attr(x, "coverage_type"), "proportional")
   metric <- attr(x, "metric")
   participant_id <- attr(x, "participant_id")
   by_spec <- attr(x, "by")
+
   if (!is.null(cycle) && .coverage_cycle_is_not_coarser(cycle, by_spec, x)) {
     cli_abort(c(
       "{.arg cycle} must be coarser than the largest {.arg by} bin.",
       i = "Choose a longer cycle or a smaller {.arg by} interval."
     ))
   }
+
   if (identical(type, "auto")) {
     type <- if (is.null(cycle)) "line" else "heatmap"
   }
 
+  # The title reflects the requested participant scope.
   title <- if (is.null(participant_id)) {
     "Coverage for all participants"
-  } else if (length(participant_id) == 1) {
+  } else if (length(participant_id) == 1L) {
     paste0("Coverage for participant ", participant_id)
   } else {
     "Coverage per participant"
   }
 
+  # With a cycle, aggregate bins into calendar positions; without one, plot
+  # the original bin times directly.
   if (is.null(cycle)) {
     position_cols <- character(0)
     x_col <- "time"
   } else {
     position_cols <- .coverage_cycle_positions(cycle, by_spec, x)
+    # Derive all calendar components a cycle can use; `position_cols` selects
+    # the ones that are needed.
     x <- x |>
       mutate(
-        month = lubridate::month(.data$time),
-        day_of_month = lubridate::mday(.data$time),
-        day_of_week = lubridate::wday(
+        month = month(.data$time),
+        day_of_month = mday(.data$time),
+        day_of_week = wday(
           .data$time,
           label = label,
           week_start = week_start
         ),
-        hour = lubridate::hour(.data$time),
-        minute = lubridate::minute(.data$time),
-        second = lubridate::second(.data$time),
+        hour = hour(.data$time),
+        minute = minute(.data$time),
+        second = second(.data$time),
         week_of_month = .coverage_week_number(.data$time, "month", week_start),
         week_of_year = .coverage_week_number(.data$time, "year", week_start)
       ) |>
+      # Average repeated bins within each cycle position; groups whose
+      # coverage is entirely missing stay NA.
       group_by(across(all_of(c("participant_id", "measure", position_cols)))) |>
       summarise(
         coverage = mean(.data$coverage, na.rm = TRUE),
@@ -422,10 +554,13 @@ plot.coverage <- function(
     x_col <- position_cols[length(position_cols)]
   }
 
-  multiple_participants <- length(unique(x$participant_id)) > 1
+  # Facet by the remaining cycle dimensions; participant becomes a facet
+  # column only when the table covers several participants.
+  multiple_participants <- length(unique(x$participant_id)) > 1L
+
   add_facets <- function(plot) {
     facet_cols <- position_cols[-length(position_cols)]
-    if (length(facet_cols) > 0) {
+    if (length(facet_cols) > 0L) {
       if (multiple_participants) {
         return(
           plot +
@@ -450,6 +585,7 @@ plot.coverage <- function(
     plot
   }
 
+  # Line chart of coverage over time or over the cycle's x position.
   if (identical(type, "line")) {
     plot <- ggplot2::ggplot(
       x,
@@ -478,10 +614,12 @@ plot.coverage <- function(
     return(add_facets(plot))
   }
 
+  # Count heatmaps normalise each sensor to its own maximum so one shared
+  # fill scale stays comparable; proportional heatmaps use the value directly.
   if (!is_proportional) {
     x <- x |>
       group_by(.data$measure) |>
-      mutate(max_coverage = max(dplyr::coalesce(.data$coverage, 0))) |>
+      mutate(max_coverage = max(coalesce(.data$coverage, 0))) |>
       mutate(
         max_coverage = if_else(
           !is.finite(.data$max_coverage) | .data$max_coverage == 0,
@@ -496,6 +634,7 @@ plot.coverage <- function(
     fill_col <- "coverage"
   }
 
+  # Tile grid with the value printed in each cell.
   plot <- ggplot2::ggplot(
     x,
     ggplot2::aes(
@@ -545,22 +684,18 @@ plot.coverage <- function(
   add_facets(plot)
 }
 
-# -- internal helpers ----------------------------------------------------------
+# -- validation ----------------------------------------------------------------
 
-.coverage_ios_sensors <- c("AppUsage", "Light", "Memory", "Screen")
-
-.coverage_build <- function(
+# Check the frequency arguments and return them in one validated list.
+.coverage_validate_frequency <- function(
   db,
   participant_id,
   sensor,
-  expected,
-  metric,
   by,
   local,
-  week_start,
   start_date,
   end_date,
-  coverage_type
+  week_start
 ) {
   check_db(db)
   check_arg(
@@ -568,327 +703,233 @@ plot.coverage <- function(
     type = c("character", "integerish", "numeric"),
     allow_null = TRUE
   )
-  check_sensors(sensor, allow_null = TRUE)
+  sensors <- check_sensors(sensor, allow_null = TRUE, resolve = TRUE)
   check_arg(local, "logical", n = 1)
 
-  participants <- get_participants(db)$participant_id
-  if (length(participants) == 0) {
-    cli_abort("The database does not contain any participants.")
-  }
-  if (!is.null(participant_id)) {
-    unknown <- setdiff(as.character(participant_id), as.character(participants))
-    if (length(unknown) > 0) {
-      cli_abort(
-        "Participant{?s} {.val {unknown}} could not be found in the {.pkg mpathsenser} database."
-      )
-    }
-  }
+  participants <- check_participants(db, participant_id)
 
-  sensor_explicit <- !is.null(sensor)
-  if (is.null(sensor)) {
-    sensor <- sensors
-  }
-  sensor <- .physical_sensor(sensor)
-  sensor <- unique(sensor[tolower(sensor) %in% tolower(sensors)])
-  if (length(sensor) == 0) {
-    cli_abort("No valid sensors to compute coverage for.")
-  }
+  week_start <- check_week_start(week_start)
+  by <- .coverage_check_by(by, required = TRUE)
+  dates <- check_dates(start_date, end_date)
 
-  if (identical(coverage_type, "proportional")) {
-    check_arg(expected, type = "numeric")
-    if (
-      is.null(names(expected)) ||
-        length(expected) == 0 ||
-        anyNA(names(expected)) ||
-        any(!nzchar(names(expected)))
-    ) {
-      cli_abort("{.arg expected} must be a named numeric vector of sensor intervals.")
-    }
-    if (anyDuplicated(names(expected))) {
-      cli_abort("{.arg expected} must not contain duplicate sensor names.")
-    }
-    if (any(!is.finite(expected)) || any(expected < 0.000001)) {
-      cli_abort("{.arg expected} must contain finite intervals of at least one microsecond.")
-    }
-
-    keep <- sensor[sensor %in% names(expected)]
-    dropped <- setdiff(sensor, keep)
-    if (length(dropped) > 0 && sensor_explicit) {
-      cli_warn(c(
-        "Dropping sensor{?s} without an expected interval: {.val {dropped}}.",
-        i = "Add them to {.arg expected} to compute proportional coverage."
-      ))
-    }
-    sensor <- keep
-    if (length(sensor) == 0) {
-      cli_abort("No sensors left after filtering by {.arg expected}.")
-    }
-  }
-
-  week_start <- .coverage_validate_week_start(week_start)
-  if (is.null(by)) {
-    if (identical(coverage_type, "frequency")) {
-      cli_abort("{.arg by} cannot be {.val NULL} for {.fn coverage_frequency}.")
-    }
-  } else if (is.character(by)) {
-    by <- match.arg(by, c("minute", "hour", "day", "week", "month"))
-  } else {
-    check_arg(by, type = c("numeric", "integerish"), n = 1)
-    if (!is.finite(by) || by < 0.000001) {
-      cli_abort("{.arg by} must be a positive, finite number of seconds.")
-    }
-    by <- as.numeric(by)
-  }
-
-  if (identical(coverage_type, "proportional")) {
-    metric <- match.arg(metric, c("count", "interval", "bin"))
-  }
-
-  if (!.coverage_is_date(start_date) || !.coverage_is_date(end_date)) {
-    cli_abort(
-      "{.arg start_date} and {.arg end_date} must be {.val NULL}, a date string, or a {.cls Date}."
-    )
-  }
-
-  bin_spec <- if (identical(coverage_type, "proportional")) {
-    .coverage_proportional_bins(by, sensor, expected)
-  } else {
-    stats::setNames(rep(by, length(sensor)), sensor)
-  }
-
-  if (length(intersect(sensor, .coverage_ios_sensors)) > 0) {
-    .coverage_warn_unknown_platforms(db, participants, participant_id)
-  }
-
-  relations <- purrr::map(
-    sensor,
-    \(sensor_name) {
-      if (identical(metric, "interval") || identical(metric, "bin")) {
-        .coverage_instants_branch(
-          db = db,
-          sensor = sensor_name,
-          participant_id = participant_id,
-          local = local,
-          start_date = start_date,
-          end_date = end_date
-        )
-      } else {
-        .coverage_counts_branch(
-          db = db,
-          sensor = sensor_name,
-          participant_id = participant_id,
-          by = bin_spec[[sensor_name]],
-          week_start = week_start,
-          local = local,
-          start_date = start_date,
-          end_date = end_date
-        )
-      }
-    }
+  list(
+    db = db,
+    participant_id = participant_id,
+    participants = participants,
+    sensors = sensors,
+    sensor_explicit = !is.null(sensor),
+    local = local,
+    week_start = week_start,
+    by = by,
+    coverage_type = "frequency",
+    start_date = dates$start_date,
+    end_date = dates$end_date
   )
-  relation <- purrr::reduce(relations, dplyr::union_all)
-  relation_sql <- as.character(dbplyr::sql_render(relation))
-  settings_sql <- .coverage_sql_settings(sensor, bin_spec, expected, week_start)
-  query <- .coverage_sql(
-    relation_sql = relation_sql,
-    settings_sql = settings_sql,
+}
+
+# Check the proportional arguments and resolve `expected` against the selected sensors.
+.coverage_validate_proportional <- function(
+  db,
+  expected,
+  participant_id,
+  sensor,
+  by,
+  metric,
+  local,
+  start_date,
+  end_date,
+  week_start
+) {
+  check_db(db)
+  check_arg(
+    participant_id,
+    type = c("character", "integerish", "numeric"),
+    allow_null = TRUE
+  )
+  sensors <- check_sensors(sensor, allow_null = TRUE, resolve = TRUE)
+  check_arg(local, "logical", n = 1)
+
+  participants <- check_participants(db, participant_id)
+
+  expected <- .coverage_check_expected(expected, sensors, sensor_explicit = !is.null(sensor))
+
+  week_start <- check_week_start(week_start)
+  by <- .coverage_check_by(by, required = FALSE)
+  dates <- check_dates(start_date, end_date)
+
+  list(
+    db = db,
+    participant_id = participant_id,
+    participants = participants,
+    sensors = expected$sensors,
+    sensor_explicit = !is.null(sensor),
+    local = local,
+    week_start = week_start,
+    by = by,
     metric = metric,
-    coverage_type = coverage_type
+    coverage_type = "proportional",
+    expected = expected$expected,
+    start_date = dates$start_date,
+    end_date = dates$end_date
+  )
+}
+
+# -- normalisation -------------------------------------------------------------
+
+# Combine validated inputs into the `spec` list used by the later stages. The
+# proportional fields are NULL for frequency coverage.
+.coverage_normalise_spec <- function(validated) {
+  spec <- list(
+    db = validated$db,
+    participant_id = validated$participant_id,
+    participants = validated$participants,
+    sensors = validated$sensors,
+    sensor_explicit = validated$sensor_explicit,
+    local = validated$local,
+    week_start = validated$week_start,
+    expected = validated$expected,
+    metric = validated$metric,
+    coverage_type = validated$coverage_type,
+    start_date = validated$start_date,
+    end_date = validated$end_date,
+    bin_spec = .coverage_make_bin_specs(
+      validated$by,
+      validated$sensors,
+      expected = validated$expected
+    )
   )
 
-  out <- tbl(db, sql(query))
-  if (length(intersect(sensor, .coverage_ios_sensors)) > 0) {
-    ios_participants <- tbl(db, "Device") |>
-      filter(grepl("ios|iphone|ipad", tolower(.data$platform))) |>
-      distinct(.data$participant_id) |>
-      mutate(is_ios = TRUE)
-    out <- out |>
-      left_join(ios_participants, by = "participant_id") |>
-      mutate(
-        coverage = if_else(
-          dplyr::coalesce(.data$is_ios, FALSE) & .data$measure %in% .coverage_ios_sensors,
-          NA_real_,
-          .data$coverage
-        )
-      ) |>
-      select(-"is_ios")
+  spec$ios_sensors <- any(spec$sensors %in% .coverage_ios_sensors)
+  if (spec$ios_sensors) {
+    .coverage_warn_missing_platforms(spec$db, spec$participants, spec$participant_id)
   }
 
-  class(out) <- c("coverage", class(out))
-  attr(out, "participant_id") <- participant_id
-  attr(out, "coverage_type") <- coverage_type
-  attr(out, "expected") <- expected
-  attr(out, "metric") <- metric
-  attr(out, "by") <- .coverage_compact_bin_spec(bin_spec)
-  attr(out, "week_start") <- week_start
-  attr(out, "local") <- local
-  out
+  spec
 }
 
-.coverage_is_date <- function(x) {
-  if (is.null(x)) {
-    return(TRUE)
-  }
-  if (!inherits(x, "Date") && !is.character(x)) {
-    return(FALSE)
-  }
-  date <- try(as.Date(x), silent = TRUE)
-  if (!inherits(date, "Date") || length(date) != 1 || is.na(date)) {
-    return(FALSE)
-  }
-  TRUE
-}
+# -- shared argument checks ----------------------------------------------------
 
-.coverage_warn_unknown_platforms <- function(db, participants, participant_id) {
-  selected <- if (is.null(participant_id)) {
-    as.character(participants)
-  } else {
-    unique(as.character(participant_id))
+# Validate the expected intervals and keep only the selected sensors.
+.coverage_check_expected <- function(expected, sensors, sensor_explicit) {
+  check_arg(expected, type = "numeric")
+
+  if (
+    is.null(names(expected)) ||
+      length(expected) == 0L ||
+      anyNA(names(expected)) ||
+      any(!nzchar(names(expected)))
+  ) {
+    cli_abort("{.arg expected} must be a named numeric vector of sensor intervals.")
   }
-  platforms <- tbl(db, "Device") |>
-    select("participant_id", "platform") |>
-    distinct() |>
-    collect()
-  known <- unique(as.character(platforms$participant_id[
-    as.character(platforms$participant_id) %in%
-      selected &
-      !is.na(platforms$platform) &
-      nzchar(trimws(platforms$platform))
-  ]))
-  unknown <- setdiff(selected, known)
-  if (length(unknown) > 0) {
+
+  names(expected) <- .standard_sensor_names(names(expected))
+  if (anyDuplicated(names(expected))) {
+    cli_abort("{.arg expected} must not contain duplicate sensor names.")
+  }
+  if (any(!is.finite(expected)) || any(expected < 0.000001)) {
+    cli_abort("{.arg expected} must contain finite intervals of at least one microsecond.")
+  }
+
+  keep <- sensors[sensors %in% names(expected)]
+  dropped <- setdiff(sensors, keep)
+  if (length(dropped) > 0L && sensor_explicit) {
     cli_warn(c(
-      "Operating system is unknown for participant{?s} {.val {unknown}}.",
-      i = "Device information was not collected; iOS-specific sensors cannot be excluded."
+      "Dropping sensor{?s} without an expected interval: {.val {dropped}}.",
+      i = "Add them to {.arg expected} to compute proportional coverage."
     ))
   }
-  invisible(NULL)
+  if (length(keep) == 0L) {
+    cli_abort("No sensors left after filtering by {.arg expected}.")
+  }
+
+  expected <- stats::setNames(expected[keep], keep)
+  list(expected = expected, sensors = keep)
 }
 
-.coverage_counts_branch <- function(
-  db,
-  sensor,
-  participant_id,
-  by,
-  week_start,
-  local,
-  start_date,
-  end_date
-) {
-  out <- .coverage_filter_branch(
-    db = db,
-    sensor = sensor,
-    participant_id = participant_id,
-    local = local,
-    start_date = start_date,
-    end_date = end_date
-  )
-  bin_time <- if (local) "time_local" else "time"
-  out <- mutate(
-    out,
-    bin = sql(.coverage_sql_bin(bin_time, by, week_start)),
-    bin_time = sql(bin_time)
-  ) |>
-    summarise(
-      n = dplyr::n_distinct(.data$time),
-      bin_first = min(.data$bin_time, na.rm = TRUE),
-      bin_last = max(.data$bin_time, na.rm = TRUE),
-      .by = c("participant_id", "bin")
-    ) |>
-    mutate(measure = sensor)
-
-  out
+# Validate one override for a sensor's expected interval.
+.coverage_check_expected_override <- function(name, value) {
+  if (
+    !is.numeric(value) ||
+      length(value) != 1L ||
+      !is.finite(value) ||
+      value < 0.000001
+  ) {
+    cli_abort("{.arg {name}} must be a positive, finite number of seconds.")
+  }
+  as.numeric(value)
 }
 
-.coverage_instants_branch <- function(
-  db,
-  sensor,
-  participant_id,
-  local,
-  start_date,
-  end_date
-) {
-  out <- .coverage_filter_branch(
-    db = db,
-    sensor = sensor,
-    participant_id = participant_id,
-    local = local,
-    start_date = start_date,
-    end_date = end_date
-  )
-
-  if (local) {
-    out <- summarise(
-      out,
-      bin_time = min(.data$time_local, na.rm = TRUE),
-      .by = c("participant_id", "time")
-    )
-  } else {
-    out <- select(out, "participant_id", "time") |>
-      distinct() |>
-      mutate(bin_time = .data$time)
-  }
-
-  mutate(out, measure = sensor)
-}
-
-.coverage_filter_branch <- function(
-  db,
-  sensor,
-  participant_id,
-  local,
-  start_date,
-  end_date
-) {
-  view <- if (local) paste0(sensor, "_with_local") else sensor
-  out <- tbl(db, view)
-
-  if (!is.null(participant_id)) {
-    out <- filter(out, .data$participant_id %in% !!as.character(participant_id))
-  }
-  if (identical(sensor, "Heartbeat")) {
-    out <- filter(
-      out,
-      is.na(.data$device_role_name) | !grepl("^Secondary", .data$device_role_name)
-    )
-  }
-  if (!is.null(start_date)) {
-    out <- filter(out, .data$time >= !!as.Date(start_date))
-  }
-  if (!is.null(end_date)) {
-    out <- filter(out, .data$time <= !!(as.Date(end_date) + 1))
-  }
-
-  out
-}
-
-# Keep every proportional bin wide enough for an expected opportunity.
-.coverage_proportional_bins <- function(by, sensor, expected) {
-  bin_spec <- if (is.null(by)) {
-    expected[sensor]
-  } else {
-    stats::setNames(rep(by, length(sensor)), sensor)
-  }
+# Validate `by` as a calendar unit or seconds; frequency requires it.
+.coverage_check_by <- function(by, required) {
   if (is.null(by)) {
-    return(bin_spec)
+    if (required) {
+      cli_abort("{.arg by} cannot be {.val NULL} for {.fn coverage_frequency}.")
+    }
+    return(NULL)
+  }
+  if (is.character(by)) {
+    return(match.arg(by, c("minute", "hour", "day", "week", "month")))
   }
 
-  too_small <- sensor[expected[sensor] > .coverage_min_bin_seconds(by)]
-  if (length(too_small) == 0) {
-    return(bin_spec)
+  check_arg(by, type = c("numeric", "integerish"), n = 1)
+  if (!is.finite(by) || by < 0.000001) {
+    cli_abort("{.arg by} must be a positive, finite number of seconds.")
   }
 
+  as.numeric(by)
+}
+
+# -- sensor names and bin specifications ---------------------------------------
+
+# Seconds in a fixed bin unit; NA for calendar months, which have no fixed length.
+.coverage_unit_seconds <- function(unit) {
+  switch(
+    unit,
+    minute = 60,
+    hour = 3600,
+    day = 86400,
+    week = 604800,
+    month = NA_real_,
+    NA_real_
+  )
+}
+
+# Fixed `by` below a sensor's expected interval widens to that interval; calendar
+# months keep their actual boundaries and are never widened.
+.coverage_make_bin_specs <- function(by, sensors, expected) {
+  if (is.null(by)) {
+    return(as.list(stats::setNames(expected[sensors], sensors)))
+  }
+  # NA seconds mean a calendar month, which keeps its own boundaries.
+  by_seconds <- if (is.character(by)) .coverage_unit_seconds(by) else by
+  too_small <- if (is.na(by_seconds)) {
+    character(0)
+  } else {
+    sensors[expected[sensors] > by_seconds]
+  }
+
+  spec <- as.list(stats::setNames(rep(by, length(sensors)), sensors))
+  if (length(too_small) > 0L) {
+    .coverage_warn_bin_adjustment(by, too_small, expected)
+    spec[too_small] <- as.list(expected[too_small])
+  }
+
+  spec
+}
+
+# Warn about sensors whose requested bin was widened to their expected
+# interval, listing each adjustment.
+.coverage_warn_bin_adjustment <- function(by, too_small, expected) {
   requested_width <- .coverage_bin_width_label(by)
-  adjustments <- purrr::map_chr(too_small, \(measure) {
-    expected_width <- .coverage_seconds_label(expected[[measure]])
+  adjustments <- map_chr(too_small, \(measure) {
     paste0(
       measure,
       ": ",
       requested_width,
       " is shorter than ",
-      expected_width,
+      .coverage_seconds_label(expected[[measure]]),
       "; using ",
-      expected_width
+      .coverage_seconds_label(expected[[measure]])
     )
   })
   cli_warn(c(
@@ -899,49 +940,22 @@ plot.coverage <- function(
       "between sensors."
     )
   ))
-
-  bin_spec <- as.list(bin_spec)
-  bin_spec[too_small] <- as.list(expected[too_small])
-  bin_spec
 }
 
-# Compare calendar bins using their shortest possible duration.
-.coverage_min_bin_seconds <- function(by) {
-  if (!is.character(by)) {
-    return(as.numeric(by))
-  }
-
-  c(
-    minute = 60,
-    hour = 3600,
-    day = 86400,
-    week = 604800,
-    month = 28 * 86400
-  )[[by]]
-}
-
-# Show exact durations in the bin-adjustment warning.
+# Render a number of seconds as a plain string for warning text.
 .coverage_seconds_label <- function(seconds) {
   paste0(format(seconds, trim = TRUE, scientific = FALSE), " seconds")
 }
 
-# Describe requested calendar or fixed-width bins in warnings.
+# Describe a bin width, expanding character units to their seconds.
 .coverage_bin_width_label <- function(by) {
-  if (identical(by, "month")) {
-    return("month (shortest month: 28 days)")
-  }
   if (is.character(by)) {
-    return(paste0(
-      by,
-      " (",
-      .coverage_seconds_label(.coverage_min_bin_seconds(by)),
-      ")"
-    ))
+    return(paste0(by, " (", .coverage_seconds_label(.coverage_unit_seconds(by)), ")"))
   }
   .coverage_seconds_label(by)
 }
 
-# Preserve vector attrs unless per-sensor bins need different types.
+# Collapse a uniform bin spec to a named vector for the output attribute.
 .coverage_compact_bin_spec <- function(bin_spec) {
   if (!is.list(bin_spec)) {
     return(bin_spec)
@@ -953,381 +967,1380 @@ plot.coverage <- function(
   bin_spec
 }
 
-# Let cycle helpers inspect mixed calendar and fixed-width bins uniformly.
-.coverage_bin_specs <- function(bin_spec) {
-  if (is.list(bin_spec)) bin_spec else as.list(bin_spec)
-}
-
-# Preserve calendar bins as intervals; numeric bins are fixed durations.
-.coverage_sql_interval <- function(by) {
-  if (is.character(by)) {
-    sprintf("INTERVAL '1 %s'", by)
-  } else {
-    sprintf("TO_SECONDS(%.15g)", by)
-  }
-}
-
-.coverage_sql_bin <- function(column, by, week_start) {
-  interval <- .coverage_sql_interval(by)
-  if (identical(by, "week")) {
-    offset_seconds <- (week_start - 1L) * 86400
-    return(sprintf(
-      "time_bucket(%s, %s - TO_SECONDS(%d)) + TO_SECONDS(%d)",
-      interval,
-      column,
-      offset_seconds,
-      offset_seconds
-    ))
-  }
-  sprintf("time_bucket(%s, %s)", interval, column)
-}
-
-.coverage_sql_settings <- function(sensor, bin_spec, expected, week_start) {
-  rows <- vapply(
-    sensor,
-    \(measure) {
-      by <- bin_spec[[measure]]
-      values <- c(
-        sprintf("'%s'", gsub("'", "''", measure)),
-        .coverage_sql_interval(by),
-        sprintf("%d", if (identical(by, "week")) (week_start - 1L) * 86400 else 0L)
+# One row per selected sensor with its bin unit and expected interval.
+.coverage_settings <- function(spec) {
+  spec$sensors |>
+    map(\(sensor) {
+      by <- spec$bin_spec[[sensor]]
+      tibble(
+        measure = sensor,
+        unit = if (is.character(by)) by else NA_character_,
+        seconds = if (is.numeric(by)) as.numeric(by) else .coverage_unit_seconds(by),
+        expected_seconds = if (is.null(spec$expected)) NA_real_ else unname(spec$expected[[sensor]])
       )
-      if (!is.null(expected)) {
-        values <- c(values, sprintf("%.15g", expected[[measure]]))
-      }
-      sprintf("(%s)", paste(values, collapse = ", "))
-    },
-    character(1)
-  )
-  columns <- if (is.null(expected)) {
-    "measure, bin_interval, week_offset_seconds"
-  } else {
-    "measure, bin_interval, week_offset_seconds, expected_seconds"
-  }
-  sprintf(
-    "settings AS (SELECT * FROM (VALUES %s) AS s(%s))",
-    paste(rows, collapse = ", "),
-    columns
-  )
+    }) |>
+    bind_rows()
 }
 
-.coverage_sql <- function(
-  relation_sql,
-  settings_sql,
-  metric,
-  coverage_type
-) {
-  is_interval <- identical(metric, "interval")
-  is_bin_metric <- identical(metric, "bin")
-  # Interval and bin spans reach the end of the last expected window, but their
-  # cells stop at the last observation's bin, so no trailing bin is emitted.
-  post_span_ctes <- ""
+# -- relation building ---------------------------------------------------------
 
-  if (is_interval) {
-    data_ctes <- .coverage_sql_intervals(relation_sql)
-    span_sql <- paste(
-      "SELECT participant_id, MIN(seg_start) AS first_time,",
-      "       MAX(seg_end) AS last_time,",
-      "       MAX(seg_start) AS last_observed",
-      "FROM intervals GROUP BY participant_id"
+# Build the lazy observation relation covering every selected sensor.
+.coverage_relation_observations <- function(spec) {
+  relations <- map(spec$sensors, \(sensor) .coverage_observations(spec, sensor))
+
+  # Combine the per-sensor relations into one lazy observation relation.
+  reduce(relations, union_all)
+}
+
+# One row per selected sensor with the observation time and timezone.
+.coverage_observations <- function(spec, sensor) {
+  # No distinct() here: each later stage deduplicates where it needs to, so a
+  # full observation scan would be wasted work.
+  .coverage_filter_sensor(spec, sensor) |>
+    select("participant_id", "time", "timezone") |>
+    mutate(measure = sensor)
+}
+
+# Participant, Heartbeat, and UTC date filtering for one sensor. The local date
+# window is applied later, after each observation's timezone is known (see
+# `.coverage_apply_dates()`).
+.coverage_filter_sensor <- function(spec, sensor) {
+  view <- if (spec$local) paste0(sensor, "_with_local") else sensor
+
+  out <- tbl(spec$db, view)
+
+  if (!is.null(spec$participant_id)) {
+    out <- filter(out, .data$participant_id %in% !!as.character(spec$participant_id))
+  }
+
+  if (identical(sensor, "Heartbeat")) {
+    out <- filter(
+      out,
+      is.na(.data$device_role_name) | !grepl("^Secondary", .data$device_role_name)
     )
-    last_boundary <- "sp.last_observed"
-    value_join <- paste(
-      "LEFT JOIN bin_coverage bc",
-      "  ON bc.participant_id = s.participant_id",
-      " AND bc.measure = s.measure",
-      " AND bc.bin = s.bin",
-      sep = "\n"
-    )
-    covered_seconds <- paste(
-      "GREATEST(DATE_DIFF('microsecond', GREATEST(s.bin, sp.first_time),",
-      "  LEAST(s.bin + s.bin_interval, sp.last_time)) / 1000000.0, 0) AS covered_seconds"
-    )
-    joined_values <- paste(
-      "CAST(COALESCE(bc.covered, 0) AS DOUBLE) AS covered",
-      covered_seconds,
-      sep = ",\n         "
-    )
-    value <- "LEAST(covered / GREATEST(covered_seconds, 0.000001), 1)"
-  } else if (is_bin_metric) {
-    data_ctes <- .coverage_sql_slots(relation_sql)
-    span_sql <- paste(
-      "SELECT participant_id, MIN(bin_time) AS first_time,",
-      "       MAX(slot_start + TO_SECONDS(expected_seconds)) AS last_time,",
-      "       MAX(bin_time) AS last_observed",
-      "FROM observed_slots GROUP BY participant_id"
-    )
-    post_span_ctes <- paste0(",\n", .coverage_sql_slot_bins())
-    last_boundary <- "sp.last_observed"
-    slot_anchor <- "COALESCE(a.slot_anchor, sp.first_time)"
-    joined_values <- paste(
-      "CAST(COALESCE(sb.n, 0) AS DOUBLE) AS n",
-      .coverage_sql_expected_slot_count(
-        anchor = slot_anchor,
-        start = "GREATEST(s.bin, sp.first_time)",
-        end = "LEAST(s.bin + s.bin_interval, sp.last_time)",
-        expected_seconds = "s.expected_seconds"
-      ),
-      sep = ",\n         "
-    )
-    value_join <- paste(
-      "LEFT JOIN slot_bins sb",
-      "  ON sb.participant_id = s.participant_id",
-      " AND sb.measure = s.measure",
-      " AND sb.bin = s.bin",
-      "LEFT JOIN slot_anchors a",
-      "  ON a.participant_id = s.participant_id",
-      " AND a.measure = s.measure",
-      sep = "\n"
-    )
-    value <- "CASE WHEN expected_slots = 0 THEN NULL ELSE n / expected_slots END"
-  } else {
-    data_ctes <- sprintf("counts AS (\n%s\n)", relation_sql)
-    span_sql <- paste(
-      "SELECT participant_id, MIN(bin_first) AS first_time,",
-      "       MAX(bin_last) AS last_time",
-      "FROM counts GROUP BY participant_id"
-    )
-    last_boundary <- "sp.last_time"
-    value_join <- paste(
-      "LEFT JOIN counts c",
-      "  ON c.participant_id = s.participant_id",
-      " AND c.measure = s.measure",
-      " AND c.bin = s.bin",
-      sep = "\n"
-    )
-    covered_seconds <- paste(
-      "GREATEST(DATE_DIFF('microsecond', GREATEST(s.bin, sp.first_time),",
-      "  LEAST(s.bin + s.bin_interval, sp.last_time)) / 1000000.0, 0) AS covered_seconds"
-    )
-    joined_values <- paste(
-      "CAST(COALESCE(c.n, 0) AS DOUBLE) AS n",
-      covered_seconds,
-      sep = ",\n         "
-    )
-    value <- if (identical(coverage_type, "proportional")) {
-      paste(
-        "n / (GREATEST(covered_seconds, expected_seconds)",
-        "/ expected_seconds)"
-      )
-    } else {
-      "n"
+  }
+
+  if (!spec$local) {
+    if (!is.null(spec$start_date)) {
+      out <- filter(out, .data$time >= !!spec$start_date)
+    }
+    if (!is.null(spec$end_date)) {
+      out <- filter(out, .data$time < !!(spec$end_date + 1))
     }
   }
 
-  expected_select_spine <- if (identical(coverage_type, "proportional")) {
-    ", sn.expected_seconds"
-  } else {
-    ""
+  out
+}
+
+# TRUE if any selected observation has a non-UTC timezone, i.e. if local bins
+# can differ from UTC bins in the requested range. Stops at the first such row.
+# The date filter is deliberately ignored: a missing timezone inside the range
+# can inherit a non-UTC zone from before it; empty strings count as missing.
+.coverage_has_wall_clock <- function(spec) {
+  probe <- spec
+  probe$local <- FALSE
+  probe$start_date <- NULL
+  probe$end_date <- NULL
+
+  relations <- map(probe$sensors, \(sensor) {
+    # Only the timezone column is needed; keeping the relations narrow avoids
+    # rendering the full sensor views.
+    .coverage_filter_sensor(probe, sensor) |>
+      select("timezone")
+  })
+
+  found <- relations |>
+    reduce(union_all) |>
+    filter(
+      !is.na(.data$timezone),
+      .data$timezone != "",
+      .data$timezone != "UTC"
+    ) |>
+    utils::head(1) |>
+    collect()
+  nrow(found) > 0
+}
+
+# `local = TRUE` needs timezone handling only when some selected observation
+# has a non-UTC timezone. Otherwise the local bins equal the UTC bins and the
+# episode work would only produce one UTC episode, so use the UTC path and keep
+# the requested value for the output attribute.
+.coverage_resolve_local <- function(spec) {
+  spec$local_requested <- spec$local
+
+  if (spec$local) {
+    spec$local <- .coverage_has_wall_clock(spec)
   }
-  expected_select_joined <- if (identical(coverage_type, "proportional")) {
-    ", s.expected_seconds"
-  } else {
-    ""
+  spec
+}
+
+# -- timezone episodes and offset segments -------------------------------------
+
+# Build the timezone context for local mode: episodes, offset segments, and the
+# observation span. UTC mode needs none of it.
+.coverage_observation_context <- function(spec, observations) {
+  if (!spec$local) {
+    return(list(observations = observations, segments = NULL, spans = NULL))
   }
 
-  sprintf(
-    paste(
-      "WITH %s,",
-      "%s,",
-      "spans AS (%s)%s,",
-      "spine AS (",
-      "  SELECT sp.participant_id, sn.measure, sn.bin_interval, sn.week_offset_seconds%s,",
-      "         unnest(generate_series(",
-      "           time_bucket(sn.bin_interval, sp.first_time - TO_SECONDS(sn.week_offset_seconds))",
-      "             + TO_SECONDS(sn.week_offset_seconds),",
-      "           time_bucket(sn.bin_interval, %s - TO_SECONDS(sn.week_offset_seconds))",
-      "             + TO_SECONDS(sn.week_offset_seconds),",
-      "           sn.bin_interval",
-      "         )) AS bin",
-      "  FROM spans sp CROSS JOIN settings sn",
-      "),",
-      "joined AS (",
-      "  SELECT s.participant_id, s.measure, s.bin, s.bin_interval%s,",
-      "         %s",
-      "  FROM spine s",
-      "  JOIN spans sp ON sp.participant_id = s.participant_id",
-      "  %s",
-      ")",
-      "SELECT participant_id, bin AS time, measure, %s AS coverage",
-      "FROM joined",
-      "ORDER BY participant_id, time, measure"
-    ),
-    settings_sql,
-    data_ctes,
-    span_sql,
-    post_span_ctes,
-    expected_select_spine,
-    last_boundary,
-    expected_select_joined,
-    joined_values,
-    value_join,
-    value
+  episodes <- .coverage_build_episodes(observations) |> collect()
+  # The episode query already computes the observation span; carry it along so
+  # the count metric does not scan the observations a second time.
+  spans <- episodes |>
+    distinct(.data$participant_id, .data$span_start, .data$span_end) |>
+    select("participant_id", "span_start", "span_end")
+  episodes <- .coverage_extend_episodes(episodes, spec)
+
+  segments <- .coverage_offset_segments(episodes, spec$db)
+  observations <- .coverage_apply_dates(observations, segments, spec)
+
+  list(observations = observations, segments = segments, spans = spans)
+}
+
+# Interval and bin spans reach past the last observation, so extend the last
+# episode to cover any DST transition in that tail before splitting it into
+# offset segments.
+.coverage_extend_episodes <- function(episodes, spec) {
+  if (nrow(episodes) == 0L || is.null(spec$expected)) {
+    return(episodes)
+  }
+  bound <- max(as.numeric(episodes$ep_end)) + max(spec$expected)
+
+  terminal <- !duplicated(episodes$participant_id, fromLast = TRUE)
+  episodes$ep_end[terminal] <- as.POSIXct(
+    pmax(as.numeric(episodes$ep_end[terminal]), bound),
+    origin = "1970-01-01",
+    tz = "UTC"
+  )
+  episodes
+}
+
+# Build timezone episodes from timezone changes. Missing timezones inherit the
+# last known value (or UTC before the first known value), so only rows with a
+# timezone can start an episode; the leading UTC stretch is added separately.
+# The span columns let the count metric reuse the min/max scan.
+.coverage_build_episodes <- function(observations) {
+  observed <- observations |>
+    select("participant_id", "time", "timezone")
+
+  # Observation span per participant, reused by the count metric.
+  spans <- observed |>
+    summarise(
+      span_start = min(.data$time, na.rm = TRUE),
+      span_end = max(.data$time, na.rm = TRUE),
+      .by = "participant_id"
+    )
+  starts <- .coverage_episode_starts(observed)
+
+  # A first known timezone that starts after the span start needs a UTC
+  # prefix episode covering the leading stretch.
+  first_start <- starts |>
+    summarise(
+      ep_start = min(.data$ep_start, na.rm = TRUE),
+      .by = "participant_id"
+    )
+  prefix <- spans |>
+    left_join(first_start, by = "participant_id") |>
+    filter(is.na(.data$ep_start) | .data$ep_start > .data$span_start) |>
+    transmute(
+      .data$participant_id,
+      ep_start = .data$span_start,
+      timezone = "UTC"
+    )
+
+  # Merge prefix and change points, then close each episode at the next start.
+  union_all(prefix, starts) |>
+    left_join(spans, by = "participant_id") |>
+    group_by(.data$participant_id) |>
+    window_order(.data$ep_start) |>
+    mutate(ep_end = coalesce(lead(.data$ep_start), .data$span_end)) |>
+    ungroup() |>
+    select(
+      "participant_id",
+      "ep_start",
+      "ep_end",
+      "timezone",
+      "span_start",
+      "span_end"
+    )
+}
+
+# Missing or empty timezones cannot start an episode, so drop them before the
+# window step; data with no timezones then skips the sort. When rows at one
+# instant disagree, keep the largest name so the tie-break is deterministic.
+.coverage_episode_starts <- function(observed) {
+  observed |>
+    filter(!is.na(.data$timezone), .data$timezone != "") |>
+    group_by(.data$participant_id, .data$time) |>
+    summarise(timezone = max(.data$timezone, na.rm = TRUE), .groups = "drop") |>
+    group_by(.data$participant_id) |>
+    window_order(.data$time) |>
+    mutate(previous = lag(.data$timezone)) |>
+    ungroup() |>
+    filter(is.na(.data$previous) | .data$previous != .data$timezone) |>
+    select("participant_id", ep_start = "time", "timezone")
+}
+
+# Empty offset-segment relation with the column structure callers expect.
+.coverage_empty_segments <- function() {
+  tibble(
+    participant_id = integer(),
+    episode_id = integer(),
+    seg_start = as.POSIXct(character(), tz = "UTC"),
+    seg_end = as.POSIXct(character(), tz = "UTC"),
+    timezone = character(),
+    offset_seconds = numeric(),
+    is_terminal = logical()
   )
 }
 
-# Anchor by chronology; local wall-clock values can move backwards.
-.coverage_sql_slots <- function(relation_sql) {
-  sprintf(
-    paste(
-      "instants AS (\n%s\n),",
-      "slot_anchors AS (",
-      "  SELECT participant_id, measure, arg_min(bin_time, time) AS slot_anchor",
-      "  FROM instants GROUP BY participant_id, measure",
-      "),",
-      "observed_slots AS (",
-      "  SELECT i.participant_id, i.measure, i.bin_time, s.expected_seconds,",
-      "         a.slot_anchor + TO_SECONDS(FLOOR(",
-      "           DATE_DIFF('microsecond', a.slot_anchor, i.bin_time)",
-      "             / (1000000.0 * s.expected_seconds)",
-      "         ) * s.expected_seconds) AS slot_start",
-      "  FROM instants i",
-      "  JOIN slot_anchors a USING (participant_id, measure)",
-      "  JOIN settings s USING (measure)",
-      "),",
-      "occupied_slots AS (",
-      "  SELECT participant_id, measure, slot_start, expected_seconds",
-      "  FROM observed_slots",
-      "  GROUP BY participant_id, measure, slot_start, expected_seconds",
-      ")",
-      sep = "\n"
-    ),
-    relation_sql
+# Cut one episode at the DST transitions inside it, using the transitions
+# already looked up per timezone.
+.coverage_split_episode <- function(episode, episode_id, transitions) {
+  cuts <- transitions[[episode$timezone]]
+  cuts <- cuts[cuts > episode$ep_start & cuts < episode$ep_end]
+  bounds <- sort(unique(c(episode$ep_start, episode$ep_end, cuts)))
+  starts <- if (length(bounds) == 1L) bounds else bounds[-length(bounds)]
+  ends <- if (length(bounds) == 1L) bounds else bounds[-1L]
+
+  tibble(
+    participant_id = episode$participant_id,
+    episode_id = episode_id,
+    seg_start = starts,
+    seg_end = ends,
+    timezone = episode$timezone
   )
 }
 
-# Assign occupied slots by their starts without expanding the expected grid.
-.coverage_sql_slot_bins <- function() {
-  paste(
-    "slot_bins AS (",
-    "  SELECT o.participant_id, o.measure,",
-    "         time_bucket(s.bin_interval,",
-    "           o.slot_start - TO_SECONDS(s.week_offset_seconds))",
-    "           + TO_SECONDS(s.week_offset_seconds) AS bin,",
-    "         COUNT(*) AS n",
-    "  FROM occupied_slots o",
-    "  JOIN settings s USING (measure)",
-    "  JOIN spans p USING (participant_id)",
-    "  WHERE o.slot_start >= p.first_time AND o.slot_start < p.last_time",
-    "  GROUP BY o.participant_id, o.measure, bin",
-    ")",
-    sep = "\n"
+# Split every episode at DST transitions, then record the constant UTC
+# offset of each resulting segment.
+.coverage_offset_segments <- function(episodes, db) {
+  if (nrow(episodes) == 0L) {
+    return(.coverage_empty_segments())
+  }
+
+  # DST change points per timezone, shared by every episode using that zone.
+  transitions <- .coverage_zone_transitions(db, episodes)
+
+  # Cut each episode at the transitions that fall strictly inside it.
+  segments <- seq_len(nrow(episodes)) |>
+    map(\(i) .coverage_split_episode(episodes[i, ], i, transitions)) |>
+    bind_rows()
+  if (nrow(segments) == 0L) {
+    return(.coverage_empty_segments())
+  }
+
+  # Offsets stay constant within a segment, so one lookup per segment start.
+  segments$offset_seconds <- .coverage_offsets_at(
+    db,
+    segments$timezone,
+    segments$seg_start
+  )$offset_seconds
+
+  segments |>
+    # Sort before marking the last segment, which carries the inclusive end.
+    arrange(.data$participant_id, .data$seg_start) |>
+    group_by(.data$participant_id) |>
+    mutate(is_terminal = row_number() == n()) |>
+    ungroup() |>
+    select(
+      "participant_id",
+      "episode_id",
+      "seg_start",
+      "seg_end",
+      "timezone",
+      "offset_seconds",
+      "is_terminal"
+    )
+}
+
+# Find each timezone's offset changes: an hourly grid of UTC offsets locates the
+# brackets, which `.coverage_refine_transitions()` then narrows down.
+.coverage_zone_transitions <- function(db, episodes) {
+  from <- min(episodes$ep_start)
+  to <- max(episodes$ep_end)
+  zones <- unique(episodes$timezone)
+
+  # Compute change points once per zone, then look them up per episode.
+  transitions <- map(zones, \(timezone) {
+    if (identical(timezone, "UTC")) {
+      return(as.POSIXct(character(), tz = "UTC"))
+    }
+    grid <- .coverage_zone_offset_grid(db, timezone, from, to)
+    # Bracket every hourly step where the offset changes, then refine it.
+    changes <- which(diff(grid$offset_seconds) != 0)
+    if (length(changes) == 0L) {
+      return(as.POSIXct(character(), tz = "UTC"))
+    }
+    brackets <- tibble(
+      bracket_id = seq_along(changes),
+      timezone = timezone,
+      lo = grid$instant[changes],
+      hi = grid$instant[changes + 1L],
+      offset_lo = grid$offset_seconds[changes]
+    )
+    .coverage_refine_transitions(db, brackets)
+  })
+
+  stats::setNames(transitions, zones)
+}
+
+# Hourly UTC-offset grid for one timezone, collected so changes can be found in R.
+.coverage_zone_offset_grid <- function(db, timezone, from, to) {
+  .coverage_inline(db, tibble(from = from, to = to)) |>
+    mutate(
+      instant = unnest(generate_series(.data$from, .data$to, to_seconds(3600))),
+      offset_seconds = epoch(to_local_time(.data$instant, !!timezone)) -
+        epoch(.data$instant)
+    ) |>
+    arrange(.data$instant) |>
+    select("instant", "offset_seconds") |>
+    collect()
+}
+
+# The session disables DuckDB insertion-order preservation, so batched lookups
+# carry an explicit row key and are re-ordered before they are returned.
+.coverage_offsets_at <- function(db, timezone, time) {
+  if (length(time) == 0L) {
+    return(tibble(offset_seconds = numeric()))
+  }
+  input <- tibble(
+    id = seq_along(time),
+    timezone = timezone,
+    time = time
+  )
+
+  .coverage_inline(db, input) |>
+    mutate(
+      offset_seconds = epoch(to_local_time(.data$time, .data$timezone)) -
+        epoch(.data$time)
+    ) |>
+    arrange(.data$id) |>
+    select("offset_seconds") |>
+    collect()
+}
+
+# DST transitions are whole-second instants in the tz database, so one pass
+# over the seconds inside each hourly bracket finds every change exactly. A
+# bisection would need roughly 30 DB round trips per transition instead.
+.coverage_refine_transitions <- function(db, brackets) {
+  .coverage_inline(db, brackets) |>
+    mutate(
+      second = unnest(generate_series(
+        time_bucket(to_seconds(1), .data$lo),
+        .data$hi,
+        to_seconds(1)
+      ))
+    ) |>
+    mutate(
+      offset_seconds = epoch(to_local_time(.data$second, .data$timezone)) -
+        epoch(.data$second)
+    ) |>
+    filter(.data$offset_seconds != .data$offset_lo) |>
+    summarise(transition = min(.data$second), .by = c("bracket_id", "timezone")) |>
+    arrange(.data$bracket_id) |>
+    collect() |>
+    pull("transition")
+}
+
+# Convert a whole-microsecond value to a UTC POSIXct instant.
+.coverage_time_from_us <- function(microseconds) {
+  as.POSIXct(microseconds / 1e6, origin = "1970-01-01", tz = "UTC")
+}
+
+# Half-open date windows. In local mode the window is the local calendar day,
+# which depends on each observation's timezone.
+.coverage_apply_dates <- function(observations, segments, spec) {
+  if (is.null(spec$start_date) && is.null(spec$end_date)) {
+    return(observations)
+  }
+  if (!spec$local) {
+    out <- observations
+    if (!is.null(spec$start_date)) {
+      out <- filter(out, .data$time >= !!spec$start_date)
+    }
+    if (!is.null(spec$end_date)) {
+      out <- filter(out, .data$time < !!(spec$end_date + 1))
+    }
+    return(out)
+  }
+
+  windows <- .coverage_local_date_windows(segments, spec)
+
+  if (nrow(windows) == 0L) {
+    return(filter(observations, FALSE))
+  }
+
+  observations |>
+    inner_join(
+      .coverage_inline(spec$db, windows),
+      by = join_by(participant_id, time >= from, time <= to)
+    ) |>
+    filter(.data$time < .data$to | .data$closed) |>
+    select("participant_id", "measure", "time", "timezone") |>
+    distinct()
+}
+
+# UTC [from, to] window of each segment's local calendar day. The upper bound
+# is half-open, except that the last segment keeps an observation exactly on the
+# bound unless that instant is already the next local midnight.
+.coverage_local_date_windows <- function(segments, spec) {
+  start <- if (is.null(spec$start_date)) {
+    -Inf
+  } else {
+    as.numeric(as.POSIXct(spec$start_date, tz = "UTC"))
+  }
+  end <- if (is.null(spec$end_date)) Inf else as.numeric(as.POSIXct(spec$end_date + 1, tz = "UTC"))
+  seg_start <- as.numeric(segments$seg_start)
+  seg_end <- as.numeric(segments$seg_end)
+
+  # Intersect the segment with the requested window in local time.
+  local_end <- end - segments$offset_seconds
+  from <- pmax(seg_start, start - segments$offset_seconds)
+  to <- pmin(seg_end, local_end)
+  closed <- segments$is_terminal & seg_end < local_end
+  keep <- to >= from
+
+  # Round bounds to whole microseconds to match DuckDB's timestamp resolution.
+  tibble(
+    participant_id = segments$participant_id[keep],
+    from = .coverage_time_from_us(round(from[keep] * 1e6)),
+    to = .coverage_time_from_us(round(to[keep] * 1e6)),
+    closed = closed[keep]
   )
 }
 
-# Count grid starts in a half-open range without materializing every slot.
-.coverage_sql_expected_slot_count <- function(
-  anchor,
-  start,
-  end,
-  expected_seconds
+# -- spans, segments, and cells ------------------------------------------------
+
+# Clip the offset segments to the observation span and mark the last one so the
+# metric can include an observation exactly on the span end.
+.coverage_fit_segments <- function(segments, spans, inclusive_end) {
+  # Interval and bin spans reach past the last observation, but no cell may
+  # start after it; `label_end` caps the terminal segment's last label.
+  if (!"label_end" %in% names(spans)) {
+    spans$label_end <- spans$span_end
+  }
+
+  if (is.null(segments)) {
+    # UTC mode has no episodes: use one segment per participant span.
+    segments <- spans |>
+      mutate(
+        episode_id = 1L,
+        seg_start = .data$span_start,
+        seg_end = .data$span_end,
+        timezone = "UTC",
+        offset_seconds = 0,
+        is_terminal = TRUE
+      )
+  } else {
+    # Clip each segment to the span and drop the ones that no longer overlap.
+    segments <- segments |>
+      inner_join(spans, by = "participant_id") |>
+      filter(.data$seg_end >= .data$span_start, .data$seg_start <= .data$span_end) |>
+      mutate(
+        seg_start = if_else(
+          .data$seg_start < .data$span_start,
+          .data$span_start,
+          .data$seg_start
+        ),
+        seg_end = if_else(
+          .data$seg_end > .data$span_end,
+          .data$span_end,
+          .data$seg_end
+        )
+      ) |>
+      # Re-mark the last surviving segment and extend it to the span end.
+      arrange(.data$participant_id, .data$seg_start) |>
+      group_by(.data$participant_id) |>
+      mutate(
+        is_terminal = row_number() == n(),
+        seg_end = if_else(.data$is_terminal, .data$span_end, .data$seg_end)
+      ) |>
+      ungroup() |>
+      filter(!(.data$seg_start == .data$seg_end & !.data$is_terminal))
+  }
+
+  # `include_end` controls whether an observation exactly on the span end counts.
+  segments |>
+    mutate(include_end = .data$is_terminal & inclusive_end) |>
+    select(
+      "participant_id",
+      "episode_id",
+      "seg_start",
+      "seg_end",
+      "timezone",
+      "offset_seconds",
+      "is_terminal",
+      "label_end",
+      "include_end"
+    )
+}
+
+# Lookup table that maps observations to their offset segment: each segment's
+# start, UTC offset, and half-open match end. The 1us stays in SQL because
+# `copy_inline()` cannot add a sub-second value to a POSIXct column.
+.coverage_join_segments <- function(db, segments) {
+  .coverage_inline(db, segments) |>
+    transmute(
+      .data$participant_id,
+      .data$seg_start,
+      seg_end_match = if_else(
+        .data$include_end,
+        .data$seg_end + to_seconds(0.000001),
+        .data$seg_end
+      ),
+      seg_offset_seconds = .data$offset_seconds
+    )
+}
+
+# Group sensors that use the same bin width so their bins can be computed
+# together.
+.coverage_bin_groups <- function(settings) {
+  keys <- paste0(
+    ifelse(is.na(settings$unit), "fixed", settings$unit),
+    ":",
+    settings$seconds
+  )
+  split(settings, keys)
+}
+
+# One cell per local bin inside each segment, plus empty cells for the
+# spring-forward gap. Each cell stores the UTC range it covers so contributions
+# can be joined and clipped to it.
+.coverage_bin_cells <- function(spec, segments) {
+  settings <- .coverage_settings(spec)
+  segments_lazy <- .coverage_inline(spec$db, segments)
+  # Local bin labels differ from UTC labels only when a segment has a non-zero
+  # offset. With all offsets zero the labels are the same, so the count query
+  # can skip the segment join.
+  wall_clock <- spec$local && any(segments$offset_seconds != 0)
+
+  # Build cells for each bin-spec group, then merge the groups.
+  cells <- settings |>
+    .coverage_bin_groups() |>
+    map(\(group) {
+      .coverage_cells_for_group(spec$db, segments_lazy, group, spec$week_start, wall_clock)
+    })
+  cells <- reduce(cells, union_all)
+
+  # Spring-forward gaps have no segment; add their empty cells.
+  gaps <- .coverage_gap_cells(segments, settings)
+
+  if (nrow(gaps) > 0L) {
+    cells <- union_all(
+      cells,
+      .coverage_inline(spec$db, gaps, types = c(bin_start = "TIMESTAMP"))
+    )
+  }
+
+  cells
+}
+
+# Expand one group of sensors with the same bin width into bin cells per segment.
+.coverage_cells_for_group <- function(db, segments, group, week_start, wall_clock) {
+  unit <- group$unit[[1]]
+  seconds <- group$seconds[[1]]
+  step <- .coverage_bin_step_expr(unit, seconds)
+  settings <- .coverage_inline(db, group)
+
+  # UTC labels stay TIMESTAMPTZ so they match the count query's bin labels;
+  # local labels need the timezone conversion. Interior segments stop half-open
+  # so the next segment owns the boundary bin; the terminal segment stops at the
+  # last observation so no bin starts after it.
+  label_bound <- expr(if_else(
+    .data$is_terminal,
+    .data$label_end,
+    .data$seg_end - to_seconds(0.000001)
+  ))
+  local_start <- if (wall_clock) {
+    expr(to_local_time(.data$seg_start, .data$timezone))
+  } else {
+    expr(.data$seg_start)
+  }
+  local_end <- if (wall_clock) {
+    expr(to_local_time(!!label_bound, .data$timezone))
+  } else {
+    label_bound
+  }
+
+  segments |>
+    # Each segment expands to one row per bin label that intersects it.
+    cross_join(settings) |>
+    mutate(
+      local_start = !!local_start,
+      local_end = !!local_end,
+      first_label = !!(.coverage_bin_start_expr(
+        .data$local_start,
+        unit,
+        seconds,
+        week_start
+      )),
+      last_label = !!(.coverage_bin_start_expr(
+        .data$local_end,
+        unit,
+        seconds,
+        week_start
+      )),
+      bin_start = unnest(generate_series(.data$first_label, .data$last_label, !!step))
+    ) |>
+    # Clip each label's UTC range to the segment.
+    mutate(
+      next_label = .data$bin_start + !!step,
+      cell_start = pmax(
+        .data$bin_start - to_seconds(.data$offset_seconds),
+        .data$seg_start,
+        na.rm = TRUE
+      ),
+      cell_end = if_else(
+        .data$include_end,
+        pmin(
+          .data$next_label - to_seconds(.data$offset_seconds),
+          .data$seg_end + to_seconds(0.000001),
+          na.rm = TRUE
+        ),
+        pmin(
+          .data$next_label - to_seconds(.data$offset_seconds),
+          .data$seg_end,
+          na.rm = TRUE
+        )
+      )
+    ) |>
+    select(
+      "participant_id",
+      "measure",
+      "bin_start",
+      "cell_start",
+      "cell_end",
+      "expected_seconds"
+    )
+}
+
+# Bins that no offset segment covers (the spring-forward gap) still appear as
+# empty cells. Only a forward offset jump within one episode creates them; a
+# timezone change between episodes does not.
+.coverage_gap_cells <- function(segments, settings) {
+  fixed <- settings[!is.na(settings$seconds), , drop = FALSE]
+  if (nrow(segments) == 0L || nrow(fixed) == 0L) {
+    return(.coverage_empty_cells())
+  }
+
+  # A forward offset jump between consecutive segments leaves a local-time hole.
+  jumps <- segments |>
+    arrange(.data$participant_id, .data$episode_id, .data$seg_start) |>
+    group_by(.data$participant_id, .data$episode_id) |>
+    mutate(previous_offset = lag(.data$offset_seconds)) |>
+    ungroup() |>
+    filter(!is.na(.data$previous_offset), .data$offset_seconds > .data$previous_offset)
+
+  if (nrow(jumps) == 0L) {
+    return(.coverage_empty_cells())
+  }
+
+  # Fixed-width sensors get one degenerate cell per skipped label, capped at
+  # the last observation's label so a gap after the last measurement does not
+  # add a row. The offset applicable at the last observation gives its label.
+  cap_offset <- segments |>
+    filter(.data$seg_start <= .data$label_end) |>
+    arrange(.data$participant_id, .data$seg_start) |>
+    group_by(.data$participant_id) |>
+    slice(n()) |>
+    ungroup() |>
+    transmute(
+      .data$participant_id,
+      cap_offset = .data$offset_seconds
+    )
+
+  skipped <- jumps |>
+    cross_join(fixed) |>
+    left_join(cap_offset, by = "participant_id") |>
+    mutate(
+      last_label = .coverage_gap_bucket_before(
+        .data$seg_start,
+        .data$previous_offset,
+        .data$seconds
+      ),
+      first_label = .coverage_gap_bucket(
+        .data$seg_start,
+        .data$offset_seconds,
+        .data$seconds
+      ),
+      count = floor(
+        (as.numeric(.data$first_label) - as.numeric(.data$last_label)) /
+          .data$seconds -
+          1e-9
+      ),
+      cap = .coverage_gap_bucket(.data$label_end, .data$cap_offset, .data$seconds),
+      count = pmin(
+        .data$count,
+        floor((as.numeric(.data$cap) - as.numeric(.data$last_label)) / .data$seconds + 1e-9)
+      )
+    ) |>
+    filter(.data$count >= 1)
+
+  if (nrow(skipped) == 0L) {
+    return(.coverage_empty_cells())
+  }
+
+  # One row per skipped label: repeat each setting's row `count` times and step
+  # through the intermediate labels.
+  expanded <- skipped[rep(seq_len(nrow(skipped)), skipped$count), , drop = FALSE]
+  expanded$bin_start <- as.POSIXct(
+    as.numeric(expanded$last_label) + sequence(skipped$count) * expanded$seconds,
+    origin = "1970-01-01",
+    tz = "UTC"
+  )
+
+  expanded |>
+    transmute(
+      .data$participant_id,
+      .data$measure,
+      .data$bin_start,
+      cell_start = .data$seg_start,
+      cell_end = .data$seg_start,
+      .data$expected_seconds
+    )
+}
+
+# Bucket start for a local instant, using DuckDB's time_bucket() origin
+# (2000-01-03) so bins that do not divide a day stay on the same grid.
+.coverage_gap_bucket <- function(time, offset_seconds, step) {
+  origin <- .coverage_time_bucket_origin()
+  local <- as.numeric(time) + offset_seconds - origin
+  as.POSIXct(floor(local / step) * step + origin, origin = "1970-01-01", tz = "UTC")
+}
+
+# Bucket start strictly before the instant: the last label covered before a gap.
+.coverage_gap_bucket_before <- function(time, offset_seconds, step) {
+  origin <- .coverage_time_bucket_origin()
+  local <- as.numeric(time) + offset_seconds
+  bucket <- floor((local - origin) / step) * step + origin
+  if (abs(local - bucket) < 1e-6) {
+    bucket <- bucket - step
+  }
+  as.POSIXct(bucket, origin = "1970-01-01", tz = "UTC")
+}
+
+# DuckDB's time_bucket() origin, shared by the R-side gap-label calculations.
+.coverage_time_bucket_origin <- function() {
+  as.numeric(as.POSIXct("2000-01-03 00:00:00", tz = "UTC"))
+}
+
+# Empty cell relation with the column structure callers expect.
+.coverage_empty_cells <- function() {
+  tibble(
+    participant_id = integer(),
+    measure = character(),
+    bin_start = as.POSIXct(character(), tz = "UTC"),
+    cell_start = as.POSIXct(character(), tz = "UTC"),
+    cell_end = as.POSIXct(character(), tz = "UTC"),
+    expected_seconds = numeric()
+  )
+}
+
+# -- count / frequency metric --------------------------------------------------
+
+# Count metric: coverage is the number of distinct events per cell; the
+# proportional variant divides by expected opportunities.
+.coverage_assemble_count <- function(spec, context, proportional) {
+  observations <- context$observations
+  # The local episode query already returned the observation span. Reuse it
+  # unless a date filter narrowed the observations after that query ran.
+  spans <- context$spans
+  if (is.null(spans) || !is.null(spec$start_date) || !is.null(spec$end_date)) {
+    spans <- observations |>
+      summarise(
+        span_start = min(.data$time, na.rm = TRUE),
+        span_end = max(.data$time, na.rm = TRUE),
+        .by = "participant_id"
+      ) |>
+      collect()
+  }
+
+  segments <- .coverage_fit_segments(
+    context$segments,
+    spans,
+    inclusive_end = TRUE
+  )
+  cells <- .coverage_bin_cells(spec, segments)
+
+  # Count distinct observation instants per cell.
+  counts <- observations |>
+    select("participant_id", "measure", event_time = "time") |>
+    .coverage_count_cells(spec, segments, cells)
+
+  # Frequency returns the numerator alone; proportional count divides by the
+  # opportunity each cell offered.
+  if (!proportional) {
+    out <- .coverage_combine_cells(cells, counts)
+  } else {
+    denominators <- .coverage_count_opportunities(spec, cells, spans)
+    out <- .coverage_combine_cells(cells, counts, denominators)
+  }
+
+  .coverage_mark_ios_na(out, spec)
+}
+
+# Assign each event to the bin for its local time. The join is on the computed
+# bin label rather than on the cell ranges.
+.coverage_count_cells <- function(events, spec, segments, cells) {
+  labels <- cells |>
+    distinct(.data$participant_id, .data$measure, .data$bin_start)
+  settings <- .coverage_settings(spec)
+
+  # When output is UTC, or all offsets are zero, local bin labels equal UTC
+  # labels, so the segment join and timezone conversion are unnecessary.
+  wall_clock <- spec$local && any(segments$offset_seconds != 0)
+  offset_segments <- if (wall_clock) .coverage_join_segments(spec$db, segments)
+
+  # Bin events per sensor group, then count distinct instants per cell.
+  settings |>
+    .coverage_bin_groups() |>
+    map(\(group) {
+      .coverage_count_group(group, events, labels, spec$week_start, offset_segments)
+    }) |>
+    reduce(union_all)
+}
+
+# Count the events of one bin-width group per cell. `offset_segments` is NULL
+# for UTC output, where events are bucketed without a segment join.
+.coverage_count_group <- function(group, events, labels, week_start, offset_segments) {
+  group_events <- events |> filter(.data$measure %in% !!group$measure)
+
+  if (is.null(offset_segments)) {
+    # UTC mode: bucket the event time directly.
+    group_events <- group_events |>
+      mutate(
+        bin_start = !!(.coverage_bin_start_expr(
+          .data$event_time,
+          group$unit[[1]],
+          group$seconds[[1]],
+          week_start
+        ))
+      )
+  } else {
+    # Local mode: attach the event's offset segment and convert to local time.
+    group_events <- group_events |>
+      inner_join(
+        offset_segments,
+        by = join_by(
+          participant_id,
+          event_time >= seg_start,
+          event_time < seg_end_match
+        )
+      ) |>
+      mutate(
+        local_time = to_local_time(
+          .data$event_time + to_seconds(.data$seg_offset_seconds),
+          "UTC"
+        ),
+        bin_start = !!(.coverage_bin_start_expr(
+          .data$local_time,
+          group$unit[[1]],
+          group$seconds[[1]],
+          week_start
+        ))
+      )
+  }
+
+  group_events |>
+    inner_join(labels, by = c("participant_id", "measure", "bin_start")) |>
+    summarise(
+      value = n_distinct(.data$event_time, na.rm = TRUE),
+      .by = c("participant_id", "measure", "bin_start")
+    )
+}
+
+# Sum one opportunity per cell, floored at a full expected interval.
+.coverage_count_opportunities <- function(spec, cells, spans) {
+  cells |>
+    inner_join(.coverage_inline(spec$db, spans), by = "participant_id") |>
+    mutate(
+      clipped_start = pmax(.data$cell_start, .data$span_start, na.rm = TRUE),
+      clipped_end = pmin(.data$cell_end, .data$span_end, na.rm = TRUE),
+      seconds = pmax(
+        !!(.coverage_seconds_between_expr(.data$clipped_end, .data$clipped_start)),
+        0,
+        na.rm = TRUE
+      ),
+      opportunities = pmax(.data$seconds, .data$expected_seconds, na.rm = TRUE) /
+        .data$expected_seconds
+    ) |>
+    summarise(
+      value = sum(.data$opportunities, na.rm = TRUE),
+      .by = c("participant_id", "measure", "bin_start")
+    )
+}
+
+# -- interval metric -----------------------------------------------------------
+
+# Interval metric: covered seconds per cell divided by the cell's span seconds.
+.coverage_assemble_interval <- function(spec, context) {
+  observations <- context$observations
+
+  expectations <- .coverage_settings(spec) |> select("measure", "expected_seconds")
+
+  spans <- observations |>
+    inner_join(.coverage_inline(spec$db, expectations), by = "measure") |>
+    mutate(seg_end = .data$time + to_seconds(.data$expected_seconds)) |>
+    summarise(
+      span_start = min(.data$time, na.rm = TRUE),
+      span_end = max(.data$seg_end, na.rm = TRUE),
+      label_end = max(.data$time, na.rm = TRUE),
+      .by = "participant_id"
+    ) |>
+    collect()
+  segments <- .coverage_fit_segments(
+    context$segments,
+    spans,
+    inclusive_end = FALSE
+  )
+
+  cells <- .coverage_bin_cells(spec, segments)
+
+  # Merge overlapping and touching expected intervals, then split them at cells.
+  merged <- .coverage_merge_intervals(observations, .coverage_inline(spec$db, expectations))
+  covered <- .coverage_interval_pieces(merged, cells)
+  # Compare covered seconds with the time each cell could cover.
+  denominators <- .coverage_interval_opportunities(spec, cells, spans)
+  out <- .coverage_combine_cells(cells, covered, denominators, na_when_zero = TRUE)
+
+  .coverage_mark_ios_na(out, spec)
+}
+
+# Merge overlapping and touching [time, time + expected) intervals.
+.coverage_merge_intervals <- function(observations, expectations) {
+  observations |>
+    inner_join(expectations, by = "measure") |>
+    mutate(
+      seg_start = .data$time,
+      seg_end = .data$time + to_seconds(.data$expected_seconds)
+    ) |>
+    # Track the running maximum end within each participant and measure.
+    group_by(.data$participant_id, .data$measure) |>
+    window_order(.data$seg_start, .data$seg_end) |>
+    mutate(prior_end = lag(.data$seg_end)) |>
+    mutate(prior_max = cummax(.data$prior_end)) |>
+    mutate(
+      is_new = if_else(
+        is.na(.data$prior_max) | .data$seg_start > .data$prior_max,
+        1L,
+        0L
+      )
+    ) |>
+    mutate(island = cumsum(.data$is_new)) |>
+    ungroup() |>
+    # Collapse each run of overlapping intervals to its outer bounds.
+    group_by(.data$participant_id, .data$measure, .data$island) |>
+    summarise(
+      seg_start = min(.data$seg_start, na.rm = TRUE),
+      seg_end = max(.data$seg_end, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    select("participant_id", "measure", "seg_start", "seg_end")
+}
+
+# Split the merged covered set at cell boundaries and sum overlap seconds.
+.coverage_interval_pieces <- function(merged, cells) {
+  merged |>
+    inner_join(
+      cells,
+      by = join_by(participant_id, measure, seg_start < cell_end, seg_end > cell_start)
+    ) |>
+    mutate(
+      piece_start = pmax(.data$seg_start, .data$cell_start, na.rm = TRUE),
+      piece_end = pmin(.data$seg_end, .data$cell_end, na.rm = TRUE)
+    ) |>
+    summarise(
+      value = sum(
+        pmax(
+          !!(.coverage_seconds_between_expr(.data$piece_end, .data$piece_start)),
+          0,
+          na.rm = TRUE
+        ),
+        na.rm = TRUE
+      ),
+      .by = c("participant_id", "measure", "bin_start")
+    )
+}
+
+# Time each cell could cover: its extent clipped to the participant span.
+.coverage_interval_opportunities <- function(spec, cells, spans) {
+  cells |>
+    inner_join(.coverage_inline(spec$db, spans), by = "participant_id") |>
+    mutate(
+      clipped_start = pmax(.data$cell_start, .data$span_start, na.rm = TRUE),
+      clipped_end = pmin(.data$cell_end, .data$span_end, na.rm = TRUE)
+    ) |>
+    summarise(
+      value = sum(
+        pmax(
+          !!(.coverage_seconds_between_expr(.data$clipped_end, .data$clipped_start)),
+          0,
+          na.rm = TRUE
+        ),
+        na.rm = TRUE
+      ),
+      .by = c("participant_id", "measure", "bin_start")
+    )
+}
+
+# -- bin metric ----------------------------------------------------------------
+
+# Bin metric: occupied grid slots per cell divided by eligible grid slots.
+.coverage_assemble_bin <- function(spec, context) {
+  observations <- context$observations
+
+  expectations <- .coverage_settings(spec) |> select("measure", "expected_seconds")
+
+  # The slot grid fixes the participant span and the denominator anchors.
+  slot_grid <- .coverage_slot_grid(observations, expectations, spec$db)
+
+  spans <- slot_grid$spans
+  segments <- .coverage_fit_segments(
+    context$segments,
+    spans,
+    inclusive_end = FALSE
+  )
+
+  cells <- .coverage_bin_cells(spec, segments)
+
+  # Numerator: grid slot starts occupied by an observation.
+  occupied <- .coverage_occupied_slots(slot_grid$slots, spec, segments, cells)
+  # Denominator: grid slot starts the cell and span make eligible.
+  eligible <- .coverage_eligible_slots(spec, cells, spans, slot_grid$anchors)
+
+  # Ratio, keeping NA when a cell has no eligible slots.
+  out <- .coverage_combine_cells(cells, occupied, eligible, na_when_zero = TRUE)
+
+  .coverage_mark_ios_na(out, spec)
+}
+
+# Anchor the slot grid at each participant-sensor's first observation
+# and span it to the end of the latest occupied slot.
+.coverage_slot_grid <- function(observations, expectations, db) {
+  expectations <- .coverage_inline(db, expectations)
+
+  # Anchor the grid at each participant-sensor's first observation.
+  anchors <- observations |>
+    summarise(
+      anchor = min(.data$time, na.rm = TRUE),
+      .by = c("participant_id", "measure")
+    )
+  # Occupied slot start for each observation, deduplicated.
+  slots <- observations |>
+    inner_join(anchors, by = c("participant_id", "measure")) |>
+    inner_join(expectations, by = "measure") |>
+    mutate(
+      index = floor(
+        !!(.coverage_seconds_between_expr(.data$time, .data$anchor)) /
+          .data$expected_seconds
+      ),
+      slot_start = .data$anchor + to_seconds(.data$index * .data$expected_seconds)
+    ) |>
+    distinct(
+      .data$participant_id,
+      .data$measure,
+      .data$slot_start,
+      .data$expected_seconds
+    )
+
+  list(
+    anchors = collect(anchors),
+    slots = slots,
+    spans = .coverage_slot_spans(observations, expectations) |> collect()
+  )
+}
+
+# The span ends at the last observation rounded up to the next slot boundary.
+.coverage_slot_spans <- function(observations, expectations) {
+  observations |>
+    inner_join(expectations, by = "measure") |>
+    summarise(
+      anchor = min(.data$time, na.rm = TRUE),
+      latest = max(.data$time, na.rm = TRUE),
+      .by = c("participant_id", "measure", "expected_seconds")
+    ) |>
+    mutate(
+      last_slot = .data$anchor +
+        to_seconds(
+          floor(
+            !!(.coverage_seconds_between_expr(.data$latest, .data$anchor)) /
+              .data$expected_seconds
+          ) *
+            .data$expected_seconds
+        )
+    ) |>
+    summarise(
+      span_start = min(.data$anchor, na.rm = TRUE),
+      span_end = max(.data$last_slot + to_seconds(.data$expected_seconds), na.rm = TRUE),
+      label_end = max(.data$latest, na.rm = TRUE),
+      .by = "participant_id"
+    )
+}
+
+# Count occupied grid slots with the same bin assignment as observations.
+.coverage_occupied_slots <- function(slots, spec, segments, cells) {
+  slots |>
+    select("participant_id", "measure", event_time = "slot_start") |>
+    .coverage_count_cells(spec, segments, cells)
+}
+
+# Count expected slot starts in the half-open cell/span intersection.
+.coverage_eligible_slots <- function(spec, cells, spans, anchors) {
+  cells |>
+    inner_join(.coverage_inline(spec$db, spans), by = "participant_id") |>
+    left_join(
+      .coverage_inline(spec$db, anchors),
+      by = c("participant_id", "measure")
+    ) |>
+    mutate(
+      anchor = coalesce(.data$anchor, .data$span_start),
+      clipped_start = pmax(.data$cell_start, .data$span_start, na.rm = TRUE),
+      clipped_end = pmin(.data$cell_end, .data$span_end, na.rm = TRUE)
+    ) |>
+    mutate(
+      slots = !!(.coverage_slot_count_expr(
+        .data$anchor,
+        .data$clipped_start,
+        .data$clipped_end,
+        .data$expected_seconds
+      ))
+    ) |>
+    summarise(
+      value = sum(.data$slots, na.rm = TRUE),
+      .by = c("participant_id", "measure", "bin_start")
+    )
+}
+
+# -- assembly helpers ----------------------------------------------------------
+
+# Assemble one row per cell: frequency coverage is the numerator alone, while
+# proportional metrics divide the numerator by the denominator.
+.coverage_combine_cells <- function(
+  cells,
+  numerator,
+  denominator = NULL,
+  na_when_zero = FALSE
 ) {
-  sprintf(
-    paste(
-      "GREATEST(",
-      "  CEIL(DATE_DIFF('microsecond', %s, %s)",
-      "    / (1000000.0 * %s)) -",
-      "  CEIL(DATE_DIFF('microsecond', %s, %s)",
-      "    / (1000000.0 * %s)),",
-      "  0) AS expected_slots"
-    ),
-    anchor,
-    end,
-    expected_seconds,
-    anchor,
-    start,
-    expected_seconds
-  )
-}
+  out <- cells |>
+    distinct(.data$participant_id, .data$measure, .data$bin_start) |>
+    left_join(
+      numerator,
+      by = c("participant_id", "measure", "bin_start")
+    )
 
-.coverage_sql_intervals <- function(relation_sql) {
-  islands_sql <- .coverage_sql_islands()
-  sprintf(
-    paste(
-      "instants AS (\n%s\n),",
-      "intervals AS (",
-      "  SELECT i.participant_id, i.measure, i.time,",
-      "         i.bin_time AS seg_start,",
-      "         i.bin_time + TO_SECONDS(s.expected_seconds) AS seg_end",
-      "  FROM instants i JOIN settings s ON s.measure = i.measure",
-      "),",
-      "%s,",
-      "bin_coverage AS (",
-      "  SELECT i.participant_id, i.measure, b.bin,",
-      "         SUM(GREATEST(DATE_DIFF('microsecond', GREATEST(i.seg_start, b.bin),",
-      "                       LEAST(i.seg_end, b.bin + s.bin_interval)), 0) / 1000000.0) AS covered",
-      "  FROM islands i JOIN settings s ON s.measure = i.measure",
-      "  CROSS JOIN LATERAL UNNEST(generate_series(",
-      "    time_bucket(s.bin_interval, i.seg_start - TO_SECONDS(s.week_offset_seconds))",
-      "      + TO_SECONDS(s.week_offset_seconds),",
-      "    time_bucket(s.bin_interval, i.seg_end - INTERVAL 1 MICROSECOND - TO_SECONDS(s.week_offset_seconds))",
-      "      + TO_SECONDS(s.week_offset_seconds),",
-      "    s.bin_interval",
-      "  )) AS b(bin)",
-      "  GROUP BY i.participant_id, i.measure, b.bin",
-      ")",
-      sep = "\n"
-    ),
-    relation_sql,
-    islands_sql
-  )
-}
-
-# Merge ordered half-open intervals with a running maximum, so nested intervals
-# are handled correctly and overlapping samples count only once.
-.coverage_sql_islands <- function() {
-  paste(
-    "prior AS (",
-    "  SELECT *, MAX(seg_end) OVER (PARTITION BY participant_id, measure",
-    "    ORDER BY seg_start, seg_end",
-    "    ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prior_end",
-    "  FROM intervals",
-    "),",
-    "marked AS (",
-    "  SELECT *, CASE WHEN prior_end IS NULL OR seg_start > prior_end",
-    "                 THEN 1 ELSE 0 END AS new_island",
-    "  FROM prior",
-    "),",
-    "islands AS (",
-    "  SELECT participant_id, measure, MIN(seg_start) AS seg_start,",
-    "         MAX(seg_end) AS seg_end",
-    "  FROM (",
-    "    SELECT *, SUM(new_island) OVER (PARTITION BY participant_id, measure",
-    "      ORDER BY seg_start, seg_end ROWS UNBOUNDED PRECEDING) AS grp",
-    "    FROM marked",
-    "  ) GROUP BY participant_id, measure, grp",
-    ")",
-    sep = "\n"
-  )
-}
-
-.coverage_validate_week_start <- function(week_start) {
-  check_arg(week_start, type = c("numeric", "integerish"), n = 1)
-  if (!rlang::is_integerish(week_start) || week_start < 1 || week_start > 7) {
-    cli_abort("{.arg week_start} must be a whole number between 1 (Monday) and 7 (Sunday).")
+  if (is.null(denominator)) {
+    # Frequency: cells without a contribution are zero.
+    out <- mutate(out, coverage = as.numeric(coalesce(.data$value, 0)))
+  } else {
+    out <- out |>
+      left_join(
+        denominator,
+        by = c("participant_id", "measure", "bin_start"),
+        suffix = c(".numerator", ".denominator")
+      )
+    if (na_when_zero) {
+      # Interval and bin metrics keep empty cells as NA.
+      out <- out |>
+        mutate(
+          coverage = if_else(
+            coalesce(.data$value.denominator, 0) == 0,
+            NA_real_,
+            coalesce(.data$value.numerator, 0) / .data$value.denominator
+          )
+        )
+    } else {
+      out <- mutate(
+        out,
+        coverage = coalesce(.data$value.numerator, 0) / .data$value.denominator
+      )
+    }
   }
-  as.integer(week_start)
+
+  out |>
+    select("participant_id", time = "bin_start", "measure", "coverage")
 }
 
-# Derive real calendar durations for validating custom-second bins against cycles.
+# Copy a small R data frame into DuckDB with explicit column types, defaulting
+# POSIXct to TIMESTAMPTZ and everything else to its closest DuckDB type.
+.coverage_inline <- function(db, data, types = NULL) {
+  all_types <- vapply(
+    data,
+    \(column) {
+      if (inherits(column, "POSIXt")) {
+        "TIMESTAMPTZ"
+      } else if (is.logical(column)) {
+        "BOOLEAN"
+      } else if (is.integer(column)) {
+        "INTEGER"
+      } else if (is.numeric(column)) {
+        "DOUBLE"
+      } else {
+        "VARCHAR"
+      }
+    },
+    character(1)
+  )
+
+  if (!is.null(types)) {
+    all_types[names(types)] <- unlist(types)
+  }
+
+  dbplyr::copy_inline(db, data, types = all_types)
+}
+
+# iOS participants do not expose the four iOS-only sensors, so their coverage
+# is set to NA rather than zero.
+.coverage_mark_ios_na <- function(out, spec) {
+  if (!any(spec$sensors %in% .coverage_ios_sensors)) {
+    return(out)
+  }
+
+  ios <- tbl(spec$db, "Device") |>
+    filter(grepl("ios|iphone|ipad", tolower(.data$platform))) |>
+    distinct(.data$participant_id) |>
+    mutate(is_ios = TRUE)
+
+  out |>
+    left_join(ios, by = "participant_id") |>
+    mutate(
+      coverage = if_else(
+        coalesce(.data$is_ios, FALSE) & .data$measure %in% .coverage_ios_sensors,
+        NA_real_,
+        .data$coverage
+      )
+    ) |>
+    select(-"is_ios")
+}
+
+# Add the `coverage` class and the metadata attributes carried to collection.
+.coverage_table <- function(spec, coverage) {
+  class(coverage) <- c("coverage", class(coverage))
+
+  attr(coverage, "participant_id") <- spec$participant_id
+  attr(coverage, "coverage_type") <- spec$coverage_type
+  attr(coverage, "expected") <- spec$expected
+  attr(coverage, "metric") <- spec$metric
+  attr(coverage, "by") <- .coverage_compact_bin_spec(spec$bin_spec)
+  attr(coverage, "week_start") <- spec$week_start
+  attr(coverage, "local") <- spec$local_requested %||% spec$local
+
+  coverage
+}
+
+# Warn for selected participants without a usable Device platform row; iOS
+# marking cannot exclude their iOS-specific sensors.
+.coverage_warn_missing_platforms <- function(db, participants, participant_id) {
+  selected <- if (is.null(participant_id)) {
+    as.character(participants)
+  } else {
+    unique(as.character(participant_id))
+  }
+  platforms <- tbl(db, "Device") |>
+    filter(.data$participant_id %in% !!selected) |>
+    select("participant_id", "platform") |>
+    distinct() |>
+    collect()
+  known <- platforms |>
+    filter(!is.na(.data$platform), nzchar(trimws(.data$platform))) |>
+    pull(.data$participant_id) |>
+    as.character() |>
+    unique()
+  unknown <- setdiff(selected, known)
+  if (length(unknown) > 0L) {
+    cli_warn(c(
+      "Operating system is unknown for participant{?s} {.val {unknown}}.",
+      i = "Device information was not collected; iOS-specific sensors cannot be excluded."
+    ))
+  }
+
+  invisible(NULL)
+}
+
+# -- dbplyr expression helpers -------------------------------------------------
+
+# These helpers build expressions that dbplyr translates. Unquote them in
+# `mutate()` with `x = !!(.coverage_..._expr(...))`. DuckDB functions unknown to
+# dbplyr (date_diff, epoch, to_seconds, generate_series, time_bucket) are passed
+# through with their arguments escaped.
+# Exact seconds between two instants, computed by DuckDB.
+.coverage_seconds_between_expr <- function(later, earlier) {
+  later <- enexpr(later)
+  earlier <- enexpr(earlier)
+
+  expr(date_diff("microsecond", !!earlier, !!later) / 1e6)
+}
+
+# Number of expected-grid starts in [start, end), counted with ceiling().
+.coverage_slot_count_expr <- function(anchor, start, end, expected_seconds) {
+  anchor <- enexpr(anchor)
+  start <- enexpr(start)
+  end <- enexpr(end)
+  expected_seconds <- enexpr(expected_seconds)
+  yes <- expr(date_diff("microsecond", !!anchor, !!end) / 1e6)
+  no <- expr(date_diff("microsecond", !!anchor, !!start) / 1e6)
+
+  expr(
+    pmax(
+      ceiling(!!yes / !!expected_seconds) - ceiling(!!no / !!expected_seconds),
+      0,
+      na.rm = TRUE
+    )
+  )
+}
+
+# One bin step: a fixed number of seconds or one calendar month.
+.coverage_bin_step_expr <- function(unit, seconds) {
+  if (identical(unit, "month")) {
+    expr(to_months(1L))
+  } else {
+    expr(to_seconds(!!seconds))
+  }
+}
+
+# Start of the bin containing `x`: time_bucket() for fixed widths, floor_date()
+# for calendar units.
+.coverage_bin_start_expr <- function(x, unit, seconds, week_start) {
+  x <- enexpr(x)
+
+  if (is.na(unit)) {
+    return(expr(time_bucket(to_seconds(!!seconds), !!x)))
+  }
+
+  expr(
+    as_datetime(
+      floor_date(!!x, !!unit, week_start = !!week_start)
+    )
+  )
+}
+
+# -- plot helpers --------------------------------------------------------------
+
+# Observed period length in seconds for cycle aggregation; calendar months and
+# years vary, so use the actual ranges present in the data.
 .coverage_period_seconds <- function(time, unit) {
   if (unit %in% c("month", "year")) {
-    start <- unique(lubridate::floor_date(time, unit))
-    end <- lubridate::ceiling_date(start, unit, change_on_boundary = TRUE)
+    start <- unique(floor_date(time, unit))
+    end <- ceiling_date(start, unit, change_on_boundary = TRUE)
     return(unique(as.numeric(difftime(end, start, units = "secs"))))
   }
+
   c(minute = 60, hour = 3600, day = 86400, week = 604800)[[unit]]
 }
 
+# TRUE when the bin spec produces bins finer than the given cycle unit.
 .coverage_bin_is_finer_than <- function(bin_spec, unit, x) {
-  specs <- .coverage_bin_specs(bin_spec)
+  specs <- if (is.list(bin_spec)) bin_spec else as.list(bin_spec)
   rank <- c(minute = 1L, hour = 2L, day = 3L, week = 4L, month = 5L)
-  if (all(purrr::map_lgl(specs, is.character))) {
-    return(any(purrr::map_lgl(specs, \(spec) rank[[spec]] < rank[[unit]])))
+
+  if (all(map_lgl(specs, is.character))) {
+    # Calendar units compare by rank.
+    return(any(map_lgl(specs, \(spec) rank[[spec]] < rank[[unit]])))
   }
 
+  # Fixed widths are finer when below the period or not aligned to it.
   period_seconds <- .coverage_period_seconds(x$time, unit)
-  any(purrr::map_lgl(specs, \(spec) {
+  any(map_lgl(specs, \(spec) {
     if (is.character(spec)) {
       rank[[spec]] < rank[[unit]]
     } else {
@@ -1336,19 +2349,21 @@ plot.coverage <- function(
   }))
 }
 
+# TRUE when a requested cycle is not strictly coarser than every bin spec.
 .coverage_cycle_is_not_coarser <- function(cycle, bin_spec, x) {
-  specs <- .coverage_bin_specs(bin_spec)
+  specs <- if (is.list(bin_spec)) bin_spec else as.list(bin_spec)
   bin_rank <- c(minute = 1L, hour = 2L, day = 3L, week = 4L, month = 5L)
   cycle_rank <- c(hour = 2L, day = 3L, week = 4L, month = 5L, year = 6L)
-  if (all(purrr::map_lgl(specs, is.character))) {
-    return(any(purrr::map_lgl(
+
+  if (all(map_lgl(specs, is.character))) {
+    return(any(map_lgl(
       specs,
       \(spec) bin_rank[[spec]] >= cycle_rank[[cycle]]
     )))
   }
 
   cycle_seconds <- min(.coverage_period_seconds(x$time, cycle))
-  any(purrr::map_lgl(specs, \(spec) {
+  any(map_lgl(specs, \(spec) {
     if (is.character(spec)) {
       bin_rank[[spec]] >= cycle_rank[[cycle]]
     } else {
@@ -1357,20 +2372,24 @@ plot.coverage <- function(
   }))
 }
 
+# Week-of-month or week-of-year index for a date, respecting `week_start`.
 .coverage_week_number <- function(time, period, week_start) {
   day <- if (identical(period, "month")) {
-    lubridate::mday(time)
+    mday(time)
   } else {
-    lubridate::yday(time)
+    yday(time)
   }
-  period_start <- lubridate::floor_date(time, period)
-  start_weekday <- lubridate::wday(period_start, week_start = week_start)
+
+  period_start <- floor_date(time, period)
+  start_weekday <- wday(period_start, week_start = week_start)
   as.integer(floor((day + start_weekday - 2) / 7) + 1)
 }
 
+# Calendar position columns needed to aggregate bins into the requested cycle.
 .coverage_cycle_positions <- function(cycle, bin_spec, x) {
-  specs <- .coverage_bin_specs(bin_spec)
-  weekly_bins <- all(purrr::map_lgl(specs, \(spec) identical(spec, "week")))
+  specs <- if (is.list(bin_spec)) bin_spec else as.list(bin_spec)
+  weekly_bins <- all(map_lgl(specs, \(spec) identical(spec, "week")))
+
   positions <- switch(
     cycle,
     hour = "minute",
@@ -1380,27 +2399,34 @@ plot.coverage <- function(
     year = if (weekly_bins) "week_of_year" else "month"
   )
 
+  # Finer bins need extra position columns so repeated cycle positions stay
+  # distinguishable.
   if (
     identical(cycle, "year") && !weekly_bins && .coverage_bin_is_finer_than(bin_spec, "month", x)
   ) {
     positions <- c(positions, "day_of_month")
   }
+
   if (
     cycle %in% c("day", "week", "month", "year") && .coverage_bin_is_finer_than(bin_spec, "day", x)
   ) {
     positions <- c(positions, "hour")
   }
+
   if (
     cycle %in% c("day", "week", "month", "year") && .coverage_bin_is_finer_than(bin_spec, "hour", x)
   ) {
     positions <- c(positions, "minute")
   }
+
   if (
-    any(purrr::map_lgl(specs, \(spec) {
+    any(map_lgl(specs, \(spec) {
       !is.character(spec) && any(spec < 60 | spec %% 60 != 0)
     }))
   ) {
+    # Sub-minute bins need a seconds column to separate repeats.
     positions <- c(positions, "second")
   }
-  positions
+
+  unique(positions)
 }

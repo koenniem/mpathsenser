@@ -20,7 +20,7 @@ changes are discarded when the connection is closed.
 \examples{
 db <- example_db()
 get_participants(db)
-get_nrows(db)
+get_nrows(db, c("Accelerometer", "Pedometer"))
 close_db(db)
 }
 \seealso{
