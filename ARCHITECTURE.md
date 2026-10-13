@@ -94,6 +94,7 @@ the installed one so `pkgload::load_all()` never silently uses a stale schema.
 | `Study(study_id, data_format)` | One row per study. |
 | `Participant(participant_id, study_id)` | `participant_id` is `UINTEGER`, matching the m-Path Sense `connectionId` encoding. |
 | `ProcessedFiles` | Import ledger: `file_id` (PK, default `nextval('processed_files_seq')`), `file_name`, `participant_id`, `sense_version`, `file_size_bytes`, `modified_at`, `processed_at`, plus `UNIQUE(file_name, participant_id, file_size_bytes, modified_at)`. |
+| `DatabaseInfo(database_version, created_with, created_at)` | Layout version of the database. Exactly one row, written by `create_db()`. |
 | `processed_files_seq` | Sequence backing `file_id`. Never reset in normal operation — `file_id` ordering decides which file wins on deduplication. |
 | `raw.<Sensor>` | One table per sensor (see `mpathsenser::sensors`). |
 
@@ -109,6 +110,21 @@ These three are the deduplication tie-break, and they are also a provenance poin
 the original file. Sensor tables deliberately have **no unique constraints**: duplicates are
 possible (a renamed copy of a file) and are resolved by deduplication rather than prevented at
 insert time. Plain appends therefore keep constant cost.
+
+### Database versioning
+
+Every database records its layout version in the single-row `DatabaseInfo` table, written by
+`create_db()`. The version is a plain integer, bumped only when a layout change makes existing
+databases unsupported. `R/database_version.R` holds the hand-maintained map from database version
+to the package version that introduced it and the m-Path Sense formats it can store; the current
+version is the maximum of the supported set.
+
+`open_db()` and `check_db()` reject a version outside the supported set with an error pointing to
+`create_db()`; older-but-supported versions are used as-is (there are no migrations). `check_db()`
+runs on every exported function and is not skippable. A database with no version information is
+adopted as the current version: `open_db()` warns and records the version on a writable connection,
+and warns without writing on a read-only one. This fallback is temporary, for databases created
+before versioning, and lives in one block in `open_db()`.
 
 ### Read layer: `main.<sensor>` views
 
@@ -522,6 +538,8 @@ functions that make external HTTP requests and both rate-limit themselves.
   `to_local_time()`, `collect_local()`).
 * `create_db()` and `open_db()` install and load the `icu` and `json` extensions explicitly
   (`.ensure_duckdb_extensions()`); never rely on DuckDB autoloading.
+* The database version check is never skippable (`check_db()`), and `DatabaseInfo` is written only
+  by `create_db()` and the temporary unversioned fallback in `open_db()`.
 * Keep the `[Xms]` debug timing format (`R/read_helpers.R`, `.read_debug_time()`): downstream log
   parsing depends on it.
 
@@ -566,7 +584,8 @@ These are measured behaviours; supporting reproductions and investigation histor
 | Sensor statements | `R/ingest.R` | `ingest_scalar()`, `ingest_garmin_array()`, `ingest_accelerometer()`, `ingest_appusage()`, `ingest_bluetooth()`, `ingest_bluetooth_beacon()`, `ingest_connectivity()`, `ingest_device()`, `ingest_garmin_meta()`, `ingest_garmin_actigraphy()`, `ingest_location()`, `ingest_weather()`, `.read_garmin_parse_sql()`, `.read_staging_payloads()`, `.accel_feature_exprs()` |
 | Registry | `R/sensor_registry.R` | `scalar_sensor()`, `garmin_array_sensor()`, `new_sensor_registry()`, `sensor_registry`, `array_schemas`, `ignored_sensor_types` |
 | Database lifecycle | `R/database.R` | `create_db()`, `open_db()`, `close_db()`, `copy_db()`, `optimize_db()`, `deduplicate_db()`, `.create_sensor_views()`, `.create_local_views()`, `.has_mpathsenser_schema()`, `.ensure_duckdb_extensions()`, `.configure_duckdb()`, `sensors` |
-| Schema | `inst/extdata/dbdef.sql` | `raw.*` tables, `Study`, `Participant`, `ProcessedFiles`, `processed_files_seq` |
+| Database versioning | `R/database_version.R` | `.database_versions`, `.supported_database_versions()`, `.current_database_version()`, `.read_database_version()`, `.database_version_supported()`, `.write_database_version()`, `.abort_unsupported_database_version()` |
+| Schema | `inst/extdata/dbdef.sql` | `raw.*` tables, `Study`, `Participant`, `ProcessedFiles`, `DatabaseInfo`, `processed_files_seq` |
 | Local views & macro | `inst/extdata/views.sql` | `to_local_time` macro, `<sensor>_local`, `<sensor>_with_local` |
 | Timezones | `R/add_timezones_to_db.R` | `add_timezones_to_db()`, `temp_tz_intervals` |
 | Timestamps | `R/timestamp_helpers.R` | `to_local_time()`, `collect_local()`, `.to_local_time_r()`, `.to_local_time_sql()`, `.source_timestamp_import_sql()`, `.source_timestamp_fixes`, `sql_translation.duckdb_connection` |

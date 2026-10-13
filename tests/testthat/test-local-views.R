@@ -23,7 +23,10 @@ test_that("create_db creates local views for every physical sensor table", {
      WHERE table_schema = 'main' AND table_type = 'VIEW'"
   )$table_name
 
-  expect_setequal(main_tables, c("Study", "Participant", "ProcessedFiles"))
+  expect_setequal(
+    main_tables,
+    c("Study", "Participant", "ProcessedFiles", "DatabaseInfo")
+  )
   expect_setequal(raw_tables, mpathsenser::sensors)
   expect_setequal(
     views,

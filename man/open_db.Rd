@@ -48,6 +48,11 @@ On Windows, a database file is locked while any R process has it
 open. Close connections with \code{\link[=close_db]{close_db()}} when you are done. A database
 that is open in another process cannot be opened for writing; use
 \code{read_only = TRUE} to query it anyway (DuckDB allows multiple readers).
+
+The database must carry a database version supported by this package.
+Databases created before versioning are adopted as the current version with
+a warning (a temporary development fallback); unsupported databases must be
+recreated with \code{\link[=create_db]{create_db()}}.
 }
 \examples{
 # First create a database in a temporary directory

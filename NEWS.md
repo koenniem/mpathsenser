@@ -8,6 +8,10 @@
   requests.
 * `copy_db()` quotes file-backed target paths and rejects in-memory targets
   before disconnecting them.
+* Databases record their layout version in a `DatabaseInfo` table. `open_db()`
+  and `check_db()` refuse unsupported versions with an error pointing to
+  `create_db()`; databases created before versioning are adopted as the
+  current version with a warning (temporary).
 * `get_data()` accepts `Date` and strict `YYYY-MM-DD` day bounds; `POSIXt`
   inputs are exact inclusive timestamps. Day bounds use UTC for `time` columns
   and local wall time for `_local` views; the end of a day is exclusive.

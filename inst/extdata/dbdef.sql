@@ -1,8 +1,8 @@
 -- Database definition for mpathsenser DuckDB databases.
 --
 -- Layout: physical sensor tables live in the `raw` schema; the `main` schema
--- holds the metadata tables (Study, Participant, ProcessedFiles) and one
--- read-only view per sensor (main.<sensor>) that projects the raw table
+-- holds the metadata tables (Study, Participant, ProcessedFiles, DatabaseInfo)
+-- and one read-only view per sensor (main.<sensor>) that projects the raw table
 -- without the internal provenance columns (source_file_id, source_row_id,
 -- source_measurement_id). The views are created by the R helper
 -- .create_sensor_views(); user-facing functions query main.<sensor>.
@@ -36,6 +36,16 @@ CREATE TABLE IF NOT EXISTS ProcessedFiles(
   PRIMARY KEY(file_id),
   UNIQUE(file_name, participant_id, file_size_bytes, modified_at),
   FOREIGN KEY(participant_id) REFERENCES Participant(participant_id)
+);
+
+-- Database layout version. Exactly one row, written by create_db(). The
+-- version is bumped, and the supported set in R/database_version.R updated,
+-- only when a layout change makes existing databases unsupported; such
+-- databases must be recreated with create_db().
+CREATE TABLE IF NOT EXISTS DatabaseInfo(
+  database_version INTEGER NOT NULL,
+  created_with TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
 );
 
 -- Sensor tables. Each row carries three internal provenance columns:

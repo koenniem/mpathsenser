@@ -393,9 +393,15 @@ create_db <- function(
         fn <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
       }
       script <- paste0(readLines(fn, warn = FALSE), collapse = "\n")
-      # One transaction avoids a catalog commit per statement; the schema is
-      # all-or-nothing anyway.
-      dbWithTransaction(db, dbExecute(db, script))
+      # One transaction avoids a catalog commit per statement; the schema and
+      # its version record are all-or-nothing anyway.
+      dbWithTransaction(
+        db,
+        {
+          dbExecute(db, script)
+          .write_database_version(db)
+        }
+      )
     },
     error = function(e) {
       # nocov start
@@ -444,6 +450,11 @@ create_db <- function(
 #'   open. Close connections with [close_db()] when you are done. A database
 #'   that is open in another process cannot be opened for writing; use
 #'   `read_only = TRUE` to query it anyway (DuckDB allows multiple readers).
+#'
+#'   The database must carry a database version supported by this package.
+#'   Databases created before versioning are adopted as the current version with
+#'   a warning (a temporary development fallback); unsupported databases must be
+#'   recreated with [create_db()].
 #'
 #' @seealso [close_db()] for closing a database; [copy_db()] for copying (part of) a database;
 #'   [optimize_db()] for re-ordering a database; [get_data()] for extracting data from a database.
@@ -554,6 +565,42 @@ open_db <- function(
   ) {
     dbDisconnect(db)
     cli_abort("The file {.path {path}} does not appear to be an {.pkg mpathsenser} database.")
+  }
+
+  # A version read that fails (for example on duplicate rows) must not leak
+  # this connection: open_db() owns it until it returns.
+  version <- tryCatch(
+    .read_database_version(db),
+    error = function(cnd) {
+      dbDisconnect(db)
+      stop(cnd)
+    }
+  )
+  if (!is.na(version) && !.database_version_supported(version)) {
+    dbDisconnect(db)
+    .abort_unsupported_database_version(version)
+  }
+
+  # Temporary development fallback: databases created before versioning are
+  # adopted as the current layout. Writable connections record the version;
+  # read-only connections cannot and only warn. Remove this once no such
+  # databases need support.
+  if (is.na(version)) {
+    current_version <- .current_database_version()
+    if (read_only) {
+      cli_warn(c(
+        "The database at {.path {path}} has no version information.",
+        i = "Assuming database version {.val {current_version}}; a read-only database cannot record it.",
+        i = "This is a temporary fallback for databases created before versioning."
+      ))
+    } else {
+      .write_database_version(db)
+      cli_warn(c(
+        "The database at {.path {path}} has no version information.",
+        i = "Recording database version {.val {current_version}} in it.",
+        i = "This is a temporary fallback for databases created before versioning."
+      ))
+    }
   }
 
   # The extensions are loaded before the session settings below, which need ICU

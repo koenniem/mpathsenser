@@ -56,6 +56,13 @@ check_db <- function(
     cli_abort(msg, arg = arg, call = call)
   }
 
+  # Unlike the sensor check, the version check is never skippable: an
+  # unsupported layout can produce wrong results without an error.
+  version <- .read_database_version(db)
+  if (!.database_version_supported(version)) {
+    .abort_unsupported_database_version(version, call = call)
+  }
+
   # Check that all sensors are present in the database. Physical sensor
   # tables live in the raw schema; the main schema holds a read-only view per
   # sensor. Both layers are required: a missing raw table means the data is
