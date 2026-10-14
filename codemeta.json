@@ -7,7 +7,7 @@
   "codeRepository": "https://github.com/koenniem/mpathsenser",
   "issueTracker": "\n    https://github.com/koenniem/mpathsenser/issues",
   "license": "https://spdx.org/licenses/GPL-3.0",
-  "version": "1.2.4.9000",
+  "version": "1.9.9.9000",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "R",

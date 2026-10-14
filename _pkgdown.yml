@@ -52,6 +52,7 @@ reference:
       - close_db
       - optimize_db
       - copy_db
+      - example_db
 
   - title: Data retrieval
     contents:
@@ -90,6 +91,12 @@ reference:
   - title: Miscellaneous
     contents:
       - sensors
+
+articles:
+  - title: Articles
+    contents:
+      - contains("migration-guide-2.0.0")
+      - contains("data-overview")
 
 development:
   destination: ""

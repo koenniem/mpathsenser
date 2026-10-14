@@ -27,6 +27,8 @@ POSIXt
 PhoneLog
 ProcessedFiles
 SQLite
+SQLite's
+SpO
 TMPDIR
 TextMessage
 Timezone
@@ -39,6 +41,7 @@ cleanup
 cli
 db
 dbplyr
+deadband
 deduplicated
 deduplicating
 deduplication
@@ -50,6 +53,7 @@ geocodejson
 geocoding
 geojson
 hotfix
+iOS
 jsons
 jsonv
 kilometers
