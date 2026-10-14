@@ -1,0 +1,312 @@
+---
+title: "Migrating to mpathsenser 2.0.0"
+output: rmarkdown::html_vignette
+description: >
+  What to change when moving existing workflows from mpathsenser 1.2.4 to
+  2.0.0.
+vignette: >
+  %\VignetteIndexEntry{Migrating to mpathsenser 2.0.0}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, echo=FALSE, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", message = FALSE)
+```
+
+`mpathsenser` 2.0.0 is a breaking release. Databases cannot be upgraded in
+place, several functions are gone, and some columns have changed. This guide
+describes the changes that most often require edits to a script written for
+1.2.4. The [NEWS](../news/index.html) lists every change, and
+the [Get started article](mpathsenser.html) shows the new workflow from start
+to finish.
+
+In short:
+
+- Create a new database with `create_db()` and import the JSON files again with
+  `read_mpath_sense()`; old databases are not migrated.
+- Replace calls to `import()`, `coverage()`, and the other functions listed
+  below.
+- Check scripts that use the `date` or `measurement_id` columns, the
+  `AppUsage` `start`/`end` columns, or the sensors that are no longer imported.
+
+## Create a new database and import again
+
+Version 2.0.0 uses DuckDB instead of SQLite. An existing 1.2.4 database cannot
+be opened or converted, so create a new database and import the original
+m-Path Sense files into it. The JSON files are the source of truth, so
+re-importing is the intended way to upgrade.
+
+```{r, eval=FALSE}
+path <- "path/to/m-path-sense-json"
+db <- create_db("path/to/study-2.0.duckdb")
+read_mpath_sense(path = path, db = db)
+```
+
+`create_db()` and `open_db()` accept either a full file path or a directory
+and a file name, and they open the database read-only when you ask them to:
+
+```{r, eval=FALSE}
+create_db("path/to/study-2.0.duckdb")
+create_db("path/to", "study-2.0.duckdb")
+create_db(path = NULL)                    # in-memory database
+open_db("path/to/study-2.0.duckdb", read_only = TRUE)
+```
+
+The old default database name (`sense.db`) is gone, so `create_db()` no longer
+creates a database from a directory alone, and `open_db()` requires a path.
+Both functions also accept `threads`, `memory_limit`, and `temp_directory` to
+control how DuckDB uses the machine.
+
+`read_mpath_sense()` is the replacement for `import()` and keeps the familiar
+`path`, `sensors`, and `recursive` arguments. The `backend` argument is gone
+because DuckDB is the only backend, and the default `batch_size` is now 1000.
+Two new arguments control what happens after importing: `deduplicate` and
+`optimize` both default to `TRUE`. There is no parallel import; DuckDB
+parallelises internally, and a database accepts only one writer at a time.
+
+Every 2.0.0 database records its own layout version. `open_db()` refuses a
+database whose version it does not know and points you to `create_db()`.
+Databases from development versions that predate versioning are opened with a
+warning. If you just want to look around, `example_db()` opens a small example
+database that ships with the package.
+
+If you wrote SQL against the old table names, note that sensor data now lives
+in internal tables, with read-only per-sensor views in front of them. Package
+functions such as `get_data()` read from those views, and you normally should
+too.
+
+## Removed functions and objects
+
+| Removed in 2.0.0 | Replacement |
+| --- | --- |
+| `import()` | `read_mpath_sense()` |
+| `coverage()` | `coverage_frequency()` and `coverage_proportional()`; see [Coverage](#coverage) |
+| `freq` | `coverage_expected()` supplies the default expected intervals |
+| `ccopy()` | `base::file.copy()` |
+| `fix_jsons()`, `test_jsons()` | `jsonlite::validate()`; `unzip_data()` or `utils::unzip()` for zip files |
+| `first_date()`, `last_date()` | Read the first and last `time` with `get_data()`; see the example below |
+| `with_localtime()` | `to_local_time()`, `collect_local()`, or the `_local` views; see [Times and timezones](#times-and-timezones) |
+| `link_db()` | `link()` |
+| `index_db()` | Nothing: DuckDB keeps its own statistics, so manual indexes are not needed |
+| `vacuum_db()` | Nothing: DuckDB manages the database file; use `optimize_db()` to keep tables in good shape |
+| `decrypt_gps()` | Decrypt before importing: the new importer reads coordinates as numbers only |
+
+`first_date()` and `last_date()` used to return the first and last date of one
+sensor. Use `get_data()` with `summarise()` instead:
+
+```{r, eval=FALSE}
+get_data(db, sensor = "Accelerometer", participant_id = "12345") |>
+  summarise(
+    first = min(time, na.rm = TRUE),
+    last = max(time, na.rm = TRUE)
+  ) |>
+  collect()
+```
+
+Two arguments that used to accept `"All"` for every sensor now want `NULL`:
+
+| 1.2.4 | 2.0.0 |
+| --- | --- |
+| `copy_db(db1, db2, sensor = "All")` | `copy_db(db1, db2, sensor = NULL)` |
+| `get_nrows(db, sensor = "All")` | `get_nrows(db, sensor = NULL)` |
+
+A few other arguments changed name or are no longer available:
+
+| 1.2.4 | 2.0.0 |
+| --- | --- |
+| `import(path, db, backend = "RSQLite")` | `read_mpath_sense(path, db)` |
+| `create_db(path = tempdir())` | `create_db("study.duckdb")` or `create_db(tempdir(), "study.duckdb")` |
+| `open_db()` | `open_db(path)`: the path is required |
+| `unzip_data()` | `unzip_data(path)`: the path is required |
+| `moving_average(..., n = 60)` | `moving_average(..., window = 60)`; see [`moving_average()`](#moving_average) |
+| `link(..., split = "participant_id")` | Omit `split`; it is deprecated and ignored |
+
+`copy_db()` also requires the target database to be a file, not an in-memory
+database.
+
+## Times and timezones
+
+Timestamps are stored as the moment an observation happened, not as a clock
+reading. When you collect data with `get_data()`, `time` is a `POSIXct` vector
+in UTC. Version 1.2.4 returned timestamps as text, so code that compared them
+as strings needs to switch to date-time comparisons.
+
+If the imported files contain `Timezone` measurements, the import assigns each
+measurement the timezone that applied when the measurement started. The result
+is stored in the `timezone` column. In 1.2.4 this was a separate step; now it
+happens during import. If some measurements have no timezone yet,
+`add_timezones_to_db()` fills in the missing values from the `Timezone` data.
+It never overwrites a timezone that is already set, so running it again is
+safe.
+
+To show times the way a participant experienced them, read a `_local` view, or
+convert the data yourself:
+
+```{r, eval=FALSE}
+# Both local time and the absolute time
+get_data(db, sensor = "Activity_with_local")
+
+# Local time replaces the timestamp
+get_data(db, sensor = "Activity_local")
+
+# Convert after collecting
+get_data(db, sensor = "Activity", participant_id = "12345") |>
+  collect_local()
+
+# Or convert one column
+get_data(db, sensor = "Activity", participant_id = "12345") |>
+  mutate(time = to_local_time(time, timezone)) |>
+  collect()
+```
+
+Keep the `timezone` column next to any converted timestamp; a local clock time
+alone does not say which moment it refers to. If no timezone is known, local
+time falls back to UTC. `to_local_time()` accepts one timezone for all rows or
+one per row.
+
+Local clock times can be ambiguous during a daylight-saving change. Use the
+UTC view when you sort events or measure elapsed time, and the local view when
+you group by the participant's day.
+
+Date filters in `get_data()` are strict. A character value must use
+`YYYY-MM-DD`, and a `Date` selects that whole day; a `POSIXt` value selects an
+exact moment. Day bounds follow UTC for `time` columns, including the
+`_with_local` views, and participant-local time for `_local` views. A
+malformed date is now an error instead of a filter that quietly matches
+nothing.
+
+Finally, m-Path Sense versions 6 and older recorded some timestamps as local
+clock values. The new importer recognises those fields and preserves their
+clock time, so re-importing old files gives better times than before.
+
+## Coverage
+
+`coverage()` has been split into two functions with clearer meanings:
+
+- `coverage_frequency()` counts how many measurements were recorded.
+- `coverage_proportional()` compares the data with what was expected, either
+  as a count, as covered time, or as filled time slots.
+
+Both use expected sampling intervals that you provide as named values.
+`coverage_expected()` supplies the package defaults and replaces the old `freq`
+vector:
+
+```{r, eval=FALSE}
+coverage_frequency(db, sensor = "Accelerometer", by = "hour")
+
+coverage_proportional(
+  db,
+  expected = coverage_expected(),
+  sensor = "Accelerometer",
+  metric = "count",
+  by = "hour"
+)
+```
+
+The calculation runs in the database and the result stays lazy until you
+`collect()` it. `plot()` draws the result as a line chart or a heatmap. For the
+sensors that iOS does not provide (`AppUsage`, `Light`, `Memory`, and
+`Screen`), coverage for iOS participants is `NA`.
+
+## `moving_average()`
+
+`moving_average()` is still experimental, but the `n` argument (a number of
+rows) has been replaced by `window` (an amount of time). A number is still
+seconds, so `n = 60` becomes `window = 60`, or write `window = "1 minute"`:
+
+```{r, eval=FALSE}
+# 1.2.4
+moving_average(db, sensor = "Accelerometer", cols = "x_mean", n = 60)
+
+# 2.0.0
+moving_average(db, sensor = "Accelerometer", cols = "x_mean", window = 60)
+```
+
+The window is centered on each measurement and spans the given amount of time,
+not a number of rows: with `window = 60`, a measurement at 12:00:00 averages
+everything from 11:59:30 through 12:00:30, including both ends. Each
+measurement in the window counts once, so a busy period has more influence
+than a quiet one. Participant and date filters are applied first, and the
+result stays in the database until you collect it. Windows expressed in months
+or years are not allowed, because their length depends on the calendar.
+
+## Files, duplicates, and re-importing
+
+A file is recognised by its name, size, and modification time. Unchanged files
+are skipped on a later import, so re-importing a folder after a few new files
+have arrived is cheap. A renamed copy of an old file is imported again.
+
+Duplicates are removed after importing. A measurement is identified by
+`participant_id` and `time`, plus extra fields where a sensor can record
+several measurements at the same moment (for example, the app in `AppUsage`).
+When a measurement occurs more than once, the copy from the newest file wins;
+within that file, the last row as written wins. This keeps completed interval
+windows and Garmin's recalculated values. Measurements that occur only once
+are never touched, so a corrected re-upload does not remove data that was
+missing from the correction.
+
+Files are imported oldest to newest, which is what makes the newest file win.
+`deduplicate_db()` performs the same cleanup across the whole database; run it
+if an import was interrupted.
+
+`get_processed_files()` shows the file ledger: one row per imported file with
+its `file_id`, size, modification time, sense version, and processing time.
+The old `study_id` column is gone; join through `Participant` if you need the
+study.
+
+## Sensors and columns that changed
+
+Ten sensors are no longer imported because m-Path Sense no longer records
+them: `AirQuality`, `Calendar`, `Geofence`, `Gyroscope`, `InstalledApps`,
+`Keyboard`, `Mobility`, `Noise`, `PhoneLog`, and `TextMessage`. Re-imported
+data will not contain them. Installed apps are still available:
+`installed_apps()` now derives them from `AppUsage`.
+
+Some columns changed as well:
+
+- `measurement_id` and `date` are gone from every sensor table. Use
+  `participant_id` and `time` (plus sensor-specific fields) to identify a
+  measurement. To select a day, use the `start_date` and `end_date` arguments
+  of `get_data()`, or derive a day with `as.Date(time)` after collecting.
+- `AppUsage` renamed `start` and `end` to `period_start` and `period_end`.
+- `Bluetooth` no longer has `bluetooth_device_type`.
+- `Device` no longer has `sdk`, and `device_info()` no longer returns the raw
+  device payload.
+- Garmin `zeroCrossing` data uses `deadband` (all lowercase), not the old
+  misspelled `deadBand`.
+- Participant ids are stored as numbers, so `get_participants()` returns a
+  numeric `participant_id` instead of text. Filtering with a character value
+  still works.
+- `sensors` is now in alphabetical order. Since the CRAN 1.2.4 release it has
+  also gained `BluetoothBeacon` and the Garmin sensors.
+
+## Concurrent access and housekeeping
+
+A DuckDB database allows one writer at a time. Keep a single import or
+maintenance process per database, and open extra connections with
+`read_only = TRUE` for dashboards or other readers. If another process has the
+database open for writing, `open_db()` says so instead of failing silently.
+
+`optimize_db()` re-orders the sensor tables so that filters on participant and
+time can skip data more efficiently. The import already does this for the
+sensors it touches; run it by hand after a large import if you disabled that.
+
+## What stays the same
+
+The everyday workflow is unchanged: create a database, import files, query
+with `get_data()`, then use dplyr verbs before collecting. `get_data()` still
+returns a lazy table, `sensors` still lists the supported sensors, and
+functions such as `link()`, `link_gaps()`, `identify_gaps()`, `add_gaps()`,
+`bin_data()`, `haversine()`, `geocode_rev()`, `app_category()`,
+`get_participants()`, `get_studies()`, `get_nrows()`, `get_processed_files()`,
+`installed_apps()`, and `device_info()` remain available, with the argument
+changes noted above.
+
+## Further reading
+
+- [Get started](mpathsenser.html) walks through a complete example, from
+  importing and re-importing to querying and plotting.
+- [Data overview](data-overview.html) describes the database layout.
+- [NEWS](../news/index.html) lists all changes in 2.0.0.
+- [Reference index](../reference/index.html) documents the current API.
