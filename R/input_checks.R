@@ -98,6 +98,8 @@ check_db <- function(
   return(invisible(TRUE))
 }
 
+.is_lazy_tbl <- function(x) inherits(x, "tbl_sql")
+
 check_arg <- function(
   x,
   type,
@@ -125,6 +127,7 @@ check_arg <- function(
       "POSIXt",
       "Date",
       "data.frame",
+      "tbl_sql",
       "list"
     ),
     several.ok = TRUE
@@ -143,6 +146,7 @@ check_arg <- function(
       POSIXt = inherits(x, "POSIXt") && (is.null(n) || length(x) == n),
       Date = inherits(x, "Date") && (is.null(n) || length(x) == n),
       data.frame = is.data.frame(x),
+      tbl_sql = .is_lazy_tbl(x),
       list = rlang::is_list(x, n)
     )
   })
@@ -155,8 +159,12 @@ check_arg <- function(
       n_provided <- paste(" of length", length(x))
     }
 
+    # Internal class names are not what users see in the documentation.
+    type_display <- type
+    type_display[type_display == "tbl_sql"] <- "lazy table"
+
     msg <- c(
-      paste0("Argument {.arg ", arg, "} must be ", with_article(type), n, "."),
+      paste0("Argument {.arg ", arg, "} must be ", with_article(type_display), n, "."),
       x = paste0(
         "You supplied ",
         with_article(utils::tail(class(x), 1)),

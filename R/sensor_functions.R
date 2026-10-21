@@ -617,7 +617,7 @@ moving_average <- function(
 #'   then creates time between two subsequent measurements and returns the period in which this time
 #'   was larger than \code{min_gap}.
 #'
-#'   Note that the \code{from} and \code{to} columns in the output are character vectors in UTC
+#'   Note that the \code{from} and \code{to} columns in the output are POSIXct timestamps in UTC
 #'   time.
 #'
 #' @section Warning: Depending on the sensor that is used to identify the gaps (though this is
@@ -634,14 +634,21 @@ moving_average <- function(
 #'   gap. One way to account for this is to (as in this example) search for gaps 5 seconds longer
 #'   than you want and then afterwards increasing the start time of the gaps by 5 seconds.
 #'
-#' @inheritParams get_data
-#' @param sensor One or multiple sensors. See \link[mpathsenser]{sensors} for a list of available
-#'   sensors.
+#' @param x A database connection, a lazy table, or a data frame containing at least the columns
+#'   `participant_id` and `time`. A data frame must store `time` as `POSIXct`.
+#' @param participant_id A single participant identifier (stored as an unsigned integer; an
+#'   integer, numeric, or character value is accepted). Leave empty to include all participants.
 #' @param min_gap The minimum time (in seconds) passed between two subsequent measurements for it to
 #'   be considered a gap.
+#' @param sensor One or multiple sensors. See \link[mpathsenser]{sensors} for a list of available
+#'   sensors. The default `NULL` uses every sensor, which gives the most accurate gaps but takes
+#'   longer; pass a single high-frequency sensor such as `"Accelerometer"` for a quick scan. Sensor
+#'   views such as `"Accelerometer_local"` are not accepted.
+#' @param ... Not used.
 #'
-#' @returns A tibble containing the time period of the gaps. The structure of this tibble is as
-#'   follows:
+#' @returns For a database connection or a lazy table, a lazy table containing the time period of
+#'   the gaps. Call \code{\link[dplyr]{collect}} to load it into R. For a data frame, a tibble. The
+#'   structure is as follows:
 #'
 #'   \tabular{ll}{ participant_id \tab the `participant_id` of where the gap occurred \cr from
 #'   \tab the time of the last measurement before the gap \cr to             \tab the time of the
@@ -653,6 +660,7 @@ moving_average <- function(
 #' \dontrun{
 #' # Find the gaps for a participant and convert to datetime
 #' gaps <- identify_gaps(db, "12345", min_gap = 60) |>
+#'   collect() |>
 #'   mutate(across(c(to, from), ymd_hms)) |>
 #'   mutate(across(c(to, from), with_tz, "Europe/Brussels"))
 #'
@@ -672,39 +680,107 @@ moving_average <- function(
 #'   rowwise() |>
 #'   mutate(gap = any(gaps$from >= prev_time & gaps$to <= datetime))
 #' }
-identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Accelerometer") {
-  check_db(db)
+identify_gaps <- function(x, participant_id = NULL, min_gap = 60, ...) {
+  check_arg(participant_id, c("character", "numeric"), allow_null = TRUE)
   check_arg(min_gap, "numeric", n = 1)
-  check_sensors(sensor)
+  UseMethod("identify_gaps")
+}
 
-  # Get the data for each sensor
-  data <- map(
-    sensor,
-    ~ {
-      get_data(db, .x, participant_id) |>
-        select("participant_id", "time")
-    }
+#' @rdname identify_gaps
+#' @export
+identify_gaps.default <- function(x, participant_id = NULL, min_gap = 60, ...) {
+  cli_abort(
+    "{.arg x} must be a database connection, a lazy table, or a data frame."
   )
+}
 
-  # Merge all together
-  data <- Reduce(dplyr::union, data)
+#' @rdname identify_gaps
+#' @export
+identify_gaps.duckdb_connection <- function(
+  x,
+  participant_id = NULL,
+  min_gap = 60,
+  sensor = NULL,
+  ...
+) {
+  check_db(x)
 
-  # Then, calculate the gap duration
+  # NULL means every sensor; view names are rejected because their wall-clock
+  # timestamps would change gap durations across a DST change.
+  sensors <- check_sensors(sensor, allow_null = TRUE, include_views = FALSE, resolve = TRUE)
+
+  data <- sensors |>
+    map(~ get_data(x, .x, participant_id) |> select("participant_id", "time")) |>
+    reduce(dplyr::union)
+
+  .identify_gaps_impl(data, min_gap)
+}
+
+#' @rdname identify_gaps
+#' @export
+identify_gaps.tbl_sql <- function(x, participant_id = NULL, min_gap = 60, ...) {
+  .check_gap_columns(x)
+  x <- .filter_gap_participant(x, participant_id)
+  .identify_gaps_impl(x, min_gap)
+}
+
+#' @rdname identify_gaps
+#' @export
+identify_gaps.data.frame <- function(x, participant_id = NULL, min_gap = 60, ...) {
+  .check_gap_columns(x)
+  if (!inherits(x$time, "POSIXt")) {
+    cli_abort("{.arg x} must store {.arg time} as {.cls POSIXct}.")
+  }
+  x <- .filter_gap_participant(x, participant_id)
+  .identify_gaps_impl(x, min_gap)
+}
+
+# One gap per participant between consecutive measurements. `epoch()` is
+# DuckDB-side and `difftime()` local; the shared pipeline keeps the two paths
+# identical beyond that.
+.identify_gaps_impl <- function(data, min_gap) {
+  data <- if (.is_lazy_tbl(data)) {
+    window_order(data, .data$participant_id, .data$time)
+  } else {
+    arrange(data, .data$participant_id, .data$time)
+  }
+
   data |>
-    window_order(.data$participant_id, .data$time) |>
     group_by(.data$participant_id) |>
     mutate(to = lead(.data$time)) |>
     ungroup() |>
-    mutate(
-      gap = epoch(.data$to) - epoch(.data$time)
-    ) |>
+    .add_gap_duration() |>
     filter(.data$gap >= min_gap) |>
-    mutate(
-      from = .data$time,
-      to = .data$to
-    ) |>
+    mutate(from = .data$time) |>
     select("participant_id", "from", "to", "gap") |>
-    collect()
+    # A top-level arrange() gives the lazy query its ORDER BY; window_order()
+    # only orders the window frame, leaving the result order plan-dependent.
+    arrange(.data$participant_id, .data$from, .data$to)
+}
+
+.add_gap_duration <- function(data) {
+  if (.is_lazy_tbl(data)) {
+    mutate(data, gap = as.numeric(epoch(.data$to) - epoch(.data$time)))
+  } else {
+    mutate(data, gap = as.numeric(difftime(.data$to, .data$time, units = "secs")))
+  }
+}
+
+.check_gap_columns <- function(data) {
+  missing <- setdiff(c("participant_id", "time"), colnames(data))
+  if (length(missing) > 0) {
+    cli_abort("{.arg data} must contain the column{?s} {.var {missing}}.")
+  }
+
+  invisible(data)
+}
+
+.filter_gap_participant <- function(data, participant_id) {
+  if (is.null(participant_id)) {
+    return(data)
+  }
+
+  filter(data, .data$participant_id %in% as.character(participant_id))
 }
 
 
@@ -729,22 +805,32 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 #'
 #' @inheritSection identify_gaps Warning
 #'
-#' @param data A data frame containing the data. See [get_data()] for retrieving data from an
-#'   mpathsenser database.
-#' @param gaps A data frame (extension) containing the gap data. See [identify_gaps()] for
+#' @param data A data frame or a lazy table containing the data. See [get_data()] for retrieving
+#'   data from an mpathsenser database. A lazy table produces a lazy result, a data frame a tibble.
+#'   On the lazy path, naive `TIMESTAMP` columns (as dbplyr writes copied local data) are treated
+#'   as UTC wall-clock time; [get_data()] tables use `TIMESTAMPTZ` and are read as exact instants.
+#' @param gaps A data frame or a lazy table containing the gap data. See [identify_gaps()] for
 #'   retrieving gap data from an mpathsenser database. It should at least contain the columns `from`
-#'   and `to` (both in a date-time format), as well as any specified columns in `by`.
+#'   and `to` (both in a date-time format), as well as any specified columns in `by`. It must come
+#'   from the same source as `data`, or `copy = TRUE` must be set.
 #' @param by A character vector indicating the variable(s) to match by, typically the participant
-#'   IDs. If NULL, the default, `*_join()` will perform a natural join, using all variables in
-#'   common across `x and `y`.
+#'   IDs. If `NULL`, the default, the join uses all columns the two inputs have in common; when
+#'   they share none, the call errors and asks for `by`.
 #' @param continue Whether to continue the measurement(s) prior to the gap once the gap ends.
 #' @param fill A named list of the columns to fill with default values for the extra measurements
-#'   that are added because of the gaps.
+#'   that are added because of the gaps. On the lazy path, `POSIXct` values keep their instant,
+#'   assuming the target column is `TIMESTAMPTZ` (as [get_data()] returns) or naive UTC wall-clock
+#'   time.
+#' @param copy Whether to copy the local side when `data` and `gaps` come from different sources.
+#'   Defaults to `FALSE`, which errors for mixed inputs.
 #'
 #' @seealso [identify_gaps()] for finding gaps in the sampling; [link_gaps()] for linking gaps to
 #'   ESM data, analogous to [link()].
 #'
-#' @returns A tibble containing the data and the added gaps.
+#' @returns A lazy table containing the data and the added gaps when `data` is a lazy table, and a
+#'   tibble when `data` is a data frame. A lazy result is ordered by the `by` columns and then
+#'   `time`; rows that share those values (for example a measurement and a gap row at the same
+#'   timestamp) may come back in either order.
 #' @export
 #'
 #' @examples
@@ -777,174 +863,226 @@ identify_gaps <- function(db, participant_id = NULL, min_gap = 60, sensor = "Acc
 #'   by = "participant_id",
 #'   fill = list(type = "GAP", confidence = 100)
 #' )
-add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL) {
-  check_arg(data, "data.frame")
-  check_arg(gaps, "data.frame")
+
+add_gaps <- function(data, gaps, by = NULL, continue = FALSE, fill = NULL, copy = FALSE) {
+  check_arg(data, c("data.frame", "tbl_sql"))
+  check_arg(gaps, c("data.frame", "tbl_sql"))
   check_arg(by, "character", allow_null = TRUE)
   check_arg(continue, "logical")
   check_arg(fill, "list", allow_null = TRUE)
+  check_arg(copy, "logical")
 
-  # Check if `by` is present in both `data` and `gaps`
-  if (!is.null(by)) {
-    err <- try(
-      {
-        select(data, all_of({{ by }}))
-        select(gaps, all_of({{ by }}))
-      },
-      silent = TRUE
+  lazy <- .is_lazy_tbl(data)
+  gaps <- .normalize_gap_source(data, gaps, lazy, copy)
+  by <- .resolve_gap_by(data, gaps, by)
+
+  # POSIXct fill values must be identified before they become SQL literals.
+  posix_fill <- names(fill)[vapply(fill, inherits, logical(1), "POSIXt")]
+  fill <- .prepare_gap_fill(fill, data)
+
+  # dbplyr writes POSIXct as naive UTC-clock TIMESTAMP while package tables are
+  # TIMESTAMPTZ; re-anchor both sides at UTC so neither is shifted by DuckDB's
+  # session timezone when they are appended or joined.
+  data <- .normalize_gap_timestamps(data, c("time", posix_fill), lazy)
+  gaps <- .normalize_gap_timestamps(gaps, c("from", "to"), lazy)
+
+  # Gaps without a matching stream in the data are dropped.
+  gaps <- dplyr::semi_join(gaps, data, by = by) |>
+    mutate(.gaps_id = row_number())
+
+  visible <- unique(c(colnames(data), names(fill)))
+
+  # Every gap gets a start row carrying the fill values, and with
+  # `continue = TRUE` an end row copying the measurements at the latest data
+  # timestamp at or before `to`. `.gaps_rank` orders rows at equal timestamps:
+  # 0 for data, 2 * gap id for a gap start, 2 * gap id + 1 for its
+  # continuation, so data rows come first and chained gaps keep their order.
+  out <- .append_gap_rows(
+    .align_gap_columns(data |> mutate(.gaps_rank = 0L), visible, lazy),
+    .align_gap_columns(
+      gaps |>
+        transmute(
+          !!!rlang::syms(by),
+          time = .data$from,
+          !!!fill,
+          .gaps_rank = 2L * .data$.gaps_id
+        ),
+      visible,
+      lazy
+    ),
+    lazy
+  )
+
+  if (continue) {
+    out <- .append_gap_rows(
+      out,
+      .align_gap_columns(.continue_gaps(data, gaps, by, lazy), visible, lazy),
+      lazy
     )
-
-    if (inherits(err, "try-error")) {
-      cli_abort(
-        "Column{?s} {.code {by}} must be present in both {.arg data} and {.arg gaps}."
-      )
-    }
-
-    # Remove gaps that do not occur in the data based on the `by` column
-    gaps <- dplyr::semi_join(gaps, data, by = by)
   }
 
-  # If we don't want to continue the previous measurement after the gap, we can simply add the
-  # gaps to the data and sort
-  if (!continue) {
-    gaps <- gaps |>
-      select({{ by }}, time = "from") |>
-      mutate(!!!fill)
+  .order_gap_output(out, by, lazy, continue)
+}
 
-    data <- data |>
-      bind_rows(gaps) |>
-      arrange(across(c({{ by }}, "time"))) |>
-      distinct() |>
-      as_tibble() # Ensure consistent output format
+# `data` decides the result type. A mixed pair is moved onto one source once;
+# lazy data copies the local gaps into DuckDB, local data collects lazy gaps.
+.normalize_gap_source <- function(data, gaps, lazy, copy) {
+  if (lazy == .is_lazy_tbl(gaps)) {
+    return(gaps)
+  }
 
+  if (!copy) {
+    cli_abort(
+      "{.arg data} and {.arg gaps} must come from the same source. Set \\
+      {.arg copy} to {.code TRUE} to move the local table."
+    )
+  }
+
+  if (lazy) {
+    dplyr::auto_copy(data, gaps, copy = TRUE)
+  } else {
+    collect(gaps)
+  }
+}
+
+# dbplyr renders POSIXct literals as naive timestamps that DuckDB casts with
+# the session timezone; an epoch literal keeps the instant.
+.prepare_gap_fill <- function(fill, data) {
+  if (is.null(fill) || !.is_lazy_tbl(data)) {
+    return(fill)
+  }
+
+  db <- dbplyr::remote_con(data)
+  lapply(fill, function(value) {
+    if (inherits(value, "POSIXt")) .timestamp_sql_literal(value, db) else value
+  })
+}
+
+# dbplyr renders POSIXct values as naive TIMESTAMP of their UTC clock, whereas
+# package tables use TIMESTAMPTZ. Anchoring both at UTC keeps the same instant
+# regardless of the DuckDB session timezone. Local data is already POSIXct.
+.normalize_gap_timestamps <- function(data, columns, lazy) {
+  if (!lazy) {
     return(data)
   }
 
-  # Pour the gaps in a different format so that they can be added to the sensor data as
-  # "measurements". Also provide each gap pair (i.e. from and to) with an ID so they can be matched
-  # later on.
-  # Only assign the values from fill to the start of the gap, as we want the end of the gap to be
-  # NA when there is no prior data
-  prepared_gaps <- gaps |>
-    select({{ by }}, "from", "to") |>
-    mutate(gap_id = row_number()) |>
-    tidyr::pivot_longer(
-      cols = c("from", "to"),
-      names_to = "gap_type",
-      values_to = "time"
-    ) |>
-    mutate(!!!fill) |>
-    mutate(across(names(fill), ~ dplyr::if_else(gap_type == "to", .x[NA_integer_], .x)))
-
-  # Assign groups numbers to the data based on their time stamp and by column In principle, each row
-  # is its own group, but if their are multiple measurements with the same time stamp they will get
-  # the same group number
-  #
-  # This is one of the big design decision in this function: Each gap after a measurement should
-  # have fill in their starting row (i.e. "from") and continue the previous measurement when the gap
-  # ends. However, this is not the case when there is no prior data (or any data at all), in which
-  # case there should be NA. Also when there are multiple gaps after each other, the end point of
-  # the gap should be the lag of from, then lag2 of from, then lag3 of from, etcetera. Of course
-  # this is infeasible as we don't know how many subsequent gaps there are in the data. Hence, we
-  # have these row_ids. The basic idea is that we assign to all gaps following a measurement (or
-  # multiple measurements with the same time stamp) with row_id "123" the same row_id "123", like
-  # so:
-  # participant_id  time                    event row_id
-  # 12345           2022-05-10 10:00:00     a     123
-  # 12345           2022-05-10 10:10:00     GAP   NA => 123
-  # 12345           2022-05-10 10:20:00     NA    NA => 123
-  #
-  # See below for how to continue this sequence, but know that this is why there are row_ids.
-  data <- data |>
-    arrange(across(c({{ by }}, "time"))) |>
-    group_by(across(c({{ by }}, "time"))) |>
-    mutate(row_id = dplyr::cur_group_id()) |>
-    ungroup()
-
-  # Remove the time stamps as they are contained in the row_id (with multiple measurements at the
-  # same time having the same row_id)
-  # This data frame will be used later to match data to the gaps' row_ids.
-  lead_data <- data |>
-    select(-"time")
-
-  # Add the gaps to the data
-  data <- bind_rows(data, prepared_gaps)
-
-  # Sort the data to get the correct order, i.e. measurement followed by their respective gaps.
-  data <- arrange(data, across(c({{ by }}, "time")))
-
-  # As in the example above, fill the row_ids belonging to the data downwards to each gap. By
-  # doing this, each gap (no matter how many following the measurement) is now associated with the
-  # previous measurement, solving the multiple-gap-problem.
-  data <- tidyr::fill(data, "row_id", .direction = "down")
-
-  # Then, nest confidence and type by `time` to calculate the "lag - 2" for the end of gaps "to".
-  # This is necessary because if two measurements at the same time were present just before the
-  # gap, they should also both continue after the gap.
-  #
-  # Note: The code below is equivalent to
-  # group_by(participant_id, time, gap_type, gap_id) |>
-  # nest() |>
-  # ungroup() |>
-  # or
-  # group_by(across(c({{ by }}, .data$time))) |>
-  # nest(data = !c(.data$gap_id, .data$gap_type, .data$row_id)) |>
-  # ungroup() |>
-  #
-  # This means that if there is a (or multiple) measurement of the same participant at the same
-  # time and also the start or end of a gap (gap_type "from" or "to"), there will two groups: one
-  # with the measurements that are not the gap, and one with the gap measurement, while both
-  # having the same participant_id and time stamp. For example:
-  #
-  # participant_id  time      type    gap_type  gap_id  row_id
-  # 12345           10:00:00  STILL   NA        NA      1
-  # 12345           10:00:00  ACTIVE  NA        NA      1
-  # 12345           10:00:00  GAP     from      1       2
-  #
-  # Nesting then results in the following:
-  # participant_id  time    gap_type  gap_id  row_id  data
-  # 12345           10:00:00   NA        NA      1     <tibble [2 × 1]>
-  # 12345           10:00:00   from      1       2     <tibble [1 × 1]>
-  #
-  # Creating the from_lag column as below, it would mean that row 2 would get the data  from row
-  # 1, which is intended behaviour. If all 3 rows would be nested in the same tibble, we would get
-  # the measurement before that in from_lag, even though there were more recent measurements.
-  # Besides, any other nesting would inevitably include gap_type and gap_id in the nested tibble,
-  # breaking the code.
-  data <- nest(data, data = !c({{ by }}, "time", "gap_id", "gap_type", "row_id"))
-
-  # Now, match the data (without the gaps) to each corresponding row_id. Thus, in some cases data
-  # and data2 will be identical. Only for the end points of gaps, set data to data2.
-  data <- dplyr::nest_join(
-    data,
-    lead_data,
-    by = c(by, "row_id"),
-    name = "data2"
-  ) |>
-    mutate(
-      data = purrr::pmap(
-        list(
-          !is.na(.data$gap_type) & .data$gap_type == "to",
-          .data$data,
-          .data$data2
-        ),
-        function(is_gap_end, d1, d2) {
-          if (is_gap_end) d2 else d1
-        }
-      )
+  columns <- intersect(columns, colnames(data))
+  for (column in columns) {
+    data <- mutate(
+      data,
+      !!rlang::sym(column) := make_timestamptz(epoch_us(.data[[column]]))
     )
+  }
 
-  # Lastly, unnest the data to get the original (and modified for "to") nested data, and ungroup
-  # and cleanup
-  # Make sure not to remove empty data tibbles as these are true NA's, i.e. either gaps where
-  # fill was not specified or gaps where there was no prio data present
-  data <- data |>
-    unnest("data", keep_empty = TRUE) |>
-    ungroup() |>
-    select(-c("gap_id", "gap_type", "data2", "row_id"))
-
-  # Finally, filter out duplicates that may occur when the gap ends exactly at the same time as
-  # when another measurement begins
-  data <- distinct(data)
   data
+}
+
+# rows_append() requires the same columns; bind_rows() aligns locally.
+.align_gap_columns <- function(data, visible, lazy) {
+  if (!lazy) {
+    return(data)
+  }
+
+  missing <- setdiff(visible, colnames(data))
+  if (length(missing) > 0) {
+    data <- mutate(data, !!!rlang::rep_named(missing, list(NA)))
+  }
+
+  select(data, all_of(visible), ".gaps_rank")
+}
+
+.append_gap_rows <- function(data, gaps, lazy) {
+  if (lazy) {
+    dplyr::rows_append(data, gaps)
+  } else {
+    bind_rows(data, gaps)
+  }
+}
+
+.order_gap_output <- function(out, by, lazy, continue) {
+  if (lazy) {
+    # The final arrange() must be top-level; dbplyr drops ORDER BY elsewhere.
+    out |>
+      select(-".gaps_rank") |>
+      distinct() |>
+      arrange(across(all_of(by)), .data$time)
+  } else {
+    out <- out |>
+      arrange(across(all_of(by)), .data$time, .data$.gaps_rank) |>
+      select(-".gaps_rank")
+
+    if (continue) {
+      # The previous implementation put the join columns and time first for
+      # continuations; keep that order for compatibility.
+      key_columns <- colnames(out)[colnames(out) %in% c(by, "time")]
+      out <- select(out, all_of(key_columns), all_of(setdiff(colnames(out), key_columns)))
+    }
+
+    out |>
+      distinct() |>
+      as_tibble()
+  }
+}
+
+# Resolve `by`, performing the natural join when it is NULL.
+.resolve_gap_by <- function(data, gaps, by) {
+  if (is.null(by)) {
+    by <- intersect(colnames(data), colnames(gaps))
+    if (length(by) == 0) {
+      cli_abort(
+        "No columns are shared between {.arg data} and {.arg gaps}; supply {.arg by}."
+      )
+    }
+    return(by)
+  }
+
+  if (length(setdiff(by, intersect(colnames(data), colnames(gaps)))) > 0) {
+    cli_abort(
+      "Column{?s} {.code {by}} must be present in both {.arg data} and {.arg gaps}."
+    )
+  }
+
+  by
+}
+
+# A continuation copies the measurements at the latest data timestamp at or
+# before each gap end. Data rows sort before gap ends at equal timestamps, so
+# a measurement exactly at `to` is the one continued and `distinct()` collapses
+# the duplicate it produces. A gap with no prior measurement keeps NA.
+.continue_gaps <- function(data, gaps, by, lazy) {
+  gap_ends <- gaps |>
+    transmute(
+      !!!rlang::syms(by),
+      time = .data$to,
+      .gaps_is_end = 1L,
+      .gaps_to = .data$to,
+      .gaps_id = .data$.gaps_id
+    )
+  data_times <- data |>
+    distinct(across(all_of(by)), .data$time) |>
+    mutate(.gaps_is_end = 0L, .gaps_prev_time = .data$time)
+  if (lazy) {
+    # rows_append() does not accept columns the other side lacks.
+    data_times <- mutate(data_times, .gaps_to = NA, .gaps_id = NA)
+  }
+
+  events <- .append_gap_rows(data_times, gap_ends, lazy)
+
+  events <- if (lazy) {
+    events |>
+      group_by(across(all_of(by))) |>
+      window_order(.data$time, .data$.gaps_is_end)
+  } else {
+    events |>
+      arrange(across(all_of(by)), .data$time, .data$.gaps_is_end) |>
+      group_by(across(all_of(by)))
+  }
+
+  events |>
+    tidyr::fill(.gaps_prev_time, .direction = "down") |>
+    ungroup() |>
+    filter(.data$.gaps_is_end == 1L) |>
+    left_join(data, by = c(by, .gaps_prev_time = "time"), relationship = "many-to-many") |>
+    mutate(time = .data$.gaps_to, .gaps_rank = 2L * .data$.gaps_id + 1L) |>
+    select(-c(".gaps_is_end", ".gaps_prev_time", ".gaps_to", ".gaps_id"))
 }

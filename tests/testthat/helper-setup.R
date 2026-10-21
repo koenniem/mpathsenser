@@ -62,10 +62,48 @@ write_test_json_files <- function(dir) {
   invisible(NULL)
 }
 
-# Create a fresh test database with sample data for testing
-create_test_db <- function(path = ":memory:") {
-  db <- create_db(NULL, path, shared_home = FALSE)
+# Build a database file once per session; tests copy it instead of rebuilding.
+# `build` receives a file path, creates the database there, and returns a
+# connection to close.
+session_db_template <- function(build) {
+  local({
+    path <- NULL
+    function() {
+      if (is.null(path) || !file.exists(path)) {
+        path <<- tempfile(fileext = ".duckdb")
+        close_db(build(path))
+      }
+      path
+    }
+  })
+}
 
+# Open a fresh copy of a cached database file. Tests that write data must clean
+# up with cleanup_test_db().
+open_db_copy <- function(template, path = NULL) {
+  if (is.null(path)) {
+    path <- tempfile(fileext = ".duckdb")
+  }
+  file.copy(template(), path, overwrite = TRUE)
+  open_db(path, shared_home = FALSE)
+}
+
+# A prepared schema-and-views database reused by tests that only need an empty
+# database. create_db() spends seconds on the schema and views, so build it
+# once per session and hand out copies instead.
+test_db_template <- session_db_template(
+  function(path) create_db(NULL, path, shared_home = FALSE)
+)
+
+# A fresh copy of the prepared database.
+fresh_test_db <- function() {
+  open_db_copy(test_db_template)
+}
+
+# Sample data for tests that need an imported database; imported once per
+# session and copied per test.
+plain_test_db_template <- session_db_template(function(path) {
+  db <- create_db(NULL, path, shared_home = FALSE)
   dir <- tempfile("mpathsenser_test")
   dir.create(dir)
   write_test_json_files(dir)
@@ -76,31 +114,12 @@ create_test_db <- function(path = ":memory:") {
     .progress = FALSE
   ))
   unlink(dir, recursive = TRUE)
-
   db
-}
-
-# A prepared schema-and-views database reused by tests that only need an empty
-# database. create_db() spends seconds on the schema and views, so build it
-# once per session and hand out copies instead.
-test_db_template <- local({
-  path <- NULL
-  function() {
-    if (is.null(path) || !file.exists(path)) {
-      path <<- tempfile(fileext = ".duckdb")
-      db <- create_db(NULL, path, shared_home = FALSE)
-      close_db(db)
-    }
-    path
-  }
 })
 
-# A fresh copy of the prepared database. Tests that write data must clean up
-# with cleanup_test_db().
-fresh_test_db <- function() {
-  path <- tempfile(fileext = ".duckdb")
-  file.copy(test_db_template(), path)
-  open_db(path, shared_home = FALSE)
+# Create a fresh test database with sample data for testing.
+create_test_db <- function(path = NULL) {
+  open_db_copy(plain_test_db_template, path)
 }
 
 # Clean up a test database
@@ -258,8 +277,9 @@ write_sensor_test_json_files <- function(dir) {
   invisible(NULL)
 }
 
-# Create a test database with the richer sensor data
-create_sensor_test_db <- function(path = ":memory:") {
+# Richer sensor data for tests that need it; imported once per session and
+# copied per test.
+sensor_db_template <- session_db_template(function(path) {
   db <- create_db(NULL, path, shared_home = FALSE)
   dir <- tempfile("mpathsenser_sensor_test")
   dir.create(dir)
@@ -272,4 +292,9 @@ create_sensor_test_db <- function(path = ":memory:") {
   ))
   unlink(dir, recursive = TRUE)
   db
+})
+
+# Create a test database with the richer sensor data.
+create_sensor_test_db <- function(path = NULL) {
+  open_db_copy(sensor_db_template, path)
 }

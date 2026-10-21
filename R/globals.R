@@ -2,6 +2,9 @@ utils::globalVariables(c(
   "overlaps", # dplyr join_by helper
   "epoch",
   # DuckDB functions reached through dbplyr's pass-through translation.
+  "make_timestamptz",
+  "epoch_us",
+  ".gaps_prev_time",
   "to_seconds",
   "time_bucket",
   "date_diff",

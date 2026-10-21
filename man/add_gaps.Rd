@@ -4,27 +4,38 @@
 \alias{add_gaps}
 \title{Add gap periods to sensor data}
 \usage{
-add_gaps(data, gaps, by = NULL, continue = FALSE, fill = NULL)
+add_gaps(data, gaps, by = NULL, continue = FALSE, fill = NULL, copy = FALSE)
 }
 \arguments{
-\item{data}{A data frame containing the data. See \code{\link[=get_data]{get_data()}} for retrieving data from an
-mpathsenser database.}
+\item{data}{A data frame or a lazy table containing the data. See \code{\link[=get_data]{get_data()}} for retrieving
+data from an mpathsenser database. A lazy table produces a lazy result, a data frame a tibble.
+On the lazy path, naive \code{TIMESTAMP} columns (as dbplyr writes copied local data) are treated
+as UTC wall-clock time; \code{\link[=get_data]{get_data()}} tables use \code{TIMESTAMPTZ} and are read as exact instants.}
 
-\item{gaps}{A data frame (extension) containing the gap data. See \code{\link[=identify_gaps]{identify_gaps()}} for
+\item{gaps}{A data frame or a lazy table containing the gap data. See \code{\link[=identify_gaps]{identify_gaps()}} for
 retrieving gap data from an mpathsenser database. It should at least contain the columns \code{from}
-and \code{to} (both in a date-time format), as well as any specified columns in \code{by}.}
+and \code{to} (both in a date-time format), as well as any specified columns in \code{by}. It must come
+from the same source as \code{data}, or \code{copy = TRUE} must be set.}
 
 \item{by}{A character vector indicating the variable(s) to match by, typically the participant
-IDs. If NULL, the default, \verb{*_join()} will perform a natural join, using all variables in
-common across \verb{x and }y`.}
+IDs. If \code{NULL}, the default, the join uses all columns the two inputs have in common; when
+they share none, the call errors and asks for \code{by}.}
 
 \item{continue}{Whether to continue the measurement(s) prior to the gap once the gap ends.}
 
 \item{fill}{A named list of the columns to fill with default values for the extra measurements
-that are added because of the gaps.}
+that are added because of the gaps. On the lazy path, \code{POSIXct} values keep their instant,
+assuming the target column is \code{TIMESTAMPTZ} (as \code{\link[=get_data]{get_data()}} returns) or naive UTC wall-clock
+time.}
+
+\item{copy}{Whether to copy the local side when \code{data} and \code{gaps} come from different sources.
+Defaults to \code{FALSE}, which errors for mixed inputs.}
 }
 \value{
-A tibble containing the data and the added gaps.
+A lazy table containing the data and the added gaps when \code{data} is a lazy table, and a
+tibble when \code{data} is a data frame. A lazy result is ordered by the \code{by} columns and then
+\code{time}; rows that share those values (for example a measurement and a gap row at the same
+timestamp) may come back in either order.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}

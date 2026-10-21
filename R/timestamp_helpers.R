@@ -140,6 +140,13 @@
   dbplyr::sql_prefix("to_local_time", 2)(x, timezone)
 }
 
+# dbplyr renders POSIXct values as naive TIMESTAMP literals, which DuckDB casts
+# using the session timezone. Render an epoch instead so the instant is fixed.
+.timestamp_sql_literal <- function(x, db) {
+  epoch <- DBI::dbQuoteLiteral(db, as.numeric(as.POSIXct(x, tz = "UTC")))
+  dbplyr::sql(paste0("to_timestamp(", as.character(epoch), ")"))
+}
+
 # dbplyr translation for to_local_time(). duckdb's own sql_translation() builds
 # the translation variant; injecting to_local_time() into its scalar functions
 # makes dbplyr call the exported function while building a lazy query instead

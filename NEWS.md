@@ -71,6 +71,11 @@ databases from working unchanged.
   files from m-Path Sense 6 and earlier, which stored some times as local
   clock values, are now read correctly, so old data gets better times than
   before.
+* **`identify_gaps()` returns a lazy table for a connection.** It now
+  dispatches on its input: a database connection or lazy table returns a
+  lazy table, a data frame returns a tibble. Add `collect()` before using
+  the result in R. `sensor = NULL` (the default) now scans every sensor
+  rather than only the accelerometer.
 * **A few arguments changed shape.** `create_db()` no longer creates
   `sense.db` from a directory on its own, and `open_db()` requires a path.
   Both accept a directory plus a file name, and both take `threads`,
@@ -146,7 +151,11 @@ The good news: this is what you get in return.
 * **Linking and gap-filling got friendlier.** `link()` supports named x-to-y
   keys and custom names for the nested data, so linking sensors with
   different column names is painless. `add_gaps()` handles multiple grouping
-  columns and keeps the type of fill columns, date-times included.
+  columns and keeps the type of fill columns, date-times included. It also
+  accepts lazy tables now: a lazy `data` returns a lazy table, mixed
+  local/lazy inputs need `copy = TRUE`, and `by = NULL` joins on the columns
+  the two inputs share instead of producing broken output. Both gap
+  functions are substantially faster.
 
 ## Minor changes
 

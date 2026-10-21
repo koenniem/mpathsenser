@@ -493,7 +493,7 @@ canonical base sensor names, which the coverage code uses to normalise its `sens
 | `get_data(db, sensor, participant_id, start_date, end_date)` | Returns a **lazy** dbplyr table over `main.<sensor>` (or a `_local`/`_with_local` view), with the sensor name attached as `mpathsenser_sensor`. Character/`Date` bounds select whole days: UTC for `time` (including `_with_local`) and local wall time for `_local`. `POSIXt` bounds are exact inclusive timestamps; `_local` uses the timestamp's displayed wall-clock fields. Day-end bounds exclude the following midnight. Filtering happens in DuckDB. |
 | `get_nrows()`, `get_participants()`, `get_studies()`, `get_processed_files()` | Database introspection; `get_nrows()` counts per sensor and is the slow one on large databases. |
 | `coverage_frequency()` / `coverage_proportional()` / `collect.coverage()` / `plot.coverage()` | Coverage per bin (`by = minute/hour/day/week/month` or fixed seconds), optionally averaged within a recurring `cycle`. `coverage_proportional()` uses `metric = "count"` for distinct samples, `"interval"` for the union of expected-length observation intervals, or `"bin"` for occupied expected slots. Calendar units keep their actual boundaries; a fixed `by` below a sensor's `expected` is widened per sensor with a warning. The builders return a lazy `tbl` of class `"coverage"`: chronology, durations, and slot grids use canonical UTC, while each observation is assigned to the local bin of the timezone that applies at its instant (timezone episodes tracked per participant; missing timezones inherit the active episode and otherwise fall back to UTC, and a same-instant conflict is resolved by the largest timezone name). Bins a sensor did not touch are zero-filled within each participant's span, the last returned bin is the one containing the last included observation (a trailing expected window is folded into it), and interval/bin values are `NA` when a bin has no eligible time. Aggregation is expressed with dbplyr over the DuckDB tables; `collect.coverage()` materialises, rounds, factorises, and restores the metadata. |
-| `identify_gaps()` / `add_gaps()` | Finds gaps in a sensor stream and annotates data with them. |
+| `identify_gaps()` / `add_gaps()` | `identify_gaps()` is an S3 generic: a database connection or lazy table returns a lazy gap table, a data frame a tibble. `sensor = NULL` scans every sensor; `_local`/`_with_local` views are rejected. `add_gaps()` returns a lazy table when `data` is lazy and a tibble otherwise, requires `copy = TRUE` for mixed sources, and resolves `by = NULL` to the shared columns. |
 | `link()` / `link_gaps()` / `bin_data()` | Links measurements to a time scale (e.g. ESM questionnaires), links gaps to data, and bins time series. |
 | `moving_average()` | Lazy, participant-partitioned sample averages over closed centered elapsed-time windows; applies `get_data()` filters first and calculates membership with a DuckDB `RANGE` window. |
 | `device_info()` / `installed_apps()` / `app_category()` | Device metadata, installed apps, and Google Play category lookup (network, rate-limited). |
@@ -503,6 +503,18 @@ canonical base sensor names, which the coverage code uses to normalise its `sens
 `ensure_suggested_package()` gates optional dependencies (`ggplot2` for plotting, `curl` / `httr` /
 `rvest` for the network-facing helpers). `app_category()` and `geocode_rev()` are the two
 functions that make external HTTP requests and both rate-limit themselves.
+
+The gap rule is shared by both functions. `identify_gaps()` orders each `participant_id` by `time`
+and marks a gap where `lead(time) - time >= min_gap`, with no special handling of day boundaries.
+`add_gaps()` keeps gaps with a matching stream, adds a start row at `from`, and with
+`continue = TRUE` a continuation row at `to` that copies every measurement at the latest data
+timestamp at or before `to` in the same stream. A gap end on a measurement therefore collapses into
+that measurement through `distinct()`; a gap without prior data contributes one row at `to` with
+`NA` in the measurement columns. The same pipeline runs in DuckDB and in R: local data uses
+`bind_rows()` and `arrange()`, lazy data uses `rows_append()` and `window_order()`. On the lazy path,
+timestamps that meet gaps are re-anchored at UTC with `make_timestamptz(epoch_us(...))`, because
+dbplyr copies `POSIXct` values as naive UTC-clock `TIMESTAMP` while the package's own tables are
+`TIMESTAMPTZ`.
 
 ## Development and extension
 

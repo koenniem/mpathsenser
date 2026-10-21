@@ -237,6 +237,18 @@ test_that("check_arg", {
   )
 })
 
+test_that("check_arg accepts lazy tables", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(cleanup_test_db(db))
+  lazy <- dplyr::tbl(db, dplyr::sql("SELECT 1 AS x"))
+
+  expect_invisible(check_arg(lazy, c("data.frame", "tbl_sql")))
+  expect_error(
+    check_arg(1, c("data.frame", "tbl_sql"), arg = "data"),
+    "Argument `data` must be a data.frame or a lazy table."
+  )
+})
+
 test_that("check_sensors", {
   expect_true(check_sensors("Accelerometer"))
   expect_true(check_sensors("accelerometer"))

@@ -664,8 +664,10 @@ test_that("moving_average validates windows, columns, and date filters", {
 
 test_that("identify_gaps", {
   db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db))
 
-  gaps <- identify_gaps(db, "12345", min_gap = 1, sensor = sensors)
+  gaps <- identify_gaps(db, "12345", min_gap = 1, sensor = sensors) |>
+    collect()
 
   # TODO: Calculate the other gaps by hand
   gaps <- gaps[1:8, ]
@@ -704,7 +706,112 @@ test_that("identify_gaps", {
   expect_equal(nrow(gaps), nrow(true))
   expect_equal(gaps$participant_id, true$participant_id)
   expect_true(nrow(gaps) > 0)
-  cleanup_test_db(db)
+})
+
+test_that("identify_gaps dispatches on input type", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db))
+
+  # A connection returns a lazy table, a data frame a tibble with the same gaps.
+  lazy_gaps <- identify_gaps(db, "12345", min_gap = 1, sensor = "Activity")
+  expect_s3_class(lazy_gaps, "tbl_sql")
+
+  local <- get_data(db, "Activity", "12345") |> collect()
+  local_gaps <- identify_gaps(local, "12345", min_gap = 1)
+  expect_s3_class(local_gaps, "tbl_df")
+  expect_equal(collect(lazy_gaps), local_gaps, ignore_attr = TRUE)
+
+  expect_error(identify_gaps(1), "must be a database connection, a lazy table, or a data frame")
+})
+
+test_that("identify_gaps returns rows in a defined order", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db))
+
+  gaps <- identify_gaps(db, "12345", min_gap = 1, sensor = sensors)
+  collected <- collect(gaps)
+
+  # window_order() orders the window frame only, so the lazy query needs its
+  # own top-level ORDER BY; otherwise the row order is plan-dependent.
+  sql_lines <- trimws(strsplit(as.character(dbplyr::sql_render(gaps)), "\n", fixed = TRUE)[[1]])
+  expect_match(tail(sql_lines[nzchar(sql_lines)], 1), "^ORDER BY")
+  expect_equal(
+    collected,
+    dplyr::arrange(collected, participant_id, from, to)
+  )
+})
+
+test_that("identify_gaps keeps positional participant_id and rejects local views", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db))
+
+  # participant_id is the second positional argument, not part of `...`.
+  expect_s3_class(
+    identify_gaps(db, "12345", min_gap = 1, sensor = "Activity"),
+    "tbl_sql"
+  )
+  # `_local` views use wall-clock timestamps, so they are not accepted here.
+  expect_error(identify_gaps(db, sensor = "Activity_local"), "could not be found")
+})
+
+test_that("identify_gaps sensor = NULL uses every sensor", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db))
+
+  explicit <- identify_gaps(db, min_gap = 1, sensor = sensors)
+  all_sensors <- identify_gaps(db, min_gap = 1, sensor = NULL)
+  expect_equal(collect(all_sensors), collect(explicit), ignore_attr = TRUE)
+})
+
+test_that("identify_gaps uses the requested sensor", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db))
+
+  activity <- get_data(db, "Activity", "12345") |>
+    collect() |>
+    arrange(time)
+  gaps <- identify_gaps(db, "12345", min_gap = 1, sensor = "Activity") |> collect()
+
+  expect_equal(gaps$participant_id, rep(12345, 2))
+  expect_equal(gaps$from, activity$time[1:2])
+  expect_equal(gaps$to, activity$time[2:3])
+  expect_equal(gaps$gap, c(1, 1))
+})
+
+test_that("identify_gaps handles edge cases", {
+  single <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct("2024-05-01 10:00:00", tz = "UTC")
+  )
+  gaps <- identify_gaps(single)
+  expect_identical(names(gaps), c("participant_id", "from", "to", "gap"))
+  expect_equal(nrow(gaps), 0)
+
+  # A gap across midnight is one gap; there is no day-boundary handling.
+  midnight <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct(c("2024-05-01 23:59:00", "2024-05-02 00:01:00"), tz = "UTC")
+  )
+  gaps <- identify_gaps(midnight, min_gap = 60)
+  expect_equal(nrow(gaps), 1)
+  expect_equal(gaps$from, midnight$time[1])
+  expect_equal(gaps$to, midnight$time[2])
+  expect_equal(gaps$gap, 120)
+
+  # `min_gap = 0` keeps repeated timestamps as zero-second gaps.
+  repeated <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct(c("2024-05-01 10:00:00", "2024-05-01 10:00:00"), tz = "UTC")
+  )
+  gaps <- identify_gaps(repeated, min_gap = 0)
+  expect_equal(nrow(gaps), 1)
+  expect_equal(gaps$gap, 0)
+
+  expect_error(identify_gaps(tibble::tibble(participant_id = "p1")), "time")
+  expect_error(
+    identify_gaps(tibble::tibble(participant_id = "p1", time = as.Date("2024-05-01"))),
+    "POSIXct"
+  )
 })
 
 # add_data
@@ -1090,4 +1197,465 @@ test_that("add_gaps preserves fill column types", {
     )
   )
   expect_identical(result, expected)
+})
+
+test_that("add_gaps continues every measurement at one timestamp", {
+  dat <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct(c("2024-01-01 10:00:00", "2024-01-01 10:00:00"), tz = "UTC"),
+    event = c("a", "b")
+  )
+  gaps <- tibble::tibble(
+    participant_id = "p1",
+    from = as.POSIXct("2024-01-01 10:30:00", tz = "UTC"),
+    to = as.POSIXct("2024-01-01 11:00:00", tz = "UTC")
+  )
+
+  out <- add_gaps(dat, gaps, by = "participant_id", continue = TRUE)
+
+  expect_identical(
+    out$time,
+    as.POSIXct(
+      c(
+        "2024-01-01 10:00:00",
+        "2024-01-01 10:00:00",
+        "2024-01-01 10:30:00",
+        "2024-01-01 11:00:00",
+        "2024-01-01 11:00:00"
+      ),
+      tz = "UTC"
+    )
+  )
+  expect_identical(out$event, c("a", "b", NA, "a", "b"))
+})
+
+test_that("add_gaps continues a chained gap from the same measurement", {
+  dat <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct("2024-01-01 10:00:00", tz = "UTC"),
+    event = "a"
+  )
+  gaps <- tibble::tibble(
+    participant_id = "p1",
+    from = as.POSIXct(c("2024-01-01 10:10:00", "2024-01-01 10:40:00"), tz = "UTC"),
+    to = as.POSIXct(c("2024-01-01 10:20:00", "2024-01-01 10:50:00"), tz = "UTC")
+  )
+
+  out <- add_gaps(dat, gaps, by = "participant_id", continue = TRUE)
+
+  expect_identical(out$event, c("a", NA, "a", NA, "a"))
+})
+
+test_that("add_gaps gives an all-NA continuation when no measurement precedes the gap", {
+  dat <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct("2024-01-01 10:00:00", tz = "UTC"),
+    event = "a"
+  )
+  gaps <- tibble::tibble(
+    participant_id = "p1",
+    from = as.POSIXct("2024-01-01 09:00:00", tz = "UTC"),
+    to = as.POSIXct("2024-01-01 09:30:00", tz = "UTC")
+  )
+
+  out <- add_gaps(dat, gaps, by = "participant_id", continue = TRUE)
+
+  expect_identical(
+    out,
+    tibble::tibble(
+      participant_id = c("p1", "p1", "p1"),
+      time = as.POSIXct(
+        c("2024-01-01 09:00:00", "2024-01-01 09:30:00", "2024-01-01 10:00:00"),
+        tz = "UTC"
+      ),
+      event = c(NA, NA, "a")
+    )
+  )
+})
+
+test_that("add_gaps does not duplicate a measurement at the gap end", {
+  dat <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct(c("2024-01-01 10:00:00", "2024-01-01 10:30:00"), tz = "UTC"),
+    event = c("a", "b")
+  )
+  gaps <- tibble::tibble(
+    participant_id = "p1",
+    from = as.POSIXct("2024-01-01 10:10:00", tz = "UTC"),
+    to = as.POSIXct("2024-01-01 10:30:00", tz = "UTC")
+  )
+
+  out <- add_gaps(dat, gaps, by = "participant_id", continue = TRUE)
+
+  expect_identical(
+    out$time,
+    as.POSIXct(
+      c("2024-01-01 10:00:00", "2024-01-01 10:10:00", "2024-01-01 10:30:00"),
+      tz = "UTC"
+    )
+  )
+  expect_identical(out$event, c("a", NA, "b"))
+})
+
+test_that("add_gaps continues from the latest measurement at or before the gap end", {
+  dat <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct(c("2024-01-01 10:00:00", "2024-01-01 10:20:00"), tz = "UTC"),
+    event = c("a", "b")
+  )
+  gaps <- tibble::tibble(
+    participant_id = "p1",
+    from = as.POSIXct("2024-01-01 10:05:00", tz = "UTC"),
+    to = as.POSIXct("2024-01-01 10:30:00", tz = "UTC")
+  )
+
+  out <- add_gaps(dat, gaps, by = "participant_id", continue = TRUE)
+
+  expect_identical(out$event, c("a", NA, "b", "b"))
+})
+
+test_that("add_gaps keeps data rows before gap rows at the same timestamp", {
+  dat <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct("2024-01-01 10:00:00", tz = "UTC"),
+    event = "m"
+  )
+  gaps <- tibble::tibble(
+    participant_id = "p1",
+    from = as.POSIXct("2024-01-01 10:00:00", tz = "UTC"),
+    to = as.POSIXct("2024-01-01 10:30:00", tz = "UTC")
+  )
+
+  out <- add_gaps(dat, gaps, by = "participant_id", continue = TRUE)
+
+  expect_identical(out$event, c("m", NA, "m"))
+})
+
+test_that("add_gaps returns the input unchanged for empty gaps", {
+  dat <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct("2024-01-01 10:00:00", tz = "UTC"),
+    event = "a"
+  )
+  gaps <- tibble::tibble(
+    participant_id = character(),
+    from = as.POSIXct(character(), tz = "UTC"),
+    to = as.POSIXct(character(), tz = "UTC")
+  )
+
+  expect_identical(add_gaps(dat, gaps, by = "participant_id", continue = TRUE), dat)
+  expect_identical(add_gaps(dat, gaps, by = "participant_id", continue = FALSE), dat)
+})
+
+test_that("add_gaps matches the old column order when a by column is trailing", {
+  dat <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct(c("2024-01-01 10:00:00", "2024-01-01 10:30:00"), tz = "UTC"),
+    event = c("a", "b"),
+    device = "a"
+  )
+  gaps <- tibble::tibble(
+    participant_id = "p1",
+    device = "a",
+    from = as.POSIXct("2024-01-01 10:10:00", tz = "UTC"),
+    to = as.POSIXct("2024-01-01 10:20:00", tz = "UTC")
+  )
+
+  # The old implementation kept the data's order without continuation, while
+  # continue = TRUE listed the join columns and time first (a nest/unnest
+  # artefact that output compatibility still pins).
+  expect_identical(
+    names(add_gaps(dat, gaps, by = c("participant_id", "device"), continue = FALSE)),
+    c("participant_id", "time", "event", "device")
+  )
+  expect_identical(
+    names(add_gaps(dat, gaps, by = c("participant_id", "device"), continue = TRUE)),
+    c("participant_id", "time", "device", "event")
+  )
+})
+
+test_that("add_gaps by = NULL joins on the common columns", {
+  dat <- tibble::tibble(
+    participant_id = c("p1", "p1", "p2"),
+    device = c("a", "a", "b"),
+    time = as.POSIXct(
+      c("2024-01-01 10:00:00", "2024-01-01 10:30:00", "2024-01-01 10:00:00"),
+      tz = "UTC"
+    ),
+    event = c("early", "late", "other")
+  )
+  gaps <- tibble::tibble(
+    participant_id = c("p1", "p2"),
+    device = c("a", "b"),
+    from = as.POSIXct(c("2024-01-01 10:10:00", "2024-01-01 10:05:00"), tz = "UTC"),
+    to = as.POSIXct(c("2024-01-01 10:20:00", "2024-01-01 10:15:00"), tz = "UTC")
+  )
+
+  expect_identical(
+    add_gaps(dat, gaps, by = NULL, continue = TRUE),
+    add_gaps(dat, gaps, by = c("participant_id", "device"), continue = TRUE)
+  )
+
+  separate <- tibble::tibble(
+    stream = "x",
+    from = as.POSIXct("2024-01-01 10:10:00", tz = "UTC"),
+    to = as.POSIXct("2024-01-01 10:20:00", tz = "UTC")
+  )
+  expect_error(add_gaps(dat, separate, by = NULL), "supply.*by")
+})
+
+test_that("add_gaps follows the source of data", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db))
+
+  local_data <- tibble::tibble(
+    participant_id = c("p1", "p1", "p2"),
+    time = as.POSIXct(
+      c("2024-01-01 10:00:00", "2024-01-01 10:30:00", "2024-01-01 10:00:00"),
+      tz = "UTC"
+    ),
+    event = c("a", "b", "c")
+  )
+  local_gaps <- tibble::tibble(
+    participant_id = c("p1", "p2"),
+    from = as.POSIXct(c("2024-01-01 10:10:00", "2024-01-01 10:05:00"), tz = "UTC"),
+    to = as.POSIXct(c("2024-01-01 10:20:00", "2024-01-01 10:15:00"), tz = "UTC")
+  )
+  expected <- add_gaps(local_data, local_gaps, by = "participant_id", continue = TRUE)
+
+  lazy_data <- dplyr::copy_to(db, local_data, "add_gaps_data", temporary = TRUE)
+  lazy_gaps <- dplyr::copy_to(db, local_gaps, "add_gaps_gaps", temporary = TRUE)
+
+  # lazy + lazy stays lazy and matches the local result
+  remote <- add_gaps(lazy_data, lazy_gaps, by = "participant_id", continue = TRUE)
+  expect_s3_class(remote, "tbl_sql")
+  expect_equal(collect(remote), expected, ignore_attr = TRUE)
+
+  # mixed sources require copy = TRUE; the result follows `data`
+  expect_error(add_gaps(lazy_data, local_gaps, by = "participant_id"), "copy")
+  expect_equal(
+    add_gaps(
+      lazy_data,
+      local_gaps,
+      by = "participant_id",
+      continue = TRUE,
+      copy = TRUE
+    ) |>
+      collect(),
+    expected,
+    ignore_attr = TRUE
+  )
+
+  expect_error(add_gaps(local_data, lazy_gaps, by = "participant_id"), "copy")
+  local_out <- add_gaps(
+    local_data,
+    lazy_gaps,
+    by = "participant_id",
+    continue = TRUE,
+    copy = TRUE
+  )
+  expect_s3_class(local_out, "tbl_df")
+  expect_equal(local_out, expected)
+})
+
+test_that("add_gaps applies fill and continuation on the remote path", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db))
+
+  local_data <- tibble::tibble(
+    participant_id = "p1",
+    time = as.POSIXct(c("2024-01-01 10:00:00", "2024-01-01 10:30:00"), tz = "UTC"),
+    event = c("a", "b")
+  )
+  local_gaps <- tibble::tibble(
+    participant_id = "p1",
+    from = as.POSIXct("2024-01-01 10:10:00", tz = "UTC"),
+    to = as.POSIXct("2024-01-01 10:20:00", tz = "UTC")
+  )
+  fill <- list(event = "GAP", extra = 1)
+  lazy_data <- dplyr::copy_to(db, local_data, "add_gaps_fill_data", temporary = TRUE)
+  lazy_gaps <- dplyr::copy_to(db, local_gaps, "add_gaps_fill_gaps", temporary = TRUE)
+
+  for (continue in c(FALSE, TRUE)) {
+    expected <- add_gaps(
+      local_data,
+      local_gaps,
+      by = "participant_id",
+      continue = continue,
+      fill = fill
+    )
+    remote <- add_gaps(
+      lazy_data,
+      lazy_gaps,
+      by = "participant_id",
+      continue = continue,
+      fill = fill
+    )
+    expect_equal(collect(remote), expected, ignore_attr = TRUE)
+  }
+})
+
+test_that("add_gaps keeps POSIXct fill instants under a non-UTC session", {
+  con <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(cleanup_test_db(con))
+  DBI::dbExecute(con, "SET timezone = 'Europe/Brussels'")
+  # `get_data()` returns TIMESTAMPTZ columns. dbplyr renders POSIXct fill
+  # literals as naive TIMESTAMP, which DuckDB would cast using the session
+  # timezone, so the literal must carry the instant explicitly.
+  DBI::dbExecute(
+    con,
+    "CREATE TEMP TABLE gap_fill_tz (participant_id VARCHAR, time TIMESTAMPTZ, seen TIMESTAMPTZ)"
+  )
+  DBI::dbExecute(
+    con,
+    "INSERT INTO gap_fill_tz VALUES
+      ('p1', TIMESTAMPTZ '2024-01-01 10:00:00+00', TIMESTAMPTZ '2024-01-01 09:55:00+00'),
+      ('p1', TIMESTAMPTZ '2024-01-01 10:30:00+00', TIMESTAMPTZ '2024-01-01 10:25:00+00')"
+  )
+  data <- dplyr::tbl(con, "gap_fill_tz")
+  gaps <- data.frame(
+    participant_id = "p1",
+    from = as.POSIXct("2024-01-01 10:05:00", tz = "UTC"),
+    to = as.POSIXct("2024-01-01 10:15:00", tz = "UTC")
+  )
+  fill_value <- as.POSIXct("2024-01-01 09:45:00", tz = "Europe/Brussels") # 08:45 UTC
+
+  out <- add_gaps(
+    data,
+    gaps,
+    by = "participant_id",
+    continue = FALSE,
+    fill = list(seen = fill_value),
+    copy = TRUE
+  ) |>
+    collect() |>
+    arrange(time)
+
+  expect_equal(
+    as.numeric(out$seen),
+    as.numeric(as.POSIXct(
+      c("2024-01-01 09:55:00", "2024-01-01 08:45:00", "2024-01-01 10:25:00"),
+      tz = "UTC"
+    ))
+  )
+  expect_equal(
+    as.numeric(out$time),
+    as.numeric(as.POSIXct(
+      c("2024-01-01 10:00:00", "2024-01-01 10:05:00", "2024-01-01 10:30:00"),
+      tz = "UTC"
+    ))
+  )
+
+  # With continuation the gap end copies the latest measurement at or before
+  # `to`, so the join key and `.gaps_to` must be anchored at UTC as well.
+  continued <- add_gaps(
+    data,
+    gaps,
+    by = "participant_id",
+    continue = TRUE,
+    fill = list(seen = fill_value),
+    copy = TRUE
+  ) |>
+    collect() |>
+    arrange(time)
+
+  expect_equal(
+    as.numeric(continued$time),
+    as.numeric(as.POSIXct(
+      c(
+        "2024-01-01 10:00:00",
+        "2024-01-01 10:05:00",
+        "2024-01-01 10:15:00",
+        "2024-01-01 10:30:00"
+      ),
+      tz = "UTC"
+    ))
+  )
+  expect_equal(
+    as.numeric(continued$seen),
+    as.numeric(as.POSIXct(
+      c(
+        "2024-01-01 09:55:00",
+        "2024-01-01 08:45:00",
+        "2024-01-01 09:55:00",
+        "2024-01-01 10:25:00"
+      ),
+      tz = "UTC"
+    ))
+  )
+})
+
+test_that("add_gaps keeps POSIXct fill instants on naive lazy tables", {
+  con <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(cleanup_test_db(con))
+  DBI::dbExecute(con, "SET timezone = 'Europe/Brussels'")
+
+  # dbplyr's copy_to() writes POSIXct as naive TIMESTAMP of the UTC clock;
+  # re-anchoring must leave those values untouched too.
+  local_data <- data.frame(
+    participant_id = "p1",
+    time = as.POSIXct(c("2024-01-01 10:00:00", "2024-01-01 10:30:00"), tz = "UTC"),
+    seen = as.POSIXct(c("2024-01-01 09:55:00", "2024-01-01 10:25:00"), tz = "UTC")
+  )
+  data <- dplyr::copy_to(con, local_data, "dat_tz", temporary = TRUE)
+  gaps <- data.frame(
+    participant_id = "p1",
+    from = as.POSIXct("2024-01-01 10:05:00", tz = "UTC"),
+    to = as.POSIXct("2024-01-01 10:15:00", tz = "UTC")
+  )
+  fill_value <- as.POSIXct("2024-01-01 09:45:00", tz = "Europe/Brussels") # 08:45 UTC
+
+  out <- add_gaps(
+    data,
+    gaps,
+    by = "participant_id",
+    continue = FALSE,
+    fill = list(seen = fill_value),
+    copy = TRUE
+  ) |>
+    collect() |>
+    arrange(time)
+
+  expect_equal(
+    as.numeric(out$seen),
+    as.numeric(as.POSIXct(
+      c("2024-01-01 09:55:00", "2024-01-01 08:45:00", "2024-01-01 10:25:00"),
+      tz = "UTC"
+    ))
+  )
+  expect_equal(
+    as.numeric(out$time),
+    as.numeric(as.POSIXct(
+      c("2024-01-01 10:00:00", "2024-01-01 10:05:00", "2024-01-01 10:30:00"),
+      tz = "UTC"
+    ))
+  )
+})
+
+test_that("add_gaps matches the local result on a package lazy table", {
+  db <- create_sensor_test_db()
+  on.exit(cleanup_test_db(db))
+  DBI::dbExecute(db, "SET timezone = 'Europe/Brussels'")
+
+  lazy_data <- get_data(db, "Activity", "12345")
+  local_data <- collect(lazy_data)
+  # Fractional seconds must survive the naive-to-TIMESTAMPTZ round trip.
+  local_gaps <- tibble::tibble(
+    participant_id = 12345,
+    from = as.POSIXct("2021-11-14 13:59:59", tz = "UTC") + 0.5,
+    to = as.POSIXct("2021-11-14 14:00:00", tz = "UTC") + 0.5
+  )
+  expected <- add_gaps(local_data, local_gaps, by = "participant_id", continue = TRUE)
+
+  remote <- add_gaps(
+    lazy_data,
+    local_gaps,
+    by = "participant_id",
+    continue = TRUE,
+    copy = TRUE
+  ) |>
+    collect()
+
+  expect_equal(remote, expected, ignore_attr = TRUE)
+  expect_true(any(abs(as.numeric(remote$time) %% 1) > 0.4))
 })
