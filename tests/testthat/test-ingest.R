@@ -102,7 +102,7 @@ test_that("phone Accelerometer ingest parses each payload once", {
   expect_match(sql, "m.sense_version = 6", fixed = TRUE)
   expect_match(sql, "CROSS JOIN LATERAL", fixed = TRUE)
   # no ->> remains; features come from the transform struct (spot checks)
-  expect_match(sql, "CAST\\(j\\.p\\.count AS INTEGER\\)")
+  expect_match(sql, "CAST\\(j\\.p\\.count AS UINTEGER\\)")
   expect_match(sql, "CAST\\(j\\.p\\.xMean AS REAL\\)")
   expect_match(sql, "CAST\\(j\\.p\\.signalMagnitudeArea AS REAL\\)")
   # target column list and value list are generated from one payload-key
