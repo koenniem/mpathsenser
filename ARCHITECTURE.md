@@ -583,6 +583,8 @@ dbplyr copies `POSIXct` values as naive UTC-clock `TIMESTAMP` while the package'
   `broken/` corpus of truncated, empty and illegal-ASCII files) and the shipped example capture
   in `inst/extdata/example/` (27 m-Path zips from one Android participant) with its derived
   parquet snapshot in `inst/extdata/example-db/`, rebuilt by `data-raw/build_example_db.R`.
+  A simulated ESM export in `inst/extdata/example-esm/` is rebuilt by
+  `data-raw/build_example_esm.R` and read with `mpathr` in the get-started vignette.
   `helper-setup.R` builds throwaway databases; run test files individually — many DuckDB
   connections in one long session can flake.
 * GitHub Actions: `R-CMD-check.yaml` (5 OS/R combinations), `test-coverage.yaml` (covr → Codecov),

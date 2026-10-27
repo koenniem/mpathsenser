@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-This vignette walks through the complete mpathsenser workflow: importing the JSON files exported by m-Path Sense into a database, checking what was imported, deduplicating and optimising the data, and finally extracting and visualising it. We use a small example dataset that ships with the package, but everything works the same on your own data.
+This vignette walks through the complete mpathsenser workflow: importing the JSON files exported by m-Path Sense into a database, checking what was imported, deduplicating and optimising the data, extracting and visualising it, and finally combining it with ESM data read through mpathr to answer a simple analysis question. We use a small example dataset that ships with the package, but everything works the same on your own data.
 
 First, make sure we load the package (and `dplyr` and `ggplot2` for querying and plotting).
 
@@ -27,6 +27,8 @@ First, make sure we load the package (and `dplyr` and `ggplot2` for querying and
 library(mpathsenser)
 library(dplyr)
 library(ggplot2)
+
+has_mpathr <- requireNamespace("mpathr", quietly = TRUE)
 ```
 
 # The m-Path Sense data format
@@ -232,7 +234,7 @@ get_data(db, sensor = "Battery") |>
 
 A time window can be selected with `start_date` and `end_date` (in `YYYY-MM-DD` format). Leaving the arguments empty returns all data. Functions such as `bin_data()`, `moving_average()`, and `to_local_time()` build on `get_data()` for common data processing tasks.
 
-# Creating a coverage chart
+# Checking coverage
 
 Use `coverage_frequency()` for absolute counts of distinct measurement times and `coverage_proportional()` to compare measurements or covered time with expected sampling intervals. Both calculations run inside DuckDB and return lazy, zero-filled series within each participant's observation span. Call `collect()` to materialise the values.
 
@@ -276,6 +278,202 @@ cov_relative <- coverage_proportional(
 #|   each sensor.
 plot(cov, cycle = "day")
 ```
+
+# A complete analysis: movement and phone use
+
+The coverage chart shows how much data the capture contains, but not what the participant did with their phone or how much they moved. In this section we follow participant `372780` on 1 October 2026 and combine `Pedometer` and `Screen` with simulated ESM responses read through mpathr. We read the sensing `_local` views, so days, hours, and date filters follow the participant's local clock.
+
+```{r workflow setup}
+participant <- 372780
+analysis_day <- as.Date("2026-10-01")
+```
+
+## Checking for recording gaps
+
+Before summarising the data, check whether the sensors were actually recording. `identify_gaps()` returns periods longer than `min_gap` seconds without a measurement. Limiting the check to the two continuously sampled sensors keeps the result focused:
+
+```{r gaps}
+gaps <- identify_gaps(
+  db,
+  participant_id = participant,
+  sensor = c("Pedometer", "Screen"),
+  min_gap = 3600
+) |>
+  collect()
+
+gaps
+```
+
+In this capture there is one gap: recording stops at 17:46 UTC on 30 September and resumes at 06:04 UTC on 1 October. In the participant's local time that is 19:46 to 08:04, so the second day starts in the morning. The hourly summaries below begin around 08:00 for that reason.
+
+## Daily steps and screen unlocks
+
+The pedometer reports a cumulative step count. The number of steps in a day is therefore the difference between the highest and lowest counter value, not the sum of the `step_count` column. Screen unlocks are point events and can simply be counted.
+
+```{r daily summary}
+pedometer <- get_data(db, "Pedometer_local", participant_id = participant) |>
+  collect()
+
+daily_steps <- pedometer |>
+  group_by(date = as.Date(time)) |>
+  summarise(steps = max(step_count) - min(step_count), .groups = "drop")
+
+screen <- get_data(db, "Screen_local", participant_id = participant) |>
+  collect()
+
+daily_unlocks <- screen |>
+  filter(screen_event == "SCREEN_UNLOCKED") |>
+  count(date = as.Date(time), name = "unlocks")
+
+left_join(daily_steps, daily_unlocks, by = "date")
+```
+
+The step counts cover the period between the first and last pedometer reading of each day. Because recording pauses overnight, they do not include the night.
+
+## Steps and screen time per hour
+
+To see the rhythm of the day, restrict the data to 1 October and aggregate per local hour. The step count is the increase since the previous reading within the same day. A first reading has no previous value and is dropped; a negative jump would mean the counter was reset and is dropped as well. If the pedometer pauses during the day, the next reading includes all steps since the previous one.
+
+```{r hourly}
+steps_hourly <- pedometer |>
+  filter(as.Date(time) == analysis_day) |>
+  arrange(time) |>
+  mutate(steps = step_count - lag(step_count)) |>
+  filter(!is.na(steps), steps >= 0) |>
+  group_by(hour = lubridate::floor_date(time, "hour")) |>
+  summarise(steps = sum(steps), .groups = "drop")
+
+screen_intervals <- screen |>
+  filter(screen_event %in% c("SCREEN_ON", "SCREEN_OFF")) |>
+  arrange(time) |>
+  mutate(
+    next_event = lead(screen_event),
+    next_time = lead(time)
+  ) |>
+  filter(screen_event == "SCREEN_ON", next_event == "SCREEN_OFF") |>
+  transmute(time, end_time = next_time) |>
+  # An interval that starts on one day and ends on the next cannot be split
+  # cleanly, so leave it out of the daily screen time.
+  filter(as.Date(time) == analysis_day, as.Date(end_time) == analysis_day)
+
+screen_hourly <- screen_intervals |>
+  bin_data(start_time = time, end_time = end_time, by = "hour") |>
+  tidyr::unnest(bin_data) |>
+  mutate(minutes = as.numeric(difftime(end_time, time, units = "mins"))) |>
+  group_by(hour = lubridate::floor_date(bin, "hour")) |>
+  summarise(screen_minutes = sum(minutes), .groups = "drop")
+
+hourly <- full_join(steps_hourly, screen_hourly, by = "hour") |>
+  tidyr::complete(
+    hour = seq(min(hour), max(hour), by = "hour"),
+    fill = list(steps = 0, screen_minutes = 0)
+  ) |>
+  arrange(hour)
+```
+
+`bin_data()` splits the screen-on intervals at hour boundaries, so an interval that crosses an hour contributes to both hours. The plot below puts both measures on the same time axis.
+
+```{r hourly plot, fig.width = 8, fig.height = 5, fig.align = "center", dpi = 100}
+#| fig.alt: Two bar charts for each hour of 1 October. Steps are highest around
+#|   09:00 and 18:00; screen-on minutes are highest around 19:00.
+bind_rows(
+  transmute(hourly, hour, measure = "Steps", value = steps),
+  transmute(hourly, hour, measure = "Screen-on minutes", value = screen_minutes)
+) |>
+  ggplot(aes(x = hour, y = value)) +
+  geom_col() +
+  facet_wrap(~measure, scales = "free_y", ncol = 1) +
+  labs(x = NULL, y = NULL) +
+  theme_minimal()
+```
+
+## Adding ESM data with mpathr
+
+Many studies combine passive sensing with experience sampling (ESM). The companion package [mpathr](https://github.com/m-path-io/mpathr) reads the CSV files exported by the m-Path platform. The example capture has no ESM data, so the package ships a small simulated export for the same participant and dates. Its layout follows mpathr's raw `example_basic.csv` and `example_meta.csv`; the answers are simulated, and the anxiety rating (our stress measure) was generated from the example step counts so the relationship below is visible.
+
+The ESM file is read with `mpathr::read_mpath()`. m-Path timestamps use the participant's local time zone, so we use `mpathr::timestamps_to_datetime()` with `tz_offset = timeZoneOffset`; this is mpathr's documented way to convert them to true UTC for linking with external sensor data. The `start` time is when the participant opened the questionnaire; we use that as the moment of the response.
+
+```{r esm read, eval = has_mpathr}
+esm_file <- system.file(
+  "extdata", "example-esm", "example_esm.csv",
+  package = "mpathsenser"
+)
+esm_meta <- system.file("extdata", "example_meta.csv", package = "mpathr")
+
+esm <- mpathr::read_mpath(esm_file, esm_meta) |>
+  mutate(
+    start = mpathr::timestamps_to_datetime(timeStampStart, tz_offset = timeZoneOffset),
+    answered = !is.na(timeStampStart),
+    anxiety = slider_anxious_sliderNegPos
+  ) |>
+  select(connectionId, start, answered, anxiety)
+
+esm
+```
+
+The response rate is a first check on the ESM data. `mpathr::response_rate()` counts the beeps and the proportion that were answered:
+
+```{r esm response rate, eval = has_mpathr}
+mpathr::response_rate(
+  data = esm,
+  valid_col = answered,
+  participant_col = connectionId
+)
+```
+
+To relate the responses to the sensing data, link each answered beep to the pedometer readings in the previous 30 minutes. The `Pedometer` view is used here because it exposes UTC timestamps, so both the decoded ESM times and the sensing timestamps are in UTC. The first and last counter values in each window give the number of steps.
+
+```{r esm link, eval = has_mpathr}
+esm_answered <- esm |>
+  filter(answered) |>
+  transmute(
+    participant_id = connectionId,
+    time = start,
+    anxiety = anxiety
+  )
+
+pedometer_utc <- get_data(db, "Pedometer", participant_id = participant) |>
+  collect()
+
+esm_steps <- link(
+  x = esm_answered,
+  y = pedometer_utc,
+  by = "participant_id",
+  time = time,
+  y_time = time,
+  offset_before = "30 minutes",
+  add_before = TRUE,
+  name = "pedometer"
+) |>
+  mutate(
+    steps = purrr::map_dbl(pedometer, \(x) max(x$step_count) - min(x$step_count))
+  )
+
+esm_steps |>
+  select(participant_id, time, anxiety, steps)
+```
+
+The relationship is easier to see in a scatter plot:
+
+```{r esm plot, eval = has_mpathr, fig.width = 6, fig.height = 4, fig.align = "center", dpi = 100}
+#| fig.alt: Scatter plot of reported anxiety against steps in the 30 minutes
+#|   before the beep. Higher step counts tend to go with lower anxiety.
+ggplot(esm_steps, aes(x = steps, y = anxiety)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, se = FALSE) +
+  labs(
+    x = "Steps in the 30 minutes before the beep",
+    y = "Reported anxiety (0-100)"
+  ) +
+  theme_minimal()
+```
+
+```{r esm correlation, eval = has_mpathr}
+esm_steps |>
+  summarise(r = cor(steps, anxiety), n = n())
+```
+
+The simulated responses show a negative association between steps and anxiety. With 13 answered beeps this is an illustration of the workflow, not an estimate of an effect. The same code works with a real ESM export and another sensing variable; change the sensor and the window to match your question.
 
 # Closing the database
 

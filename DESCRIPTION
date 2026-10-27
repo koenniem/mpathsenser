@@ -41,6 +41,7 @@ Suggests:
     httr,
     kableExtra,
     knitr,
+    mpathr,
     rmarkdown,
     rvest,
     spelling,

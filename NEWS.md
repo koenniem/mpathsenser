@@ -106,6 +106,9 @@ The good news: this is what you get in return.
   small, ready-to-use database built from an example capture of 27 zipped
   JSON files from an Android participant. It is the nicest way to try the
   new workflow without touching your own data.
+* **An ESM example ships with the package.** The get-started vignette links
+  the example capture to a small simulated m-Path ESM export using
+  `mpathr`, showing how to relate questionnaire responses to sensor data.
 * **New sensors: `BluetoothBeacon` and the Garmin family.** Bluetooth Beacon
   scans are imported alongside the existing Bluetooth data, and m-Path
   Sense's Garmin sensors are supported too: fourteen sensors covering
