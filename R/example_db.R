@@ -72,6 +72,16 @@ example_db <- function() {
     .load_example_table(db, "main", table, dir)
   }
 
+  # Restoring explicit file IDs does not advance the sequence. Move it past
+  # the snapshot so importing a new file does not collide with those IDs.
+  dbExecute(
+    db,
+    "SELECT setval(
+       'processed_files_seq',
+       (SELECT CAST(COALESCE(MAX(file_id), 0) AS BIGINT) FROM ProcessedFiles)
+     )"
+  )
+
   raw_tables <- dbGetQuery(
     db,
     "SELECT table_name FROM duckdb_tables() WHERE schema_name = 'raw'"

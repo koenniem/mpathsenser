@@ -8,6 +8,55 @@ test_that("example_db() opens the shipped example capture", {
   expect_equal(sum(get_nrows(db)), 16457)
 })
 
+test_that("example_db() can import new files without ID collisions", {
+  db <- example_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
+
+  max_id <- DBI::dbGetQuery(
+    db,
+    "SELECT MAX(file_id) AS m FROM ProcessedFiles"
+  )$m
+
+  dir <- tempfile("example-import")
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+
+  entries <- list(
+    list(
+      sensorStartTime = 1765889440388567,
+      data = list(
+        `__type` = "dk.cachet.carp.mpathinfo",
+        connectionId = "372780",
+        studyName = "test_study",
+        senseVersion = 5
+      )
+    ),
+    list(
+      sensorStartTime = 1765889440388567,
+      data = list(`__type` = "dk.cachet.carp.stepcount", steps = 1)
+    )
+  )
+  jsonlite::write_json(entries, file.path(dir, "new.json"), auto_unbox = TRUE)
+
+  expect_identical(
+    read_mpath_sense(path = dir, db = db, recursive = FALSE, .progress = FALSE),
+    ""
+  )
+  new_file <- DBI::dbGetQuery(
+    db,
+    "SELECT file_id FROM ProcessedFiles WHERE file_name = 'new.json'"
+  )
+  expect_equal(nrow(new_file), 1L)
+  expect_gt(new_file$file_id, max_id)
+  expect_equal(
+    DBI::dbGetQuery(
+      db,
+      "SELECT COUNT(*) AS n FROM Pedometer WHERE step_count = 1"
+    )$n,
+    1L
+  )
+})
+
 test_that("example_db() connections are independent", {
   first <- example_db()
   second <- example_db()
