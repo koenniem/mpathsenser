@@ -353,6 +353,26 @@ test_that("to_local_time handles a single timezone", {
   expect_equal(attr(result, "tzone"), "UTC")
 })
 
+test_that("to_local_time normalizes non-UTC and POSIXlt input", {
+  x <- as.POSIXct("2025-05-10 12:00:00", tz = "Europe/Brussels")
+  result <- to_local_time(x, "Europe/Brussels")
+
+  expect_s3_class(result, "POSIXct")
+  expect_equal(attr(result, "tzone"), "UTC")
+  expect_equal(format(result, tz = "UTC"), "2025-05-10 12:00:00")
+
+  lt <- as.POSIXlt("2025-05-10 12:00:00", tz = "UTC")
+  result_lt <- to_local_time(lt, "Europe/Brussels")
+
+  expect_s3_class(result_lt, "POSIXct")
+  expect_equal(attr(result_lt, "tzone"), "UTC")
+  expect_equal(format(result_lt, tz = "UTC"), "2025-05-10 14:00:00")
+
+  unknown <- to_local_time(x, NULL)
+  expect_equal(attr(unknown, "tzone"), "UTC")
+  expect_equal(format(unknown, tz = "UTC"), "2025-05-10 10:00:00")
+})
+
 test_that("to_local_time handles multiple timezones", {
   x <- as.POSIXct(c("2025-05-10 12:00:00", "2025-05-10 12:00:00"), tz = "UTC")
   tzs <- c("Europe/Brussels", "America/New_York")

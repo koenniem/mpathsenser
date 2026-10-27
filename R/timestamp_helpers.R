@@ -51,6 +51,10 @@
 # anything as.POSIXct() can turn into one; character values are read as UTC.
 .check_timestamp <- function(x) {
   if (inherits(x, "POSIXt")) {
+    # Keep the instant, but normalize both POSIXct and POSIXlt to a UTC-tagged
+    # POSIXct. Setting the timezone attribute on POSIXct only changes how the
+    # instant is displayed.
+    x <- as.POSIXct(as.numeric(x), origin = "1970-01-01", tz = "UTC")
     return(x)
   }
 
@@ -209,6 +213,81 @@ to_local_time <- function(x, timezone) {
   .to_local_time_r(x, timezone)
 }
 
+# Rebase a single-table lazy query onto <sensor>_with_local. The view keeps
+# the absolute timestamps used by the caller's filters and adds *_local
+# columns that already apply the per-row sense_version rules for legacy
+# sensors. Returns NULL when the query shape cannot be rewritten safely.
+.rebase_legacy_query <- function(x, sensor) {
+  legacy_columns <- .source_timestamp_fixes[[sensor]]
+  if (is.null(legacy_columns) || !inherits(x, "tbl_sql")) {
+    return(NULL)
+  }
+
+  db <- dbplyr::remote_con(x)
+  local_view <- paste0(sensor, "_with_local")
+  if (!DBI::dbExistsTable(db, local_view)) {
+    return(NULL)
+  }
+
+  query <- .replace_lazy_base(
+    x$lazy_query,
+    sensor,
+    local_view,
+    DBI::dbListFields(db, local_view)
+  )
+  if (is.null(query)) {
+    return(NULL)
+  }
+
+  select <- query$select
+  if (is.null(select) || !is.data.frame(select)) {
+    return(NULL)
+  }
+
+  local_names <- stats::setNames(
+    paste0(legacy_columns, "_local"),
+    legacy_columns
+  )
+  localised <- character(0)
+  for (i in seq_len(nrow(select))) {
+    expr <- select$expr[[i]]
+    if (is.name(expr) && as.character(expr) %in% legacy_columns) {
+      select$expr[[i]] <- as.name(local_names[[as.character(expr)]])
+      localised <- c(localised, select$name[[i]])
+    }
+  }
+  query$select <- select
+
+  list(query = query, localised = localised)
+}
+
+.replace_lazy_base <- function(query, sensor, local_view, vars) {
+  if (inherits(query, "lazy_base_remote_query")) {
+    if (!identical(as.character(query$x), sensor)) {
+      return(NULL)
+    }
+    query$x <- structure(local_view, class = class(query$x))
+    query$vars <- vars
+    return(query)
+  }
+
+  # collect_local() knows one sensor; do not guess which side of a join to use.
+  if (!is.null(query$y) && inherits(query$y, "lazy_query")) {
+    return(NULL)
+  }
+
+  if (!is.null(query$x) && inherits(query$x, "lazy_query")) {
+    child <- .replace_lazy_base(query$x, sensor, local_view, vars)
+    if (is.null(child)) {
+      return(NULL)
+    }
+    query$x <- child
+    return(query)
+  }
+
+  NULL
+}
+
 #' Collect a lazy table with participant-local timestamp values
 #'
 #' @description `r lifecycle::badge("experimental")`
@@ -227,20 +306,42 @@ to_local_time <- function(x, timezone) {
 #'   column.
 #' @export
 collect_local <- function(x, ...) {
-  out <- collect(x, ...)
-
   # Only physical sensor tables carry a timezone and need conversion. Tables
   # that already went through a `_local`/`_with_local` view are left untouched.
   sensor <- attr(x, "mpathsenser_sensor")
-  if (is.null(sensor) || grepl("_(local|with_local)$", sensor)) {
-    return(out)
+  if (is.null(sensor) || grepl("_(local|with_local)$", sensor, ignore.case = TRUE)) {
+    return(collect(x, ...))
   }
+
+  # The legacy sensors need the per-row sense_version rules from the views;
+  # carry their *_local columns through the caller's query and use those
+  # instead of converting the stored values again.
+  sensor <- .standard_sensor_names(.physical_sensor(sensor))
+  localised <- character(0)
+  if (sensor %in% names(.source_timestamp_fixes) && inherits(x, "tbl_sql")) {
+    db <- dbplyr::remote_con(x)
+    if (inherits(x$lazy_query, "lazy_base_remote_query")) {
+      local_view <- paste0(sensor, "_local")
+      if (DBI::dbExistsTable(db, local_view)) {
+        return(collect(tbl(db, local_view), ...))
+      }
+    }
+
+    rebased <- .rebase_legacy_query(x, sensor)
+    if (!is.null(rebased)) {
+      x$lazy_query <- rebased$query
+      localised <- rebased$localised
+    }
+  }
+
+  out <- collect(x, ...)
 
   if (!"timezone" %in% names(out)) {
     return(out)
   }
 
   posix_columns <- names(out)[vapply(out, inherits, logical(1), what = "POSIXt")]
+  posix_columns <- setdiff(posix_columns, localised)
   for (column in posix_columns) {
     out[[column]] <- to_local_time(out[[column]], out$timezone)
   }
