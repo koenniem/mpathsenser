@@ -6,8 +6,7 @@ test_that("normalized payload types are unique", {
 
 test_that("registered ingest functions generate complete SQL templates", {
   registry <- new_sensor_registry()
-  garmin <- vapply(registry, \(x) x[["type"]], character(1)) ==
-    "garminalllogsdata"
+  garmin <- vapply(registry, \(x) x[["type"]], character(1)) == "garminalllogsdata"
 
   for (sensor in names(registry)) {
     sql <- registry[[sensor]]$fun(5L)
@@ -36,8 +35,7 @@ test_that("registered ingest functions generate complete SQL templates", {
 
 test_that("ingest functions use staged payload types", {
   registry <- new_sensor_registry()
-  garmin <- vapply(registry, \(x) x[["type"]], character(1)) ==
-    "garminalllogsdata"
+  garmin <- vapply(registry, \(x) x[["type"]], character(1)) == "garminalllogsdata"
 
   for (sensor in names(registry)) {
     sql <- registry[[sensor]]$fun(6L)
@@ -118,10 +116,23 @@ test_that("garmin_parse SQL builds one typed transform per staged payload", {
   expect_match(sql, "m\\.sense_version = 6")
   expect_no_match(sql, "%s")
   # every Garmin array schema appears in the transform
-  for (key in c("heartRate", "stress", "steps", "bbi", "enhancedBbi",
-    "gyroscope", "accelerometer", "respiration", "skinTemperature",
-    "spo2", "wristStatus", "zeroCrossing", "actigraphy1", "actigraphy2",
-    "actigraphy3")) {
+  for (key in c(
+    "heartRate",
+    "stress",
+    "steps",
+    "bbi",
+    "enhancedBbi",
+    "gyroscope",
+    "accelerometer",
+    "respiration",
+    "skinTemperature",
+    "spo2",
+    "wristStatus",
+    "zeroCrossing",
+    "actigraphy1",
+    "actigraphy2",
+    "actigraphy3"
+  )) {
     expect_match(sql, sprintf('\"%s\"', key), fixed = TRUE)
   }
 })
@@ -151,6 +162,219 @@ test_that("scalar ingest SQL executes against a staging fixture", {
   expect_equal(activity$participant_id, 1)
   expect_equal(activity$confidence, 80L)
   expect_equal(activity$type, "WALKING")
+
+  close_db(db)
+})
+
+test_that("Location and Weather parse each payload once", {
+  location <- ingest_location(6L)
+  expect_no_match(location, "data->>")
+  expect_match(location, "json_extract_string\\(s\\.data")
+  expect_match(location, "payload_type = 'location'", fixed = TRUE)
+  expect_match(location, "CROSS JOIN LATERAL")
+
+  weather <- ingest_weather(6L)
+  expect_no_match(weather, "data->>")
+  expect_match(weather, "json_extract_string\\(s\\.data")
+  expect_match(weather, "payload_type = 'weather'", fixed = TRUE)
+  expect_match(weather, "CROSS JOIN LATERAL")
+})
+
+test_that("Location ingest handles full, missing, and string-valued payloads", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  DBI::dbExecute(
+    db,
+    "CREATE TEMP TABLE raw_staging AS
+     SELECT * FROM (VALUES
+       (1765889440388567::BIGINT, NULL::BIGINT,
+        '{\"__type\": \"dk.cachet.carp.location\", \"latitude\": 50.1, \"longitude\": 4.2, \"altitude\": 10.5, \"accuracy\": 3.2, \"verticalAccuracy\": 1.1, \"speed\": 1.4, \"speedAccuracy\": 0.2, \"heading\": 180, \"headingAccuracy\": 5, \"isMock\": false, \"elapsedRealtimeNanos\": 1234567890123, \"elapsedRealtimeUncertaintyNanos\": 10}',
+        'full.json', 'location', 1::BIGINT),
+       (1765889441388567::BIGINT, NULL::BIGINT,
+        '{\"__type\": \"dk.cachet.carp.location\"}',
+        'missing.json', 'location', 2::BIGINT),
+       (1765889442388567::BIGINT, NULL::BIGINT,
+        '{\"__type\": \"dk.cachet.carp.location\", \"latitude\": \"50.5\", \"longitude\": \"4.6\", \"altitude\": \"10\", \"accuracy\": \"3\", \"verticalAccuracy\": \"1\", \"speed\": \"1\", \"speedAccuracy\": \"0\", \"heading\": \"180\", \"headingAccuracy\": \"5\", \"isMock\": \"true\", \"elapsedRealtimeNanos\": \"123\", \"elapsedRealtimeUncertaintyNanos\": \"10\"}',
+        'strings.json', 'location', 3::BIGINT)
+     ) v(sensorStartTime, sensorEndTime, data, source_file, payload_type, source_row_id)"
+  )
+  DBI::dbExecute(
+    db,
+    "CREATE TEMP TABLE file_id_map AS
+     SELECT * FROM (VALUES
+       ('full.json', 1, 1::UBIGINT, 6::BIGINT),
+       ('missing.json', 1, 2::UBIGINT, 6::BIGINT),
+       ('strings.json', 1, 3::UBIGINT, 6::BIGINT)
+     ) v(source_file, participant_id, file_id, sense_version)"
+  )
+
+  DBI::dbExecute(db, ingest_location(6L))
+  location <- DBI::dbGetQuery(
+    db,
+    "SELECT source_row_id, latitude, longitude, altitude, is_mock,
+            elapsed_realtime_nanos
+     FROM raw.Location ORDER BY source_row_id"
+  )
+  expect_equal(location$source_row_id, 1:3)
+  expect_equal(location$latitude, c(50.1, NA, 50.5))
+  expect_equal(location$longitude, c(4.2, NA, 4.6))
+  expect_equal(location$altitude, c(10.5, NA, 10), tolerance = 1e-4)
+  expect_equal(location$is_mock, c(FALSE, NA, TRUE))
+  expect_equal(location$elapsed_realtime_nanos, c(1234567890123, NA, 123))
+
+  close_db(db)
+})
+
+test_that("Location ingest still rejects malformed numeric fields", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  DBI::dbExecute(
+    db,
+    "CREATE TEMP TABLE raw_staging AS
+     SELECT * FROM (VALUES
+       (1765889440388567::BIGINT, NULL::BIGINT,
+        '{\"__type\": \"dk.cachet.carp.location\", \"latitude\": \"not-a-number\"}',
+        'bad.json', 'location', 1::BIGINT)
+     ) v(sensorStartTime, sensorEndTime, data, source_file, payload_type, source_row_id)"
+  )
+  DBI::dbExecute(
+    db,
+    "CREATE TEMP TABLE file_id_map AS
+     SELECT * FROM (VALUES ('bad.json', 1, 1::UBIGINT, 6::BIGINT))
+     v(source_file, participant_id, file_id, sense_version)"
+  )
+
+  expect_error(DBI::dbExecute(db, ingest_location(6L)), "Could not convert")
+  close_db(db)
+})
+
+test_that("Weather ingest handles ISO strings, epochs, and missing fields", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  DBI::dbExecute(
+    db,
+    "CREATE TEMP TABLE raw_staging AS
+     SELECT * FROM (VALUES
+       (1765889440388567::BIGINT, NULL::BIGINT,
+        '{\"__type\": \"dk.cachet.carp.weather\", \"country\": \"BE\", \"areaName\": \"Leuven\", \"weatherMain\": \"Clouds\", \"weatherDescription\": \"broken clouds\", \"sunrise\": \"2025-12-16T11:49:12\", \"sunset\": \"2025-12-16T19:46:33\", \"latitude\": 50.9, \"longitude\": 4.7, \"pressure\": 938, \"windSpeed\": 4.9, \"windDegree\": 173, \"humidity\": 60, \"cloudiness\": 74, \"rainLastHour\": 0.1, \"rainLast3Hours\": 0.2, \"snowLastHour\": 0, \"snowLast3Hours\": 0, \"temperature\": 12.4, \"tempMin\": 11.8, \"tempMax\": 14.2}',
+        'full.json', 'weather', 1::BIGINT),
+       (1765889441388567::BIGINT, NULL::BIGINT,
+        '{\"__type\": \"dk.cachet.carp.weather\"}',
+        'missing.json', 'weather', 2::BIGINT),
+       (1765889442388567::BIGINT, NULL::BIGINT,
+        '{\"__type\": \"dk.cachet.carp.weather\", \"sunrise\": 1760000000, \"sunset\": 1760040000, \"pressure\": \"938.5\"}',
+        'epochs.json', 'weather', 3::BIGINT)
+     ) v(sensorStartTime, sensorEndTime, data, source_file, payload_type, source_row_id)"
+  )
+  DBI::dbExecute(
+    db,
+    "CREATE TEMP TABLE file_id_map AS
+     SELECT * FROM (VALUES
+       ('full.json', 1, 1::UBIGINT, 6::BIGINT),
+       ('missing.json', 1, 2::UBIGINT, 6::BIGINT),
+       ('epochs.json', 1, 3::UBIGINT, 6::BIGINT)
+     ) v(source_file, participant_id, file_id, sense_version)"
+  )
+
+  DBI::dbExecute(db, ingest_weather(6L))
+  weather <- DBI::dbGetQuery(
+    db,
+    "SELECT source_row_id, country, sunrise, sunset, pressure, temperature
+     FROM raw.Weather ORDER BY source_row_id"
+  )
+  expect_equal(weather$source_row_id, 1:3)
+  expect_equal(weather$country, c("BE", NA, NA))
+  expect_equal(
+    format(weather$sunrise, tz = "UTC"),
+    c("2025-12-16 11:49:12", NA, "2025-10-09 08:53:20")
+  )
+  expect_equal(
+    format(weather$sunset, tz = "UTC"),
+    c("2025-12-16 19:46:33", NA, "2025-10-09 20:00:00")
+  )
+  expect_equal(weather$pressure, c(938, NA, 938.5), tolerance = 1e-4)
+  expect_equal(weather$temperature, c(12.4, NA, NA), tolerance = 1e-4)
+
+  close_db(db)
+})
+
+test_that("Weather ingest still rejects malformed numeric fields", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  DBI::dbExecute(
+    db,
+    "CREATE TEMP TABLE raw_staging AS
+     SELECT * FROM (VALUES
+       (1765889440388567::BIGINT, NULL::BIGINT,
+        '{\"__type\": \"dk.cachet.carp.weather\", \"pressure\": \"not-a-number\"}',
+        'bad.json', 'weather', 1::BIGINT)
+     ) v(sensorStartTime, sensorEndTime, data, source_file, payload_type, source_row_id)"
+  )
+  DBI::dbExecute(
+    db,
+    "CREATE TEMP TABLE file_id_map AS
+     SELECT * FROM (VALUES ('bad.json', 1, 1::UBIGINT, 6::BIGINT))
+     v(source_file, participant_id, file_id, sense_version)"
+  )
+
+  expect_error(DBI::dbExecute(db, ingest_weather(6L)), "Could not convert")
+  close_db(db)
+})
+
+test_that("Location and Weather map fields by name, not JSON key order", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  DBI::dbExecute(
+    db,
+    "CREATE TEMP TABLE raw_staging AS
+     SELECT * FROM (VALUES
+       (1765889440388567::BIGINT, NULL::BIGINT,
+        '{\"__type\": \"dk.cachet.carp.location\", \"extra\": \"ignored\", \"elapsedRealtimeUncertaintyNanos\": 10, \"isMock\": false, \"heading\": 180, \"altitude\": 76.9, \"longitude\": 4.7, \"accuracy\": 87.8, \"latitude\": 50.8, \"speed\": 1.4, \"verticalAccuracy\": 1.1, \"speedAccuracy\": 0.2, \"headingAccuracy\": 5, \"elapsedRealtimeNanos\": 123}',
+        'location.json', 'location', 1::BIGINT),
+       (1765889441388567::BIGINT, NULL::BIGINT,
+        '{\"__type\": \"dk.cachet.carp.weather\", \"temperature\": 12.4, \"sunset\": \"2025-12-16T19:46:33\", \"country\": \"BE\", \"pressure\": 938, \"latitude\": 50.9, \"windDegree\": 173, \"longitude\": 4.7, \"humidity\": 60, \"areaName\": \"Leuven\", \"weatherDescription\": \"broken clouds\", \"cloudiness\": 74, \"sunrise\": \"2025-12-16T11:49:12\", \"weatherMain\": \"Clouds\", \"windSpeed\": 4.9, \"rainLastHour\": 0.1, \"rainLast3Hours\": 0.2, \"snowLastHour\": 0, \"snowLast3Hours\": 0, \"tempMin\": 11.8, \"tempMax\": 14.2}',
+        'weather.json', 'weather', 1::BIGINT)
+     ) v(sensorStartTime, sensorEndTime, data, source_file, payload_type, source_row_id)"
+  )
+  DBI::dbExecute(
+    db,
+    "CREATE TEMP TABLE file_id_map AS
+     SELECT * FROM (VALUES
+       ('location.json', 1, 1::UBIGINT, 6::BIGINT),
+       ('weather.json', 1, 2::UBIGINT, 6::BIGINT)
+     ) v(source_file, participant_id, file_id, sense_version)"
+  )
+
+  DBI::dbExecute(db, ingest_location(6L))
+  DBI::dbExecute(db, ingest_weather(6L))
+
+  location <- DBI::dbGetQuery(
+    db,
+    "SELECT latitude, longitude, altitude, accuracy, speed, vertical_accuracy,
+            heading, is_mock, elapsed_realtime_nanos
+     FROM raw.Location"
+  )
+  expect_equal(location$latitude, 50.8)
+  expect_equal(location$longitude, 4.7)
+  expect_equal(location$altitude, 76.9, tolerance = 1e-4)
+  expect_equal(location$accuracy, 87.8, tolerance = 1e-4)
+  expect_equal(location$speed, 1.4, tolerance = 1e-4)
+  expect_equal(location$vertical_accuracy, 1.1, tolerance = 1e-4)
+  expect_equal(location$heading, 180, tolerance = 1e-4)
+  expect_false(location$is_mock)
+  expect_equal(location$elapsed_realtime_nanos, 123)
+
+  weather <- DBI::dbGetQuery(
+    db,
+    "SELECT country, area_name, weather_main, weather_description, sunrise,
+            sunset, latitude, longitude, pressure, temperature
+     FROM raw.Weather"
+  )
+  expect_equal(weather$country, "BE")
+  expect_equal(weather$area_name, "Leuven")
+  expect_equal(weather$weather_main, "Clouds")
+  expect_equal(weather$weather_description, "broken clouds")
+  expect_equal(format(weather$sunrise, tz = "UTC"), "2025-12-16 11:49:12")
+  expect_equal(format(weather$sunset, tz = "UTC"), "2025-12-16 19:46:33")
+  expect_equal(weather$latitude, 50.9, tolerance = 1e-4)
+  expect_equal(weather$longitude, 4.7, tolerance = 1e-4)
+  expect_equal(weather$pressure, 938, tolerance = 1e-4)
+  expect_equal(weather$temperature, 12.4, tolerance = 1e-4)
 
   close_db(db)
 })

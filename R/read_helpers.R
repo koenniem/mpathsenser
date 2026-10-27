@@ -286,6 +286,14 @@
   paste0("[", paste0("'", escaped, "'", collapse = ", "), "]")
 }
 
+# Format a character vector of JSON field names as a DuckDB path list. A
+# json_extract_string() call with a path list parses the document once, while
+# one ->> expression per field parses it once per field. Its values match ->>
+# exactly, so the surrounding CAST keeps the same missing-value and error rules.
+.read_json_paths <- function(fields) {
+  .read_sql_array(paste0("$.", fields))
+}
+
 # SQL fragment that returns a typed list of STRUCTs for a JSON array (or
 # single value, or NULL) held in `key` of the payload object `expr`, tolerating
 # missing keys. The array is transformed directly to a list of typed STRUCTs

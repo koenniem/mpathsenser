@@ -672,7 +672,31 @@ ingest_garmin_actigraphy <- function(sense_version) {
     branch("actigraphy3", 2000000000)
   )
 }
+# Location and Weather have many scalar fields. A json_extract_string() path
+# list parses each payload once, while one ->> expression per field parses it
+# once per field. The returned list is ordered by the path list, not by the
+# JSON object's key order: e[1] is always the first path below, regardless of
+# where that key appears in the document. Keep the fields vector and the
+# j.e[n] references aligned. The extracted strings keep the same CAST
+# semantics as ->>: missing keys become NULL and malformed values still raise
+# an error. A typed json_transform() is faster, but strict mode rejects
+# optional missing keys and lenient mode hides malformed values, so it is not
+# an equivalent replacement here.
 ingest_location <- function(sense_version) {
+  fields <- c(
+    "latitude",
+    "longitude",
+    "altitude",
+    "accuracy",
+    "verticalAccuracy",
+    "speed",
+    "speedAccuracy",
+    "heading",
+    "headingAccuracy",
+    "isMock",
+    "elapsedRealtimeNanos",
+    "elapsedRealtimeUncertaintyNanos"
+  )
   sprintf(
     "INSERT INTO raw.Location (
         participant_id, time, latitude, longitude,
@@ -681,37 +705,66 @@ ingest_location <- function(sense_version) {
         elapsed_realtime_nanos, elapsed_realtime_uncertainty_nanos, source_file_id, source_row_id, source_measurement_id
       )
       SELECT
-        m.participant_id,
+        s.participant_id,
         %s,
-        CAST(s.data->>'latitude' AS DOUBLE),
-        CAST(s.data->>'longitude' AS DOUBLE),
-        CAST(s.data->>'altitude' AS REAL),
-        CAST(s.data->>'accuracy' AS REAL),
-        CAST(s.data->>'verticalAccuracy' AS REAL),
-        CAST(s.data->>'speed' AS REAL),
-        CAST(s.data->>'speedAccuracy' AS REAL),
-        CAST(s.data->>'heading' AS REAL),
-        CAST(s.data->>'headingAccuracy' AS REAL),
-        CAST(s.data->>'isMock' AS BOOLEAN),
-        CAST(s.data->>'elapsedRealtimeNanos' AS UBIGINT),
-        CAST(s.data->>'elapsedRealtimeUncertaintyNanos' AS UBIGINT),
-        m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
-      FROM raw_staging s
-      JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'location'
-        AND %s
-        AND s.sensorStartTime IS NOT NULL
+        CAST(j.e[1] AS DOUBLE),
+        CAST(j.e[2] AS DOUBLE),
+        CAST(j.e[3] AS REAL),
+        CAST(j.e[4] AS REAL),
+        CAST(j.e[5] AS REAL),
+        CAST(j.e[6] AS REAL),
+        CAST(j.e[7] AS REAL),
+        CAST(j.e[8] AS REAL),
+        CAST(j.e[9] AS REAL),
+        CAST(j.e[10] AS BOOLEAN),
+        CAST(j.e[11] AS UBIGINT),
+        CAST(j.e[12] AS UBIGINT),
+        s.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
+      FROM (
+        SELECT s.*, m.participant_id, m.file_id, m.sense_version
+        FROM (SELECT * FROM raw_staging WHERE payload_type = 'location') s
+        JOIN file_id_map m ON m.source_file = s.source_file
+        WHERE %s
+          AND s.sensorStartTime IS NOT NULL
+      ) s
+      CROSS JOIN LATERAL (
+        SELECT json_extract_string(s.data, %s) AS e
+      ) j
 ",
     .source_timestamp_import_sql(
       "to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0)",
       "Location",
-      "time"
+      "time",
+      version_alias = "s"
     ),
-    .read_version_filter(sense_version)
+    .read_version_filter(sense_version),
+    .read_json_paths(fields)
   )
 }
 
 ingest_weather <- function(sense_version) {
+  fields <- c(
+    "country",
+    "areaName",
+    "weatherMain",
+    "weatherDescription",
+    "sunrise",
+    "sunset",
+    "latitude",
+    "longitude",
+    "pressure",
+    "windSpeed",
+    "windDegree",
+    "humidity",
+    "cloudiness",
+    "rainLastHour",
+    "rainLast3Hours",
+    "snowLastHour",
+    "snowLast3Hours",
+    "temperature",
+    "tempMin",
+    "tempMax"
+  )
   sprintf(
     "INSERT INTO raw.Weather (
         participant_id, time, country, area_name,
@@ -721,51 +774,60 @@ ingest_weather <- function(sense_version) {
         temperature, temp_min, temp_max, source_file_id, source_row_id, source_measurement_id
       )
       SELECT
-        m.participant_id,
+        s.participant_id,
         %s,
-        CAST(s.data->>'country' AS TEXT),
-        CAST(s.data->>'areaName' AS TEXT),
-        CAST(s.data->>'weatherMain' AS TEXT),
-        CAST(s.data->>'weatherDescription' AS TEXT),
+        CAST(j.e[1] AS TEXT),
+        CAST(j.e[2] AS TEXT),
+        CAST(j.e[3] AS TEXT),
+        CAST(j.e[4] AS TEXT),
         %s,
         %s,
-        CAST(s.data->>'latitude' AS DOUBLE),
-        CAST(s.data->>'longitude' AS DOUBLE),
-        CAST(s.data->>'pressure' AS REAL),
-        CAST(s.data->>'windSpeed' AS REAL),
-        CAST(s.data->>'windDegree' AS REAL),
-        CAST(s.data->>'humidity' AS REAL),
-        CAST(s.data->>'cloudiness' AS REAL),
-        CAST(s.data->>'rainLastHour' AS REAL),
-        CAST(s.data->>'rainLast3Hours' AS REAL),
-        CAST(s.data->>'snowLastHour' AS REAL),
-        CAST(s.data->>'snowLast3Hours' AS REAL),
-        CAST(s.data->>'temperature' AS REAL),
-        CAST(s.data->>'tempMin' AS REAL),
-        CAST(s.data->>'tempMax' AS REAL),
-        m.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
-      FROM raw_staging s
-      JOIN file_id_map m ON s.source_file = m.source_file
-      WHERE s.payload_type = 'weather'
-        AND %s
-        AND s.sensorStartTime IS NOT NULL
+        CAST(j.e[7] AS DOUBLE),
+        CAST(j.e[8] AS DOUBLE),
+        CAST(j.e[9] AS REAL),
+        CAST(j.e[10] AS REAL),
+        CAST(j.e[11] AS REAL),
+        CAST(j.e[12] AS REAL),
+        CAST(j.e[13] AS REAL),
+        CAST(j.e[14] AS REAL),
+        CAST(j.e[15] AS REAL),
+        CAST(j.e[16] AS REAL),
+        CAST(j.e[17] AS REAL),
+        CAST(j.e[18] AS REAL),
+        CAST(j.e[19] AS REAL),
+        CAST(j.e[20] AS REAL),
+        s.file_id, s.source_row_id AS source_row_id, 1 AS source_measurement_id
+      FROM (
+        SELECT s.*, m.participant_id, m.file_id, m.sense_version
+        FROM (SELECT * FROM raw_staging WHERE payload_type = 'weather') s
+        JOIN file_id_map m ON m.source_file = s.source_file
+        WHERE %s
+          AND s.sensorStartTime IS NOT NULL
+      ) s
+      CROSS JOIN LATERAL (
+        SELECT json_extract_string(s.data, %s) AS e
+      ) j
 ",
     .source_timestamp_import_sql(
       "to_timestamp(CAST(s.sensorStartTime AS BIGINT) / 1000000.0)",
       "Weather",
-      "time"
+      "time",
+      version_alias = "s"
     ),
     .source_timestamp_import_sql(
-      "COALESCE(to_timestamp(TRY_CAST(s.data->>'sunrise' AS DOUBLE)), TRY_CAST(s.data->>'sunrise' AS TIMESTAMPTZ))",
+      "COALESCE(to_timestamp(TRY_CAST(j.e[5] AS DOUBLE)), TRY_CAST(j.e[5] AS TIMESTAMPTZ))",
       "Weather",
-      "sunrise"
+      "sunrise",
+      version_alias = "s"
     ),
     .source_timestamp_import_sql(
-      "COALESCE(to_timestamp(TRY_CAST(s.data->>'sunset' AS DOUBLE)), TRY_CAST(s.data->>'sunset' AS TIMESTAMPTZ))",
+      "COALESCE(to_timestamp(TRY_CAST(j.e[6] AS DOUBLE)), TRY_CAST(j.e[6] AS TIMESTAMPTZ))",
       "Weather",
-      "sunset"
+      "sunset",
+      version_alias = "s"
     ),
-    .read_version_filter(sense_version)
+    .read_version_filter(sense_version),
+    .read_json_paths(fields)
   )
 }
 

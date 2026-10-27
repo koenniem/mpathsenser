@@ -111,6 +111,17 @@ the original file. Sensor tables deliberately have **no unique constraints**: du
 possible (a renamed copy of a file) and are resolved by deduplication rather than prevented at
 insert time. Plain appends therefore keep constant cost.
 
+### DuckDB version and storage format
+
+`mpathsenser` requires duckdb >= 2.0.0 and dbplyr >= 2.6.0. DuckDB 2.0's R backend
+requires dbplyr 2.6 or later, and this package uses that backend throughout.
+
+DuckDB 2.0 creates new database files with storage version 69. DuckDB 1.5.x cannot read those
+files, so an mpathsenser database created by this version requires DuckDB 2.0 or later. The
+reverse still works: DuckDB 2.0 reads and writes databases created by older versions, and those
+files keep their original storage version. `create_db()` deliberately uses DuckDB's default
+storage version; it does not pin an older format or convert existing files.
+
 ### Database versioning
 
 Every database records its layout version in the single-row `DatabaseInfo` table, written by
@@ -332,7 +343,8 @@ unique across branches.
   `usage` **object** with `json_each` and numbers elements by object key, since object members have
   no inherent position.
 * **Pre-filter the staging read when a lateral parses `data`.** `.read_staging_payloads()`
-  (Bluetooth, BluetoothBeacon, Connectivity) reads `raw_staging` through a derived table filtered
+  (Bluetooth, BluetoothBeacon, Connectivity) and the equivalent derived tables in
+  `ingest_location()` / `ingest_weather()` read `raw_staging` through a derived table filtered
   by `payload_type`, because DuckDB evaluates a `CROSS JOIN LATERAL` expression for every staged
   row before the outer `WHERE` applies — including unrelated multi-hundred-KB Garmin payloads.
   Statements whose JSON work happens in the projection, in a `LEFT JOIN LATERAL`, or in a plain
@@ -343,7 +355,14 @@ unique across branches.
   expression. `ingest_accelerometer()` therefore reads them from a single typed
   `json_transform(s.data, schema)` and keeps the INSERT column list and the value expressions
   derived from one payload-key vector (`accel_col_map`, `accel_payload_order`), which must stay in
-  sync with `dbdef.sql`.
+  sync with `dbdef.sql`. `ingest_location()` and `ingest_weather()` use
+  `json_extract_string(expr, path_list)` from `.read_json_paths()`: one JSON parse per payload,
+  while the extracted values and the surrounding `CAST`s keep the same missing-key and
+  malformed-value behaviour as the old `data->>'…'` expressions. A typed `json_transform()` was
+  faster still, but `json_transform_strict()` rejects optional missing keys and the lenient
+  version silently turns malformed values into `NULL`. `Device` and `AppUsage` keep repeated
+  extraction: Device is effectively one row per file, and AppUsage is dominated by `json_each`,
+  where one-shot extraction measured only ~16% faster.
 * **Sentinel handling.** Garmin uses `-1` for missing values; `.read_null_neg()` turns those into
   `NULL`. `source_row_id` is taken from staging, `source_measurement_id` from the unnest ordinal.
 * **Legacy timestamps.** `.source_timestamp_import_sql()` emits, for the columns listed in
@@ -549,7 +568,10 @@ dbplyr copies `POSIXct` values as naive UTC-clock `TIMESTAMP` while the package'
 * Timestamps stay `TIMESTAMPTZ`; local values are explicit (`_local` views,
   `to_local_time()`, `collect_local()`).
 * `create_db()` and `open_db()` install and load the `icu` and `json` extensions explicitly
-  (`.ensure_duckdb_extensions()`); never rely on DuckDB autoloading.
+  (`.ensure_duckdb_extensions()`); never rely on DuckDB autoloading. DuckDB 2.0 implements ICU
+  natively, but it is still a loadable extension, not part of core.
+* DuckDB >= 2.0.0 and dbplyr >= 2.6.0 are required. New databases use storage version 69 and
+  cannot be opened by DuckDB 1.5.x; do not add code that assumes the old storage format.
 * The database version check is never skippable (`check_db()`), and `DatabaseInfo` is written only
   by `create_db()` and the temporary unversioned fallback in `open_db()`.
 * Keep the `[Xms]` debug timing format (`R/read_helpers.R`, `.read_debug_time()`): downstream log
@@ -592,7 +614,7 @@ These are measured behaviours; supporting reproductions and investigation histor
 | Area | File | Key symbols |
 |---|---|---|
 | Import entry point | `R/read_mpath_sense.R` | `read_mpath_sense()`, `.read_mpath_sense_batch()`, `.read_mpath_sense_loop()`, `.read_rollback_stale_transaction()` |
-| Staging, dedup, file filtering | `R/read_helpers.R` | `.read_filter_new_files()`, `.read_register_empty_files()`, `.read_dedup()`, `read_dedup_keys`, `.read_db_transaction()`, `.read_sql_array()`, `.read_json_array_typed()`, `.read_version_filter()`, `.read_debug_time()` |
+| Staging, dedup, file filtering | `R/read_helpers.R` | `.read_filter_new_files()`, `.read_register_empty_files()`, `.read_dedup()`, `read_dedup_keys`, `.read_db_transaction()`, `.read_sql_array()`, `.read_json_paths()`, `.read_json_array_typed()`, `.read_version_filter()`, `.read_debug_time()` |
 | Sensor statements | `R/ingest.R` | `ingest_scalar()`, `ingest_garmin_array()`, `ingest_accelerometer()`, `ingest_appusage()`, `ingest_bluetooth()`, `ingest_bluetooth_beacon()`, `ingest_connectivity()`, `ingest_device()`, `ingest_garmin_meta()`, `ingest_garmin_actigraphy()`, `ingest_location()`, `ingest_weather()`, `.read_garmin_parse_sql()`, `.read_staging_payloads()`, `.accel_feature_exprs()` |
 | Registry | `R/sensor_registry.R` | `scalar_sensor()`, `garmin_array_sensor()`, `new_sensor_registry()`, `sensor_registry`, `array_schemas`, `ignored_sensor_types` |
 | Database lifecycle | `R/database.R` | `create_db()`, `open_db()`, `close_db()`, `copy_db()`, `optimize_db()`, `deduplicate_db()`, `.create_sensor_views()`, `.create_local_views()`, `.has_mpathsenser_schema()`, `.ensure_duckdb_extensions()`, `.configure_duckdb()`, `sensors` |

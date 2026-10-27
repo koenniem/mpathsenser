@@ -108,6 +108,46 @@ test_that("scalar sensor values survive the JSON to DuckDB round trip", {
     expect_equal(nrow(values), 1L, info = sensor)
   }
 
+  location <- DBI::dbGetQuery(
+    db,
+    "SELECT latitude, longitude, altitude, accuracy, vertical_accuracy,
+            speed, speed_accuracy, heading, heading_accuracy, is_mock,
+            elapsed_realtime_nanos, elapsed_realtime_uncertainty_nanos
+     FROM Location"
+  )
+  expect_equal(location$latitude, 50.8771, tolerance = 1e-4)
+  expect_equal(location$longitude, 4.7071, tolerance = 1e-4)
+  expect_equal(location$altitude, 76.9304, tolerance = 1e-4)
+  expect_equal(location$accuracy, 87.8121, tolerance = 1e-4)
+  expect_equal(location$vertical_accuracy, 1.2556, tolerance = 1e-4)
+  expect_equal(location$speed, 0.0023, tolerance = 1e-4)
+  expect_equal(location$speed_accuracy, 1.5604, tolerance = 1e-4)
+  expect_equal(location$heading, -0.0065, tolerance = 1e-4)
+  expect_equal(location$heading_accuracy, 45.5136, tolerance = 1e-4)
+  expect_false(location$is_mock)
+  expect_equal(location$elapsed_realtime_nanos, 618215086000000)
+  expect_equal(location$elapsed_realtime_uncertainty_nanos, 0)
+
+  weather <- DBI::dbGetQuery(
+    db,
+    "SELECT country, area_name, weather_main, weather_description,
+            sunrise, sunset, latitude, longitude, pressure, wind_speed,
+            wind_degree, humidity, cloudiness, rain_last_hour,
+            rain_last_3hours, snow_last_hour, snow_last_3hours,
+            temperature, temp_min, temp_max
+     FROM Weather"
+  )
+  expect_equal(weather$country, "BE")
+  expect_equal(weather$area_name, "Arrondissement Leuven")
+  expect_equal(weather$weather_main, "Clouds")
+  expect_equal(weather$weather_description, "broken clouds")
+  expect_equal(format(weather$sunrise, tz = "UTC"), "2025-12-16 11:49:12")
+  expect_equal(format(weather$sunset, tz = "UTC"), "2025-12-16 19:46:33")
+  expect_equal(weather$latitude, 50.875, tolerance = 1e-4)
+  expect_equal(weather$longitude, 4.7051, tolerance = 1e-4)
+  expect_equal(weather$pressure, 938.0049, tolerance = 1e-4)
+  expect_equal(weather$temperature, 12.4227, tolerance = 1e-4)
+
   app_usage <- DBI::dbGetQuery(
     db,
     "SELECT app, package_name, usage FROM AppUsage ORDER BY app"
