@@ -528,16 +528,9 @@ plot.coverage <- function(
     type <- if (is.null(cycle)) "line" else "heatmap"
   }
 
-  # Resolve the default: lines and sensor heatmaps average participants, while
-  # participant strips keep their sensor facets.
+  # Resolve the default: every plot type averages participants.
   if (identical(aggregate, "auto")) {
-    aggregate <- if (identical(type, "bar")) NULL else "participant_id"
-  }
-  if (identical(type, "bar") && identical(aggregate, "participant_id")) {
-    cli_abort(c(
-      "{.arg aggregate} cannot aggregate across participants for {.val bar} plots.",
-      i = "Participants are already the rows; use {.val NULL} or {.val sensor}."
-    ))
+    aggregate <- "participant_id"
   }
   if (!identical(type, "bar") && identical(aggregate, "sensor")) {
     cli_abort(c(
@@ -554,7 +547,7 @@ plot.coverage <- function(
     "Coverage for all participants"
   } else if (!is.null(participant_id) && length(participant_id) == 1L) {
     paste0("Coverage for participant ", participant_id)
-  } else if (identical(aggregate, "participant_id") && !identical(type, "bar")) {
+  } else if (identical(aggregate, "participant_id")) {
     "Coverage across participants"
   } else {
     "Coverage per participant"
@@ -667,42 +660,46 @@ plot.coverage <- function(
     return(add_participant_facets(plot))
   }
 
-  # Participant lanes: one row per participant, coloured by coverage. Sensor
-  # facets keep many participants readable without a facet per participant.
+  # Thin timeline bars. The remaining dimension determines the y-axis: sensors
+  # when participants were averaged, otherwise participants, with sensors as
+  # facets only when neither dimension was collapsed.
   if (identical(type, "bar")) {
-    participant_levels <- rev(sort(unique(x$participant_id)))
-    x <- x |>
-      mutate(
-        participant_id = factor(.data$participant_id, levels = participant_levels)
-      )
+    y_col <- if (identical(aggregate, "participant_id")) "sensor" else "participant_id"
+    if (identical(y_col, "participant_id")) {
+      participant_levels <- rev(sort(unique(x$participant_id)))
+      x <- x |>
+        mutate(
+          participant_id = factor(.data$participant_id, levels = participant_levels)
+        )
+    }
 
-    fill_col <- if (!is_proportional && is.null(aggregate)) {
+    fill_col <- if (!is_proportional && !identical(aggregate, "sensor")) {
       "scaled_coverage"
     } else {
       "coverage"
     }
     fill_label <- if (is_proportional) {
       "Proportion"
-    } else if (is.null(aggregate)) {
-      "Scaled count"
-    } else {
+    } else if (identical(aggregate, "sensor")) {
       "Mean scaled count"
+    } else {
+      "Scaled count"
     }
 
     plot <- ggplot2::ggplot(
       x,
       ggplot2::aes(
         x = .data[[x_col]],
-        y = .data$participant_id,
+        y = .data[[y_col]],
         fill = .data[[fill_col]]
       )
     ) +
-      ggplot2::geom_tile() +
+      ggplot2::geom_tile(height = 0.35) +
       ggplot2::theme_minimal() +
       ggplot2::labs(
         title = title,
         x = if (identical(x_col, "time")) "Time" else x_col,
-        y = "Participant",
+        y = if (identical(y_col, "sensor")) "Sensor" else "Participant",
         fill = fill_label
       )
 

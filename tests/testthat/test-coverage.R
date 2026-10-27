@@ -1864,23 +1864,40 @@ test_that("bar plots show participant lanes per sensor", {
     local = FALSE
   )
   bar <- plot(frequency, cycle = "day", type = "bar")
-  averaged <- plot(frequency, cycle = "day", type = "bar", aggregate = "sensor")
+  all_participants <- plot(frequency, cycle = "day", type = "bar", aggregate = NULL)
+  averaged_sensors <- plot(
+    frequency,
+    cycle = "day",
+    type = "bar",
+    aggregate = "sensor"
+  )
 
-  expect_equal(bar$labels$y, "Participant")
+  bar_built <- ggplot2::ggplot_build(bar)
+  expect_equal(bar$labels$y, "Sensor")
   expect_equal(bar$labels$fill, "Scaled count")
-  expect_equal(nrow(ggplot2::ggplot_build(bar)$layout$layout), 2)
-  expect_equal(nrow(bar$data), 2 * 2 * 24)
-  expect_equal(levels(bar$data$participant_id), c("2", "1"))
+  expect_equal(bar$labels$title, "Coverage across participants")
+  expect_equal(nrow(bar_built$layout$layout), 1)
+  expect_equal(nrow(bar$data), 2 * 24)
+  expect_equal(unique(round(bar_built$data[[1]]$ymax - bar_built$data[[1]]$ymin, 2)), 0.35)
+
+  expect_equal(all_participants$labels$y, "Participant")
+  expect_equal(all_participants$labels$title, "Coverage per participant")
+  expect_equal(nrow(ggplot2::ggplot_build(all_participants)$layout$layout), 2)
+  expect_equal(nrow(all_participants$data), 2 * 2 * 24)
+  expect_equal(levels(all_participants$data$participant_id), c("2", "1"))
   expect_equal(
-    bar$data$scaled_coverage[
-      bar$data$sensor == "Accelerometer" &
-        bar$data$participant_id == "1" &
-        bar$data$hour == 10
+    all_participants$data$scaled_coverage[
+      all_participants$data$sensor == "Accelerometer" &
+        all_participants$data$participant_id == "1" &
+        all_participants$data$hour == 10
     ],
     1 / 3
   )
-  expect_equal(nrow(averaged$data), 2 * 24)
-  expect_equal(averaged$labels$fill, "Mean scaled count")
+
+  expect_equal(averaged_sensors$labels$y, "Participant")
+  expect_equal(averaged_sensors$labels$fill, "Mean scaled count")
+  expect_equal(nrow(ggplot2::ggplot_build(averaged_sensors)$layout$layout), 1)
+  expect_equal(nrow(averaged_sensors$data), 2 * 24)
 
   interval <- coverage_proportional(
     db,
@@ -1891,19 +1908,27 @@ test_that("bar plots show participant lanes per sensor", {
     local = FALSE
   )
   proportional <- plot(interval, cycle = "day", type = "bar")
+  proportional_all <- plot(
+    interval,
+    cycle = "day",
+    type = "bar",
+    aggregate = NULL
+  )
   proportional_averaged <- plot(
     interval,
     cycle = "day",
     type = "bar",
     aggregate = "sensor"
   )
+  expect_equal(proportional$labels$y, "Sensor")
   expect_equal(proportional$labels$fill, "Proportion")
+  expect_equal(nrow(proportional$data), 2 * 24)
+  expect_equal(proportional_all$labels$y, "Participant")
+  expect_equal(nrow(ggplot2::ggplot_build(proportional_all)$layout$layout), 2)
+  expect_equal(nrow(proportional_all$data), 2 * 2 * 24)
+  expect_equal(proportional_averaged$labels$y, "Participant")
   expect_equal(nrow(proportional_averaged$data), 2 * 24)
 
-  expect_error(
-    plot(frequency, type = "bar", aggregate = "participant_id"),
-    "cannot aggregate across participants"
-  )
   expect_error(
     plot(frequency, type = "heatmap", aggregate = "sensor"),
     "only supported for type"
