@@ -88,6 +88,9 @@ geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1, format 
   check_arg(lat, "numeric")
   check_arg(lon, "numeric")
 
+  # NULL and NA both mean "no email address"; omit the query parameter.
+  has_email <- !is.null(email) && length(email) == 1L && !is.na(email) && nzchar(email)
+
   if (length(lat) != length(lon)) {
     cli_abort("{.arg lat} and {.arg lon} must have equal length.")
   }
@@ -122,7 +125,7 @@ geocode_rev <- function(lat, lon, zoom = 18, email = "", rate_limit = 1, format 
       zoom,
       "&format=",
       format,
-      if (nzchar(email)) {
+      if (has_email) {
         paste0("&email=", utils::URLencode(email, reserved = TRUE))
       } else {
         ""

@@ -52,3 +52,19 @@ test_that("geocode_rev", {
   # No errors
   expect_false(any(unlist(lapply(res, names)) == "error"))
 })
+
+test_that("geocode_rev accepts a NULL email", {
+  captured <- NULL
+  testthat::local_mocked_bindings(
+    fromJSON = function(x, ...) {
+      captured <<- x
+      list(ok = TRUE)
+    },
+    .package = "jsonlite"
+  )
+
+  result <- geocode_rev(50.037936, 8.5599631, email = NULL, rate_limit = 0)
+
+  expect_equal(result[[1]]$ok, TRUE)
+  expect_false(grepl("email=", captured, fixed = TRUE))
+})
