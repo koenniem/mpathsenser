@@ -1783,6 +1783,159 @@ test_that("coverage output names the sensor column", {
   expect_identical(levels(res$sensor), c("Battery", "Accelerometer"))
 })
 
+test_that("multiple participants are averaged by default and can be faceted", {
+  db <- coverage_db(participants = c("1", "2"))
+  on.exit(cleanup_test_db(db), add = TRUE)
+  insert_measurements(
+    db,
+    "Accelerometer",
+    "1",
+    c("2024-01-01 10:00:00", "2024-01-02 10:00:00")
+  )
+  insert_measurements(
+    db,
+    "Accelerometer",
+    "2",
+    c(
+      "2024-01-01 10:00:00",
+      "2024-01-01 10:01:00",
+      "2024-01-01 10:02:00",
+      "2024-01-02 10:00:00",
+      "2024-01-02 10:01:00",
+      "2024-01-02 10:02:00"
+    )
+  )
+
+  frequency <- coverage_frequency(
+    db,
+    sensor = "Accelerometer",
+    by = "hour",
+    local = FALSE
+  )
+  averaged <- plot(frequency, cycle = "day")
+  faceted <- plot(frequency, cycle = "day", aggregate = NULL)
+
+  expect_equal(nrow(averaged$data), 24)
+  expect_equal(averaged$data$coverage[averaged$data$hour == 10], 2)
+  expect_equal(averaged$labels$title, "Coverage across participants")
+  expect_equal(nrow(faceted$data), 48)
+  expect_equal(nrow(ggplot2::ggplot_build(faceted)$layout$layout), 2)
+  expect_equal(faceted$labels$title, "Coverage per participant")
+})
+
+test_that("bar plots show participant lanes per sensor", {
+  db <- coverage_db(participants = c("1", "2"))
+  on.exit(cleanup_test_db(db), add = TRUE)
+  insert_measurements(
+    db,
+    "Accelerometer",
+    "1",
+    c("2024-01-01 00:00:00", "2024-01-01 10:00:00", "2024-01-01 23:00:00")
+  )
+  insert_measurements(
+    db,
+    "Accelerometer",
+    "2",
+    c(
+      "2024-01-01 00:00:00",
+      "2024-01-01 10:00:00",
+      "2024-01-01 10:01:00",
+      "2024-01-01 10:02:00",
+      "2024-01-01 23:00:00"
+    )
+  )
+  insert_measurements(
+    db,
+    "Battery",
+    "1",
+    c("2024-01-01 00:00:00", "2024-01-01 23:00:00")
+  )
+  insert_measurements(
+    db,
+    "Battery",
+    "2",
+    c("2024-01-01 00:00:00", "2024-01-01 23:00:00")
+  )
+
+  frequency <- coverage_frequency(
+    db,
+    sensor = c("Accelerometer", "Battery"),
+    by = "hour",
+    local = FALSE
+  )
+  bar <- plot(frequency, cycle = "day", type = "bar")
+  averaged <- plot(frequency, cycle = "day", type = "bar", aggregate = "sensor")
+
+  expect_equal(bar$labels$y, "Participant")
+  expect_equal(bar$labels$fill, "Scaled count")
+  expect_equal(nrow(ggplot2::ggplot_build(bar)$layout$layout), 2)
+  expect_equal(nrow(bar$data), 2 * 2 * 24)
+  expect_equal(levels(bar$data$participant_id), c("2", "1"))
+  expect_equal(
+    bar$data$scaled_coverage[bar$data$sensor == "Accelerometer" &
+      bar$data$participant_id == "1" & bar$data$hour == 10],
+    1 / 3
+  )
+  expect_equal(nrow(averaged$data), 2 * 24)
+  expect_equal(averaged$labels$fill, "Mean scaled count")
+
+  interval <- coverage_proportional(
+    db,
+    expected = c(Accelerometer = 3600, Battery = 3600),
+    sensor = c("Accelerometer", "Battery"),
+    by = "hour",
+    metric = "interval",
+    local = FALSE
+  )
+  proportional <- plot(interval, cycle = "day", type = "bar")
+  proportional_averaged <- plot(
+    interval,
+    cycle = "day",
+    type = "bar",
+    aggregate = "sensor"
+  )
+  expect_equal(proportional$labels$fill, "Proportion")
+  expect_equal(nrow(proportional_averaged$data), 2 * 24)
+
+  expect_error(
+    plot(frequency, type = "bar", aggregate = "participant_id"),
+    "cannot aggregate across participants"
+  )
+  expect_error(
+    plot(frequency, type = "heatmap", aggregate = "sensor"),
+    "only supported for type"
+  )
+})
+
+test_that("averaging keeps all-NA sensor coverage missing", {
+  db <- coverage_db(participants = c("1", "2"))
+  on.exit(cleanup_test_db(db), add = TRUE)
+  for (participant in c("1", "2")) {
+    insert_measurements(
+      db,
+      "Device",
+      participant,
+      "2024-01-01 00:00:00",
+      platform = "iOS"
+    )
+    insert_measurements(
+      db,
+      "Screen",
+      participant,
+      c("2024-01-01 00:00:00", "2024-01-01 23:00:00")
+    )
+  }
+
+  frequency <- coverage_frequency(
+    db,
+    sensor = "Screen",
+    by = "hour",
+    local = FALSE
+  )
+  averaged <- plot(frequency, cycle = "day")
+  expect_true(all(is.na(averaged$data$coverage)))
+})
+
 test_that("plots support the line and heatmap types", {
   db <- coverage_db()
   on.exit(cleanup_test_db(db), add = TRUE)

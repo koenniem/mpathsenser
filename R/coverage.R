@@ -465,14 +465,18 @@ collect.coverage <- function(x, ...) {
 plot.coverage <- function(
   x,
   digits = 2,
-  type = c("auto", "line", "heatmap"),
+  type = c("auto", "line", "heatmap", "bar"),
   cycle = NULL,
+  aggregate = "auto",
   label = TRUE,
   week_start = NULL,
   ...
 ) {
   ensure_suggested_package("ggplot2")
   type <- match.arg(type)
+  if (!is.null(aggregate)) {
+    aggregate <- match.arg(aggregate, c("auto", "participant_id", "sensor"))
+  }
   cycle <- if (is.null(cycle)) {
     NULL
   } else {
@@ -508,11 +512,34 @@ plot.coverage <- function(
     type <- if (is.null(cycle)) "line" else "heatmap"
   }
 
-  # The title reflects the requested participant scope.
-  title <- if (is.null(participant_id)) {
+  # Resolve the default: lines and sensor heatmaps average participants, while
+  # participant strips keep their sensor facets.
+  if (identical(aggregate, "auto")) {
+    aggregate <- if (identical(type, "bar")) NULL else "participant_id"
+  }
+  if (identical(type, "bar") && identical(aggregate, "participant_id")) {
+    cli_abort(c(
+      "{.arg aggregate} cannot aggregate across participants for {.val bar} plots.",
+      i = "Participants are already the rows; use {.val NULL} or {.val sensor}."
+    ))
+  }
+  if (!identical(type, "bar") && identical(aggregate, "sensor")) {
+    cli_abort(c(
+      "{.arg aggregate} = {.val sensor} is only supported for type {.val bar}.",
+      i = "Use {.arg type} = {.val bar} to average across sensors."
+    ))
+  }
+
+  data_participants <- unique(x$participant_id)
+  multiple_participants <- length(data_participants) > 1L
+
+  # The title reflects the aggregation and whether participants are faceted.
+  title <- if (is.null(participant_id) && !multiple_participants) {
     "Coverage for all participants"
-  } else if (length(participant_id) == 1L) {
+  } else if (!is.null(participant_id) && length(participant_id) == 1L) {
     paste0("Coverage for participant ", participant_id)
+  } else if (identical(aggregate, "participant_id") && !identical(type, "bar")) {
+    "Coverage across participants"
   } else {
     "Coverage per participant"
   }
@@ -554,12 +581,42 @@ plot.coverage <- function(
     x_col <- position_col
   }
 
-  # Participant becomes a facet column only when the table covers several
-  # participants.
-  multiple_participants <- length(unique(x$participant_id)) > 1L
+  # Collapse the selected dimension, keeping groups whose coverage is
+  # entirely missing as NA.
+  if (identical(aggregate, "participant_id")) {
+    x <- x |>
+      group_by(across(all_of(c("sensor", x_col)))) |>
+      summarise(
+        coverage = mean(.data$coverage, na.rm = TRUE),
+        .groups = "drop"
+      ) |>
+      mutate(
+        coverage = if_else(is.nan(.data$coverage), NA_real_, .data$coverage)
+      )
+  } else if (identical(aggregate, "sensor")) {
+    if (!is_proportional) {
+      x <- .coverage_add_scaled_coverage(x)
+    }
+    value_col <- if (is_proportional) "coverage" else "scaled_coverage"
+    x <- x |>
+      group_by(across(all_of(c("participant_id", x_col)))) |>
+      summarise(
+        coverage = mean(.data[[value_col]], na.rm = TRUE),
+        .groups = "drop"
+      ) |>
+      mutate(
+        coverage = if_else(is.nan(.data$coverage), NA_real_, .data$coverage)
+      )
+  }
 
-  add_facets <- function(plot) {
-    if (multiple_participants) {
+  # Count heatmaps and bar strips scale each sensor to its own maximum so one
+  # shared fill scale stays comparable. Sensor averages were scaled above.
+  if (!is_proportional && !identical(aggregate, "sensor") && !identical(type, "line")) {
+    x <- .coverage_add_scaled_coverage(x)
+  }
+
+  add_participant_facets <- function(plot) {
+    if (is.null(aggregate) && multiple_participants) {
       return(plot + ggplot2::facet_wrap(~participant_id))
     }
     plot
@@ -591,30 +648,65 @@ plot.coverage <- function(
         },
         colour = "Sensor"
       )
-    return(add_facets(plot))
+    return(add_participant_facets(plot))
   }
 
-  # Count heatmaps normalise each sensor to its own maximum so one shared
-  # fill scale stays comparable; proportional heatmaps use the value directly.
-  if (!is_proportional) {
+  # Participant lanes: one row per participant, coloured by coverage. Sensor
+  # facets keep many participants readable without a facet per participant.
+  if (identical(type, "bar")) {
+    participant_levels <- rev(sort(unique(x$participant_id)))
     x <- x |>
-      group_by(.data$sensor) |>
-      mutate(max_coverage = max(coalesce(.data$coverage, 0))) |>
       mutate(
-        max_coverage = if_else(
-          !is.finite(.data$max_coverage) | .data$max_coverage == 0,
-          1,
-          .data$max_coverage
-        ),
-        scaled_coverage = .data$coverage / .data$max_coverage
-      ) |>
-      ungroup()
-    fill_col <- "scaled_coverage"
-  } else {
-    fill_col <- "coverage"
+        participant_id = factor(.data$participant_id, levels = participant_levels)
+      )
+
+    fill_col <- if (!is_proportional && is.null(aggregate)) {
+      "scaled_coverage"
+    } else {
+      "coverage"
+    }
+    fill_label <- if (is_proportional) {
+      "Proportion"
+    } else if (is.null(aggregate)) {
+      "Scaled count"
+    } else {
+      "Mean scaled count"
+    }
+
+    plot <- ggplot2::ggplot(
+      x,
+      ggplot2::aes(
+        x = .data[[x_col]],
+        y = .data$participant_id,
+        fill = .data[[fill_col]]
+      )
+    ) +
+      ggplot2::geom_tile() +
+      ggplot2::theme_minimal() +
+      ggplot2::labs(
+        title = title,
+        x = if (identical(x_col, "time")) "Time" else x_col,
+        y = "Participant",
+        fill = fill_label
+      )
+
+    if (is.null(aggregate)) {
+      plot <- plot + ggplot2::facet_wrap(~sensor, ncol = 1)
+    }
+
+    scale_max <- if (!is_proportional) {
+      1
+    } else if (identical(metric, "count")) {
+      max(c(1, x$coverage), na.rm = TRUE)
+    } else {
+      1
+    }
+
+    return(plot + .coverage_fill_scale(is_proportional, scale_max))
   }
 
   # Tile grid with the value printed in each cell.
+  fill_col <- if (is_proportional) "coverage" else "scaled_coverage"
   plot <- ggplot2::ggplot(
     x,
     ggplot2::aes(
@@ -636,32 +728,15 @@ plot.coverage <- function(
       fill = if (is_proportional) "Proportion" else "Scaled count"
     )
 
-  if (is_proportional) {
-    scale_max <- if (identical(metric, "count")) {
-      max(c(1, x$coverage), na.rm = TRUE)
-    } else {
-      1
-    }
-    plot <- plot +
-      ggplot2::scale_fill_gradientn(
-        colours = c("#d70525", "#645a6c", "#3F7F93"),
-        breaks = c(0, 0.5, 1),
-        labels = c(0, 0.5, 1),
-        limits = c(0, scale_max),
-        name = "coverage"
-      )
+  scale_max <- if (!is_proportional) {
+    1
+  } else if (identical(metric, "count")) {
+    max(c(1, x$coverage), na.rm = TRUE)
   } else {
-    plot <- plot +
-      ggplot2::scale_fill_gradientn(
-        colours = c("#d70525", "#645a6c", "#3F7F93"),
-        breaks = c(0, 0.5, 1),
-        labels = c("low", "medium", "high"),
-        limits = c(0, 1),
-        name = "coverage"
-      )
+    1
   }
 
-  add_facets(plot)
+  add_participant_facets(plot + .coverage_fill_scale(is_proportional, scale_max))
 }
 
 # -- validation ----------------------------------------------------------------
@@ -2358,5 +2433,33 @@ plot.coverage <- function(
     week = "day_of_week",
     month = if (weekly_bins) "week_of_month" else "day_of_month",
     year = if (weekly_bins) "week_of_year" else "month"
+  )
+}
+
+# Scale each sensor's counts to its own global maximum so sensors with
+# different sampling rates share one fill scale.
+.coverage_add_scaled_coverage <- function(data) {
+  data |>
+    group_by(.data$sensor) |>
+    mutate(max_coverage = max(coalesce(.data$coverage, 0))) |>
+    mutate(
+      max_coverage = if_else(
+        !is.finite(.data$max_coverage) | .data$max_coverage == 0,
+        1,
+        .data$max_coverage
+      ),
+      scaled_coverage = .data$coverage / .data$max_coverage
+    ) |>
+    ungroup()
+}
+
+# Shared coverage fill scale for heatmaps and participant strips.
+.coverage_fill_scale <- function(proportional, max = 1) {
+  ggplot2::scale_fill_gradientn(
+    colours = c("#d70525", "#645a6c", "#3F7F93"),
+    breaks = c(0, 0.5, 1),
+    labels = if (proportional) c(0, 0.5, 1) else c("low", "medium", "high"),
+    limits = c(0, max),
+    name = "coverage"
   )
 }
