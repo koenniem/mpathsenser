@@ -353,10 +353,12 @@
 .read_resolve_sensors <- function(sensors) {
   registry_names <- names(sensor_registry[["default"]])
   if (is.null(sensors)) {
-    registry_names
-  } else {
-    registry_names[tolower(registry_names) %in% tolower(sensors)]
+    return(registry_names)
   }
+
+  # View names select the physical sensor they are built from.
+  sensors <- .physical_sensor(sensors)
+  registry_names[tolower(registry_names) %in% tolower(sensors)]
 }
 
 # All normalized payload type suffixes handled by the registry, plus mpathinfo

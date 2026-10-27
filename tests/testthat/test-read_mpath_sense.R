@@ -134,6 +134,77 @@ test_that("import populates the database correctly", {
   unlink(dir, recursive = TRUE)
 })
 
+test_that("import resolves local view names to physical sensors", {
+  dir <- tempfile("import_view")
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+
+  make_test_file(
+    dir,
+    "a.json",
+    sensors = list(
+      list(`__type` = "dk.cachet.carp.activity", confidence = 80, type = "WALKING")
+    )
+  )
+  db <- fresh_test_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
+
+  expect_message(
+    read_mpath_sense(
+      path = dir,
+      db = db,
+      sensors = c("Activity_local", "Activity_WITH_LOCAL"),
+      recursive = FALSE,
+      .progress = FALSE
+    ),
+    "successfully"
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT COUNT(*) AS n FROM Activity")$n,
+    1L
+  )
+  expect_message(
+    read_mpath_sense(
+      path = dir,
+      db = db,
+      recursive = FALSE,
+      .progress = FALSE
+    ),
+    "No new files"
+  )
+})
+
+test_that("import rejects an empty sensor selection before registering files", {
+  dir <- tempfile("import_empty_sensors")
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+
+  make_test_file(
+    dir,
+    "a.json",
+    sensors = list(
+      list(`__type` = "dk.cachet.carp.activity", confidence = 80, type = "WALKING")
+    )
+  )
+  db <- fresh_test_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
+
+  expect_error(
+    read_mpath_sense(
+      path = dir,
+      db = db,
+      sensors = character(0),
+      recursive = FALSE,
+      .progress = FALSE
+    ),
+    "No sensors were selected"
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "SELECT COUNT(*) AS n FROM ProcessedFiles")$n,
+    0L
+  )
+})
+
 test_that("unprefixed payload types are imported", {
   dir <- tempfile("import_test")
   dir.create(dir)

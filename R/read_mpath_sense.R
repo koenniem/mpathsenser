@@ -117,6 +117,10 @@ read_mpath_sense <- function(
   check_arg(path, type = "character", n = 1)
   check_db(db)
   check_sensors(sensors, allow_null = TRUE)
+  target_sensors <- .read_resolve_sensors(sensors)
+  if (length(target_sensors) == 0L) {
+    cli_abort("No sensors were selected for import.")
+  }
   check_arg(batch_size, "integerish", n = 1)
   check_arg(recursive, "logical", n = 1)
   check_arg(deduplicate, "logical", n = 1)
@@ -204,9 +208,6 @@ read_mpath_sense <- function(
     skipped_empty <- .read_register_empty_files(db, file_meta[is_empty, ])
   }
   file_meta <- file_meta[!is_empty, ]
-
-  # Resolve which sensor ingest functions to run
-  target_sensors <- .read_resolve_sensors(sensors)
 
   if (nrow(file_meta) == 0) {
     cli_inform("No new files to process.")
