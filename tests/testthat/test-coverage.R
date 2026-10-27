@@ -765,6 +765,47 @@ test_that("coverage reports unknown OS and marks unsupported iOS sensors NA", {
   expect_equal(unknown_res$coverage[unknown_res$sensor == "AppUsage"], 0)
 })
 
+test_that("cycle positions use one natural calendar position", {
+  expect_equal(.coverage_cycle_position("hour", c(Accelerometer = 120)), "minute")
+  expect_equal(.coverage_cycle_position("day", c(Accelerometer = 120)), "hour")
+  expect_equal(.coverage_cycle_position("week", c(Accelerometer = 120)), "day_of_week")
+  expect_equal(.coverage_cycle_position("month", c(Accelerometer = 120)), "day_of_month")
+  expect_equal(.coverage_cycle_position("year", c(Accelerometer = 120)), "month")
+  expect_equal(
+    .coverage_cycle_position("month", c(Accelerometer = "week")),
+    "week_of_month"
+  )
+  expect_equal(
+    .coverage_cycle_position("year", c(Accelerometer = "week")),
+    "week_of_year"
+  )
+})
+
+test_that("cycle profiles collapse mixed and fine bin widths", {
+  db <- coverage_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
+  times <- c("2024-01-01 00:10:00", "2024-01-01 10:10:00", "2024-01-02 11:10:00")
+  insert_measurements(db, "Accelerometer", "12345", times)
+  insert_measurements(db, "Battery", "12345", times)
+
+  res <- coverage_proportional(
+    db,
+    expected = c(Accelerometer = 120, Battery = 160),
+    participant_id = "12345",
+    sensor = c("Accelerometer", "Battery"),
+    local = FALSE
+  )
+  heat <- plot(res, cycle = "day", type = "heatmap")
+  line <- plot(res, cycle = "day", type = "line")
+
+  expect_equal(nrow(heat$data), 48)
+  expect_equal(sort(unique(heat$data$hour)), 0:23)
+  expect_equal(nrow(ggplot2::ggplot_build(heat)$layout$layout), 1)
+  expect_equal(nrow(line$data), 48)
+  expect_equal(sort(unique(line$data$hour)), 0:23)
+  expect_no_warning(ggplot2::ggplot_build(line))
+})
+
 test_that("coverage results can be summarized and plotted by cycle", {
   db <- coverage_db()
   on.exit(cleanup_test_db(db), add = TRUE)

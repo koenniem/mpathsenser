@@ -520,12 +520,12 @@ plot.coverage <- function(
   # With a cycle, aggregate bins into calendar positions; without one, plot
   # the original bin times directly.
   if (is.null(cycle)) {
-    position_cols <- character(0)
+    position_col <- NULL
     x_col <- "time"
   } else {
-    position_cols <- .coverage_cycle_positions(cycle, by_spec, x)
-    # Derive all calendar components a cycle can use; `position_cols` selects
-    # the ones that are needed.
+    position_col <- .coverage_cycle_position(cycle, by_spec)
+    # Derive all calendar components a cycle can use; `position_col` selects
+    # the one that becomes the x-axis.
     x <- x |>
       mutate(
         month = month(.data$time),
@@ -543,7 +543,7 @@ plot.coverage <- function(
       ) |>
       # Average repeated bins within each cycle position; groups whose
       # coverage is entirely missing stay NA.
-      group_by(across(all_of(c("participant_id", "sensor", position_cols)))) |>
+      group_by(across(all_of(c("participant_id", "sensor", position_col)))) |>
       summarise(
         coverage = mean(.data$coverage, na.rm = TRUE),
         .groups = "drop"
@@ -551,34 +551,14 @@ plot.coverage <- function(
       mutate(
         coverage = if_else(is.nan(.data$coverage), NA_real_, .data$coverage)
       )
-    x_col <- position_cols[length(position_cols)]
+    x_col <- position_col
   }
 
-  # Facet by the remaining cycle dimensions; participant becomes a facet
-  # column only when the table covers several participants.
+  # Participant becomes a facet column only when the table covers several
+  # participants.
   multiple_participants <- length(unique(x$participant_id)) > 1L
 
   add_facets <- function(plot) {
-    facet_cols <- position_cols[-length(position_cols)]
-    if (length(facet_cols) > 0L) {
-      if (multiple_participants) {
-        return(
-          plot +
-            ggplot2::facet_grid(
-              rows = ggplot2::vars(!!!rlang::syms(facet_cols)),
-              cols = ggplot2::vars(participant_id),
-              scales = "free_y"
-            )
-        )
-      }
-      return(
-        plot +
-          ggplot2::facet_grid(
-            rows = ggplot2::vars(!!!rlang::syms(facet_cols)),
-            scales = "free_y"
-          )
-      )
-    }
     if (multiple_participants) {
       return(plot + ggplot2::facet_wrap(~participant_id))
     }
@@ -2329,27 +2309,6 @@ plot.coverage <- function(
   c(minute = 60, hour = 3600, day = 86400, week = 604800)[[unit]]
 }
 
-# TRUE when the bin spec produces bins finer than the given cycle unit.
-.coverage_bin_is_finer_than <- function(bin_spec, unit, x) {
-  specs <- if (is.list(bin_spec)) bin_spec else as.list(bin_spec)
-  rank <- c(minute = 1L, hour = 2L, day = 3L, week = 4L, month = 5L)
-
-  if (all(map_lgl(specs, is.character))) {
-    # Calendar units compare by rank.
-    return(any(map_lgl(specs, \(spec) rank[[spec]] < rank[[unit]])))
-  }
-
-  # Fixed widths are finer when below the period or not aligned to it.
-  period_seconds <- .coverage_period_seconds(x$time, unit)
-  any(map_lgl(specs, \(spec) {
-    if (is.character(spec)) {
-      rank[[spec]] < rank[[unit]]
-    } else {
-      any(spec < period_seconds | spec %% period_seconds != 0)
-    }
-  }))
-}
-
 # TRUE when a requested cycle is not strictly coarser than every bin spec.
 .coverage_cycle_is_not_coarser <- function(cycle, bin_spec, x) {
   specs <- if (is.list(bin_spec)) bin_spec else as.list(bin_spec)
@@ -2386,12 +2345,13 @@ plot.coverage <- function(
   as.integer(floor((day + start_weekday - 2) / 7) + 1)
 }
 
-# Calendar position columns needed to aggregate bins into the requested cycle.
-.coverage_cycle_positions <- function(cycle, bin_spec, x) {
+# Calendar position used to aggregate bins into the requested cycle. Finer
+# bins are averaged into the same position rather than adding detail facets.
+.coverage_cycle_position <- function(cycle, bin_spec) {
   specs <- if (is.list(bin_spec)) bin_spec else as.list(bin_spec)
   weekly_bins <- all(map_lgl(specs, \(spec) identical(spec, "week")))
 
-  positions <- switch(
+  switch(
     cycle,
     hour = "minute",
     day = "hour",
@@ -2399,35 +2359,4 @@ plot.coverage <- function(
     month = if (weekly_bins) "week_of_month" else "day_of_month",
     year = if (weekly_bins) "week_of_year" else "month"
   )
-
-  # Finer bins need extra position columns so repeated cycle positions stay
-  # distinguishable.
-  if (
-    identical(cycle, "year") && !weekly_bins && .coverage_bin_is_finer_than(bin_spec, "month", x)
-  ) {
-    positions <- c(positions, "day_of_month")
-  }
-
-  if (
-    cycle %in% c("day", "week", "month", "year") && .coverage_bin_is_finer_than(bin_spec, "day", x)
-  ) {
-    positions <- c(positions, "hour")
-  }
-
-  if (
-    cycle %in% c("day", "week", "month", "year") && .coverage_bin_is_finer_than(bin_spec, "hour", x)
-  ) {
-    positions <- c(positions, "minute")
-  }
-
-  if (
-    any(map_lgl(specs, \(spec) {
-      !is.character(spec) && any(spec < 60 | spec %% 60 != 0)
-    }))
-  ) {
-    # Sub-minute bins need a seconds column to separate repeats.
-    positions <- c(positions, "second")
-  }
-
-  unique(positions)
 }
