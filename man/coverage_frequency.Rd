@@ -40,7 +40,7 @@ observations. Values must be dates or date strings.}
 }
 \value{
 A lazy \code{tbl} of class \code{"coverage"} with \code{participant_id}, \code{time}
-(the bin start), \code{measure}, and \code{coverage} (the absolute measurement count).
+(the bin start), \code{sensor}, and \code{coverage} (the absolute measurement count).
 Bins with no observations are zero-filled within each participant's span.
 }
 \description{
@@ -74,7 +74,7 @@ plot(frequency, cycle = "day")
 # Average coverage for each hour of each day with dplyr
 coverage_frequency(db, sensor = "Accelerometer", by = "minute") |>
   dplyr::mutate(date = as.Date(time), hour = lubridate::hour(time)) |>
-  dplyr::group_by(participant_id, measure, date, hour) |>
+  dplyr::group_by(participant_id, sensor, date, hour) |>
   dplyr::summarise(coverage = mean(coverage, na.rm = TRUE), .groups = "drop")
 }
 }

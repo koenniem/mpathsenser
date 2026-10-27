@@ -143,14 +143,19 @@ The good news: this is what you get in return.
   actually experienced.
 * **Coverage, clearer and faster.** The two coverage functions do their work
   inside the database and stay there until you `collect()`, and `plot()`
-  draws the result as a line chart or a heatmap. Expected intervals can
-  differ per sensor, calendar units keep their real boundaries, and local
-  bins follow the timezone that applied at each observation, including
-  daylight-saving folds and travel between timezones. The last bin always
-  contains the last observation rather than the end of a trailing expected
-  window. For the sensors iOS does not provide (`AppUsage`, `Light`,
-  `Memory`, and `Screen`), coverage is `NA` for iOS participants, with a
-  warning when the device platform is unknown.
+  draws the result as a line chart, a sensor heatmap, or a participant-strip
+  overview. The sensor column is now called `sensor` (formerly `measure`).
+  Cycle profiles average into one calendar position, such as hour of the day
+  or weekday, instead of adding finer facets. With several participants,
+  `plot()` averages them by default; `aggregate = NULL` restores participant
+  facets, and `type = "bar"` shows one participant lane per row with sensor
+  facets. Expected intervals can differ per sensor, calendar units keep their
+  real boundaries, and local bins follow the timezone that applied at each
+  observation, including daylight-saving folds and travel between timezones.
+  The last bin always contains the last observation rather than the end of a
+  trailing expected window. For the sensors iOS does not provide (`AppUsage`,
+  `Light`, `Memory`, and `Screen`), coverage is `NA` for iOS participants,
+  with a warning when the device platform is unknown.
 * **Linking and gap-filling got friendlier.** `link()` supports named x-to-y
   keys and custom names for the nested data, so linking sensors with
   different column names is painless. `add_gaps()` handles multiple grouping

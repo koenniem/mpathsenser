@@ -13,7 +13,7 @@
 \item{...}{Passed on to the underlying \code{collect()} method.}
 }
 \value{
-A tibble with rounded coverage values and factorised \code{measure}.
+A tibble with rounded coverage values and factorised \code{sensor}.
 }
 \description{
 Materialise a coverage result

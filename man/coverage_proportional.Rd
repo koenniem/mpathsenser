@@ -58,7 +58,7 @@ observations. Values must be dates or date strings.}
 }
 \value{
 A lazy \code{tbl} of class \code{"coverage"} with \code{participant_id}, \code{time}
-(the bin start), \code{measure}, and \code{coverage}. Bins with no observations are
+(the bin start), \code{sensor}, and \code{coverage}. Bins with no observations are
 zero-filled within each participant's span. For \code{metric = "bin"}, a bin
 with no eligible expected-slot starts has \code{NA} coverage.
 }

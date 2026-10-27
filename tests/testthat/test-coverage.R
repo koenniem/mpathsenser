@@ -1872,8 +1872,11 @@ test_that("bar plots show participant lanes per sensor", {
   expect_equal(nrow(bar$data), 2 * 2 * 24)
   expect_equal(levels(bar$data$participant_id), c("2", "1"))
   expect_equal(
-    bar$data$scaled_coverage[bar$data$sensor == "Accelerometer" &
-      bar$data$participant_id == "1" & bar$data$hour == 10],
+    bar$data$scaled_coverage[
+      bar$data$sensor == "Accelerometer" &
+        bar$data$participant_id == "1" &
+        bar$data$hour == 10
+    ],
     1 / 3
   )
   expect_equal(nrow(averaged$data), 2 * 24)

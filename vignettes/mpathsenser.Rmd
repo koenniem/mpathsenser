@@ -240,12 +240,12 @@ Use `coverage_frequency()` for absolute counts of distinct measurement times and
 
 The `by` argument accepts calendar-aligned bins (`"minute"`, `"hour"`, `"day"`, `"week"`, or `"month"`) or a custom fixed width in seconds. Monthly bins follow calendar months; numeric widths are fixed durations. `coverage_frequency()` defaults to `"hour"` and requires a non-`NULL` value. `coverage_proportional()` requires a named `expected` vector in seconds; use `coverage_expected()` for the default intervals. Its `by = NULL` default bins each sensor at its own expected interval, so multiple sensors may use different widths. The `metric` can be `"count"` (distinct measurements divided by expected measurements), `"interval"` (the fraction of eligible time covered by the union of `[time, time + expected)`), or `"bin"` (the fraction of expected-interval slots containing an observation). A slot is counted once in the output bin containing its scheduled start. If an explicit fixed `by` is shorter than a sensor's expected interval, that sensor's bin width is raised to the expected interval with a warning; other sensors keep the requested width, and calendar units always keep their actual boundaries. Overlapping intervals count once. Bins use participant-local wall-clock time by default; set `local = FALSE` for UTC.
 
-The coverage functions always return the full time series. `plot()` defaults to that full series; use `cycle = "hour"`, `"day"`, `"week"`, `"month"`, or `"year"` for an average calendar profile. The cycle only changes the plot. For an average per hour of each date, for example, use dplyr directly:
+The coverage functions always return the full time series. `plot()` defaults to that full series; use `cycle = "hour"`, `"day"`, `"week"`, `"month"`, or `"year"` for an average calendar profile. The cycle only changes the plot. With several participants, `plot()` averages them by default; use `aggregate = NULL` for per-participant facets, or `type = "bar"` for a compact participant-by-time overview faceted by sensor. For an average per hour of each date, for example, use dplyr directly:
 
 ```{r coverage summary, eval = FALSE}
 coverage_frequency(db, sensor = "Accelerometer", by = "minute") |>
   mutate(date = as.Date(time), hour = lubridate::hour(time)) |>
-  group_by(participant_id, measure, date, hour) |>
+  group_by(participant_id, sensor, date, hour) |>
   summarise(coverage = mean(coverage, na.rm = TRUE), .groups = "drop")
 ```
 
