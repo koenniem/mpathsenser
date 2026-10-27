@@ -43,6 +43,50 @@ test_that("add_timezones_to_db adds timezone column correctly", {
   close_db(db)
 })
 
+test_that("add_timezones_to_db starts a new interval at missing timezones", {
+  db <- fresh_test_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
+
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00+00', 'Europe/Brussels', 1, 1, 1),
+     ('1', '2024-01-02 00:00:00+00', NULL, 1, 2, 1),
+     ('1', '2024-01-03 00:00:00+00', 'America/New_York', 1, 3, 1),
+     ('1', '2024-01-04 00:00:00+00', NULL, 1, 4, 1),
+     ('1', '2024-01-05 00:00:00+00', NULL, 1, 5, 1),
+     ('1', '2024-01-06 00:00:00+00', 'Europe/Brussels', 1, 6, 1)"
+  )
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Accelerometer (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 12:00:00+00', 1, 1, 1),
+     ('1', '2024-01-02 12:00:00+00', 1, 2, 1),
+     ('1', '2024-01-03 12:00:00+00', 1, 3, 1),
+     ('1', '2024-01-04 12:00:00+00', 1, 4, 1),
+     ('1', '2024-01-05 12:00:00+00', 1, 5, 1),
+     ('1', '2024-01-06 12:00:00+00', 1, 6, 1)"
+  )
+
+  add_timezones_to_db(db, sensors = "Accelerometer", .progress = FALSE)
+  result <- DBI::dbGetQuery(
+    db,
+    "SELECT timezone FROM main.Accelerometer ORDER BY time"
+  )
+
+  expect_equal(
+    result$timezone,
+    c(
+      "Europe/Brussels",
+      NA,
+      "America/New_York",
+      NA,
+      NA,
+      "Europe/Brussels"
+    )
+  )
+})
+
 test_that("add_timezones_to_db handles multiple participants independently", {
   db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 

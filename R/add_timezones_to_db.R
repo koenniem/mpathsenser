@@ -123,10 +123,14 @@ add_timezones_to_db <- function(db, sensors = NULL, .progress = TRUE) {
       window_order(.data$time) |>
       mutate(
         prev_timezone = lag(.data$timezone),
+        # A missing timezone still marks an interval boundary: only keep a
+        # run together when both values are NULL or both are non-NULL and
+        # equal. The COALESCE keeps the SQL comparison NULL-safe.
         is_start = if_else(
-          is.na(.data$timezone) &
-            is.na(.data$prev_timezone) |
+          coalesce(
             .data$timezone == .data$prev_timezone,
+            is.na(.data$timezone) & is.na(.data$prev_timezone)
+          ),
           0L,
           1L
         ),
