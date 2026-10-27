@@ -157,7 +157,7 @@ coverage_expected <- function(
 #'   `getOption("lubridate.week.start", 7)`.
 #'
 #' @returns A lazy `tbl` of class `"coverage"` with `participant_id`, `time`
-#'   (the bin start), `measure`, and `coverage` (the absolute measurement count).
+#'   (the bin start), `sensor`, and `coverage` (the absolute measurement count).
 #'   Bins with no observations are zero-filled within each participant's span.
 #' @family coverage functions
 #' @export
@@ -177,7 +177,7 @@ coverage_expected <- function(
 #' # Average coverage for each hour of each day with dplyr
 #' coverage_frequency(db, sensor = "Accelerometer", by = "minute") |>
 #'   dplyr::mutate(date = as.Date(time), hour = lubridate::hour(time)) |>
-#'   dplyr::group_by(participant_id, measure, date, hour) |>
+#'   dplyr::group_by(participant_id, sensor, date, hour) |>
 #'   dplyr::summarise(coverage = mean(coverage, na.rm = TRUE), .groups = "drop")
 #' }
 coverage_frequency <- function(
@@ -292,7 +292,7 @@ coverage_frequency <- function(
 #'   `getOption("lubridate.week.start", 7)`.
 #'
 #' @returns A lazy `tbl` of class `"coverage"` with `participant_id`, `time`
-#'   (the bin start), `measure`, and `coverage`. Bins with no observations are
+#'   (the bin start), `sensor`, and `coverage`. Bins with no observations are
 #'   zero-filled within each participant's span. For `metric = "bin"`, a bin
 #'   with no eligible expected-slot starts has `NA` coverage.
 #' @family coverage functions
@@ -375,7 +375,7 @@ coverage_proportional <- function(
 #'   [coverage_proportional()].
 #' @param ... Passed on to the underlying `collect()` method.
 #'
-#' @returns A tibble with rounded coverage values and factorised `measure`.
+#' @returns A tibble with rounded coverage values and factorised `sensor`.
 #' @keywords internal
 #' @exportS3Method dplyr::collect
 collect.coverage <- function(x, ...) {
@@ -384,8 +384,8 @@ collect.coverage <- function(x, ...) {
   # Sort in R: arranging the lazy coverage table and then collecting it would
   # redispatch to this method. Only the aggregated bins are sorted here;
   # transformed queries that dropped the bin columns are left as they are.
-  if (all(c("participant_id", "time", "measure") %in% names(out))) {
-    out <- arrange(out, .data$participant_id, .data$time, .data$measure)
+  if (all(c("participant_id", "time", "sensor") %in% names(out))) {
+    out <- arrange(out, .data$participant_id, .data$time, .data$sensor)
   }
 
   if (nrow(out) == 0L) {
@@ -411,9 +411,9 @@ collect.coverage <- function(x, ...) {
 
   # Round values for display, factor the measures, and restore metadata/class.
   out$coverage <- round(out$coverage, 2)
-  out$measure <- factor(
-    out$measure,
-    levels = rev(sort(unique(as.character(out$measure))))
+  out$sensor <- factor(
+    out$sensor,
+    levels = rev(sort(unique(as.character(out$sensor))))
   )
 
   class(out) <- unique(c("coverage", class(out)))
@@ -543,7 +543,7 @@ plot.coverage <- function(
       ) |>
       # Average repeated bins within each cycle position; groups whose
       # coverage is entirely missing stay NA.
-      group_by(across(all_of(c("participant_id", "measure", position_cols)))) |>
+      group_by(across(all_of(c("participant_id", "sensor", position_cols)))) |>
       summarise(
         coverage = mean(.data$coverage, na.rm = TRUE),
         .groups = "drop"
@@ -592,7 +592,7 @@ plot.coverage <- function(
       ggplot2::aes(
         x = .data[[x_col]],
         y = .data$coverage,
-        colour = .data$measure
+        colour = .data$sensor
       )
     ) +
       ggplot2::geom_line(na.rm = TRUE) +
@@ -618,7 +618,7 @@ plot.coverage <- function(
   # fill scale stays comparable; proportional heatmaps use the value directly.
   if (!is_proportional) {
     x <- x |>
-      group_by(.data$measure) |>
+      group_by(.data$sensor) |>
       mutate(max_coverage = max(coalesce(.data$coverage, 0))) |>
       mutate(
         max_coverage = if_else(
@@ -639,7 +639,7 @@ plot.coverage <- function(
     x,
     ggplot2::aes(
       x = .data[[x_col]],
-      y = .data$measure,
+      y = .data$sensor,
       fill = .data[[fill_col]]
     )
   ) +
@@ -921,15 +921,15 @@ plot.coverage <- function(
 # interval, listing each adjustment.
 .coverage_warn_bin_adjustment <- function(by, too_small, expected) {
   requested_width <- .coverage_bin_width_label(by)
-  adjustments <- map_chr(too_small, \(measure) {
+  adjustments <- map_chr(too_small, \(sensor) {
     paste0(
-      measure,
+      sensor,
       ": ",
       requested_width,
       " is shorter than ",
-      .coverage_seconds_label(expected[[measure]]),
+      .coverage_seconds_label(expected[[sensor]]),
       "; using ",
-      .coverage_seconds_label(expected[[measure]])
+      .coverage_seconds_label(expected[[sensor]])
     )
   })
   cli_warn(c(
@@ -973,7 +973,7 @@ plot.coverage <- function(
     map(\(sensor) {
       by <- spec$bin_spec[[sensor]]
       tibble(
-        measure = sensor,
+        sensor = sensor,
         unit = if (is.character(by)) by else NA_character_,
         seconds = if (is.numeric(by)) as.numeric(by) else .coverage_unit_seconds(by),
         expected_seconds = if (is.null(spec$expected)) NA_real_ else unname(spec$expected[[sensor]])
@@ -998,7 +998,7 @@ plot.coverage <- function(
   # full observation scan would be wasted work.
   .coverage_filter_sensor(spec, sensor) |>
     select("participant_id", "time", "timezone") |>
-    mutate(measure = sensor)
+    mutate(sensor = sensor)
 }
 
 # Participant, Heartbeat, and UTC date filtering for one sensor. The local date
@@ -1377,7 +1377,7 @@ plot.coverage <- function(
       by = join_by(participant_id, time >= from, time <= to)
     ) |>
     filter(.data$time < .data$to | .data$closed) |>
-    select("participant_id", "measure", "time", "timezone") |>
+    select("participant_id", "sensor", "time", "timezone") |>
     distinct()
 }
 
@@ -1607,7 +1607,7 @@ plot.coverage <- function(
     ) |>
     select(
       "participant_id",
-      "measure",
+      "sensor",
       "bin_start",
       "cell_start",
       "cell_end",
@@ -1693,7 +1693,7 @@ plot.coverage <- function(
   expanded |>
     transmute(
       .data$participant_id,
-      .data$measure,
+      .data$sensor,
       .data$bin_start,
       cell_start = .data$seg_start,
       cell_end = .data$seg_start,
@@ -1729,7 +1729,7 @@ plot.coverage <- function(
 .coverage_empty_cells <- function() {
   tibble(
     participant_id = integer(),
-    measure = character(),
+    sensor = character(),
     bin_start = as.POSIXct(character(), tz = "UTC"),
     cell_start = as.POSIXct(character(), tz = "UTC"),
     cell_end = as.POSIXct(character(), tz = "UTC"),
@@ -1765,7 +1765,7 @@ plot.coverage <- function(
 
   # Count distinct observation instants per cell.
   counts <- observations |>
-    select("participant_id", "measure", event_time = "time") |>
+    select("participant_id", "sensor", event_time = "time") |>
     .coverage_count_cells(spec, segments, cells)
 
   # Frequency returns the numerator alone; proportional count divides by the
@@ -1784,7 +1784,7 @@ plot.coverage <- function(
 # bin label rather than on the cell ranges.
 .coverage_count_cells <- function(events, spec, segments, cells) {
   labels <- cells |>
-    distinct(.data$participant_id, .data$measure, .data$bin_start)
+    distinct(.data$participant_id, .data$sensor, .data$bin_start)
   settings <- .coverage_settings(spec)
 
   # When output is UTC, or all offsets are zero, local bin labels equal UTC
@@ -1804,7 +1804,7 @@ plot.coverage <- function(
 # Count the events of one bin-width group per cell. `offset_segments` is NULL
 # for UTC output, where events are bucketed without a segment join.
 .coverage_count_group <- function(group, events, labels, week_start, offset_segments) {
-  group_events <- events |> filter(.data$measure %in% !!group$measure)
+  group_events <- events |> filter(.data$sensor %in% !!group$sensor)
 
   if (is.null(offset_segments)) {
     # UTC mode: bucket the event time directly.
@@ -1843,10 +1843,10 @@ plot.coverage <- function(
   }
 
   group_events |>
-    inner_join(labels, by = c("participant_id", "measure", "bin_start")) |>
+    inner_join(labels, by = c("participant_id", "sensor", "bin_start")) |>
     summarise(
       value = n_distinct(.data$event_time, na.rm = TRUE),
-      .by = c("participant_id", "measure", "bin_start")
+      .by = c("participant_id", "sensor", "bin_start")
     )
 }
 
@@ -1867,7 +1867,7 @@ plot.coverage <- function(
     ) |>
     summarise(
       value = sum(.data$opportunities, na.rm = TRUE),
-      .by = c("participant_id", "measure", "bin_start")
+      .by = c("participant_id", "sensor", "bin_start")
     )
 }
 
@@ -1877,10 +1877,10 @@ plot.coverage <- function(
 .coverage_assemble_interval <- function(spec, context) {
   observations <- context$observations
 
-  expectations <- .coverage_settings(spec) |> select("measure", "expected_seconds")
+  expectations <- .coverage_settings(spec) |> select("sensor", "expected_seconds")
 
   spans <- observations |>
-    inner_join(.coverage_inline(spec$db, expectations), by = "measure") |>
+    inner_join(.coverage_inline(spec$db, expectations), by = "sensor") |>
     mutate(seg_end = .data$time + to_seconds(.data$expected_seconds)) |>
     summarise(
       span_start = min(.data$time, na.rm = TRUE),
@@ -1910,13 +1910,13 @@ plot.coverage <- function(
 # Merge overlapping and touching [time, time + expected) intervals.
 .coverage_merge_intervals <- function(observations, expectations) {
   observations |>
-    inner_join(expectations, by = "measure") |>
+    inner_join(expectations, by = "sensor") |>
     mutate(
       seg_start = .data$time,
       seg_end = .data$time + to_seconds(.data$expected_seconds)
     ) |>
-    # Track the running maximum end within each participant and measure.
-    group_by(.data$participant_id, .data$measure) |>
+    # Track the running maximum end within each participant and sensor.
+    group_by(.data$participant_id, .data$sensor) |>
     window_order(.data$seg_start, .data$seg_end) |>
     mutate(prior_end = lag(.data$seg_end)) |>
     mutate(prior_max = cummax(.data$prior_end)) |>
@@ -1930,13 +1930,13 @@ plot.coverage <- function(
     mutate(island = cumsum(.data$is_new)) |>
     ungroup() |>
     # Collapse each run of overlapping intervals to its outer bounds.
-    group_by(.data$participant_id, .data$measure, .data$island) |>
+    group_by(.data$participant_id, .data$sensor, .data$island) |>
     summarise(
       seg_start = min(.data$seg_start, na.rm = TRUE),
       seg_end = max(.data$seg_end, na.rm = TRUE),
       .groups = "drop"
     ) |>
-    select("participant_id", "measure", "seg_start", "seg_end")
+    select("participant_id", "sensor", "seg_start", "seg_end")
 }
 
 # Split the merged covered set at cell boundaries and sum overlap seconds.
@@ -1944,7 +1944,7 @@ plot.coverage <- function(
   merged |>
     inner_join(
       cells,
-      by = join_by(participant_id, measure, seg_start < cell_end, seg_end > cell_start)
+      by = join_by(participant_id, sensor, seg_start < cell_end, seg_end > cell_start)
     ) |>
     mutate(
       piece_start = pmax(.data$seg_start, .data$cell_start, na.rm = TRUE),
@@ -1959,7 +1959,7 @@ plot.coverage <- function(
         ),
         na.rm = TRUE
       ),
-      .by = c("participant_id", "measure", "bin_start")
+      .by = c("participant_id", "sensor", "bin_start")
     )
 }
 
@@ -1980,7 +1980,7 @@ plot.coverage <- function(
         ),
         na.rm = TRUE
       ),
-      .by = c("participant_id", "measure", "bin_start")
+      .by = c("participant_id", "sensor", "bin_start")
     )
 }
 
@@ -1990,7 +1990,7 @@ plot.coverage <- function(
 .coverage_assemble_bin <- function(spec, context) {
   observations <- context$observations
 
-  expectations <- .coverage_settings(spec) |> select("measure", "expected_seconds")
+  expectations <- .coverage_settings(spec) |> select("sensor", "expected_seconds")
 
   # The slot grid fixes the participant span and the denominator anchors.
   slot_grid <- .coverage_slot_grid(observations, expectations, spec$db)
@@ -2024,12 +2024,12 @@ plot.coverage <- function(
   anchors <- observations |>
     summarise(
       anchor = min(.data$time, na.rm = TRUE),
-      .by = c("participant_id", "measure")
+      .by = c("participant_id", "sensor")
     )
   # Occupied slot start for each observation, deduplicated.
   slots <- observations |>
-    inner_join(anchors, by = c("participant_id", "measure")) |>
-    inner_join(expectations, by = "measure") |>
+    inner_join(anchors, by = c("participant_id", "sensor")) |>
+    inner_join(expectations, by = "sensor") |>
     mutate(
       index = floor(
         !!(.coverage_seconds_between_expr(.data$time, .data$anchor)) /
@@ -2039,7 +2039,7 @@ plot.coverage <- function(
     ) |>
     distinct(
       .data$participant_id,
-      .data$measure,
+      .data$sensor,
       .data$slot_start,
       .data$expected_seconds
     )
@@ -2054,11 +2054,11 @@ plot.coverage <- function(
 # The span ends at the last observation rounded up to the next slot boundary.
 .coverage_slot_spans <- function(observations, expectations) {
   observations |>
-    inner_join(expectations, by = "measure") |>
+    inner_join(expectations, by = "sensor") |>
     summarise(
       anchor = min(.data$time, na.rm = TRUE),
       latest = max(.data$time, na.rm = TRUE),
-      .by = c("participant_id", "measure", "expected_seconds")
+      .by = c("participant_id", "sensor", "expected_seconds")
     ) |>
     mutate(
       last_slot = .data$anchor +
@@ -2081,7 +2081,7 @@ plot.coverage <- function(
 # Count occupied grid slots with the same bin assignment as observations.
 .coverage_occupied_slots <- function(slots, spec, segments, cells) {
   slots |>
-    select("participant_id", "measure", event_time = "slot_start") |>
+    select("participant_id", "sensor", event_time = "slot_start") |>
     .coverage_count_cells(spec, segments, cells)
 }
 
@@ -2091,7 +2091,7 @@ plot.coverage <- function(
     inner_join(.coverage_inline(spec$db, spans), by = "participant_id") |>
     left_join(
       .coverage_inline(spec$db, anchors),
-      by = c("participant_id", "measure")
+      by = c("participant_id", "sensor")
     ) |>
     mutate(
       anchor = coalesce(.data$anchor, .data$span_start),
@@ -2108,7 +2108,7 @@ plot.coverage <- function(
     ) |>
     summarise(
       value = sum(.data$slots, na.rm = TRUE),
-      .by = c("participant_id", "measure", "bin_start")
+      .by = c("participant_id", "sensor", "bin_start")
     )
 }
 
@@ -2123,10 +2123,10 @@ plot.coverage <- function(
   na_when_zero = FALSE
 ) {
   out <- cells |>
-    distinct(.data$participant_id, .data$measure, .data$bin_start) |>
+    distinct(.data$participant_id, .data$sensor, .data$bin_start) |>
     left_join(
       numerator,
-      by = c("participant_id", "measure", "bin_start")
+      by = c("participant_id", "sensor", "bin_start")
     )
 
   if (is.null(denominator)) {
@@ -2136,7 +2136,7 @@ plot.coverage <- function(
     out <- out |>
       left_join(
         denominator,
-        by = c("participant_id", "measure", "bin_start"),
+        by = c("participant_id", "sensor", "bin_start"),
         suffix = c(".numerator", ".denominator")
       )
     if (na_when_zero) {
@@ -2158,7 +2158,7 @@ plot.coverage <- function(
   }
 
   out |>
-    select("participant_id", time = "bin_start", "measure", "coverage")
+    select("participant_id", time = "bin_start", "sensor", "coverage")
 }
 
 # Copy a small R data frame into DuckDB with explicit column types, defaulting
@@ -2205,7 +2205,7 @@ plot.coverage <- function(
     left_join(ios, by = "participant_id") |>
     mutate(
       coverage = if_else(
-        coalesce(.data$is_ios, FALSE) & .data$measure %in% .coverage_ios_sensors,
+        coalesce(.data$is_ios, FALSE) & .data$sensor %in% .coverage_ios_sensors,
         NA_real_,
         .data$coverage
       )

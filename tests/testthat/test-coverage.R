@@ -97,7 +97,7 @@ test_that("coverage_frequency counts distinct measurements in zero-filled bins",
 
   expect_s3_class(res, "coverage")
   expect_s3_class(res, "tbl_df")
-  expect_named(res, c("participant_id", "time", "measure", "coverage"))
+  expect_named(res, c("participant_id", "time", "sensor", "coverage"))
   expect_equal(
     res$time,
     as.POSIXct(
@@ -156,8 +156,8 @@ test_that("coverage_frequency uses participant spans and zero-fills other sensor
 
   expect_equal(nrow(p1), 6)
   expect_equal(nrow(p2), 2)
-  expect_equal(p1$coverage[p1$measure == "Battery"], c(1, 0, 0))
-  expect_equal(p1$coverage[p1$measure == "Accelerometer"], c(1, 0, 1))
+  expect_equal(p1$coverage[p1$sensor == "Battery"], c(1, 0, 0))
+  expect_equal(p1$coverage[p1$sensor == "Accelerometer"], c(1, 0, 1))
   expect_equal(p2$coverage, c(1, 0))
 })
 
@@ -265,8 +265,8 @@ test_that("coverage_proportional uses each expected interval as its default bin"
     local = FALSE
   ))
 
-  expect_equal(nrow(res[res$measure == "Accelerometer", ]), 3)
-  expect_equal(nrow(res[res$measure == "Battery", ]), 2)
+  expect_equal(nrow(res[res$sensor == "Accelerometer", ]), 3)
+  expect_equal(nrow(res[res$sensor == "Battery", ]), 2)
   expect_equal(res$coverage, rep(1, 5))
   expect_equal(attr(res, "by"), c(Accelerometer = 60, Battery = 120))
 
@@ -278,8 +278,8 @@ test_that("coverage_proportional uses each expected interval as its default bin"
     local = FALSE
   ))
   expect_equal(nrow(wide), 2)
-  expect_equal(wide$coverage[wide$measure == "Accelerometer"], 1.5)
-  expect_equal(wide$coverage[wide$measure == "Battery"], 2)
+  expect_equal(wide$coverage[wide$sensor == "Accelerometer"], 1.5)
+  expect_equal(wide$coverage[wide$sensor == "Battery"], 2)
 })
 
 test_that("coverage_proportional interval unions overlaps in the last bin", {
@@ -361,12 +361,12 @@ test_that("proportional metrics widen bins that are shorter than sensor interval
     )
 
     result <- collect(result)
-    for (measure in names(expected)) {
-      times <- sort(as.numeric(result$time[result$measure == measure]))
+    for (sensor in names(expected)) {
+      times <- sort(as.numeric(result$time[result$sensor == sensor]))
       expect_gte(length(times), 3)
       expect_equal(
         diff(times),
-        rep(unname(expected[[measure]]), length(times) - 1)
+        rep(unname(expected[[sensor]]), length(times) - 1)
       )
     }
     if (identical(metric, "count")) {
@@ -590,9 +590,9 @@ test_that("bin coverage extrapolates grids across the shared participant span", 
   ))
 
   expect_equal(nrow(res), 9)
-  expect_equal(res$coverage[res$measure == "Accelerometer"], c(1, 0, 1))
-  expect_equal(res$coverage[res$measure == "Battery"], c(0, 1, 1))
-  expect_equal(res$coverage[res$measure == "Weather"], c(0, 0, 0))
+  expect_equal(res$coverage[res$sensor == "Accelerometer"], c(1, 0, 1))
+  expect_equal(res$coverage[res$sensor == "Battery"], c(0, 1, 1))
+  expect_equal(res$coverage[res$sensor == "Weather"], c(0, 0, 0))
 })
 
 test_that("bin coverage uses the selected local or UTC time axis", {
@@ -641,7 +641,7 @@ test_that("coverage_proportional drops sensors without expected intervals", {
     )),
     "Dropping sensor.*Battery"
   )
-  expect_equal(as.character(unique(res$measure)), "Accelerometer")
+  expect_equal(as.character(unique(res$sensor)), "Accelerometer")
 
   expect_error(
     suppressWarnings(coverage_proportional(
@@ -738,10 +738,10 @@ test_that("coverage reports unknown OS and marks unsupported iOS sensors NA", {
     local = FALSE
   ))
   ios <- res[
-    res$participant_id == 1 & res$measure %in% c("AppUsage", "Light", "Memory", "Screen"),
+    res$participant_id == 1 & res$sensor %in% c("AppUsage", "Light", "Memory", "Screen"),
   ]
   android <- res[
-    res$participant_id == 2 & res$measure %in% c("AppUsage", "Light", "Memory", "Screen"),
+    res$participant_id == 2 & res$sensor %in% c("AppUsage", "Light", "Memory", "Screen"),
   ]
 
   expect_equal(nrow(ios), 8)
@@ -762,7 +762,7 @@ test_that("coverage reports unknown OS and marks unsupported iOS sensors NA", {
     "Operating system is unknown"
   )
   unknown_res <- collect(unknown_os)
-  expect_equal(unknown_res$coverage[unknown_res$measure == "AppUsage"], 0)
+  expect_equal(unknown_res$coverage[unknown_res$sensor == "AppUsage"], 0)
 })
 
 test_that("coverage results can be summarized and plotted by cycle", {
@@ -791,7 +791,7 @@ test_that("coverage results can be summarized and plotted by cycle", {
     mutate(date = as.Date(.data$time), hour = lubridate::hour(.data$time)) |>
     summarise(
       coverage = mean(.data$coverage, na.rm = TRUE),
-      .by = c("participant_id", "measure", "date", "hour")
+      .by = c("participant_id", "sensor", "date", "hour")
     ) |>
     collect()
   plotted <- plot(frequency, cycle = "day")
@@ -1344,7 +1344,7 @@ test_that("expected names are case-insensitive in coverage_proportional", {
     expected = c(accelerometer = 60),
     local = FALSE
   ))
-  expect_equal(as.character(unique(res$measure)), "Accelerometer")
+  expect_equal(as.character(unique(res$sensor)), "Accelerometer")
   # Divergence: the old implementation accepted the mixed-case duplicate.
   expect_error(
     coverage_proportional(
@@ -1461,7 +1461,7 @@ test_that("sensor view suffixes are accepted case-insensitively", {
     by = 3600,
     local = TRUE
   ))
-  expect_equal(as.character(unique(res$measure)), "Accelerometer")
+  expect_equal(as.character(unique(res$sensor)), "Accelerometer")
 })
 
 test_that("a DST transition exactly at the episode end has no extra tail", {
@@ -1689,8 +1689,8 @@ test_that("collect rounds, factorises, and keeps the coverage metadata", {
 
   expect_s3_class(res, "coverage")
   expect_s3_class(res, "tbl_df")
-  expect_named(res, c("participant_id", "time", "measure", "coverage"))
-  expect_identical(levels(res$measure), c("Battery", "Accelerometer"))
+  expect_named(res, c("participant_id", "time", "sensor", "coverage"))
+  expect_identical(levels(res$sensor), c("Battery", "Accelerometer"))
   expect_equal(res$coverage, round(res$coverage, 2))
   expect_equal(attr(res, "coverage_type"), "frequency")
   expect_equal(attr(res, "by"), c(Accelerometer = "minute", Battery = "minute"))
@@ -1700,6 +1700,21 @@ test_that("collect rounds, factorises, and keeps the coverage metadata", {
   expect_false(attr(res, "local"))
   # Collecting an already-collected result must not stack the class.
   expect_identical(class(collect(res)), class(res))
+})
+
+test_that("coverage output names the sensor column", {
+  db <- coverage_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
+  insert_measurements(db, "Battery", "12345", "2024-01-01 00:00:00")
+  insert_measurements(db, "Accelerometer", "12345", "2024-01-01 00:00:00")
+
+  res <- collect(coverage_frequency(
+    db,
+    "12345",
+    sensor = c("Battery", "Accelerometer")
+  ))
+  expect_named(res, c("participant_id", "time", "sensor", "coverage"))
+  expect_identical(levels(res$sensor), c("Battery", "Accelerometer"))
 })
 
 test_that("plots support the line and heatmap types", {

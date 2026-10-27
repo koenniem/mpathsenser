@@ -12,7 +12,7 @@ utils::globalVariables(c(
   "to_months",
   # Bare column names in join_by() expressions, where .data$ is not allowed.
   "participant_id",
-  "measure",
+  "sensor",
   "time",
   "from",
   "to",
