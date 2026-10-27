@@ -436,18 +436,21 @@ collect.coverage <- function(x, ...) {
 #' Plot a coverage overview
 #'
 #' @description
-#' Draw a line chart, a sensor heatmap, or a participant-strip overview.
-#' Multiple participants are averaged by default for lines and heatmaps; use
-#' `aggregate = NULL` to facet them. `type = "bar"` shows one row per participant
-#' and facets by sensor.
+#' Draw a line chart, a sensor heatmap, or a compact bar timeline. Multiple
+#' participants are averaged by default for every plot type; use
+#' `aggregate = NULL` to facet them. `type = "bar"` draws thin coverage bars:
+#' sensors by default, participants with `aggregate = "sensor"`, and participant
+#' rows with sensor facets when `aggregate = NULL`.
 #'
 #' @param x A coverage result from [coverage_frequency()] or
 #'   [coverage_proportional()], either lazy or already collected.
 #' @param digits Number of digits to show in heatmap labels. Defaults to 2.
+#'   Bar plots do not print labels.
 #' @param type The plot type. `"auto"` (the default) uses a line graph when
 #'   `cycle = NULL` and a heatmap otherwise. Use `"line"`, `"heatmap"`, or
-#'   `"bar"` to force a layout. Bar plots place participants on the y-axis and
-#'   facet by sensor.
+#'   `"bar"` to force a layout. Heatmaps show a sensor-by-time grid with the
+#'   value printed in each cell. Bar plots draw thin bars without labels; the
+#'   rows depend on `aggregate`.
 #' @param cycle The calendar cycle used to average the values for plotting:
 #'   `NULL`, `"hour"`, `"day"`, `"week"`, `"month"`, or `"year"`. Defaults to
 #'   `NULL`, which plots the full time series. Each cycle is one calendar
@@ -456,11 +459,12 @@ collect.coverage <- function(x, ...) {
 #'   bins). Finer bins are averaged into that position. This only changes the
 #'   plot; use dplyr `summarise()` on the returned table for other summaries.
 #' @param aggregate How to combine multiple participants or sensors. `"auto"`
-#'   (the default) averages participants for line and heatmap plots and keeps
-#'   sensor facets for bar plots. `"participant_id"` averages across
-#'   participants for line and heatmap plots. `"sensor"` averages across sensors
-#'   for bar plots. `NULL` performs no averaging and facets the remaining
-#'   dimension: participants for line/heatmap plots, sensors for bar plots.
+#'   (the default) averages across participants for every plot type.
+#'   `"participant_id"` averages across participants explicitly; for bar plots
+#'   this leaves sensors on the y-axis. `"sensor"` averages across sensors and
+#'   is only valid for bar plots, where it leaves participants on the y-axis.
+#'   `NULL` performs no averaging and facets the remaining dimension: participants
+#'   for line/heatmap plots, sensors for bar plots (with participants as rows).
 #' @param label Whether to label weekday positions with abbreviations, as in
 #'   [lubridate::wday()].
 #' @param week_start Day the week starts on: 1 = Monday, 7 = Sunday. Defaults

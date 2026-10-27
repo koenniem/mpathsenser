@@ -148,8 +148,10 @@ The good news: this is what you get in return.
   Cycle profiles average into one calendar position, such as hour of the day
   or weekday, instead of adding finer facets. With several participants,
   `plot()` averages them by default; `aggregate = NULL` restores participant
-  facets, and `type = "bar"` shows one participant lane per row with sensor
-  facets. Expected intervals can differ per sensor, calendar units keep their
+  facets. `type = "bar"` draws thin, unlabelled coverage bars: sensors are rows
+  by default, `aggregate = "sensor"` puts participants on the rows, and
+  `aggregate = NULL` keeps participants on the rows with sensors as facets.
+  Expected intervals can differ per sensor, calendar units keep their
   real boundaries, and local bins follow the timezone that applied at each
   observation, including daylight-saving folds and travel between timezones.
   The last bin always contains the last observation rather than the end of a
@@ -186,8 +188,23 @@ Smaller improvements worth knowing about.
 * A temporary database connection is closed even when an error occurs.
 * `add_timezones_to_db()` no longer trips over the `start` column in
   `AppUsage`.
+* `add_timezones_to_db()` now starts a new timezone interval when a missing
+  timezone appears or ends, so measurements after a missing sample no longer
+  inherit an earlier timezone. (#11)
 * `app_category()` skips missing app names and only rate-limits actual
   requests.
+* `collect_local()` now applies the same legacy timestamp rules as the `_local`
+  views, including per-file sense versions, and recognizes `_local` and
+  `_with_local` suffixes case-insensitively. (#11)
+* `example_db()` now advances its processed-file sequence, so importing new
+  files into the example database no longer fails with duplicate IDs. (#11)
+* `geocode_rev()` now accepts `email = NULL` and omits the email parameter.
+  (#11)
+* `read_mpath_sense()` now resolves `_local` and `_with_local` sensor names to
+  their physical sensor and aborts before registering files when no sensors
+  are selected. (#11)
+* `to_local_time()` now returns a UTC-tagged `POSIXct` for non-UTC and
+  `POSIXlt` input instead of preserving the input timezone attribute. (#11)
 
 # mpathsenser 1.2.4
 ## Major changes
