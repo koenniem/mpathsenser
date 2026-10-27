@@ -1072,6 +1072,31 @@ test_that("spring-forward gap cell is present and empty", {
   expect_equal(participant_3$coverage, c(1, NA_real_, 1))
 })
 
+test_that("gap cells handle several participants with spring-forward gaps", {
+  db <- coverage_db(participants = c("1", "2"))
+  on.exit(cleanup_test_db(db), add = TRUE)
+  for (participant in c("1", "2")) {
+    insert_measurements(
+      db,
+      "Accelerometer",
+      participant,
+      as.POSIXct(c("2024-03-31 00:30:00", "2024-03-31 01:30:00"), tz = "UTC"),
+      timezone = "Europe/Amsterdam"
+    )
+  }
+
+  res <- collect(coverage_frequency(
+    db,
+    sensor = "Accelerometer",
+    by = 3600,
+    local = TRUE
+  ))
+  gaps <- res[format(res$time, "%Y-%m-%d %H:%M:%S") == "2024-03-31 02:00:00", ]
+  expect_equal(nrow(gaps), 2)
+  expect_equal(sort(gaps$participant_id), c(1, 2))
+  expect_equal(gaps$coverage, c(0, 0))
+})
+
 test_that("missing timezone inherits or falls back to UTC", {
   db <- timezone_fixture_db()
   on.exit(cleanup_test_db(db), add = TRUE)

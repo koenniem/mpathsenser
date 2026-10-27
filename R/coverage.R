@@ -1337,7 +1337,10 @@ plot.coverage <- function(
         epoch(.data$second)
     ) |>
     filter(.data$offset_seconds != .data$offset_lo) |>
-    summarise(transition = min(.data$second), .by = c("bracket_id", "timezone")) |>
+    summarise(
+      transition = min(.data$second, na.rm = TRUE),
+      .by = c("bracket_id", "timezone")
+    ) |>
     arrange(.data$bracket_id) |>
     collect() |>
     pull("transition")
@@ -1714,9 +1717,7 @@ plot.coverage <- function(
   origin <- .coverage_time_bucket_origin()
   local <- as.numeric(time) + offset_seconds
   bucket <- floor((local - origin) / step) * step + origin
-  if (abs(local - bucket) < 1e-6) {
-    bucket <- bucket - step
-  }
+  bucket <- if_else(abs(local - bucket) < 1e-6, bucket - step, bucket)
   as.POSIXct(bucket, origin = "1970-01-01", tz = "UTC")
 }
 
