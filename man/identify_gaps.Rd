@@ -2,31 +2,43 @@
 % Please edit documentation in R/sensor_functions.R
 \name{identify_gaps}
 \alias{identify_gaps}
+\alias{identify_gaps.default}
+\alias{identify_gaps.duckdb_connection}
+\alias{identify_gaps.tbl_sql}
+\alias{identify_gaps.data.frame}
 \title{Identify gaps in mpathsenser mobile sensing data}
 \usage{
-identify_gaps(
-  db,
-  participant_id = NULL,
-  min_gap = 60,
-  sensor = "Accelerometer"
-)
+identify_gaps(x, participant_id = NULL, min_gap = 60, ...)
+
+\method{identify_gaps}{default}(x, participant_id = NULL, min_gap = 60, ...)
+
+\method{identify_gaps}{duckdb_connection}(x, participant_id = NULL, min_gap = 60, sensor = NULL, ...)
+
+\method{identify_gaps}{tbl_sql}(x, participant_id = NULL, min_gap = 60, ...)
+
+\method{identify_gaps}{data.frame}(x, participant_id = NULL, min_gap = 60, ...)
 }
 \arguments{
-\item{db}{A database connection to an m-Path Sense database.}
+\item{x}{A database connection, a lazy table, or a data frame containing at least the columns
+\code{participant_id} and \code{time}. A data frame must store \code{time} as \code{POSIXct}.}
 
-\item{participant_id}{A character string identifying a single participant. Use
-\code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
-Leave empty to get data for all participants.}
+\item{participant_id}{A single participant identifier (stored as an unsigned integer; an
+integer, numeric, or character value is accepted). Leave empty to include all participants.}
 
 \item{min_gap}{The minimum time (in seconds) passed between two subsequent measurements for it to
 be considered a gap.}
 
+\item{...}{Not used.}
+
 \item{sensor}{One or multiple sensors. See \link[mpathsenser]{sensors} for a list of available
-sensors.}
+sensors. The default \code{NULL} uses every sensor, which gives the most accurate gaps but takes
+longer; pass a single high-frequency sensor such as \code{"Accelerometer"} for a quick scan. Sensor
+views such as \code{"Accelerometer_local"} are not accepted.}
 }
 \value{
-A tibble containing the time period of the gaps. The structure of this tibble is as
-follows:
+For a database connection or a lazy table, a lazy table containing the time period of
+the gaps. Call \code{\link[dplyr]{collect}} to load it into R. For a data frame, a tibble. The
+structure is as follows:
 
 \tabular{ll}{ participant_id \tab the \code{participant_id} of where the gap occurred \cr from
 \tab the time of the last measurement before the gap \cr to             \tab the time of the
@@ -51,7 +63,7 @@ very high, near-continuous sample rate such as the accelerometer or gyroscope. T
 then creates time between two subsequent measurements and returns the period in which this time
 was larger than \code{min_gap}.
 
-Note that the \code{from} and \code{to} columns in the output are character vectors in UTC
+Note that the \code{from} and \code{to} columns in the output are POSIXct timestamps in UTC
 time.
 }
 \section{Warning}{
@@ -74,6 +86,7 @@ than you want and then afterwards increasing the start time of the gaps by 5 sec
 \dontrun{
 # Find the gaps for a participant and convert to datetime
 gaps <- identify_gaps(db, "12345", min_gap = 60) |>
+  collect() |>
   mutate(across(c(to, from), ymd_hms)) |>
   mutate(across(c(to, from), with_tz, "Europe/Brussels"))
 

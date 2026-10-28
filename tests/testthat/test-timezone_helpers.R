@@ -1,86 +1,114 @@
 test_that("add_timezones_to_db aborts if Timezone table is missing", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  opts <- options(mpathsenser.check_missing_sensors = FALSE)
+  on.exit(options(opts), add = TRUE)
 
-  DBI::dbWriteTable(
-    db,
-    "Accelerometer",
-    data.frame(
-      measurement_id = 1:2,
-      participant_id = 1,
-      date = c("2024-01-01", "2024-01-01"),
-      time = c("10:00:00", "11:00:00")
-    )
-  )
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
+
+  # Drop the raw Timezone table (and the main view over it) to simulate data
+  # without timezone measurements
+  DBI::dbExecute(db, "DROP TABLE raw.Timezone")
+  DBI::dbExecute(db, "DROP VIEW IF EXISTS main.Timezone")
 
   expect_error(
     add_timezones_to_db(db),
     "The table `Timezone` does not exist in the database."
   )
 
-  DBI::dbDisconnect(db)
+  close_db(db)
 })
-
 
 test_that("add_timezones_to_db adds timezone column correctly", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
-  # Create a simple timezone table
-  DBI::dbWriteTable(
+  DBI::dbExecute(
     db,
-    "Timezone",
-    data.frame(
-      participant_id = 1,
-      date = c("2024-01-01", "2024-01-02"),
-      time = c("00:00:00", "00:00:00"),
-      timezone = c("Europe/Brussels", "America/New_York")
-    )
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('12345', '2021-11-14 13:00:00', 'Europe/Brussels', 1, 1, 1),
+     ('12345', '2021-11-14 14:00:00', 'America/New_York', 1, 1, 1)"
   )
-
-  # Create a mock sensor table
-  DBI::dbWriteTable(
+  DBI::dbExecute(
     db,
-    "Accelerometer",
-    data.frame(
-      measurement_id = 1:4,
-      participant_id = 1,
-      date = c(rep("2024-01-01", 3), "2024-01-02"),
-      time = c("00:30:00", "12:00:00", "23:59:59", "00:00:01")
-    )
+    "INSERT INTO raw.Accelerometer (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('12345', '2021-11-14 13:30:00', 1, 1, 1),
+     ('12345', '2021-11-14 14:30:00', 1, 1, 1)"
   )
 
   add_timezones_to_db(db, sensors = "Accelerometer", .progress = FALSE)
 
-  result <- dplyr::tbl(db, "Accelerometer") |> dplyr::collect()
+  result <- DBI::dbGetQuery(db, "SELECT timezone FROM Accelerometer ORDER BY time")
 
-  expect_true("timezone" %in% names(result))
-  expect_equal(unique(result$timezone), c("Europe/Brussels", "America/New_York"))
+  expect_equal(result$timezone, c("Europe/Brussels", "America/New_York"))
   expect_true(all(!is.na(result$timezone)))
 
-  DBI::dbDisconnect(db)
+  close_db(db)
 })
 
+test_that("add_timezones_to_db starts a new interval at missing timezones", {
+  db <- fresh_test_db()
+  on.exit(cleanup_test_db(db), add = TRUE)
 
-test_that("add_timezones_to_db handles multiple participants independently", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
-
-  tz <- data.frame(
-    participant_id = c(1, 1, 2, 2),
-    date = c("2024-01-01", "2024-01-02", "2024-01-01", "2024-01-03"),
-    time = c("00:00:00", "00:00:00", "00:00:00", "00:00:00"),
-    timezone = c("Europe/Brussels", "America/New_York", "Asia/Tokyo", "Europe/London")
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00+00', 'Europe/Brussels', 1, 1, 1),
+     ('1', '2024-01-02 00:00:00+00', NULL, 1, 2, 1),
+     ('1', '2024-01-03 00:00:00+00', 'America/New_York', 1, 3, 1),
+     ('1', '2024-01-04 00:00:00+00', NULL, 1, 4, 1),
+     ('1', '2024-01-05 00:00:00+00', NULL, 1, 5, 1),
+     ('1', '2024-01-06 00:00:00+00', 'Europe/Brussels', 1, 6, 1)"
   )
-  DBI::dbWriteTable(db, "Timezone", tz)
-
-  accel <- data.frame(
-    measurement_id = 1:4,
-    participant_id = c(1, 1, 2, 2),
-    date = c("2024-01-01", "2024-01-02", "2024-01-01", "2024-01-03"),
-    time = c("12:00:00", "12:00:00", "12:00:00", "12:00:00")
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Accelerometer (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 12:00:00+00', 1, 1, 1),
+     ('1', '2024-01-02 12:00:00+00', 1, 2, 1),
+     ('1', '2024-01-03 12:00:00+00', 1, 3, 1),
+     ('1', '2024-01-04 12:00:00+00', 1, 4, 1),
+     ('1', '2024-01-05 12:00:00+00', 1, 5, 1),
+     ('1', '2024-01-06 12:00:00+00', 1, 6, 1)"
   )
-  DBI::dbWriteTable(db, "Accelerometer", accel)
 
   add_timezones_to_db(db, sensors = "Accelerometer", .progress = FALSE)
-  result <- dplyr::tbl(db, "Accelerometer") |> dplyr::collect()
+  result <- DBI::dbGetQuery(
+    db,
+    "SELECT timezone FROM main.Accelerometer ORDER BY time"
+  )
+
+  expect_equal(
+    result$timezone,
+    c(
+      "Europe/Brussels",
+      NA,
+      "America/New_York",
+      NA,
+      NA,
+      "Europe/Brussels"
+    )
+  )
+})
+
+test_that("add_timezones_to_db handles multiple participants independently", {
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
+
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1, 1, 1),
+     ('1', '2024-01-02 00:00:00', 'America/New_York', 1, 1, 1),
+     ('2', '2024-01-01 00:00:00', 'Asia/Tokyo', 1, 1, 1),
+     ('2', '2024-01-03 00:00:00', 'Europe/London', 1, 1, 1)"
+  )
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Accelerometer (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 12:00:00', 1, 1, 1),
+     ('1', '2024-01-02 12:00:00', 1, 1, 1),
+     ('2', '2024-01-01 12:00:00', 1, 1, 1),
+     ('2', '2024-01-03 12:00:00', 1, 1, 1)"
+  )
+
+  add_timezones_to_db(db, sensors = "Accelerometer", .progress = FALSE)
+  result <- DBI::dbGetQuery(db, "SELECT * FROM Accelerometer")
 
   res1 <- result[result$participant_id == 1, "timezone", drop = TRUE]
   res2 <- result[result$participant_id == 2, "timezone", drop = TRUE]
@@ -88,205 +116,236 @@ test_that("add_timezones_to_db handles multiple participants independently", {
   expect_setequal(res1, c("Europe/Brussels", "America/New_York"))
   expect_setequal(res2, c("Asia/Tokyo", "Europe/London"))
 
-  DBI::dbDisconnect(db)
+  close_db(db)
 })
 
-test_that("add_timezones_to_db handles measurements before and after known timezone intervals", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+test_that("add_timezones_to_db handles travel and repeated DST instants", {
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
-  DBI::dbWriteTable(
+  DBI::dbExecute(
     db,
-    "Timezone",
-    data.frame(
-      participant_id = 1,
-      date = "2024-01-02",
-      time = "00:00:00",
-      timezone = "Europe/Brussels"
-    )
-  )
-
-  DBI::dbWriteTable(
-    db,
-    "Light",
-    data.frame(
-      measurement_id = 1:3,
-      participant_id = 1,
-      date = c("2024-01-01", "2024-01-02", "2024-01-03"),
-      time = c("12:00:00", "12:00:00", "12:00:00")
-    )
-  )
-
-  add_timezones_to_db(db, sensors = "Light", .progress = FALSE)
-  result <- dplyr::tbl(db, "Light") |> dplyr::collect()
-
-  # All should have a timezone (first one uses implicit earliest, last uses infinite end)
-  expect_true(all(!is.na(result$timezone)))
-  expect_true(all(result$timezone == "Europe/Brussels"))
-
-  DBI::dbDisconnect(db)
-})
-
-test_that("add_timezones_to_db works for empty tables", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
-  DBI::dbWriteTable(
-    db,
-    "Timezone",
-    data.frame(
-      participant_id = 1,
-      date = "2024-01-01",
-      time = "00:00:00",
-      timezone = "Europe/Brussels"
-    )
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2025-01-01 00:00:00+00', 'Europe/Brussels', 1, 1, 1),
+     ('1', '2025-02-01 00:00:00+00', 'America/New_York', 1, 1, 1),
+     ('1', '2025-10-26 01:00:00+00', 'Europe/Brussels', 1, 1, 1)"
   )
   DBI::dbExecute(
     db,
-    "CREATE TABLE Gyroscope (measurement_id TEXT, participant_id TEXT, date TEXT, time TEXT)"
-  ) # empty table
-  expect_silent(add_timezones_to_db(db, sensors = "Gyroscope", .progress = FALSE))
-  DBI::dbDisconnect(db)
+    "INSERT INTO raw.Activity (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2025-01-15 12:00:00+00', 1, 1, 1),
+     ('1', '2025-02-15 11:00:00+00', 1, 1, 1),
+     ('1', '2025-10-26 00:30:00+00', 1, 1, 1),
+     ('1', '2025-10-26 01:30:00+00', 1, 1, 1)"
+  )
+
+  add_timezones_to_db(db, sensors = "Activity", .progress = FALSE)
+  result <- DBI::dbGetQuery(db, "SELECT time, timezone FROM main.Activity ORDER BY time")
+
+  expect_equal(
+    result$timezone,
+    c(
+      "Europe/Brussels",
+      "America/New_York",
+      "America/New_York",
+      "Europe/Brussels"
+    )
+  )
+  raw_fields <- DBI::dbGetQuery(db, "PRAGMA table_info('Activity')")
+  expect_equal(raw_fields$type[raw_fields$name == "time"], "TIMESTAMP WITH TIME ZONE")
+  local_fields <- DBI::dbGetQuery(db, "PRAGMA table_info('main.Activity_local')")
+  expect_equal(local_fields$type[local_fields$name == "time"], "TIMESTAMP")
+
+  close_db(db)
 })
 
-test_that("add_timezones_to_db skips already completed tables", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+test_that("add_timezones_to_db handles measurements before and after known timezone intervals", {
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
-  DBI::dbWriteTable(
+  DBI::dbExecute(
     db,
-    "Timezone",
-    data.frame(
-      participant_id = 1,
-      date = "2024-01-01",
-      time = "00:00:00",
-      timezone = "Europe/Brussels"
-    )
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-02 00:00:00', 'Europe/Brussels', 1, 1, 1)"
+  )
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Light (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 12:00:00', 1, 1, 1),
+     ('1', '2024-01-02 12:00:00', 1, 1, 1),
+     ('1', '2024-01-03 12:00:00', 1, 1, 1)"
   )
 
-  DBI::dbWriteTable(
-    db,
-    "Accelerometer",
-    data.frame(
-      measurement_id = 1:2,
-      participant_id = 1,
-      date = c("2024-01-01", "2024-01-01"),
-      time = c("10:00:00", "11:00:00"),
-      timezone = c("Europe/Brussels", "Europe/Brussels")
-    )
-  )
+  add_timezones_to_db(db, sensors = "Light", .progress = FALSE)
+  result <- DBI::dbGetQuery(db, "SELECT timezone FROM main.Light")
 
-  expect_silent(add_timezones_to_db(db, sensors = "Accelerometer", .progress = FALSE))
+  # All should have a timezone (first one uses the earliest known, last one
+  # the last known timezone)
+  expect_true(all(!is.na(result$timezone)))
+  expect_true(all(result$timezone == "Europe/Brussels"))
 
-  DBI::dbDisconnect(db)
+  close_db(db)
 })
 
+test_that("add_timezones_to_db works for empty tables", {
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
-test_that("add_timezones_to_db removes temporary timezone table afterward", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
-
-  DBI::dbWriteTable(
+  DBI::dbExecute(
     db,
-    "Timezone",
-    data.frame(
-      participant_id = 1,
-      date = "2024-01-01",
-      time = "00:00:00",
-      timezone = "Europe/Brussels"
-    )
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1, 1, 1)"
   )
 
-  DBI::dbWriteTable(
+  expect_silent(add_timezones_to_db(db, sensors = "Pedometer", .progress = FALSE))
+
+  close_db(db)
+})
+
+test_that("add_timezones_to_db removes temporary tables afterward", {
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
+
+  DBI::dbExecute(
     db,
-    "Light",
-    data.frame(
-      measurement_id = 1:2,
-      participant_id = 1,
-      date = c("2024-01-01", "2024-01-01"),
-      time = c("01:00:00", "02:00:00")
-    )
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1, 1, 1)"
+  )
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Light (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 01:00:00', 1, 1, 1),
+     ('1', '2024-01-01 02:00:00', 1, 1, 1)"
   )
 
   add_timezones_to_db(db, sensors = "Light", .progress = FALSE)
 
   tables <- DBI::dbListTables(db)
-  expect_false("temp_tzs" %in% tables)
+  expect_false("temp_tz_intervals" %in% tables)
 
-  DBI::dbDisconnect(db)
+  close_db(db)
 })
 
-test_that("add_timezones_to_db overwrites existing timezone values", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
 
-  DBI::dbWriteTable(
+test_that("add_timezones_to_db preserves existing timezone values", {
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
+
+  DBI::dbExecute(
     db,
-    "Timezone",
-    data.frame(
-      participant_id = 1,
-      date = "2024-01-01",
-      time = "00:00:00",
-      timezone = "Europe/Brussels"
-    )
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1, 1, 1)"
   )
-
-  DBI::dbWriteTable(
+  # Fresh schemas already carry the timezone column. A pre-existing timezone
+  # must be preserved; only NULL cells are populated.
+  DBI::dbExecute(
     db,
-    "Accelerometer",
-    data.frame(
-      measurement_id = 1:3,
-      participant_id = 1,
-      date = rep("2024-01-01", 3),
-      time = c("00:10:00", "01:00:00", "02:00:00"),
-      timezone = c(NA, "America/New_York", NA)
-    )
+    "INSERT INTO raw.Accelerometer (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:10:00', NULL, 1, 1, 1),
+     ('1', '2024-01-01 01:00:00', 'America/New_York', 1, 1, 1),
+     ('1', '2024-01-01 02:00:00', NULL, 1, 1, 1)"
   )
 
   add_timezones_to_db(db, sensors = "Accelerometer", .progress = FALSE)
 
-  result <- dplyr::tbl(db, "Accelerometer") |> dplyr::collect()
+  result <- DBI::dbGetQuery(db, "SELECT timezone FROM main.Accelerometer")
 
-  # The non-missing timezone should be overwritten
-  expect_equal(unique(result$timezone), "Europe/Brussels")
+  # The pre-existing 'America/New_York' must be kept, NULL cells filled with
+  # the candidate timezone.
+  expect_equal(result$timezone, c("Europe/Brussels", "America/New_York", "Europe/Brussels"))
 
-  DBI::dbDisconnect(db)
+  close_db(db)
 })
 
-test_that("add_timezones_to_db correctly handles sensors with end_time column", {
-  db <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+test_that("coincident timezone events do not multiply or duplicate rows", {
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
 
-  DBI::dbWriteTable(
+  # Two timezone events at the same instant with different zones is an
+  # (otherwise undefined) pathological case; the interval join must still
+  # return one timezone per observation and not multiply sensor rows.
+  DBI::dbExecute(
     db,
-    "Timezone",
-    data.frame(
-      participant_id = 1,
-      date = c("2024-01-01", "2024-01-02"),
-      time = c("00:00:00", "00:00:00"),
-      timezone = c("Europe/Brussels", "America/New_York")
-    )
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-06-01 00:00:00', 'Europe/Brussels', 1, 1, 1),
+     ('1', '2024-06-01 00:00:00', 'America/New_York', 2, 1, 1)"
+  )
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Activity (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-06-01 00:00:00', 1, 1, 1)"
   )
 
-  DBI::dbWriteTable(
-    db,
-    "Light",
-    data.frame(
-      measurement_id = 1:3,
-      participant_id = 1,
-      date = c("2024-01-01", "2024-01-01", "2024-01-02"),
-      time = c("00:10:00", "23:30:00", "00:10:00"),
-      end_time = c("2024-01-01 00:30:00", "2024-01-02 00:10:00", "2024-01-02 00:20:00")
-    )
-  )
+  add_timezones_to_db(db, sensors = "Activity", .progress = FALSE)
 
-  add_timezones_to_db(db, sensors = "Light", .progress = FALSE)
+  result <- DBI::dbGetQuery(db, "SELECT participant_id, time, timezone FROM main.Activity")
+  expect_equal(nrow(result), 1L)
+  expect_false(is.na(result$timezone[1]))
 
-  result <- dplyr::tbl(db, "Light") |> dplyr::collect()
-
-  # The first two observations overlap with the first timezone,
-  # and the last with the second.
-  expect_equal(result$timezone, c("Europe/Brussels", "Europe/Brussels", "America/New_York"))
-
-  DBI::dbDisconnect(db)
+  close_db(db)
 })
 
-test_that("with_localtime handles single timezone correctly (shifts to local then forces UTC)", {
+test_that("add_timezones_to_db is idempotent on an already-normalized table", {
+  db <- create_db(NULL, tempfile("tz_test", fileext = ".db"), shared_home = FALSE)
+
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 00:00:00', 'Europe/Brussels', 1, 1, 1)"
+  )
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Pedometer (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2024-01-01 01:00:00', 1, 1, 1)"
+  )
+
+  add_timezones_to_db(db, sensors = "Pedometer", .progress = FALSE)
+  first <- DBI::dbGetQuery(db, "SELECT timezone FROM main.Pedometer")
+
+  # A second run must leave the already-assigned timezone untouched.
+  add_timezones_to_db(db, sensors = "Pedometer", .progress = FALSE)
+  second <- DBI::dbGetQuery(db, "SELECT timezone FROM main.Pedometer")
+
+  expect_equal(second, first)
+  expect_equal(second$timezone, "Europe/Brussels")
+
+  close_db(db)
+})
+
+test_that("physical tables retain UTC and explicit local views expose local values", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Timezone (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id)
+     VALUES ('1', '2025-01-01 00:00:00+00', 'Europe/Brussels', 1, 1, 1)"
+  )
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Activity (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES ('1', '2025-01-15 11:00:00+00', 1, 1, 1)"
+  )
+  add_timezones_to_db(db, sensors = "Activity", .progress = FALSE)
+
+  raw <- DBI::dbGetQuery(db, "SELECT time, timezone FROM Activity")
+  view <- DBI::dbGetQuery(db, "SELECT time_local, timezone FROM main.Activity_with_local")
+  expect_equal(format(raw$time, tz = "UTC"), "2025-01-15 11:00:00")
+  expect_equal(view$time_local, as.POSIXct("2025-01-15 12:00:00", tz = "UTC"))
+  expect_equal(view$timezone, "Europe/Brussels")
+  expect_equal(
+    DBI::dbGetQuery(db, "PRAGMA table_info('Activity')")$type[2],
+    "TIMESTAMP WITH TIME ZONE"
+  )
+  expect_equal(
+    DBI::dbGetQuery(db, "PRAGMA table_info('main.Activity')")$type[2],
+    "TIMESTAMP WITH TIME ZONE"
+  )
+
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Activity (participant_id, time, source_file_id, source_row_id, source_measurement_id) VALUES ('2', '2025-01-15 11:00:00+00', 1, 1, 1)"
+  )
+  unmapped <- DBI::dbGetQuery(db, "SELECT time FROM main.Activity WHERE participant_id = '2'")
+  expect_equal(unmapped$time, as.POSIXct("2025-01-15 11:00:00", tz = "UTC"))
+  close_db(db)
+})
+
+
+test_that("to_local_time handles a single timezone", {
   x <- as.POSIXct("2025-05-10 12:00:00", tz = "UTC")
-  result <- with_localtime(x, "Europe/Brussels")
+  result <- to_local_time(x, "Europe/Brussels")
 
   # If the stored instant 12:00 UTC actually happened in Brussels (UTC+2 in May),
   # the true local time is 14:00 and that's what should be returned (but marked as UTC).
@@ -294,10 +353,30 @@ test_that("with_localtime handles single timezone correctly (shifts to local the
   expect_equal(attr(result, "tzone"), "UTC")
 })
 
-test_that("with_localtime handles multiple timezones correctly", {
+test_that("to_local_time normalizes non-UTC and POSIXlt input", {
+  x <- as.POSIXct("2025-05-10 12:00:00", tz = "Europe/Brussels")
+  result <- to_local_time(x, "Europe/Brussels")
+
+  expect_s3_class(result, "POSIXct")
+  expect_equal(attr(result, "tzone"), "UTC")
+  expect_equal(format(result, tz = "UTC"), "2025-05-10 12:00:00")
+
+  lt <- as.POSIXlt("2025-05-10 12:00:00", tz = "UTC")
+  result_lt <- to_local_time(lt, "Europe/Brussels")
+
+  expect_s3_class(result_lt, "POSIXct")
+  expect_equal(attr(result_lt, "tzone"), "UTC")
+  expect_equal(format(result_lt, tz = "UTC"), "2025-05-10 14:00:00")
+
+  unknown <- to_local_time(x, NULL)
+  expect_equal(attr(unknown, "tzone"), "UTC")
+  expect_equal(format(unknown, tz = "UTC"), "2025-05-10 10:00:00")
+})
+
+test_that("to_local_time handles multiple timezones", {
   x <- as.POSIXct(c("2025-05-10 12:00:00", "2025-05-10 12:00:00"), tz = "UTC")
   tzs <- c("Europe/Brussels", "America/New_York")
-  result <- with_localtime(x, tzs)
+  result <- to_local_time(x, tzs)
 
   expect_equal(length(result), 2L)
   # Brussels in May is UTC+2 -> local 14:00 -> should be returned as 14:00 UTC
@@ -307,10 +386,10 @@ test_that("with_localtime handles multiple timezones correctly", {
   expect_equal(attr(result, "tzone"), "UTC")
 })
 
-test_that("with_localtime accepts character timestamps", {
+test_that("to_local_time accepts character timestamps", {
   x <- c("2025-05-10 12:00:00", "2025-05-10 12:00:00")
   tzs <- c("Europe/Brussels", "America/New_York")
-  result <- with_localtime(x, tzs)
+  result <- to_local_time(x, tzs)
 
   expect_s3_class(result, "POSIXct")
   expect_equal(attr(result, "tzone"), "UTC")
@@ -318,52 +397,170 @@ test_that("with_localtime accepts character timestamps", {
   expect_equal(format(result[2], tz = "UTC"), "2025-05-10 08:00:00")
 })
 
-test_that("with_localtime throws error for non-POSIX input", {
+test_that("to_local_time throws error for non-POSIX input", {
   expect_no_error(
-    with_localtime(1:3, "UTC")
+    to_local_time(1:3, "UTC")
   )
 
   expect_no_error(
-    with_localtime(logical(0), "UTC")
+    to_local_time(logical(0), "UTC")
   )
 
   # Error in as.POSIXct
   expect_error(
-    with_localtime("0", "UTC"),
+    to_local_time("0", "UTC"),
     " must be a vector of class POSIXt or a character coercible"
   )
 
   expect_error(
-    with_localtime(TRUE, "UTC"),
+    to_local_time(TRUE, "UTC"),
     " must be a vector of class POSIXt or a character coercible"
   )
 })
 
-test_that("with_localtime handles vector recycling for tz (single tz recycled)", {
+test_that("to_local_time handles vector recycling for timezone", {
   x <- as.POSIXct(c("2025-05-10 00:00:00", "2025-05-10 12:00:00"), tz = "UTC")
-  result <- with_localtime(x, "Europe/Brussels") # single tz recycled
+  result <- to_local_time(x, "Europe/Brussels") # single tz recycled
   expect_equal(attr(result, "tzone"), "UTC")
   # Brussels is ahead of UTC in May, so both resulting instants should be later than original UTC
   # instants
   expect_true(all(result > x))
 })
 
-test_that("with_localtime preserves NA values", {
+test_that("to_local_time validates timezone-vector lengths", {
+  x <- as.POSIXct(
+    c("2025-05-10 12:00:00", "2025-05-10 13:00:00", "2025-05-10 14:00:00"),
+    tz = "UTC"
+  )
+
+  expect_error(
+    to_local_time(x, c("Europe/Brussels", "America/New_York")),
+    "must have length 1 or match the length of `x`"
+  )
+  expect_error(
+    to_local_time(x[1:2], c("Europe/Brussels", "America/New_York", "UTC")),
+    "must have length 1 or match the length of `x`"
+  )
+  expect_error(
+    to_local_time(x[1:2], c(NA, NA, NA)),
+    "must have length 1 or match the length of `x`"
+  )
+
+  expect_equal(to_local_time(x, rep(NA, length(x))), x)
+})
+
+test_that("to_local_time accepts zero-length timezone and timestamp vectors", {
+  x <- as.POSIXct(numeric(), origin = "1970-01-01", tz = "UTC")
+
+  expect_identical(to_local_time(x, character()), x)
+  expect_identical(to_local_time(x, "UTC"), x)
+})
+
+test_that("to_local_time preserves NA values", {
   x <- as.POSIXct(c("2025-05-10 12:00:00", NA), tz = "UTC")
   tzs <- c("Europe/Brussels", "Europe/Brussels")
-  result <- with_localtime(x, tzs)
+  result <- to_local_time(x, tzs)
   expect_true(is.na(result[2]))
 })
 
-test_that("with_localtime handles DST transition correctly (Europe/Brussels 2025-03-30)", {
+test_that("to_local_time preserves repeated autumn DST wall-clock times", {
+  x <- as.POSIXct(c("2025-10-26 00:30:00", "2025-10-26 01:30:00"), tz = "UTC")
+  result <- to_local_time(x, rep("Europe/Brussels", 2))
+
+  expect_equal(format(result, tz = "UTC"), c("2025-10-26 02:30:00", "2025-10-26 02:30:00"))
+  expect_equal(attr(result, "tzone"), "UTC")
+})
+
+test_that("to_local_time handles DST transition correctly (Europe/Brussels 2025-03-30)", {
   # Before the DST switch: 2025-03-30 00:30:00 UTC -> local 01:30 (CET) -> returned as 01:30 UTC
   x1 <- as.POSIXct("2025-03-30 00:30:00", tz = "UTC")
-  res1 <- with_localtime(x1, "Europe/Brussels")
+  res1 <- to_local_time(x1, "Europe/Brussels")
   expect_equal(format(res1, tz = "UTC"), "2025-03-30 01:30:00")
 
   # After the DST switch instant (01:00 UTC maps to 03:00 local): 2025-03-30 01:30:00 UTC
   # -> local 03:30 (CEST) -> returned as 03:30 UTC (i.e. effectively +2h shift vs original UTC).
   x2 <- as.POSIXct("2025-03-30 01:30:00", tz = "UTC")
-  res2 <- with_localtime(x2, "Europe/Brussels")
+  res2 <- to_local_time(x2, "Europe/Brussels")
   expect_equal(format(res2, tz = "UTC"), "2025-03-30 03:30:00")
+})
+
+test_that("to_local_time treats an unknown timezone as UTC", {
+  x <- as.POSIXct("2025-05-10 12:00:00", tz = "UTC")
+
+  expect_equal(to_local_time(x, NULL), x)
+  expect_equal(to_local_time(x, NA), x)
+  expect_equal(to_local_time(x, NA_character_), x)
+})
+
+test_that("to_local_time inside a lazy query matches the R implementation", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Accelerometer (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2025-05-10 12:00:00+00', 'Europe/Brussels', 1, 1, 1),
+     ('1', '2025-05-10 12:00:00+00', 'America/New_York', 1, 2, 1),
+     ('1', '2025-03-30 01:30:00+00', 'Europe/Brussels', 1, 3, 1),
+     ('1', '2025-05-10 12:00:00+00', NULL, 1, 4, 1)"
+  )
+
+  collected <- dplyr::collect(get_data(db, "Accelerometer"))
+  lazy <- get_data(db, "Accelerometer") |>
+    dplyr::mutate(time = to_local_time(time, timezone)) |>
+    dplyr::collect()
+
+  expect_s3_class(lazy$time, "POSIXct")
+  expect_equal(
+    lazy$time,
+    to_local_time(collected$time, collected$timezone)
+  )
+})
+
+test_that("to_local_time validates lazy arguments in R before the query runs", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  tbl <- get_data(db, "Accelerometer")
+
+  expect_error(
+    dbplyr::sql_render(dplyr::mutate(tbl, time = to_local_time(time, 123))),
+    "must be a character"
+  )
+  expect_error(
+    dbplyr::sql_render(dplyr::mutate(tbl, time = to_local_time(TRUE, "UTC"))),
+    "must be a vector of class POSIXt"
+  )
+})
+
+test_that("a collected timestamp can be combined with a lazy timezone column", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+
+  DBI::dbExecute(
+    db,
+    "INSERT INTO raw.Accelerometer (participant_id, time, timezone, source_file_id, source_row_id, source_measurement_id) VALUES
+     ('1', '2025-05-10 12:00:00+00', 'Europe/Brussels', 1, 1, 1)"
+  )
+
+  instant <- as.POSIXct("2025-05-10 12:00:00", tz = "UTC")
+  result <- get_data(db, "Accelerometer") |>
+    dplyr::mutate(time = to_local_time(instant, timezone)) |>
+    dplyr::collect()
+
+  expect_equal(format(result$time, tz = "UTC"), "2025-05-10 14:00:00")
+})
+
+test_that("registering the to_local_time translation keeps other duckdb translations", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(close_db(db), add = TRUE)
+  tbl <- get_data(db, "Accelerometer")
+
+  expect_match(
+    dbplyr::sql_render(dplyr::mutate(tbl, x = paste0(timezone, "!"))),
+    "CONCAT_WS"
+  )
+  expect_match(
+    dbplyr::sql_render(dplyr::mutate(tbl, x = as.numeric(timezone))),
+    "TRY_CAST"
+  )
 })

@@ -13,12 +13,10 @@
 sensors <- c(
   "Accelerometer",
   "Activity",
-  "AirQuality",
   "AppUsage",
   "Battery",
   "Bluetooth",
   "BluetoothBeacon",
-  "Calendar",
   "Connectivity",
   "Device",
   "Error",
@@ -36,36 +34,270 @@ sensors <- c(
   "GarminStress",
   "GarminWristStatus",
   "GarminZeroCrossing",
-  "Geofence",
-  "Gyroscope",
   "Heartbeat",
-  "InstalledApps",
-  "Keyboard",
   "Light",
   "Location",
   "Memory",
-  "Mobility",
-  "Noise",
   "Pedometer",
-  "PhoneLog",
   "Screen",
-  "TextMessage",
   "Timezone",
   "Weather",
   "Wifi"
 )
+
+
+# Make sure the extensions this package relies on are installed and loaded on
+# the connection. DuckDB can autoload them, but on a freshly installed DuckDB
+# version autoloading attempts the download itself and can fail with a confusing
+# error. Installing and loading explicitly avoids that path. ICU provides the
+# UTC session timezone set below, json the JSON functions used when importing.
+.ensure_duckdb_extensions <- function(db, extensions = c("icu", "json")) {
+  available <- dbGetQuery(
+    db,
+    sprintf(
+      "SELECT extension_name, installed, loaded FROM duckdb_extensions()
+       WHERE extension_name IN (%s)",
+      paste(sprintf("'%s'", extensions), collapse = ", ")
+    )
+  )
+
+  for (extension in extensions) {
+    state <- available[available$extension_name == extension, ]
+    if (nrow(state) > 0 && isTRUE(state$loaded[[1]])) {
+      next
+    }
+
+    tryCatch(
+      {
+        if (nrow(state) == 0 || !isTRUE(state$installed[[1]])) {
+          dbExecute(db, sprintf("INSTALL %s", extension))
+        }
+        dbExecute(db, sprintf("LOAD %s", extension))
+      },
+      error = function(cnd) {
+        cli_abort(c(
+          "Could not make the DuckDB extension {.val {extension}} available.",
+          x = conditionMessage(cnd),
+          i = "{.pkg mpathsenser} requires this extension.",
+          i = "Install it manually with {.code INSTALL {extension}; LOAD {extension}}."
+        ))
+      }
+    )
+  }
+
+  invisible(TRUE)
+}
+
+# Configure connection defaults for DuckDB. Session-level settings, so they
+# apply to the connection only.
+.configure_duckdb <- function(
+  db,
+  threads = NULL,
+  memory_limit = NULL,
+  temp_directory = NULL
+) {
+  # Display timestamps in UTC by default
+  dbExecute(db, "SET timezone = 'UTC'")
+
+  # DuckDB's own query progress bar clashes with the cli progress bars of this
+  # package, so it is disabled on all connections
+  dbExecute(db, "PRAGMA disable_progress_bar")
+
+  # Parallel pipelines (e.g. staging large JSON files) use considerably less
+  # memory when DuckDB does not need to preserve insertion order. Query results
+  # without an explicit ORDER BY are unordered anyway.
+  dbExecute(db, "SET preserve_insertion_order = false")
+
+  if (!is.null(threads)) {
+    dbExecute(db, sprintf("SET threads = %d", as.integer(threads)))
+  }
+  if (!is.null(memory_limit)) {
+    dbExecute(db, sprintf("SET memory_limit = '%s'", memory_limit))
+  }
+  if (!is.null(temp_directory)) {
+    temp_directory <- gsub("'", "''", temp_directory)
+    dbExecute(db, sprintf("SET temp_directory = '%s'", temp_directory))
+  }
+
+  # Cache object scans (e.g. when reading parquet files)
+  dbExecute(db, "SET enable_object_cache = true")
+
+  invisible(TRUE)
+}
+
+# Create the user-facing sensor views (main.<sensor>) over the physical raw
+# tables. Each view exposes the raw table without the three internal
+# provenance columns (source_file_id, source_row_id, source_measurement_id);
+# the timezone column (where present) is retained. The columns are
+# introspected from information_schema rather than duplicated in R, so the
+# views always match the physical schema. Creation is idempotent
+# (CREATE OR REPLACE). It runs on writable connections at create_db()/open_db()
+# time; read-only connections skip it. Returns TRUE when any view was
+# (re)created.
+.create_sensor_views <- function(db) {
+  # Exclude leftover <sensor>_optimize_tmp tables from interrupted
+  # optimize_db() runs; those are physical raw tables, not sensors.
+  #
+  # One grouped query for every raw table's columns: a per-sensor round trip in
+  # the fallback loop below dominated creation cost (32 queries, ~1.9 s
+  # measured).
+  raw_columns <- dbGetQuery(
+    db,
+    "SELECT table_name, string_agg(column_name, ',' ORDER BY ordinal_position) AS cols
+     FROM information_schema.columns
+     WHERE table_schema = 'raw'
+       AND column_name NOT IN ('source_file_id', 'source_row_id', 'source_measurement_id')
+       AND NOT ends_with(table_name, '_optimize_tmp')
+     GROUP BY table_name"
+  )
+  if (nrow(raw_columns) == 0) {
+    return(invisible(FALSE))
+  }
+
+  # Fast path: the common case is a complete database whose views are
+  # current. Unconditional (re)creation costs a full pass over all views, so
+  # first compare one checksum per layer: the sorted raw column list (minus
+  # provenance) against the sorted main-sensor-view column list. A single
+  # information_schema scan (~10 ms) suffices; any drift falls back to the
+  # grouped loop below, which (re)creates only the views that differ.
+  #
+  # Only the 32 main.<sensor> base views participate in the checksum: the
+  # _local/_with_local views add derived columns (e.g. time_local), so their
+  # column lists can never match the raw list. They are static SQL from
+  # views.sql and are handled by .create_local_views(), not here.
+  sums <- dbGetQuery(
+    db,
+    "SELECT
+       (SELECT string_agg(c.column_name, ',' ORDER BY c.table_name, c.ordinal_position)
+        FROM information_schema.columns c
+        WHERE c.table_schema = 'raw'
+          AND c.column_name NOT IN ('source_file_id', 'source_row_id', 'source_measurement_id')) AS raw_sum,
+       (SELECT string_agg(c.column_name, ',' ORDER BY c.table_name, c.ordinal_position)
+        FROM information_schema.columns c
+        WHERE c.table_schema = 'main' AND c.table_name IN (
+          SELECT table_name FROM information_schema.tables
+          WHERE table_schema = 'raw' AND table_type = 'BASE TABLE'
+            AND NOT ends_with(table_name, '_optimize_tmp'))) AS view_sum"
+  )
+  if (!is.na(sums$raw_sum) && identical(sums$raw_sum, sums$view_sum)) {
+    return(invisible(TRUE))
+  }
+
+  existing <- dbGetQuery(
+    db,
+    "SELECT table_name AS view_name, string_agg(column_name, ',' ORDER BY ordinal_position) AS cols
+     FROM information_schema.columns
+     WHERE table_schema = 'main'
+     GROUP BY table_name"
+  )
+  # One transaction for the whole pass: a catalog commit per view is what made
+  # view creation slow.
+  dbWithTransaction(db, {
+    for (i in seq_len(nrow(raw_columns))) {
+      sensor <- raw_columns$table_name[[i]]
+      want <- raw_columns$cols[[i]]
+      have <- existing$cols[existing$view_name == sensor]
+      if (length(have) == 1 && !is.na(have) && identical(have, want)) {
+        next
+      }
+      cols <- strsplit(want, ",", fixed = TRUE)[[1]]
+      view_cols <- paste0(
+        vapply(
+          cols,
+          function(c) {
+            as.character(dbQuoteIdentifier(db, c))
+          },
+          character(1)
+        ),
+        collapse = ", "
+      )
+      dbExecute(
+        db,
+        sprintf(
+          "CREATE OR REPLACE VIEW main.%s AS SELECT %s FROM raw.%s",
+          as.character(dbQuoteIdentifier(db, sensor)),
+          view_cols,
+          as.character(dbQuoteIdentifier(db, sensor))
+        )
+      )
+    }
+  })
+  invisible(TRUE)
+}
+
+# True when the database has the current mpathsenser layout: the physical
+# sensor tables live in the raw schema (with the main.<sensor> views over
+# them). Databases with the legacy layout (physical sensor tables in main)
+# are unsupported and must be recreated with create_db().
+.has_mpathsenser_schema <- function(db) {
+  n_raw <- dbGetQuery(
+    db,
+    "SELECT COUNT(*) AS n FROM information_schema.tables
+     WHERE table_schema = 'raw' AND table_name = 'Accelerometer'
+       AND table_type = 'BASE TABLE'"
+  )$n[[1]]
+  n_main_view <- dbGetQuery(
+    db,
+    "SELECT COUNT(*) AS n FROM information_schema.tables
+     WHERE table_schema = 'main' AND table_name = 'Accelerometer' AND table_type = 'VIEW'"
+  )$n[[1]]
+  n_raw > 0 && n_main_view > 0
+}
+
+# Define the to_local_time() macro and the per-sensor _local/_with_local views
+# from the static SQL file. Views live in SQL, not in R, so they are generated
+# once against the schema definition and stay in sync with it. Creating them is
+# idempotent (CREATE OR REPLACE), but is skipped when they already exist, which
+# lets a read-only connection reopen a database without attempting to write.
+.create_local_views <- function(db) {
+  already <- dbGetQuery(
+    db,
+    "SELECT COUNT(*) AS n FROM duckdb_functions()
+     WHERE function_name = 'to_local_time' AND function_type = 'macro'"
+  )$n >
+    0
+  if (isTRUE(already)) {
+    return(invisible(TRUE))
+  }
+
+  fn <- file.path("inst", "extdata", "views.sql")
+  if (!file.exists(fn)) {
+    fn <- system.file("extdata", "views.sql", package = "mpathsenser")
+  }
+  script <- paste0(readLines(fn, warn = FALSE), collapse = "\n")
+  # One transaction keeps the 64 views from committing one catalog entry at a
+  # time; creation is all-or-nothing anyway.
+  dbWithTransaction(db, dbExecute(db, script))
+  invisible(TRUE)
+}
 
 #' Create a new mpathsenser database
 #'
 #' @description
 #' `r lifecycle::badge("stable")`
 #'
-#' @param path The path to the database.
-#' @param db_name The name of the database.
-#' @param overwrite In case a database with `db_name` already exists, indicate whether it should
-#' be overwritten or not. Otherwise, this option is ignored.
+#' @param path The path to the database file, or the directory in which the
+#'   database is created when `db_name` is given. Use `NULL` for an in-memory
+#'   database.
+#' @param db_name Optional name of the database file. When given, `path` is
+#'   treated as the directory in which the database is created.
+#' @param ... Additional arguments passed to [DBI::dbConnect()].
+#' @param overwrite In case a database already exists, indicate whether it
+#'   should be overwritten or not. Otherwise, this option is ignored.
+#' @param threads The number of threads DuckDB may use. Defaults to `NULL`,
+#'   which lets DuckDB use all available cores. Lower this on shared servers.
+#' @param memory_limit Memory limit for the DuckDB instance (e.g. `"4GB"`).
+#'   Defaults to `NULL`, which uses DuckDB's default of roughly 80% of RAM.
+#' @param temp_directory Directory for temporary files (spill-to-disk). Use a
+#'   local disk with sufficient space; do not point this at a synced directory
+#'   such as OneDrive.
+#' @param duckdb_home Optional path to a directory for DuckDB's internal files. Mutually exclusive
+#' with `shared_home`. Defaults to `NULL`, which lets DuckDB decide automatically.
+#' @param shared_home Logical; whether the DuckDB home directory is shared between R sessions.
+#' Defaults to `NULL`, which lets DuckDB decide automatically. Mutually exclusive with
+#' `duckdb_home`.
 #'
-#' @returns A database connection using prepared database schemas.
+#' @returns A connection using prepared database schemas.
 #' @export
 #'
 #' @examples
@@ -75,59 +307,101 @@ sensors <- c(
 #' # You can also create an in-memory database
 #' db2 <- create_db(path = NULL, ":memory:")
 #'
-#' # Cleanup
+#'
+#' # Remember to always clean up database connections when you are done
 #' close_db(db)
 #' close_db(db2)
+#' \dontshow{
 #' file.remove(file.path(tempdir(), "mydb.db"))
-create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
+#' }
+create_db <- function(
+  path = getwd(),
+  db_name = NULL,
+  ...,
+  overwrite = FALSE,
+  threads = NULL,
+  memory_limit = NULL,
+  temp_directory = NULL,
+  duckdb_home = NULL,
+  shared_home = NULL
+) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
-  check_arg(db_name, "character", n = 1)
+  check_arg(db_name, "character", n = 1, allow_null = TRUE)
   check_arg(overwrite, "logical", n = 1)
+  check_arg(duckdb_home, "character", n = 1, allow_null = TRUE)
+  check_arg(shared_home, "logical", n = 1, allow_null = TRUE)
 
-  # Merge path and file name
-  if (!is.null(path)) {
-    db_name <- normalizePath(file.path(path, db_name), mustWork = FALSE)
+  # Resolve the database file path. When db_name is given, path is treated as
+  # the directory containing the database (or NULL for an in-memory database).
+  if (!is.null(db_name)) {
+    if (is.null(path) || identical(db_name, ":memory:")) {
+      path <- db_name
+    } else {
+      path <- file.path(path, db_name)
+    }
   }
 
   # If db already exists, remove it or throw an error
-  if (file.exists(db_name)) {
+  if (!is.null(path) && file.exists(path)) {
     if (overwrite) {
       tryCatch(
-        file.remove(db_name),
+        file.remove(path),
         warning = function(e) cli_abort(conditionMessage(e)),
         error = function(e) cli_abort(conditionMessage(e))
       )
     } else {
       cli_abort(c(
-        "Database {.path {db_name}} already exists.",
+        "Database {.path {path}} already exists.",
         i = "Use {.code overwrite = TRUE} to overwrite."
       ))
     }
   }
 
-  # Check if path exists
-  if (!dir.exists(dirname(db_name))) {
-    cli_abort("Directory {.path {dirname(db_name)}} does not exist.")
+  # Check if the parent directory exists
+  if (!is.null(path) && !dir.exists(dirname(path))) {
+    cli_abort("Directory {.path {dirname(path)}} does not exist.")
   }
 
   # Create a new db instance
   tryCatch(
     {
-      db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
+      db <- dbConnect(
+        duckdb(
+          allow_extensions = TRUE,
+          home = duckdb_home,
+          shared_home = shared_home
+        ),
+        dbdir = path,
+        ...
+      )
     },
     error = function(e) {
-      cli_abort("Could not create a database at {.path {db_name}}.") # nocov
+      cli_abort("Could not create a database at {.path {path}}.") # nocov
     }
   )
+
+  # Make sure the extensions this package relies on are installed and loaded
+  .ensure_duckdb_extensions(db)
 
   # Populate the db with empty tables
   tryCatch(
     {
-      fn <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
-      script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
-      for (statement in script) {
-        dbExecute(db, statement)
+      # Prefer the repository schema during development so pkgload::load_all()
+      # does not silently use a stale installed copy of the package.
+      fn <- file.path("inst", "extdata", "dbdef.sql")
+      if (!file.exists(fn)) {
+        fn <- system.file("extdata", "dbdef.sql", package = "mpathsenser")
       }
+      script <- paste0(readLines(fn, warn = FALSE), collapse = "\n")
+      # One transaction avoids a catalog commit per statement; the schema and
+      # its version record are all-or-nothing anyway.
+      dbWithTransaction(
+        db,
+        {
+          dbExecute(db, script)
+          .write_database_version(db)
+        }
+      )
     },
     error = function(e) {
       # nocov start
@@ -139,6 +413,16 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
     }
   )
 
+  # Configure connection defaults and define the derived local-time views
+  .configure_duckdb(
+    db,
+    threads = threads,
+    memory_limit = memory_limit,
+    temp_directory = temp_directory
+  )
+  .create_sensor_views(db)
+  .create_local_views(db)
+
   return(db)
 }
 
@@ -146,45 +430,198 @@ create_db <- function(path = getwd(), db_name = "sense.db", overwrite = FALSE) {
 #'
 #' @description `r lifecycle::badge("stable")`
 #'
-#' @param path The path to the database. Use NULL to use the full path name in db_name.
-#' @param db_name The name of the database.
+#' @param path The path to the database file, or the directory in which the
+#'   database resides when `db_name` is given.
+#' @param db_name Optional name of the database file. When given, `path` is
+#'   treated as the directory containing the database, just like
+#'   [create_db()].
+#' @param ... Additional arguments passed to [DBI::dbConnect()].
+#' @param read_only Open the database in read-only mode. Recommended for
+#'   connections used by dashboards, so that no accidental writes are possible.
+#' @param threads The number of threads DuckDB may use. Defaults to `NULL`,
+#'   which lets DuckDB use all available cores.
+#' @param memory_limit Memory limit for the DuckDB instance (e.g. `"2GB"`).
+#'   Defaults to `NULL`, which uses DuckDB's default of roughly 80% of RAM.
+#' @param temp_directory Directory for temporary files (spill-to-disk). Use a
+#'   local disk with sufficient space; do not point this at a synced directory
+#'   such as OneDrive.
+#'
+#' @details On Windows, a database file is locked while any R process has it
+#'   open. Close connections with [close_db()] when you are done. A database
+#'   that is open in another process cannot be opened for writing; use
+#'   `read_only = TRUE` to query it anyway (DuckDB allows multiple readers).
+#'
+#'   The database must carry a database version supported by this package.
+#'   Databases created before versioning are adopted as the current version with
+#'   a warning (a temporary development fallback); unsupported databases must be
+#'   recreated with [create_db()].
 #'
 #' @seealso [close_db()] for closing a database; [copy_db()] for copying (part of) a database;
-#'   [index_db()] for indexing a database; [get_data()] for extracting data from a database.
+#'   [optimize_db()] for re-ordering a database; [get_data()] for extracting data from a database.
 #'
 #' @returns A connection to an mpathsenser database.
 #' @export
 #'
 #' @examples
 #' # First create a database in a temporary directory
-#' db <- create_db(tempdir(), "mydb.db")
+#' db <- create_db(file.path(tempdir(), "mydb.db"))
 #' close_db(db)
 #' DBI::dbIsValid(db) # db is closed
 #'
 #' # Then re-open it
-#' db2 <- open_db(tempdir(), "mydb.db")
+#' db2 <- open_db(file.path(tempdir(), "mydb.db"))
 #' DBI::dbIsValid(db2) # db is opened
+#'
+#' # The path can also be given as a directory plus a file name
+#' db3 <- open_db(tempdir(), "mydb.db")
+#' DBI::dbIsValid(db3)
 #'
 #' # Cleanup
 #' close_db(db2)
+#' close_db(db3)
 #' file.remove(file.path(tempdir(), "mydb.db"))
-open_db <- function(path = getwd(), db_name = "sense.db") {
+open_db <- function(
+  path,
+  db_name = NULL,
+  ...,
+  read_only = FALSE,
+  threads = NULL,
+  memory_limit = NULL,
+  temp_directory = NULL
+) {
   check_arg(path, "character", n = 1, allow_null = TRUE)
-  check_arg(db_name, c("character", "integerish"), n = 1)
+  check_arg(db_name, "character", n = 1, allow_null = TRUE)
+  check_arg(read_only, "logical", n = 1)
 
-  # Merge path and file name
-  if (!is.null(path)) {
-    db_name <- suppressWarnings(normalizePath(file.path(path, db_name)))
+  # Like create_db(), the path can be given as a directory plus a file name.
+  # An in-memory database makes no sense for open_db().
+  if (!is.null(db_name)) {
+    if (is.null(path)) {
+      cli_abort("Cannot open an in-memory database with {.code open_db()}.")
+    }
+    path <- file.path(path, db_name)
   }
 
-  if (!file.exists(db_name)) {
-    cli_abort("There is no database at {.path {db_name}}.")
+  if (is.null(path)) {
+    cli_abort("Argument {.arg path} must point to a database file.")
   }
-  db <- dbConnect(RSQLite::SQLite(), db_name, cache_size = 8192)
-  if (!DBI::dbExistsTable(db, "Participant")) {
+
+  # A directory is not a database file; point the user to the file inside it.
+  # Without this check, DuckDB fails with a cryptic "Access is denied" error.
+  if (dir.exists(path)) {
+    dbs <- list.files(path, pattern = "\\.(db|duckdb)$", full.names = TRUE)
+    dbs <- dbs[!dir.exists(dbs)]
+    if (length(dbs) == 0) {
+      cli_abort(c(
+        "{.path {path}} is a directory, not a database file.",
+        i = "No database file ({.code *.db} or {.code *.duckdb}) was found in this directory."
+      ))
+    }
+    cli_abort(c(
+      "{.path {path}} is a directory, not a database file.",
+      i = if (length(dbs) == 1) {
+        "Did you mean {.path {dbs}}?"
+      } else {
+        "Found {length(dbs)} database file{?s} in this directory: {.path {dbs}}."
+      }
+    ))
+  }
+
+  if (!file.exists(path)) {
+    cli_abort("There is no database at {.path {path}}.")
+  }
+
+  db <- tryCatch(
+    dbConnect(duckdb(), dbdir = path, read_only = read_only, ...),
+    error = function(e) {
+      # Distinguish the most common cause: the file is open in another process
+      # (which still allows read-only connections) from other failures.
+      locked <- tryCatch(
+        {
+          db2 <- dbConnect(duckdb(), dbdir = path, read_only = TRUE)
+          dbDisconnect(db2)
+          TRUE
+        },
+        error = function(e2) FALSE
+      )
+      if (locked) {
+        cli_abort(c(
+          "Could not open the database at {.path {path}} because it is locked by another process.",
+          x = conditionMessage(e),
+          i = "Close the other connection first, or use {.code read_only = TRUE} to open a read-only connection."
+        ))
+      }
+      cli_abort(c(
+        "Could not open the database at {.path {path}}.",
+        x = conditionMessage(e),
+        i = "On Windows, the file may be temporarily locked by a syncing tool or antivirus scanner; wait a moment and try again."
+      ))
+    }
+  )
+
+  if (
+    !dbExistsTable(db, "Participant") ||
+      !.has_mpathsenser_schema(db)
+  ) {
     dbDisconnect(db)
-    cli_abort("The file {.path {db_name}} does not appear to be an {.pkg mpathsenser} database.")
+    cli_abort("The file {.path {path}} does not appear to be an {.pkg mpathsenser} database.")
   }
+
+  # A version read that fails (for example on duplicate rows) must not leak
+  # this connection: open_db() owns it until it returns.
+  version <- tryCatch(
+    .read_database_version(db),
+    error = function(cnd) {
+      dbDisconnect(db)
+      stop(cnd)
+    }
+  )
+  if (!is.na(version) && !.database_version_supported(version)) {
+    dbDisconnect(db)
+    .abort_unsupported_database_version(version)
+  }
+
+  # Temporary development fallback: databases created before versioning are
+  # adopted as the current layout. Writable connections record the version;
+  # read-only connections cannot and only warn. Remove this once no such
+  # databases need support.
+  if (is.na(version)) {
+    current_version <- .current_database_version()
+    if (read_only) {
+      cli_warn(c(
+        "The database at {.path {path}} has no version information.",
+        i = "Assuming database version {.val {current_version}}; a read-only database cannot record it.",
+        i = "This is a temporary fallback for databases created before versioning."
+      ))
+    } else {
+      .write_database_version(db)
+      cli_warn(c(
+        "The database at {.path {path}} has no version information.",
+        i = "Recording database version {.val {current_version}} in it.",
+        i = "This is a temporary fallback for databases created before versioning."
+      ))
+    }
+  }
+
+  # The extensions are loaded before the session settings below, which need ICU
+  .ensure_duckdb_extensions(db)
+
+  .configure_duckdb(
+    db,
+    threads = threads,
+    memory_limit = memory_limit,
+    temp_directory = temp_directory
+  )
+
+  # Ensure the sensor views exist (they are created by create_db()).
+  # Views are only (re)created on writable connections; read-only connections
+  # skip this step, so a database opened read-only must already contain them.
+  if (!read_only) {
+    .create_sensor_views(db)
+  }
+
+  .create_local_views(db)
+
   return(db)
 }
 
@@ -216,88 +653,12 @@ open_db <- function(path = getwd(), db_name = "sense.db") {
 #' # Cleanup
 #' file.remove(file.path(tempdir(), "mydb.db"))
 close_db <- function(db) {
-  if (!exists(deparse(substitute(db)), envir = parent.frame())) {
-    return(invisible(NULL))
-  }
-  if (inherits(db, "SQLiteConnection") && !is.null(db)) {
+  exists <- try(db, silent = TRUE)
+  if (inherits(exists, "duckdb_connection") && !is.null(db)) {
     if (dbIsValid(db)) {
       dbDisconnect(db)
     }
   }
-}
-
-#' Create indexes for an mpathsenser database
-#'
-#' @description `r lifecycle::badge("deprecated")`
-#'
-#'   Create indexes for an mpathsenser database on the `participant_id`, `date`, and a combination
-#'   of these variable for all the tables in the database. This will speed up queries that use these
-#'   variables in the `WHERE` clause. Because
-#'
-#' @section Deprecation:
-#' Because `participant_id`, `date`, and `time` are now primary keys in the database, indexes are
-#' no longer needed.
-#'
-#' @inheritParams get_data
-#'
-#' @returns Returns `TRUE` invisibly, called for side effects.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' # First create a database in a temporary directory
-#' db <- create_db(tempdir(), "mydb.db")
-#'
-#' # Import some files
-#' import(path = "path/to/jsons", db = db)
-#'
-#' # Then index it to speed up the database
-#' index_db(db)
-#' }
-index_db <- function(db) {
-  check_db(db)
-
-  tryCatch(
-    {
-      fn <- system.file("extdata", "indexes.sql", package = "mpathsenser")
-      script <- strsplit(paste0(readLines(fn, warn = FALSE), collapse = "\n"), "\n\n")[[1]]
-      for (statement in script) {
-        dbExecute(db, statement)
-      }
-    },
-    error = function(e) {
-      cli_abort(conditionMessage(e)) # nocov
-    }
-  )
-
-  invisible(TRUE)
-}
-
-#' Vacuum a database
-#'
-#' @description `r lifecycle::badge("stable")`
-#'
-#' This is a convenience function that calls the `VACUUM` command on a database. This command will
-#' rebuild the database file, repacking it into a minimal amount of disk space.
-#'
-#' @inheritParams get_data
-#'
-#' @return  a scalar numeric that specifies the number of rows affected by the vacuum.
-#' @export
-#'
-#' @examples
-#' # Create a database in a temporary directory
-#' db <- create_db(tempdir(), "mydb.db")
-#'
-#' # Assuming that we have imported some data into the database, we can vacuum it
-#' vacuum_db(db)
-#'
-#' # Cleanup
-#' close_db(db)
-#' file.remove(file.path(tempdir(), "mydb.db"))
-vacuum_db <- function(db) {
-  check_db(db)
-  dbExecute(db, "VACUUM")
 }
 
 #' Copy (a subset of) a database to another database
@@ -305,28 +666,33 @@ vacuum_db <- function(db) {
 #' @description `r lifecycle::badge("stable")`
 #'
 #' @param source_db A mpathsenser database connection from where the data will be transferred.
-#' @param target_db A mpathsenser database connection where the data will be transferred to.
-#'   [create_db()] to create a new database.
+#' @param target_db A mpathsenser database connection to receive the data. Use
+#'   [create_db()] to create a new, file-backed database; in-memory targets are
+#'   not supported.
 #' @param sensor A character vector containing one or multiple sensors. See
 #'   \code{\link[mpathsenser]{sensors}} for a list of available sensors. Defaults to `NULL`, which
 #'   means all available sensors.
 #'
-#' @returns Returns `TRUE` invisibly, called for side effects.
+#' @returns Returns a connection to `target_db`. Note that this is not the same connection as the
+#' input `target_db`.
 #' @export
 #'
 #' @examples
-#' # First create two databases in a temporary directory
-#' db1 <- create_db(tempdir(), "mydb1.db")
+#' # The source can be in memory; the target must be file-backed.
+#' db1 <- create_db(NULL, ":memory:")
 #' db2 <- create_db(tempdir(), "mydb2.db")
 #'
 #' # Populate the first database with some data
 #' DBI::dbExecute(db1, "INSERT INTO Study VALUES ('study_1', 'default')")
-#' DBI::dbExecute(db1, "INSERT INTO Participant VALUES ('1', 'study_1')")
-#' DBI::dbExecute(db1, "INSERT INTO Activity VALUES(
-#'                '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')")
+#' DBI::dbExecute(db1, "INSERT INTO Participant VALUES (1, 'study_1')")
+#' DBI::dbExecute(db1, "INSERT INTO ProcessedFiles(file_name, participant_id) VALUES ('f1', 1)")
+#' # Sensor data lives in the raw schema (the main.Activity view is read-only)
+#' DBI::dbExecute(db1, "INSERT INTO raw.Activity(
+#'   participant_id, time, confidence, type, source_file_id, source_row_id, source_measurement_id
+#' ) VALUES (1, '2024-01-01 08:00:00', 100, 'WALKING', 1, 1, 1)")
 #'
 #' # Then copy the first database to the second database
-#' copy_db(db1, db2)
+#' db2 <- copy_db(db1, db2)
 #'
 #' # Check that the second database has the same data as the first database
 #' get_data(db2, "Activity")
@@ -334,7 +700,6 @@ vacuum_db <- function(db) {
 #' # Cleanup
 #' close_db(db1)
 #' close_db(db2)
-#' file.remove(file.path(tempdir(), "mydb1.db"))
 #' file.remove(file.path(tempdir(), "mydb2.db"))
 copy_db <- function(
   source_db,
@@ -348,94 +713,302 @@ copy_db <- function(
   if (is.null(sensor)) {
     sensor <- sensors
   }
+  sensor <- .physical_sensor(sensor)
 
-  # Attach new database to old database
-  dbExecute(source_db, paste0("ATTACH DATABASE '", target_db@dbname, "' AS new_db"))
+  target_path <- DBI::dbGetInfo(target_db)$dbname
+  if (is.null(target_path)) {
+    target_path <- target_db@driver@dbdir
+  }
+  if (
+    length(target_path) != 1L ||
+      is.na(target_path) ||
+      !nzchar(target_path) ||
+      identical(target_path, ":memory:")
+  ) {
+    cli_abort("The target database must have a file-backed path.")
+  }
 
-  # Copy participants, studies, processed_files
-  dbExecute(source_db, "INSERT OR IGNORE INTO new_db.Study SELECT * FROM Study")
-  dbExecute(source_db, "INSERT OR IGNORE INTO new_db.Participant SELECT * FROM Participant")
-  dbExecute(
-    source_db,
-    "INSERT OR IGNORE INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles"
+  # Disconnect only after the target path has been validated, then attach it
+  # with DBI quoting so paths containing apostrophes remain valid SQL.
+  DBI::dbDisconnect(target_db)
+  attach_path <- as.character(DBI::dbQuoteString(source_db, target_path))
+  dbExecute(source_db, paste0("ATTACH ", attach_path, " AS new_db"))
+  attached <- TRUE
+  on.exit(
+    if (attached) {
+      try(dbExecute(source_db, "DETACH new_db"), silent = TRUE)
+    },
+    add = TRUE
   )
 
-  # Copy all specified sensors
+  # Copy participants, studies, processed_files (using ON CONFLICT DO NOTHING for DuckDB)
+  dbExecute(source_db, "INSERT INTO new_db.Study SELECT * FROM Study ON CONFLICT DO NOTHING")
+  dbExecute(
+    source_db,
+    "INSERT INTO new_db.Participant SELECT * FROM Participant ON CONFLICT DO NOTHING"
+  )
+  dbExecute(
+    source_db,
+    "INSERT INTO new_db.ProcessedFiles SELECT * FROM ProcessedFiles ON CONFLICT DO NOTHING"
+  )
+
+  # Copy all specified sensors. The sensor tables have no unique constraints,
+  # so ON CONFLICT cannot be used here. Physical tables live in the raw
+  # schema; the main.<sensor> views of the target keep working because they
+  # read from raw.<sensor> by name.
   for (i in seq_along(sensor)) {
     dbExecute(
       source_db,
       paste0(
-        "INSERT OR IGNORE INTO new_db.",
+        "INSERT INTO new_db.raw.",
         sensor[i],
-        " SELECT * FROM ",
+        " SELECT * FROM raw.",
         sensor[i]
       )
     )
   }
 
+  # Re-sync the file_id sequence of the target database: copying the rows does
+  # not advance the sequence, so without this the next import would collide
+  # with the copied file_id values.
+  dbExecute(source_db, "ALTER TABLE new_db.ProcessedFiles ALTER file_id DROP DEFAULT")
+  dbExecute(source_db, "DROP SEQUENCE IF EXISTS new_db.processed_files_seq")
+  max_id <- dbGetQuery(
+    source_db,
+    "SELECT COALESCE(MAX(file_id), 0) + 1 AS m FROM new_db.ProcessedFiles"
+  )[[1]]
+  dbExecute(source_db, sprintf("CREATE SEQUENCE new_db.processed_files_seq START %d", max_id))
+  # Use the unqualified sequence name in the default: the expression is stored
+  # as-is, and 'new_db.' would not resolve after the database is reopened.
+  dbExecute(
+    source_db,
+    "ALTER TABLE new_db.ProcessedFiles ALTER file_id SET DEFAULT nextval('processed_files_seq')"
+  )
+
   # Detach
-  dbExecute(source_db, "DETACH DATABASE new_db")
+  dbExecute(source_db, "DETACH new_db")
+  attached <- FALSE
 
-  return(invisible(TRUE))
+  # Reopen the target_db
+  target_db <- dbConnect(duckdb(), target_path)
+
+  target_db
 }
 
-#' @noRd
-add_study <- function(db, study_id, data_format) {
+#' Re-order the data in a database for faster processing
+#'
+#' @description `r lifecycle::badge("experimental")`
+#'
+#'   Rewrites the sensor tables ordered by `participant_id` and `time`. DuckDB
+#'   stores columnar data and maintains per-block zonemaps; ordering the data
+#'   this way improves zonemap pruning (e.g. for time range queries) and
+#'   compression. Run this after large imports for best query performance.
+#'
+#' @param db A database connection, as created by [create_db()].
+#' @param sensors A character vector of one or multiple sensors. Use
+#'   `sensors = NULL` for all sensors. See \link[mpathsenser]{sensors} for a
+#'   list of all available sensors.
+#' @param .progress Logical; whether to show a progress bar. Defaults to `TRUE`.
+#'
+#' @returns Invisibly returns `TRUE`.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Open a database connection
+#' db <- open_db("path/to/db")
+#'
+#' # Re-order all sensor tables
+#' optimize_db(db)
+#'
+#' # Or only the Accelerometer table
+#' optimize_db(db, sensors = "Accelerometer")
+#'
+#' # Remember to close the connection
+#' close_db(db)
+#' }
+optimize_db <- function(db, sensors = NULL, .progress = TRUE) {
   check_db(db)
+  check_sensors(sensors, allow_null = TRUE)
+  check_arg(.progress, "logical", n = 1)
 
-  dbExecute(
-    db,
-    paste(
-      "INSERT OR IGNORE INTO Study(study_id, data_format)",
-      "VALUES(:study_id, :data_format);"
-    ),
-    list(study_id = study_id, data_format = data_format)
+  if (is.null(sensors)) {
+    sensors <- mpathsenser::sensors
+  }
+
+  # Only optimize the raw data, not views nor the Timezone table.
+  sensors <- setdiff(.physical_sensor(sensors), "Timezone")
+
+  raw_id <- function(name) {
+    Id(schema = "raw", table = name)
+  }
+  # DuckDB's tbl() method probes dbExistsTable() with the schema-qualified
+  # identifier, for which R prints a one-off S4 method-dispatch note on the
+  # first call in a session; swallow that note.
+  lazy_tbl <- function(id) {
+    suppressMessages(tbl(db, id))
+  }
+  quote_raw <- function(name) {
+    as.character(dbQuoteIdentifier(db, raw_id(name)))
+  }
+  quote_table <- function(name) {
+    as.character(dbQuoteIdentifier(db, name))
+  }
+  # Physical row order is only observable through DuckDB's rowid pseudo-column,
+  # which a lazy table does not expose, so this check stays in SQL.
+  is_sorted <- function(sensor) {
+    dbGetQuery(
+      db,
+      sprintf(
+        "SELECT COUNT(*) AS n FROM (
+           SELECT participant_id, time,
+                  LAG(participant_id) OVER (ORDER BY rowid) AS previous_participant_id,
+                  LAG(time) OVER (ORDER BY rowid) AS previous_time
+           FROM %s
+         ) q
+         WHERE previous_participant_id IS NOT NULL
+           AND (participant_id < previous_participant_id
+             OR (participant_id = previous_participant_id AND time < previous_time))",
+        quote_raw(sensor)
+      )
+    )$n[[1]] ==
+      0
+  }
+  # The NOT NULL columns are read as a lazy dplyr query; restoring them is DDL
+  # (ALTER TABLE), which has no dbplyr equivalent and stays in SQL.
+  info_columns <- lazy_tbl(
+    Id(schema = "information_schema", table = "columns")
   )
+  not_null_columns <- function(sensor) {
+    filter(
+      info_columns,
+      .data$table_schema == "raw",
+      .data$table_name == sensor,
+      .data$is_nullable == "NO"
+    ) |>
+      arrange(.data$ordinal_position) |>
+      pull(.data$column_name)
+  }
+
+  if (.progress && length(sensors) > 0) {
+    cli_progress_bar("Optimizing sensor tables...", total = length(sensors))
+    on.exit(cli_progress_done(), add = TRUE)
+  }
+
+  DBI::dbWithTransaction(db, {
+    for (sensor in sensors) {
+      if (is_sorted(sensor)) {
+        if (.progress) {
+          cli_progress_update()
+        }
+        next
+      }
+
+      source <- lazy_tbl(raw_id(sensor))
+      target <- paste0(sensor, "_optimize_tmp")
+      source_table <- quote_table(sensor)
+
+      # Materialise the rows in (participant_id, time) order; the NOT NULL
+      # constraints are restored on the copy below.
+      dbExecute(db, sprintf("DROP TABLE IF EXISTS %s", quote_raw(target)))
+      dplyr::compute(
+        arrange(source, .data$participant_id, .data$time),
+        name = raw_id(target),
+        temporary = FALSE,
+        analyze = FALSE
+      )
+
+      for (column in not_null_columns(sensor)) {
+        dbExecute(
+          db,
+          sprintf(
+            "ALTER TABLE %s ALTER COLUMN %s SET NOT NULL",
+            quote_raw(target),
+            as.character(dbQuoteIdentifier(db, column))
+          )
+        )
+      }
+
+      dbExecute(db, sprintf("DROP TABLE %s", quote_raw(sensor)))
+      # The temporary table lives in the same (raw) schema as the original, so
+      # an unqualified RENAME TO resolves correctly; the identically named
+      # main.<sensor> view is unaffected (DuckDB resolves view bodies by name
+      # at query time).
+      dbExecute(
+        db,
+        sprintf("ALTER TABLE %s RENAME TO %s", quote_raw(target), source_table)
+      )
+      if (.progress) cli_progress_update()
+    }
+  })
+
+  invisible(TRUE)
 }
 
-#' @noRd
-add_participant <- function(db, participant_id, study_id) {
-  check_db(db)
-
-  dbExecute(
-    db,
-    paste(
-      "INSERT OR IGNORE INTO Participant(participant_id, study_id)",
-      "VALUES(:participant_id, :study_id);"
-    ),
-    list(participant_id = participant_id, study_id = study_id)
-  )
+#' @rdname optimize_db
+#' @export
+optimise_db <- function(db, sensors = NULL, .progress = TRUE) {
+  optimize_db(db, sensors, .progress = .progress)
 }
 
-#' @noRd
-add_processed_files <- function(db, file_name, study_id, participant_id) {
+#' Deduplicate measurements in a database
+#'
+#' @description
+#' `r lifecycle::badge("experimental")`
+#'
+#'   Removes duplicate measurements from the sensor tables. Per measurement
+#'   key (participant and time, plus sensor-specific extras such as the app
+#'   for AppUsage), the most recent row is kept: the row of the newest source
+#'   file, and within that file the row latest in source order (each row
+#'   records the 1-based ordinal of its JSON entry and of its position within
+#'   nested collections, so the winner is deterministic and independent of
+#'   physical row order). This is an upsert
+#'   (INSERT OR REPLACE) semantics, matching the historical behaviour of the
+#'   SQLite-based importer — a later measurement overwrites an earlier one
+#'   with the same key, whether the duplicate came from the same file or a
+#'   different one. Rows of older files with the same key are removed, rows
+#'   whose key occurs only once are never touched. This runs automatically at
+#'   the end of [read_mpath_sense()]; run it manually to clean up duplicates
+#'   left behind by an interrupted import. Unlike the automatic pass, which
+#'   only examines the key groups of the rows that were just imported, this
+#'   function scans the entire sensor tables, so it also resolves duplicates
+#'   that predate the current import (e.g. left behind by an interrupted run).
+#'
+#' @param db A database connection, as created by [create_db()].
+#' @param sensors A character vector of one or multiple sensors. Use
+#'   `sensors = NULL` for all sensors. See \link[mpathsenser]{sensors} for a
+#'   list of all available sensors.
+#' @param .debug Whether to print a message per sensor table.
+#'
+#' @returns A named integer vector with the number of duplicate rows removed
+#'   per sensor.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' # Open a database connection
+#' db <- open_db("path/to/db")
+#'
+#' # Remove duplicate measurements from all sensors
+#' deduplicate_db(db)
+#'
+#' # Or only from the Accelerometer table
+#' deduplicate_db(db, sensors = "Accelerometer")
+#'
+#' # Remember to close the connection
+#' close_db(db)
+#' }
+deduplicate_db <- function(db, sensors = NULL, .debug = FALSE) {
   check_db(db)
+  check_sensors(sensors, allow_null = TRUE)
+  check_arg(.debug, "logical", n = 1)
 
-  dbExecute(
-    db,
-    paste(
-      "INSERT OR IGNORE INTO ProcessedFiles(file_name, study_id, participant_id)",
-      "VALUES(:file_name, :study_id, :participant_id);"
-    ),
-    list(
-      file_name = file_name,
-      study_id = study_id,
-      participant_id = participant_id
-    )
-  )
-}
+  if (is.null(sensors)) {
+    sensors <- mpathsenser::sensors
+  }
+  sensors <- .physical_sensor(sensors)
 
-#' @noRd
-clear_db <- function(db) {
-  check_db(db)
-  tables <- c("Study", "Participant", "ProcessedFiles", sensors)
-  res <- vapply(
-    tables,
-    \(x) dbExecute(db, paste0("DELETE FROM ", x, " WHERE 1;")),
-    numeric(1)
-  )
-  names(res) <- tables
-  res
+  .read_dedup(db, sensors, .debug = .debug)
 }
 
 ### ----------- Getters ---------------
@@ -446,8 +1019,9 @@ clear_db <- function(db) {
 #'
 #' @param db A database connection, as created by [create_db()].
 #'
-#' @returns A data frame containing the `file_name`, `participant_id`, and `study_id` of the
-#'   processed files.
+#' @returns A data frame containing the `file_id`, `file_name`, `participant_id`,
+#'   `sense_version`, `file_size_bytes`, and `modified_at` of the processed
+#'   files.
 #' @export
 #'
 #' @examples
@@ -456,8 +1030,8 @@ clear_db <- function(db) {
 #'
 #' # Add some processed files
 #' DBI::dbExecute(db, "INSERT INTO Study VALUES('study1', 'data_format1')")
-#' DBI::dbExecute(db, "INSERT INTO Participant VALUES('participant1', 'study1')")
-#' DBI::dbExecute(db, "INSERT INTO ProcessedFiles VALUES('file1', 'participant1', 'study1')")
+#' DBI::dbExecute(db, "INSERT INTO Participant VALUES(1, 'study1')")
+#' DBI::dbExecute(db, "INSERT INTO ProcessedFiles(file_name, participant_id) VALUES('file1', 1)")
 #'
 #' # Get the processed files
 #' get_processed_files(db)
@@ -468,7 +1042,7 @@ clear_db <- function(db) {
 get_processed_files <- function(db) {
   check_db(db)
 
-  DBI::dbReadTable(db, "ProcessedFiles")
+  dbReadTable(db, "ProcessedFiles")
 }
 
 #' Get all participants
@@ -488,7 +1062,7 @@ get_processed_files <- function(db) {
 #'
 #' # Add some participants
 #' DBI::dbExecute(db, "INSERT INTO Study VALUES('study1', 'data_format1')")
-#' DBI::dbExecute(db, "INSERT INTO Participant VALUES('participant1', 'study1')")
+#' DBI::dbExecute(db, "INSERT INTO Participant VALUES(1, 'study1')")
 #'
 #' # Get the participants
 #' get_participants(db)
@@ -501,9 +1075,9 @@ get_participants <- function(db, lazy = FALSE) {
   check_arg(lazy, "logical", n = 1)
 
   if (lazy) {
-    dplyr::tbl(db, "Participant")
+    tbl(db, "Participant")
   } else {
-    DBI::dbReadTable(db, "Participant")
+    dbReadTable(db, "Participant")
   }
 }
 
@@ -536,9 +1110,9 @@ get_studies <- function(db, lazy = FALSE) {
   check_arg(lazy, "logical", n = 1)
 
   if (lazy) {
-    dplyr::tbl(db, "Study")
+    tbl(db, "Study")
   } else {
-    DBI::dbReadTable(db, "Study")
+    dbReadTable(db, "Study")
   }
 }
 
@@ -549,15 +1123,14 @@ get_studies <- function(db, lazy = FALSE) {
 #' @param db db A database connection, as created by [create_db()].
 #' @param sensor A character vector of one or multiple vectors. Use `sensor = NULL` for all
 #'   sensors. See \link[mpathsenser]{sensors} for a list of all available sensors.
-#' @param participant_id A character string identifying a single participant. Use
+#' @param participant_id A single participant identifier (stored as an unsigned integer; an
+#'   integer, numeric, or character value is accepted). Use
 #'   [get_participants()] to retrieve all participants from the database. Leave empty to get data
 #'   for all participants.
 #' @param start_date Optional search window specifying date where to begin search. Must be
-#'   convertible to date using [base::as.Date()]. Use [first_date()] to find the date of the first
-#'   entry for a participant.
+#'   convertible to date using [base::as.Date()].
 #' @param end_date Optional search window specifying date where to end search. Must be convertible
-#'   to date using [base::as.Date()]. Use [last_date()] to find the date of the last entry for a
-#'   participant.
+#'   to date using [base::as.Date()].
 #'
 #' @returns A named vector containing the number of rows for each sensor.
 #' @export
@@ -570,8 +1143,8 @@ get_studies <- function(db, lazy = FALSE) {
 #' # Get the number of rows for all sensors
 #' get_nrows(db, sensor = NULL)
 #'
-#' # Get the number of rows for the Accelerometer and Gyroscope sensors
-#' get_nrows(db, c("Accelerometer", "Gyroscope"))
+#' # Count rows for Accelerometer and Activity
+#' get_nrows(db, c("Accelerometer", "Activity"))
 #'
 #' # Remember to close the connection
 #' close_db(db)
@@ -597,6 +1170,6 @@ get_nrows <- function(
         dplyr::count() |>
         pull(n)
     },
-    integer(1)
+    numeric(1)
   )
 }

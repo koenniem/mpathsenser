@@ -9,20 +9,25 @@ get_data(db, sensor, participant_id = NULL, start_date = NULL, end_date = NULL)
 \arguments{
 \item{db}{A database connection to an m-Path Sense database.}
 
-\item{sensor}{The name of a sensor. See \link[mpathsenser]{sensors} for a list of available
-sensors.}
+\item{sensor}{The name of a sensor or its derived \verb{_local} or \verb{_with_local} view.
+See \link[mpathsenser]{sensors} for the physical sensor names.}
 
-\item{participant_id}{A character string identifying a single participant. Use
+\item{participant_id}{A single participant identifier. Use
 \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
-Leave empty to get data for all participants.}
+Leave empty to get data for all participants. Participant ids are stored as unsigned
+integers, so an integer, numeric, or character value is accepted.}
 
-\item{start_date}{Optional search window specifying date where to begin search. Must be
-convertible to date using \link[base]{as.Date}. Use \link[mpathsenser]{first_date} to find the
-date of the first entry for a participant.}
+\item{start_date}{An optional inclusive lower bound. Character values must use
+\code{YYYY-MM-DD}; a \code{Date} selects that whole calendar day. These date-only
+bounds use UTC for \code{time} columns (including \verb{_with_local}) and
+local wall time for \verb{_local} views. A \code{POSIXt} value is an exact instant for
+\code{time}; \verb{_local} views use its clock fields in its timezone, or
+UTC when no timezone attribute is set.}
 
-\item{end_date}{Optional search window specifying date where to end search. Must be convertible
-to date using \link[base]{as.Date}. Use \link[mpathsenser]{last_date} to find the date of the
-last entry for a participant.}
+\item{end_date}{An optional upper bound with the same types and timezone rules
+as \code{start_date}. A character or \code{Date} value includes the whole day, ending
+just before the following midnight; a \code{POSIXt} value includes its exact
+timestamp.}
 }
 \value{
 A lazy \code{\link[dplyr]{tbl}} containing the requested data.
@@ -40,18 +45,19 @@ This is useful for various functions in this package that work with a lazy tibbl
 functions such as \code{\link[dplyr:filter]{dplyr::filter()}} or \code{\link[dplyr:mutate]{dplyr::mutate()}} before pulling the data into R. These
 functions will be executed in-database, and will therefore be much faster than having to first
 pull all data into R and then possibly removing a large part of it. Importantly, data can
-pulled into R using \code{\link[dplyr:collect]{dplyr::collect()}}.
+pulled into R using \code{\link[dplyr:collect]{dplyr::collect()}}. Measurement timestamps are
+returned as absolute \code{TIMESTAMPTZ} values. Use \code{\link[=collect_local]{collect_local()}}
+or the explicit \verb{_local} views for participant-local wall-clock values.
 }
 \examples{
-\dontrun{
-# Open a database
-db <- open_db()
+db <- example_db()
 
 # Retrieve some data
-get_data(db, "Accelerometer", "12345")
+get_data(db, "Pedometer", participant_id = 372780)
 
 # Or within a specific window
-get_data(db, "Accelerometer", "12345", "2021-01-01", "2021-01-05")
-}
+get_data(db, "Pedometer", participant_id = 372780, "2026-09-30", "2026-10-01")
+
+close_db(db)
 
 }

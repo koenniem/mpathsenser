@@ -40,11 +40,9 @@ repo:
 reference:
   - title: Import data
     contents:
-      - import
-      - fix_jsons
-      - test_jsons
+      - read_mpath_sense
+      - deduplicate_db
       - unzip_data
-      - ccopy
       - add_timezones_to_db
 
   - title: Database handling
@@ -52,9 +50,9 @@ reference:
       - create_db
       - open_db
       - close_db
-      - index_db
+      - optimize_db
       - copy_db
-      - vacuum_db
+      - example_db
 
   - title: Data retrieval
     contents:
@@ -63,38 +61,42 @@ reference:
       - get_processed_files
       - get_studies
       - get_nrows
-      - first_date
-      - last_date
 
-  - title: Coverage chart
+  - title: Coverage
     contents:
-      - coverage
+      - coverage_frequency
+      - coverage_proportional
+      - coverage_expected
       - plot.coverage
 
   - title: Data transformation
     contents:
       - link
-      - link_db
       - link_gaps
       - identify_gaps
       - add_gaps
       - bin_data
       - moving_average
-      - with_localtime
+      - to_local_time
+      - collect_local
 
   - title: Sensor-specific functions
     contents:
       - device_info
       - app_category
       - installed_apps
-      - decrypt_gps
       - haversine
       - geocode_rev
 
   - title: Miscellaneous
     contents:
       - sensors
-      - freq
+
+articles:
+  - title: Articles
+    contents:
+      - contains("migration-guide-2.0.0")
+      - contains("data-overview")
 
 development:
   destination: ""

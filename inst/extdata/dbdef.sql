@@ -1,693 +1,596 @@
-PRAGMA foreign_keys = 1;
+-- Database definition for mpathsenser DuckDB databases.
+--
+-- Layout: physical sensor tables live in the `raw` schema; the `main` schema
+-- holds the metadata tables (Study, Participant, ProcessedFiles, DatabaseInfo)
+-- and one read-only view per sensor (main.<sensor>) that projects the raw table
+-- without the internal provenance columns (source_file_id, source_row_id,
+-- source_measurement_id). The views are created by the R helper
+-- .create_sensor_views(); user-facing functions query main.<sensor>.
+CREATE SCHEMA IF NOT EXISTS raw;
 
-PRAGMA main.synchronous = 1;
+-- Sequence backing ProcessedFiles.file_id. Never reset this sequence in normal
+-- operation: file_id ordering is used to decide which file wins on deduplication.
+CREATE SEQUENCE IF NOT EXISTS processed_files_seq START 1;
 
-PRAGMA busy_timeout = 3000;
-
-PRAGMA page_size = 8192;
-
-CREATE TABLE IF NOT EXISTS Study
-(
-study_id TEXT NOT NULL,
-data_format TEXT,
-PRIMARY KEY (study_id)
+CREATE TABLE IF NOT EXISTS Study(
+  study_id TEXT NOT NULL,
+  data_format TEXT,
+  PRIMARY KEY(study_id)
 );
 
-CREATE TABLE IF NOT EXISTS Participant
-(
-participant_id TEXT NOT NULL,
-study_id TEXT NOT NULL,
-PRIMARY KEY (participant_id),
-FOREIGN KEY (study_id) REFERENCES Study(study_id) ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS Participant(
+  participant_id UINTEGER NOT NULL,
+  study_id TEXT NOT NULL,
+  PRIMARY KEY(participant_id),
+  FOREIGN KEY(study_id) REFERENCES Study(study_id)
 );
 
-CREATE TABLE IF NOT EXISTS ProcessedFiles
-(
-file_name TEXT NOT NULL,
-participant_id TEXT NOT NULL,
-study_id TEXT NOT NULL,
-PRIMARY KEY (file_name),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE,
-FOREIGN KEY (study_id) REFERENCES Study(study_id) ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS ProcessedFiles(
+  file_id UBIGINT NOT NULL DEFAULT nextval('processed_files_seq'),
+  file_name TEXT NOT NULL,
+  participant_id UINTEGER NOT NULL,
+  sense_version UTINYINT,
+  file_size_bytes UBIGINT,
+  modified_at TIMESTAMPTZ,
+  processed_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
+  PRIMARY KEY(file_id),
+  UNIQUE(file_name, participant_id, file_size_bytes, modified_at),
+  FOREIGN KEY(participant_id) REFERENCES Participant(participant_id)
 );
 
-CREATE TABLE IF NOT EXISTS Accelerometer
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-end_time TEXT,
-n INTEGER,
-x_mean REAL,
-y_mean REAL,
-z_mean REAL,
-x_median REAL,
-y_median REAL,
-z_median REAL,
-x_std REAL,
-y_std REAL,
-z_std REAL,
-x_aad REAL,
-y_aad REAL,
-z_aad REAL,
-x_min REAL,
-y_min REAL,
-z_min REAL,
-x_max REAL,
-y_max REAL,
-z_max REAL,
-x_max_min_diff REAL,
-y_max_min_diff REAL,
-z_max_min_diff REAL,
-x_mad REAL,
-y_mad REAL,
-z_mad REAL,
-x_iqr REAL,
-y_iqr REAL,
-z_iqr REAL,
-x_neg_n INTEGER,
-y_neg_n INTEGER,
-z_neg_n INTEGER,
-x_pos_n INTEGER,
-y_pos_n INTEGER,
-z_pos_n INTEGER,
-x_above_mean INTEGER,
-y_above_mean INTEGER,
-z_above_mean INTEGER,
-x_energy REAL,
-y_energy REAL,
-z_energy REAL,
-avg_res_acc REAL,
-sma REAL,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+-- Database layout version. Exactly one row, written by create_db(). The
+-- version is bumped, and the supported set in R/database_version.R updated,
+-- only when a layout change makes existing databases unsupported; such
+-- databases must be recreated with create_db().
+CREATE TABLE IF NOT EXISTS DatabaseInfo(
+  database_version INTEGER NOT NULL,
+  created_with TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp
 );
 
-CREATE TABLE IF NOT EXISTS Activity
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-confidence INTEGER,
-type TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+-- Sensor tables. Each row carries three internal provenance columns:
+--   source_file_id        file_id of the ProcessedFiles record (UBIGINT)
+--   source_row_id         1-based ordinal of the JSON entry within its file
+--   source_measurement_id 1 for scalar entries; 1-based index within the
+--                         nested collection for unnested measurements
+-- The main.<sensor> views hide these columns; all user-facing access goes
+-- through the views.
+CREATE TABLE IF NOT EXISTS raw.Accelerometer(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  end_time TIMESTAMPTZ,
+  n UINTEGER,
+  x_mean REAL,
+  y_mean REAL,
+  z_mean REAL,
+  x_median REAL,
+  y_median REAL,
+  z_median REAL,
+  x_std REAL,
+  y_std REAL,
+  z_std REAL,
+  x_aad REAL,
+  y_aad REAL,
+  z_aad REAL,
+  x_min REAL,
+  y_min REAL,
+  z_min REAL,
+  x_max REAL,
+  y_max REAL,
+  z_max REAL,
+  x_max_min_diff REAL,
+  y_max_min_diff REAL,
+  z_max_min_diff REAL,
+  x_mad REAL,
+  y_mad REAL,
+  z_mad REAL,
+  x_iqr REAL,
+  y_iqr REAL,
+  z_iqr REAL,
+  x_neg_n UINTEGER,
+  y_neg_n UINTEGER,
+  z_neg_n UINTEGER,
+  x_pos_n UINTEGER,
+  y_pos_n UINTEGER,
+  z_pos_n UINTEGER,
+  x_above_mean UINTEGER,
+  y_above_mean UINTEGER,
+  z_above_mean UINTEGER,
+  x_energy REAL,
+  y_energy REAL,
+  z_energy REAL,
+  avg_res_acc REAL,
+  sma REAL,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS AirQuality
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-air_quality_index INTEGER,
-air_quality_level TEXT,
-source TEXT,
-place TEXT,
-latitude BLOB,
-longitude BLOB,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Activity(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  confidence UTINYINT,
+  type TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS AppUsage
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-end_time TEXT,
-start TEXT,
-end TEXT,
-usage INTEGER,
-app TEXT,
-package_name TEXT,
-last_foreground TEXT,
-PRIMARY KEY (participant_id, date, time, app),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.AppUsage(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  end_time TIMESTAMPTZ,
+  period_start TIMESTAMPTZ,
+  period_end TIMESTAMPTZ,
+  usage UBIGINT,
+  app TEXT,
+  package_name TEXT,
+  last_foreground TIMESTAMPTZ,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Battery
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-battery_level INTEGER,
-battery_status TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Battery(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  battery_level UTINYINT,
+  battery_status TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Bluetooth
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-start_scan TEXT,
-end_scan TEXT,
-advertisement_name TEXT,
-bluetooth_device_id TEXT,
-bluetooth_device_name TEXT,
-bluetooth_device_type TEXT,
-connectable BOOLEAN,
-rssi INTEGER,
-tx_power_level INTEGER,
-PRIMARY KEY (participant_id, date, time, bluetooth_device_id),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Bluetooth(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  start_scan TIMESTAMPTZ,
+  end_scan TIMESTAMPTZ,
+  advertisement_name TEXT,
+  bluetooth_device_id TEXT,
+  bluetooth_device_name TEXT,
+  connectable BOOLEAN,
+  rssi SMALLINT,
+  tx_power_level SMALLINT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Calendar
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-event_id TEXT,
-calendar_id TEXT,
-title TEXT,
-description TEXT,
-start TEXT,
-end TEXT,
-all_day BOOLEAN,
-location TEXT,
-attendees TEXT,
-PRIMARY KEY (participant_id, date, time, event_id, calendar_id, start, end),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.BluetoothBeacon(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  region TEXT,
+  uuid TEXT,
+  rssi SMALLINT,
+  major USMALLINT,
+  minor USMALLINT,
+  accuracy REAL,
+  proximity TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Connectivity
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-connectivity_status TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Connectivity(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  connectivity_status TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Device
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-device_id TEXT,
-hardware TEXT,
-device_name TEXT,
-device_manufacturer TEXT,
-device_model TEXT,
-operating_system TEXT,
-platform TEXT,
-operating_system_version TEXT,
-sdk TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Device(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  device_id TEXT,
+  hardware TEXT,
+  device_name TEXT,
+  device_manufacturer TEXT,
+  device_model TEXT,
+  operating_system TEXT,
+  platform TEXT,
+  operating_system_version TEXT,
+  device_data JSON,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Error
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-message TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Error(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  message TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminAccelerometer
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-x REAL,
-y REAL,
-z REAL,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminAccelerometer(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  x REAL,
+  y REAL,
+  z REAL,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminActigraphy
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-end_time TEXT,
-instance TEXT,
-total_energy INTEGER,
-n_zero_crossing INTEGER,
-time_above_threshold REAL,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time, instance),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminActigraphy(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  end_time TIMESTAMPTZ,
+  instance TEXT,
+  total_energy INTEGER,
+  n_zero_crossing INTEGER,
+  time_above_threshold REAL,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminBBI
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-bbi INTEGER,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminBBI(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  bbi USMALLINT,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminEnhancedBBI
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-bbi INTEGER,
-status TEXT,
-gap_duration INTEGER,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminEnhancedBBI(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  bbi USMALLINT,
+  status TEXT,
+  gap_duration INTEGER,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminGyroscope
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-x REAL,
-y REAL,
-z REAL,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminGyroscope(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  x REAL,
+  y REAL,
+  z REAL,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminHeartRate
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-bpm INTEGER,
-status TEXT,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminHeartRate(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  bpm USMALLINT,
+  status TEXT,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminMeta
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-time_from TEXT,
-time_to TEXT,
-n_accelerometer INTEGER,
-n_actigraphy_1 INTEGER,
-n_actigraphy_2 INTEGER,
-n_actigraphy_3 INTEGER,
-n_bbi INTEGER,
-n_enhanced_bbi INTEGER,
-n_gyroscope INTEGER,
-n_heartrate INTEGER,
-n_respiration INTEGER,
-n_skin_temperature INTEGER,
-n_spo2 INTEGER,
-n_steps INTEGER,
-n_stress INTEGER,
-n_wrist_status INTEGER,
-n_zero_crossing INTEGER,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminMeta(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  time_from TIMESTAMPTZ,
+  time_to TIMESTAMPTZ,
+  n_accelerometer UINTEGER,
+  n_actigraphy_1 UINTEGER,
+  n_actigraphy_2 UINTEGER,
+  n_actigraphy_3 UINTEGER,
+  n_bbi UINTEGER,
+  n_enhanced_bbi UINTEGER,
+  n_gyroscope UINTEGER,
+  n_heartrate UINTEGER,
+  n_respiration UINTEGER,
+  n_skin_temperature UINTEGER,
+  n_spo2 UINTEGER,
+  n_steps UINTEGER,
+  n_stress UINTEGER,
+  n_wrist_status UINTEGER,
+  n_zero_crossing UINTEGER,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminRespiration
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-bpm INTEGER,
-status TEXT,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminRespiration(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  bpm REAL,
+  status TEXT,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminSkinTemperature
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-temperature REAL,
-status TEXT,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminSkinTemperature(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  temperature REAL,
+  status TEXT,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminSPO2
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-spo2 INTEGER,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminSPO2(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  spo2 UTINYINT,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminSteps
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-end_time INTEGER,
-step_count INTEGER,
-total_steps INTEGER,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminSteps(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  end_time TIMESTAMPTZ,
+  step_count USMALLINT,
+  total_steps UINTEGER,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminStress
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-stress INTEGER,
-status TEXT,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminStress(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  stress UTINYINT,
+  status TEXT,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminWristStatus
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-status TEXT,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminWristStatus(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  status TEXT,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS GarminZeroCrossing
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-end_time TEXT,
-total_energy INTEGER,
-n_zero_crossing INTEGER,
-deadband INTEGER,
-mac_address TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.GarminZeroCrossing(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  end_time TIMESTAMPTZ,
+  total_energy UINTEGER,
+  n_zero_crossing UINTEGER,
+  deadband INTEGER,
+  mac_address TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Geofence
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-center REAL,
-dwell INTEGER,
-name TEXT,
-radius REAL,
-state TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Heartbeat(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  period INTEGER,
+  device_type TEXT,
+  device_role_name TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Gyroscope
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-x REAL,
-y REAL,
-z REAL,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Light(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  end_time TIMESTAMPTZ,
+  mean_lux REAL,
+  std_lux REAL,
+  min_lux REAL,
+  max_lux REAL,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Heartbeat
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-period INTEGER,
-device_type TEXT,
-device_role_name TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Location(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  latitude DOUBLE,
+  longitude DOUBLE,
+  altitude REAL,
+  accuracy REAL,
+  vertical_accuracy REAL,
+  speed REAL,
+  speed_accuracy REAL,
+  heading REAL,
+  heading_accuracy REAL,
+  is_mock BOOLEAN,
+  elapsed_realtime_nanos UBIGINT,
+  elapsed_realtime_uncertainty_nanos UBIGINT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS InstalledApps
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-app TEXT,
-PRIMARY KEY (participant_id, date, time, app),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Memory(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  free_physical_memory UBIGINT,
+  free_virtual_memory UBIGINT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Keyboard
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-body TEXT,
-end TEXT,
-start TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Pedometer(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  step_count UINTEGER,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Light
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-end_time TEXT,
-mean_lux REAL,
-std_lux REAL,
-min_lux REAL,
-max_lux REAL,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Screen(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  screen_event TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Location
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-latitude BLOB,
-longitude BLOB,
-altitude REAL,
-accuracy REAL,
-vertical_accuracy REAL,
-speed REAL,
-speed_accuracy REAL,
-heading REAL,
-heading_accuracy REAL,
-is_mock BOOLEAN,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Timezone(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Memory
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-free_physical_memory INTEGER,
-free_virtual_memory INTEGER,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Weather(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  country TEXT,
+  area_name TEXT,
+  weather_main TEXT,
+  weather_description TEXT,
+  sunrise TIMESTAMPTZ,
+  sunset TIMESTAMPTZ,
+  latitude DOUBLE,
+  longitude DOUBLE,
+  pressure REAL,
+  wind_speed REAL,
+  wind_degree REAL,
+  humidity REAL,
+  cloudiness REAL,
+  rain_last_hour REAL,
+  rain_last_3hours REAL,
+  snow_last_hour REAL,
+  snow_last_3hours REAL,
+  temperature REAL,
+  temp_min REAL,
+  temp_max REAL,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Mobility
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-number_of_places INTEGER,
-location_variance REAL,
-entropy REAL,
-normalized_entropy REAL,
-home_stay REAL,
-distance_travelled double,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
+
+
+CREATE TABLE IF NOT EXISTS raw.Wifi(
+  participant_id UINTEGER NOT NULL,
+  time TIMESTAMPTZ NOT NULL,
+  ssid TEXT,
+  bssid TEXT,
+  ip TEXT,
+  timezone TEXT,
+  source_file_id UINTEGER NOT NULL,
+  source_row_id UINTEGER NOT NULL,
+  source_measurement_id UINTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS Noise
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-end_time TEXT,
-mean_decibel REAL,
-std_decibel REAL,
-min_decibel REAL,
-max_decibel REAL,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS Pedometer
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-step_count INTEGER,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS PhoneLog
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-call_type TEXT,
-datetime TEXT,
-duration INTEGER,
-formatted_number TEXT,
-name TEXT,
-number TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS Screen
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-screen_event TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS TextMessage
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-address TEXT,
-body TEXT,
-text_date TEXT,
-date_sent TEXT,
-is_read INTEGER,
-kind TEXT,
-size INTEGER,
-state TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS Timezone
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-timezone TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS Weather
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-country TEXT,
-area_name TEXT,
-weather_main TEXT,
-weather_description TEXT,
-sunrise TEXT,
-sunset TEXT,
-latitude BLOB,
-longitude BLOB,
-pressure INTEGER,
-wind_speed REAL,
-wind_degree REAL,
-humidity INTEGER,
-cloudiness INTEGER,
-rain_last_hour REAL,
-rain_last_3hours REAL,
-snow_last_hour REAL,
-snow_last_3hours REAL,
-temperature REAL,
-temp_min REAL,
-temp_max REAL,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS Wifi
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-ssid TEXT,
-bssid TEXT,
-ip TEXT,
-PRIMARY KEY (participant_id, date, time),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS BluetoothBeacon
-(
-measurement_id TEXT UNIQUE,
-participant_id TEXT NOT NULL,
-date TEXT NOT NULL,
-time TEXT NOT NULL,
-region TEXT,
-uuid TEXT,
-rssi INTEGER,
-major INTEGER,
-minor INTEGER,
-accuracy REAL,
-proximity TEXT,
-PRIMARY KEY (participant_id, date, time, uuid),
-FOREIGN KEY (participant_id) REFERENCES Participant(participant_id) ON DELETE CASCADE
-);

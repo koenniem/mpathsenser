@@ -9,7 +9,8 @@ installed_apps(db, participant_id = NULL)
 \arguments{
 \item{db}{A database connection to an mpathsenser database.}
 
-\item{participant_id}{A character string identifying a single participant. Use
+\item{participant_id}{A single participant identifier (stored as an unsigned integer; an
+integer, numeric, or character value is accepted). Use
 \code{\link[mpathsenser]{get_participants}} to retrieve all participants from the database.
 Leave empty to get data for all participants.}
 }
@@ -25,12 +26,12 @@ throughout the study.
 }
 \examples{
 \dontrun{
-db <- open_db()
+db <- example_db()
 
 # Get installed apps for all participants
 installed_apps(db)
 
 # Get installed apps for a single participant
-installed_apps(db, "12345")
+installed_apps(db, 372780)
 }
 }

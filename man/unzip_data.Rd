@@ -5,7 +5,7 @@
 \title{Unzip m-Path Sense output}
 \usage{
 unzip_data(
-  path = getwd(),
+  path,
   to = NULL,
   overwrite = FALSE,
   recursive = TRUE,
@@ -15,17 +15,17 @@ unzip_data(
 \arguments{
 \item{path}{The path to the directory containing the zip files.}
 
-\item{to}{The output path.}
+\item{to}{The output path. Defaults to \code{path}.}
 
 \item{overwrite}{Logical value whether you want to overwrite already existing zip files.}
 
-\item{recursive}{Logical value indicating whether to unzip files in subdirectories as well. These
-files will then be unzipped in their respective subdirectory.}
+\item{recursive}{Logical value indicating whether to search subdirectories recursively.
+Extracted files are placed in the corresponding subdirectory of \code{to}.}
 
 \item{.progress}{Whether to display a progress bar.}
 }
 \value{
-A message indicating how many files were unzipped.
+Invisibly returns the number of ZIP files successfully unzipped.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
@@ -33,22 +33,15 @@ A message indicating how many files were unzipped.
 Similar to \link[utils]{unzip}, but makes it easier to unzip all files in a given path with one
 function call.
 }
-\section{Parallel}{
- This function supports parallel processing in the sense that it is able to
-distribute it's computation load among multiple workers. To make use of this functionality, run
-\href{https://rdrr.io/cran/future/man/plan.html}{\code{future::plan("multisession")}} before
-calling this function.
-}
-
 \examples{
 \dontrun{
 # Unzip all files in a directory
 unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", recursive = FALSE)
 
-# Unzip all files in a directory and its subdirectories
+# Unzip files recursively
 unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", recursive = TRUE)
 
-# Unzip files in a directory, but skip those that are already unzipped
+# Skip files that are already unzipped
 unzip_data(path = "path/to/zipfiles", to = "path/to/unzipped", overwrite = FALSE)
 }
 }

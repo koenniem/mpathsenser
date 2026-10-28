@@ -1,6 +1,6 @@
 Package: mpathsenser
 Title: Process and Analyse Data from m-Path Sense
-Version: 1.2.4.9000
+Version: 1.9.9.9000
 Authors@R: c(
     person("Koen", "Niemeijer", , "koen.niemeijer@kuleuven.be", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-0816-534X")),
@@ -15,43 +15,41 @@ Description: Overcomes one of the major challenges in mobile (passive)
     JSON files into a database and provide several convenience functions
     to aid in data processing.
 License: GPL (>= 3)
-URL: 
+URL:
     https://koenniem.github.io/mpathsenser/
-BugReports: 
+BugReports:
     https://github.com/koenniem/mpathsenser/issues
-Depends: 
+Depends:
     R (>= 4.2.0)
 Imports:
     cli,
     DBI,
-    dbplyr,
+    dbplyr (>= 2.6.0),
     dplyr (>= 1.1.0),
+    duckdb (>= 2.0.0),
     jsonlite,
     lifecycle,
     lubridate,
     purrr (>= 1.0.0),
     rlang,
-    RSQLite,
     stats,
     tibble,
     tidyr
-Suggests: 
+Suggests:
     curl,
-    furrr,
     ggplot2,
     httr,
     kableExtra,
     knitr,
-    lintr,
+    mpathr,
     rmarkdown,
     rvest,
-    sodium,
     spelling,
     testthat (>= 3.0.0)
-VignetteBuilder: 
+VignetteBuilder:
     knitr
 Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Language: en-GB
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.1

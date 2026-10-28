@@ -18,8 +18,7 @@ test_that("link", {
     by = "participant_id",
     time = "time",
     y_time = "time",
-    offset_before = 1800,
-    split = NULL
+    offset_before = 1800
   )
   true <- tibble::tibble(
     time = rep(
@@ -64,31 +63,6 @@ test_that("link", {
   )
   expect_equal(res, true)
 
-  # Test warning if time and y_time are not specified
-  lifecycle::expect_deprecated(
-    link(
-      x = dat1,
-      y = dat2,
-      by = "participant_id",
-      y_time = "time",
-      offset_before = 1800,
-      split = NULL
-    ),
-    "The `time` argument of `link\\(\\)` must not be missing as of mpathsenser 1.1.2."
-  )
-
-  lifecycle::expect_deprecated(
-    link(
-      x = dat1,
-      y = dat2,
-      by = "participant_id",
-      time = "time",
-      offset_before = 1800,
-      split = NULL
-    ),
-    "The `y_time` argument of `link\\(\\)` must not be missing as of mpathsenser 1.1.2."
-  )
-
   # Test x and y identical
   expect_error(
     link(
@@ -97,18 +71,17 @@ test_that("link", {
       by = "participant_id",
       time = "time",
       y_time = "time",
-      offset_before = 1800,
-      split = NULL
+      offset_before = 1800
     ),
     "`x` and `y` are identical."
   )
 
   # Test without offset bu using time and end_time
-  res2 <- dat1 %>%
-    dplyr::rename(end_time = time) %>%
-    mutate(start_time = end_time - 1800) %>%
+  res2 <- dat1 |>
+    dplyr::rename(end_time = time) |>
+    mutate(start_time = end_time - 1800) |>
     link(
-      x = .,
+      x = _,
       y = dat2,
       by = "participant_id",
       time = start_time,
@@ -122,11 +95,11 @@ test_that("link", {
 
   # Test that end_time and offset_before and offset_after cannot be used at the same time.
   expect_error(
-    dat1 %>%
-      dplyr::rename(end_time = time) %>%
-      mutate(start_time = end_time - 1800) %>%
+    dat1 |>
+      dplyr::rename(end_time = time) |>
+      mutate(start_time = end_time - 1800) |>
       link(
-        x = .,
+        x = _,
         y = dat2,
         by = "participant_id",
         time = start_time,
@@ -136,18 +109,6 @@ test_that("link", {
       ),
     "`end_time` cannot be combined with `offset_before` or `offset_after`."
   )
-
-  # Test split argument
-  res <- link(
-    x = dat1,
-    y = dat2,
-    by = "participant_id",
-    time = time,
-    y_time = time,
-    offset_before = 1800,
-    split = 6
-  )
-  expect_equal(res, true)
 
   # Scrambled test
   scramble <- function(data) {
@@ -161,7 +122,7 @@ test_that("link", {
     time = time,
     y_time = time,
     offset_before = 1800
-  ) %>%
+  ) |>
     arrange(participant_id, time)
   expect_equal(res, true)
 
@@ -223,7 +184,7 @@ test_that("link", {
     time = time,
     y_time = time,
     offset_after = 1800
-  ) %>%
+  ) |>
     arrange(participant_id, time)
   expect_equal(res, true)
 
@@ -311,11 +272,11 @@ test_that("link", {
   expect_equal(res, true, ignore_attr = TRUE)
 
   # Without offset, using time, end_time, and y_time
-  res2 <- dat1 %>%
-    dplyr::rename(end_time = time) %>%
-    mutate(start_time = end_time - 1800) %>%
+  res2 <- dat1 |>
+    dplyr::rename(end_time = time) |>
+    mutate(start_time = end_time - 1800) |>
     link(
-      x = .,
+      x = _,
       y = dat2,
       by = "participant_id",
       time = start_time,
@@ -423,8 +384,8 @@ test_that("link", {
     add_after = TRUE
   )
   expect_equal(attr(res$time, "tzone"), "Europe/Brussels")
-  expect_equal(unique(map_chr(res$data, ~ attr(.x$time, "tzone"))), "UTC")
-  expect_equal(unique(map_chr(res$data, ~ attr(.x$original_time, "tzone"))), "UTC")
+  expect_equal(unique(purrr::map_chr(res$data, ~ attr(.x$time, "tzone"))), "UTC")
+  expect_equal(unique(purrr::map_chr(res$data, ~ attr(.x$original_time, "tzone"))), "UTC")
 
   # Make sure link does not add an extra row if first measurement equal start of the interval or
   # vice versa for the end of the interval.
@@ -528,12 +489,6 @@ test_that("link", {
     )
   )
   expect_equal(res, true)
-})
-
-## link_db ===============
-test_that("link_db", {
-  # Check deprecation
-  lifecycle::expect_defunct(link_db(db, "Activity", "Connectivity", offset_after = 1800L))
 })
 
 ## link_gaps =================
@@ -695,7 +650,7 @@ test_that("link_gaps", {
 
   expect_error(
     link_gaps(
-      data = res_raw %>% dplyr::select(-gap),
+      data = res_raw |> dplyr::select(-gap),
       gaps = dat2,
       by = "participant_id",
       offset_before = 1800L,
@@ -706,7 +661,7 @@ test_that("link_gaps", {
 
   expect_error(
     link_gaps(
-      data = res_raw %>% dplyr::select(-gap),
+      data = res_raw |> dplyr::select(-gap),
       gaps = dat2,
       by = "participant_id",
       offset_before = 1800L,
@@ -726,7 +681,7 @@ test_that("link_gaps", {
     by = "participant_id",
     offset_before = 1800,
     raw_data = TRUE
-  ) %>%
+  ) |>
     arrange(participant_id, time)
   expect_equal(res_raw, true)
 
@@ -748,8 +703,8 @@ test_that("link_gaps", {
 
   # Test whether results from raw_data = FALSE and TRUE are the same
   expect_equal(
-    res_raw %>%
-      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+    res_raw |>
+      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) |>
       dplyr::select(-gap_data),
     res
   )
@@ -824,8 +779,8 @@ test_that("link_gaps", {
 
   # Test whether results from raw_data = FALSE and TRUE are the same
   expect_equal(
-    res_raw %>%
-      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+    res_raw |>
+      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) |>
       dplyr::select(-gap_data),
     res
   )
@@ -906,8 +861,8 @@ test_that("link_gaps", {
 
   # Test whether results from raw_data = FALSE and TRUE are the same
   expect_equal(
-    res_raw %>%
-      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) %>%
+    res_raw |>
+      mutate(gap = purrr::map_dbl(gap_data, ~ sum(.x$gap))) |>
       dplyr::select(-gap_data),
     res
   )
@@ -957,9 +912,9 @@ test_that("bin_data", {
   )
 
   # get bins per hour, even if the interval is longer than one hour
-  res <- data %>%
-    mutate(datetime = as.POSIXct(datetime)) %>%
-    mutate(lead = lead(datetime)) %>%
+  res <- data |>
+    mutate(datetime = as.POSIXct(datetime)) |>
+    mutate(lead = lead(datetime)) |>
     bin_data(
       start_time = datetime,
       end_time = lead,
@@ -1002,9 +957,9 @@ test_that("bin_data", {
   # bins, but only if fixed = FALSE. Not that these bins are not rounded to,
   # as in this example 30 minutes, but rather depends on the earliest time
   # in the group.
-  res <- data %>%
-    mutate(datetime = as.POSIXct(datetime)) %>%
-    mutate(lead = lead(datetime)) %>%
+  res <- data |>
+    mutate(datetime = as.POSIXct(datetime)) |>
+    mutate(lead = lead(datetime)) |>
     bin_data(
       start_time = datetime,
       end_time = lead,
@@ -1080,11 +1035,11 @@ test_that("bin_data", {
   )
 
   # binned_intervals also takes into account the prior grouping structure
-  res <- data %>%
-    mutate(datetime = as.POSIXct(datetime)) %>%
-    group_by(participant_id) %>%
-    mutate(lead = lead(datetime)) %>%
-    group_by(participant_id, type) %>%
+  res <- data |>
+    mutate(datetime = as.POSIXct(datetime)) |>
+    group_by(participant_id) |>
+    mutate(lead = lead(datetime)) |>
+    group_by(participant_id, type) |>
     bin_data(
       start_time = datetime,
       end_time = lead,
@@ -1138,7 +1093,7 @@ test_that("bin_data", {
       ),
       2
     )
-  ) %>%
+  ) |>
     group_by(participant_id, type)
   expect_equal(res, true)
 
@@ -1149,10 +1104,10 @@ test_that("bin_data", {
   )
 
   # Or:
-  duration2 <- res %>%
-    unnest(bin_data, keep_empty = TRUE) %>%
-    mutate(duration = .data$lead - .data$datetime) %>%
-    group_by(bin, .add = TRUE) %>%
+  duration2 <- res |>
+    unnest(bin_data, keep_empty = TRUE) |>
+    mutate(duration = .data$lead - .data$datetime) |>
+    group_by(bin, .add = TRUE) |>
     summarise(duration = sum(.data$duration, na.rm = TRUE), .groups = "drop")
 
   true <- c(55, 0, 5, 5, 60, 5, 55, 0, 5, 5, 60, 5)
@@ -1161,8 +1116,8 @@ test_that("bin_data", {
   expect_equal(as.double(duration2$duration), true)
 
   # Argument checks
-  data <- data %>%
-    mutate(datetime = as.POSIXct(datetime)) %>%
+  data <- data |>
+    mutate(datetime = as.POSIXct(datetime)) |>
     mutate(lead = lead(datetime))
 
   expect_error(
@@ -1175,8 +1130,8 @@ test_that("bin_data", {
     "`by` must be one of \"sec\", \"min\", \"hour\", or \"day\""
   )
   expect_error(
-    data %>%
-      mutate(datetime = as.character(datetime)) %>%
+    data |>
+      mutate(datetime = as.character(datetime)) |>
       bin_data(
         start_time = datetime,
         end_time = lead,
@@ -1201,9 +1156,9 @@ test_that("bin_data", {
     type = "WALKING"
   )
 
-  res <- data %>%
-    mutate(datetime = as.POSIXct(datetime)) %>%
-    mutate(lead = lead(datetime)) %>%
+  res <- data |>
+    mutate(datetime = as.POSIXct(datetime)) |>
+    mutate(lead = lead(datetime)) |>
     bin_data(
       start_time = datetime,
       end_time = lead,
@@ -1211,4 +1166,239 @@ test_that("bin_data", {
     )
 
   expect_equal(lubridate::hour(res$bin), c(0, 0))
+})
+
+test_that("link preserves custom nested names and prototypes", {
+  tz <- "Europe/Brussels"
+  x <- tibble::tibble(
+    participant_id = c("p1", "p2"),
+    time = as.POSIXct(
+      c("2022-05-10 12:00:00", "2022-05-10 12:00:00"),
+      tz = tz
+    )
+  )
+  y <- tibble::tibble(
+    person_id = "p1",
+    time = as.POSIXct(
+      c(
+        "2022-05-10 11:58:00",
+        "2022-05-10 11:59:30",
+        "2022-05-10 12:00:00",
+        "2022-05-10 12:00:30",
+        "2022-05-10 12:02:00"
+      ),
+      tz = tz
+    ),
+    value = 1:5
+  )
+
+  link_args <- list(
+    x = x,
+    y = y,
+    by = c(participant_id = "person_id"),
+    time = "time",
+    y_time = "time",
+    offset_before = 60L,
+    offset_after = 60L,
+    add_before = TRUE,
+    add_after = TRUE
+  )
+  default <- do.call(link, link_args)
+  custom <- do.call(link, c(link_args, list(name = "sensing")))
+
+  expect_named(custom, c("participant_id", "time", "sensing"))
+  expect_identical(dplyr::rename(custom, data = sensing), default)
+  expect_true(all(purrr::map_lgl(custom$sensing, \(nested) {
+    "original_time" %in% names(nested)
+  })))
+  expect_equal(
+    custom$sensing[[1]],
+    tibble::tibble(
+      time = as.POSIXct(
+        c(
+          "2022-05-10 11:59:00",
+          "2022-05-10 11:59:30",
+          "2022-05-10 12:00:00",
+          "2022-05-10 12:00:30",
+          "2022-05-10 12:01:00"
+        ),
+        tz = tz
+      ),
+      value = 1:5,
+      original_time = as.POSIXct(
+        c("2022-05-10 11:58:00", NA, NA, NA, "2022-05-10 12:02:00"),
+        tz = tz
+      )
+    )
+  )
+  expect_identical(
+    custom$sensing[[2]],
+    tibble::tibble(
+      time = as.POSIXct(double(0), origin = "1970-01-01", tz = tz),
+      value = integer(0),
+      original_time = as.POSIXct(double(0), origin = "1970-01-01", tz = tz)
+    )
+  )
+  expect_identical(attr(custom$sensing[[1]]$original_time, "tzone"), tz)
+})
+
+test_that("link maps named keys and treats empty keys as a cross join", {
+  t0 <- as.POSIXct("2022-05-10 12:00:00", tz = "UTC")
+  x <- tibble::tibble(
+    participant = c("p1", "p2"),
+    device = c("phone", "tablet"),
+    time = rep(t0, 2)
+  )
+  y <- tibble::tibble(
+    person = c("p1", "p1", "p2", "p2"),
+    machine = c("phone", "tablet", "phone", "tablet"),
+    time = rep(as.POSIXct("2022-05-10 11:59:00", tz = "UTC"), 4),
+    value = 1:4
+  )
+
+  single_key <- link(
+    x,
+    y,
+    by = c(participant = "person"),
+    time = time,
+    y_time = time,
+    offset_before = 60L
+  )
+  expect_equal(purrr::map(single_key$data, "value"), list(1:2, 3:4))
+
+  named_keys <- link(
+    x,
+    y,
+    by = c(participant = "person", device = "machine"),
+    time = time,
+    y_time = time,
+    offset_before = 60L
+  )
+  expect_equal(purrr::map(named_keys$data, "value"), list(1L, 4L))
+
+  y_mixed <- dplyr::rename(y, device = machine)
+  mixed_keys <- link(
+    x,
+    y_mixed,
+    by = c(participant = "person", "device"),
+    time = time,
+    y_time = time,
+    offset_before = 60L
+  )
+  expect_equal(purrr::map(mixed_keys$data, "value"), list(1L, 4L))
+
+  x_same <- dplyr::rename(x, participant_id = participant)
+  y_same <- dplyr::rename(y, participant_id = person, device = machine)
+  unnamed_keys <- link(
+    x_same,
+    y_same,
+    by = c("participant_id", "device"),
+    time = time,
+    y_time = time,
+    offset_before = 60L
+  )
+  expect_equal(purrr::map(unnamed_keys$data, "value"), list(1L, 4L))
+
+  cross_null <- link(x, y, time = time, y_time = time, offset_before = 60L)
+  cross_empty <- link(
+    x,
+    y,
+    by = character(),
+    time = time,
+    y_time = time,
+    offset_before = 60L
+  )
+  expect_identical(cross_null, cross_empty)
+  expect_equal(purrr::map_int(cross_null$data, nrow), c(4L, 4L))
+
+  expect_error(
+    link(
+      x,
+      y,
+      by = c(missing = "person"),
+      time = time,
+      y_time = time,
+      offset_before = 60L
+    ),
+    "Missing column.*`x`"
+  )
+  expect_error(
+    link(
+      x,
+      y,
+      by = c(participant = "missing"),
+      time = time,
+      y_time = time,
+      offset_before = 60L
+    ),
+    "Missing column.*`y`"
+  )
+  expect_error(
+    link(
+      x,
+      y,
+      by = c("participant", "participant"),
+      time = time,
+      y_time = time,
+      offset_before = 60L
+    ),
+    "unique column names in `x`"
+  )
+})
+
+test_that("link_intervals keeps the characterized overlap cases", {
+  x <- tibble::tibble(x_start = 10L, x_end = 20L)
+  cases <- c(
+    "inside",
+    "overlap_left",
+    "overlap_right",
+    "span",
+    "before",
+    "after",
+    "touch_left",
+    "touch_right",
+    "missing_end_before",
+    "missing_end_inside",
+    "missing_end_after",
+    "missing_start_before",
+    "missing_start_inside",
+    "missing_start_after",
+    "both_missing"
+  )
+  y <- tibble::tibble(
+    case = cases,
+    y_start = as.POSIXct(
+      c(12, 5, 18, 5, 1, 21, 5, 20, 5, 15, 25, NA_real_, NA_real_, NA_real_, NA_real_),
+      origin = "1970-01-01",
+      tz = "UTC"
+    ),
+    y_end = as.POSIXct(
+      c(18, 12, 25, 25, 9, 30, 10, 25, NA_real_, NA_real_, NA_real_, 9, 15, 25, NA_real_),
+      origin = "1970-01-01",
+      tz = "UTC"
+    )
+  )
+
+  result <- link_intervals(
+    x,
+    x_start = x_start,
+    x_end = x_end,
+    y,
+    y_start = y_start,
+    y_end = y_end,
+    by = character()
+  )
+
+  expect_setequal(
+    result$data[[1]]$case,
+    c(
+      "inside",
+      "overlap_left",
+      "overlap_right",
+      "span",
+      "missing_end_inside",
+      "missing_start_inside",
+      "both_missing"
+    )
+  )
 })

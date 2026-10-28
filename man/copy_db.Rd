@@ -9,32 +9,37 @@ copy_db(source_db, target_db, sensor = NULL)
 \arguments{
 \item{source_db}{A mpathsenser database connection from where the data will be transferred.}
 
-\item{target_db}{A mpathsenser database connection where the data will be transferred to.
-\code{\link[=create_db]{create_db()}} to create a new database.}
+\item{target_db}{A mpathsenser database connection to receive the data. Use
+\code{\link[=create_db]{create_db()}} to create a new, file-backed database; in-memory targets are
+not supported.}
 
 \item{sensor}{A character vector containing one or multiple sensors. See
 \code{\link[mpathsenser]{sensors}} for a list of available sensors. Defaults to \code{NULL}, which
 means all available sensors.}
 }
 \value{
-Returns \code{TRUE} invisibly, called for side effects.
+Returns a connection to \code{target_db}. Note that this is not the same connection as the
+input \code{target_db}.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#stable}{\figure{lifecycle-stable.svg}{options: alt='[Stable]'}}}{\strong{[Stable]}}
 }
 \examples{
-# First create two databases in a temporary directory
-db1 <- create_db(tempdir(), "mydb1.db")
+# The source can be in memory; the target must be file-backed.
+db1 <- create_db(NULL, ":memory:")
 db2 <- create_db(tempdir(), "mydb2.db")
 
 # Populate the first database with some data
 DBI::dbExecute(db1, "INSERT INTO Study VALUES ('study_1', 'default')")
-DBI::dbExecute(db1, "INSERT INTO Participant VALUES ('1', 'study_1')")
-DBI::dbExecute(db1, "INSERT INTO Activity VALUES(
-               '123', '1', '2024-01-01', '08:00:00', '100', 'WALKING')")
+DBI::dbExecute(db1, "INSERT INTO Participant VALUES (1, 'study_1')")
+DBI::dbExecute(db1, "INSERT INTO ProcessedFiles(file_name, participant_id) VALUES ('f1', 1)")
+# Sensor data lives in the raw schema (the main.Activity view is read-only)
+DBI::dbExecute(db1, "INSERT INTO raw.Activity(
+  participant_id, time, confidence, type, source_file_id, source_row_id, source_measurement_id
+) VALUES (1, '2024-01-01 08:00:00', 100, 'WALKING', 1, 1, 1)")
 
 # Then copy the first database to the second database
-copy_db(db1, db2)
+db2 <- copy_db(db1, db2)
 
 # Check that the second database has the same data as the first database
 get_data(db2, "Activity")
@@ -42,6 +47,5 @@ get_data(db2, "Activity")
 # Cleanup
 close_db(db1)
 close_db(db2)
-file.remove(file.path(tempdir(), "mydb1.db"))
 file.remove(file.path(tempdir(), "mydb2.db"))
 }

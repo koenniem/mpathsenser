@@ -7,7 +7,7 @@
 app_category(name, num = 1, rate_limit = 5, exact = TRUE, .progress = TRUE)
 }
 \arguments{
-\item{name}{The name of the app to search for.}
+\item{name}{Character app names to search for; missing values are skipped.}
 
 \item{num}{Which result should be selected in the list of search results. Defaults to one.}
 

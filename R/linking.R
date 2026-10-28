@@ -1,7 +1,9 @@
 link_impl <- function(
   x,
   y,
-  by,
+  by_join,
+  by_x,
+  by_y,
   start_time,
   end_time,
   y_time,
@@ -16,16 +18,20 @@ link_impl <- function(
   force(add_after)
   force(name)
 
-  # Filter y to keep only `by` instances that occur in x
-  if (!rlang::is_null(by) && length(by) != 0) {
-    y <- dplyr::semi_join(y, x, by = by)
+  # Restrict keyed joins to y rows represented in x.
+  if (length(by_x) > 0L) {
+    y <- dplyr::semi_join(
+      y,
+      x,
+      by = stats::setNames(by_x, by_y)
+    )
   }
 
   # Prepare x
   # Create a row_id or rematching later
   x <- x |>
-    tibble::as_tibble() |>
-    mutate(.row_id = dplyr::row_number())
+    as_tibble() |>
+    mutate(.row_id = row_number())
 
   # If no end_time is specified, calculate the start and end time of the interval using offset
   # Else, take the start time and end time as specified by the user
@@ -34,40 +40,51 @@ link_impl <- function(
       mutate(across(.env$start_time, as.integer, .names = ".x_time")) |>
       mutate(.start_time = .data$.x_time - offset_before) |>
       mutate(.end_time = .data$.x_time + offset_after) |>
-      select({{ by }}, ".start_time", ".end_time", ".row_id")
+      select(all_of(c(by_x, ".start_time", ".end_time", ".row_id")))
   } else {
     # Ensure column names for x and y do not clash
     # also easier to work with
     data <- x |>
-      dplyr::rename(.start_time = .env$start_time) |>
-      dplyr::rename(.end_time = .env$end_time) |>
+      rename(.start_time = .env$start_time) |>
+      rename(.end_time = .env$end_time) |>
       mutate(.start_time = as.integer(.data$.start_time)) |>
       mutate(.end_time = as.integer(.data$.end_time)) |>
-      select({{ by }}, ".start_time", ".end_time", ".row_id")
+      select(all_of(c(by_x, ".start_time", ".end_time", ".row_id")))
   }
 
-  # Match sensing data with ESM using a left join
+  # Match sensing data with ESM using keyed or cross-join semantics.
+  if (length(by_x) == 0L) {
+    data <- dplyr::cross_join(data, y)
+  } else {
+    data <- dplyr::left_join(
+      data,
+      y,
+      by = by_join,
+      multiple = "all",
+      relationship = "many-to-many"
+    )
+  }
+
   data <- data |>
-    dplyr::left_join(y, by = by, multiple = "all", relationship = "many-to-many") |>
     mutate(across(all_of(y_time), as.integer, .names = ".y_time")) |>
-    tidyr::drop_na(".start_time", ".end_time")
+    drop_na(".start_time", ".end_time")
 
   # The main data, i.e. data exactly within the interval
   data_main <- data |>
     filter(.data$.y_time >= .data$.start_time & .data$.y_time <= .data$.end_time) |>
-    arrange(across(c({{ by }}, ".y_time"))) |>
+    arrange(across(all_of(c(by_x, ".y_time")))) |>
     select(-".y_time") |>
-    nest({{ name }} := !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
+    nest(!!name := !c(all_of(by_x), ".start_time", ".end_time", ".row_id")) |>
     select(all_of(c(".row_id", name)))
 
   # Merge back with original data
   # Bug: if this happens after merging data_before and data_after, they would be lost in the case
   # no data was retained in data_main as all the row_ids are deleted as well
   data_main <- x |>
-    dplyr::left_join(data_main, by = ".row_id", multiple = "all", relationship = "many-to-many")
+    left_join(data_main, by = ".row_id", multiple = "all", relationship = "many-to-many")
 
   # Add the last measurement before start_time
-  tz <- lubridate::tz(pull(y, {{ y_time }}))
+  tz <- tz(pull(y, {{ y_time }}))
   if (add_before) {
     # Calculate in which groups there is a measurement that equals start_time
     equal_to_start <- data |>
@@ -81,20 +98,20 @@ link_impl <- function(
       dplyr::slice_max(order_by = .data$.y_time, n = 1, with_ties = TRUE) |>
       ungroup() |>
       mutate(across(all_of(y_time), .names = "original_time")) |>
-      mutate({{ y_time }} := lubridate::as_datetime(.data$.start_time, tz = tz)) |>
+      mutate({{ y_time }} := as_datetime(.data$.start_time, tz = tz)) |>
       select(-".y_time") |>
-      nest(data_before = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
+      nest(data_before = !c(all_of(by_x), ".start_time", ".end_time", ".row_id")) |>
       select(".row_id", "data_before")
 
     # Add to the main result
     data_main <- data_main |>
-      dplyr::left_join(
+      left_join(
         data_before,
         by = ".row_id",
         multiple = "all",
         relationship = "many-to-many"
       ) |>
-      mutate({{ name }} := purrr::map2(data_before, !!rlang::ensym(name), bind_rows)) |>
+      mutate({{ name }} := purrr::map2(data_before, !!ensym(name), bind_rows)) |>
       select(-"data_before")
   }
 
@@ -112,59 +129,55 @@ link_impl <- function(
       dplyr::slice_min(order_by = .data$.y_time, n = 1, with_ties = TRUE) |>
       ungroup() |>
       mutate(across(all_of(y_time), .names = "original_time")) |>
-      mutate({{ y_time }} := lubridate::as_datetime(.data$.end_time, tz = tz)) |>
+      mutate({{ y_time }} := as_datetime(.data$.end_time, tz = tz)) |>
       select(-".y_time") |>
-      nest(data_after = !c({{ by }}, ".start_time", ".end_time", ".row_id")) |>
+      nest(data_after = !c(all_of(by_x), ".start_time", ".end_time", ".row_id")) |>
       select(".row_id", "data_after")
 
     # Add to the main result
     data_main <- data_main |>
-      dplyr::left_join(
+      left_join(
         data_after,
         by = ".row_id",
         multiple = "all",
         relationship = "many-to-many"
       ) |>
-      mutate({{ name }} := purrr::map2(!!rlang::ensym(name), data_after, bind_rows)) |>
+      mutate({{ name }} := purrr::map2(!!ensym(name), data_after, bind_rows)) |>
       select(-"data_after")
   }
 
-  # Create an empty tibble (prototype) by retrieving rows with time before UNIX start (not possible)
-  # This is needed to fill in the data entries where there would otherwise be nothing left
-  # because nothing matched within the start_time and end_time
-  proto <- tibble::as_tibble(y[0, ]) |>
-    select(-{{ by }})
-  if (add_before || add_after) {
-    proto$original_time <- as.POSIXct(vector(mode = "double"))
+  # Build the empty nested result from y's payload columns, excluding its join keys.
+  proto <- as_tibble(y[0, ]) |>
+    select(-all_of(by_y))
 
-    # In case data_main is empty, applying the solution below leads to NA in the next step causing
-    # proto not to be applied (since it's not null)
-    if (nrow(data_main) > 0) {
-      # Add column original_time in cases where it's missing
-      for (i in seq_len(nrow(data_main))) {
-        if (!any("original_time" == colnames(pull(data_main, all_of(name))[[i]]))) {
-          data_main$data[[i]]$original_time <- as.POSIXct(NA, tz = tz)
-        }
-      }
-    }
+  add_original_time <- add_before || add_after
+  if (add_original_time) {
+    proto$original_time <- as.POSIXct(double(0), tz = tz)
   }
 
-  res <- data_main |>
+  data_main |>
     mutate(
-      {{ name }} := ifelse(
-        test = lapply(
-          X = !!rlang::ensym(name),
-          FUN = \(x) {
-            is.null(x) || identical(x, NA) || nrow(x) == 0
-          }
-        ),
-        yes = list(proto),
-        no = !!rlang::ensym(name)
-      )
+      !!name := purrr::map(.data[[name]], function(nested) {
+        is_empty <- is.null(nested) ||
+          (is.atomic(nested) && length(nested) == 1L && is.na(nested)) ||
+          (is.data.frame(nested) && nrow(nested) == 0L)
+
+        if (is_empty) {
+          return(proto)
+        }
+
+        if (add_original_time && !"original_time" %in% names(nested)) {
+          nested$original_time <- as.POSIXct(
+            rep(NA_real_, nrow(nested)),
+            origin = "1970-01-01",
+            tz = tz
+          )
+        }
+
+        nested
+      })
     ) |>
     select(-".row_id")
-
-  res
 }
 
 #' Link y to the time scale of x
@@ -220,10 +233,9 @@ link_impl <- function(
 #' @param x,y A pair of data frames or data frame extensions (e.g. a tibble). Both `x` and `y` must
 #'   have a column called `time`.
 #' @param by A character vector indicating the variable(s) to match by, typically the participant
-#'   IDs. If NULL, the default, `*_join()` will perform a natural join, using all variables in
-#'   common across `x` and `y`. Therefore, all data will be mapped to each other based on the time
-#'   stamps of `x` and `y`. A message lists the variables so that you can check they're correct;
-#'   suppress the message by supplying by explicitly.
+#'   IDs. `NULL` (the default) and `character()` use no equality keys: `x` and `y` are cross-joined
+#'   before interval filtering. Supply participant or group columns to prevent data from different
+#'   participants or groups from being matched.
 #'
 #'   To join by different variables on `x` and `y`, use a named vector. For example, `by = c('a' =
 #'   'b')` will match `x$a` to `y$b`.
@@ -317,13 +329,8 @@ link_impl <- function(
 #'   add_after = TRUE
 #' )
 #'
-#' # If you participant_id is not important to you
-#' # (i.e. the measurements are interchangeable),
-#' # you can ignore them by leaving by empty.
-#' # However, in this case we'll receive a warning
-#' # since x and y have no other columns in common
-#' # (except time, of course). Thus, we can perform
-#' # a cross-join:
+#' # If participants are interchangeable, omit the join keys to cross-join x and y.
+#' # This can match measurements across participants.
 #' link(
 #'   x = x,
 #'   y = y,
@@ -378,7 +385,7 @@ link <- function(
   add_before = FALSE,
   add_after = FALSE,
   name = "data",
-  split = by
+  split = 1
 ) {
   check_arg(x, type = "data.frame")
   check_arg(y, type = "data.frame")
@@ -387,40 +394,12 @@ link <- function(
   check_arg(add_after, type = "logical")
   check_arg(name, type = "character")
 
-  if (missing(time)) {
-    lifecycle::deprecate_warn(
-      when = "1.1.2",
-      what = "link(time = 'must not be missing')",
-      details = c(
-        i = paste(
-          "Due to backwards compatiblity, `time` defaults to",
-          "'time' for now."
-        ),
-        i = paste(
-          "Please make this argument explicit to prevent your",
-          "code from breaking in a future version."
-        )
-      )
+  if (!missing(split)) {
+    lifecycle::deprecate_soft(
+      when = "2.0.0",
+      what = "link(split)",
+      details = "The `split` argument is deprecated and now defaults to 1."
     )
-    time <- "time"
-  }
-
-  if (missing(y_time)) {
-    lifecycle::deprecate_warn(
-      when = "1.1.2",
-      what = "link(y_time = 'must not be missing')",
-      details = c(
-        i = paste(
-          "Due to backwards compatiblity, `y_time` defaults to",
-          "'time' for now."
-        ),
-        i = paste(
-          "Please make this argument explicit to prevent your",
-          "code from breaking in a future version."
-        )
-      )
-    )
-    y_time <- "time"
   }
 
   # Check that not end_time and any offset are used at the same time
@@ -445,120 +424,68 @@ link <- function(
   # Get the start_time, end_time, and y_time as characters and check their validity
   x <- ungroup(x)
   y <- ungroup(y)
-  start_time <- colnames(select(x, {{ time }}))
+  time <- colnames(select(x, {{ time }}))
   if (!missing(end_time)) {
     end_time <- colnames(select(x, {{ end_time }}))
   }
   y_time <- colnames(select(y, {{ y_time }}))
-  by <- colnames(select(x, {{ by }}))
+  by_join <- by
+  if (is.null(by_join) || length(by_join) == 0L) {
+    by_join <- character()
+    by_x <- character()
+    by_y <- character()
+  } else {
+    by_y <- unname(by_join)
+    by_x <- by_y
+    by_names <- names(by_join)
+    if (!is.null(by_names)) {
+      named <- !is.na(by_names) & nzchar(by_names)
+      by_x[named] <- by_names[named]
+    }
 
-  check_arg(start_time, "character", n = 1)
+    if (anyNA(by_x) || any(!nzchar(by_x)) || anyDuplicated(by_x) > 0L) {
+      cli_abort("{.arg by} must map to non-empty, unique column names in {.arg x}.")
+    }
+    if (anyNA(by_y) || any(!nzchar(by_y)) || anyDuplicated(by_y) > 0L) {
+      cli_abort("{.arg by} must map to non-empty, unique column names in {.arg y}.")
+    }
+
+    missing_by_x <- setdiff(by_x, names(x))
+    if (length(missing_by_x) > 0L) {
+      cli_abort("Missing column{?s} in {.arg x}: {.var {missing_by_x}}.")
+    }
+    missing_by_y <- setdiff(by_y, names(y))
+    if (length(missing_by_y) > 0L) {
+      cli_abort("Missing column{?s} in {.arg y}: {.var {missing_by_y}}.")
+    }
+  }
+
+  check_arg(time, "character", n = 1)
   check_arg(end_time, "character", n = 1, allow_null = TRUE)
   check_arg(y_time, "character", n = 1)
 
   # Check the time columns
-  check_arg(pull(x, start_time), "POSIXt", arg = "time")
+  check_arg(pull(x, time), "POSIXt", arg = "time")
   if (!is.null(end_time)) {
     check_arg(pull(x, end_time), "POSIXt", arg = "end_time")
   }
   check_arg(pull(y, y_time), "POSIXt", arg = "y_time")
 
-  # Split up the data for computation efficiency, either based on a numeric value (fixed group size)
-  # or a variable
-  if (!is.null(split)) {
-    if (is.numeric(split)) {
-      x <- split(x, rep(1:split, each = ceiling(nrow(x) / split), length.out = nrow(x)))
-    } else {
-      x <- dplyr::group_split(x, across({{ by }}))
-    }
-  } else {
-    x <- list(x)
-  }
-
-  # Temporarily override future global max size options
-  old <- options(future.globals.maxSize = .Machine$double.xmax)
-  on.exit(options(old))
-
-  x |>
-    furrr::future_map(
-      ~ link_impl(
-        x = .x,
-        y = y,
-        by = by,
-        start_time = start_time,
-        end_time = end_time,
-        y_time = y_time,
-        offset_before = offset_before,
-        offset_after = offset_after,
-        add_before = add_before,
-        add_after = add_after,
-        name = name
-      ),
-      .options = furrr::furrr_options(seed = TRUE)
-    ) |>
-    bind_rows()
-}
-
-#' Link two sensors OR one sensor and an external data frame using an mpathsenser database
-#'
-#' @description `r lifecycle::badge("deprecated")`
-#'
-#'   This function is deprecated in favour of [link()]. It used to be a wrapper around [link()] but
-#'   extracts data in the database for you.
-#'
-#' @inheritParams get_data
-#' @inheritParams link
-#' @param sensor_one The name of a primary sensor. See \link[mpathsenser]{sensors} for a list of
-#'   available sensors.
-#' @param sensor_two The name of a secondary sensor. See \link[mpathsenser]{sensors} for a list of
-#'   available sensors. Cannot be used together with `external`.
-#' @param external Optionally, specify an external data frame. Cannot be used at the same time as a
-#'   second sensor. This data frame must have a column called `time`.
-#' @param external_time The name of the column containing the timestamps in `external`.
-#' @param reverse Switch `sensor_one` with either `sensor_two` or `external`? Particularly useful in
-#'   combination with `external`.
-#' @param ignore_large Safety override to prevent long wait times. Set to `TRUE` to do this function
-#'   on lots of data.
-#'
-#' @seealso [link()]
-#'
-#' @returns A tibble with the data of `sensor_one` with a new column `data` with the matched data of
-#'   either `sensor_two` or `external` according to `offset_before` or `offset_after`. The other way
-#'   around when `reverse = TRUE`.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' # Open a database
-#' db <- open_db("path/to/db")
-#'
-#' # Link two sensors
-#' link_db(db, "accelerometer", "gyroscope", offset_before = 300, offset_after = 300)
-#'
-#' # Link a sensor with an external data frame
-#' link_db(db, "accelerometer",
-#'   external = my_external_data,
-#'   external_time = "time", offset_before = 300, offset_after = 300
-#' )
-#' }
-link_db <- function(
-  db,
-  sensor_one,
-  sensor_two = NULL,
-  external = NULL,
-  external_time = "time",
-  offset_before = 0,
-  offset_after = 0,
-  add_before = FALSE,
-  add_after = FALSE,
-  participant_id = NULL,
-  start_date = NULL,
-  end_date = NULL,
-  reverse = FALSE,
-  ignore_large = FALSE
-) {
-  # Soft deprecate warning
-  lifecycle::deprecate_stop("1.1.2", "link_db()", "link()")
+  link_impl(
+    x = x,
+    y = y,
+    by_join = by_join,
+    by_x = by_x,
+    by_y = by_y,
+    start_time = time,
+    end_time = end_time,
+    y_time = y_time,
+    offset_before = offset_before,
+    offset_after = offset_after,
+    add_before = add_before,
+    add_after = add_after,
+    name = name
+  )
 }
 
 #' Link gaps to (ESM) data
@@ -663,14 +590,18 @@ link_gaps <- function(
     mutate(end_interval = .data$time_int + offset_after)
 
   data_gaps <- data_gaps |>
-    dplyr::left_join(gaps, by = by, multiple = "all", relationship = "many-to-many") |>
+    left_join(gaps, by = by, multiple = "all", relationship = "many-to-many") |>
     mutate(across(c("from", "to"), as.integer)) |>
     filter(.data$from < .data$end_interval & .data$to > .data$start_interval)
 
   # Set gaps time stamps out of the interval to the interval's bounds
   data_gaps <- data_gaps |>
-    mutate(from = ifelse(.data$from < .data$start_interval, .data$start_interval, .data$from)) |>
-    mutate(to = ifelse(.data$to > .data$end_interval, .data$end_interval, .data$to)) |>
+    mutate(
+      from = dplyr::if_else(.data$from < .data$start_interval, .data$start_interval, .data$from)
+    ) |>
+    mutate(
+      to = dplyr::if_else(.data$to > .data$end_interval, .data$end_interval, .data$to)
+    ) |>
     mutate(gap = .data$to - .data$from)
 
   if (raw_data) {
@@ -695,12 +626,12 @@ link_gaps <- function(
       from = as.POSIXct(
         vector(mode = "double"),
         origin = "1970-01-01",
-        tz = lubridate::tz(gaps$from)
+        tz = tz(gaps$from)
       ),
       to = as.POSIXct(
         vector(mode = "double"),
         origin = "1970-01-01",
-        tz = lubridate::tz(gaps$to)
+        tz = tz(gaps$to)
       ),
       gap = integer(0)
     )
@@ -712,14 +643,14 @@ link_gaps <- function(
 
   # Merge with ESM data
   data <- data |>
-    tibble::as_tibble() |>
-    dplyr::left_join(
+    as_tibble() |>
+    left_join(
       data_gaps,
       by = c(by, "time"),
       multiple = "all",
       relationship = "many-to-many"
     ) |>
-    mutate(gap = ifelse(is.na(.data$gap), 0, .data$gap))
+    mutate(gap = dplyr::if_else(is.na(.data$gap), 0L, .data$gap))
 
   if (raw_data) {
     data <- data |>
@@ -745,7 +676,7 @@ link_intervals <- function(
   check_arg(by, "character", allow_null = TRUE)
   check_arg(name, "character", n = 1)
 
-  tz <- lubridate::tz(pull(y, {{ y_start }}))
+  tz <- tz(pull(y, {{ y_start }}))
 
   # Calculate which values in y are within x's bounds
   if (length(by) == 0 && utils::packageVersion("dplyr") >= "1.1.0") {
@@ -755,22 +686,32 @@ link_intervals <- function(
       !!!by
     )
 
-    res <- dplyr::left_join(x, y, by = join_by, multiple = "all", relationship = "many-to-many")
+    res <- left_join(x, y, by = join_by, multiple = "all", relationship = "many-to-many")
   }
 
   res <- res |>
     mutate(across(c({{ y_start }}, {{ y_end }}), as.integer)) |>
     filter(
-      ((is.na({{ y_end }} & {{ y_start }} >= {{ x_start }} & {{ y_start }} < {{ x_end }})) &
-        (is.na({{ y_start }} & {{ y_end }} >= {{ x_start }} & {{ y_end }} < {{ x_end }}))) |
-        ({{ y_start }} < {{ x_end }} & {{ y_end }} > {{ x_start }})
+      (!is.na({{ y_start }}) &
+        !is.na({{ y_end }}) &
+        {{ y_start }} < {{ x_end }} &
+        {{ y_end }} > {{ x_start }}) |
+        (!is.na({{ y_start }}) &
+          is.na({{ y_end }}) &
+          {{ y_start }} >= {{ x_start }} &
+          {{ y_start }} < {{ x_end }}) |
+        (is.na({{ y_start }}) &
+          !is.na({{ y_end }}) &
+          {{ y_end }} >= {{ x_start }} &
+          {{ y_end }} < {{ x_end }}) |
+        (is.na({{ y_start }}) & is.na({{ y_end }}))
     )
 
   # Set gaps time stamps out of the interval to the interval's bounds
   res <- res |>
-    mutate({{ y_start }} := ifelse({{ y_start }} < {{ x_start }}, {{ x_start }}, {{ y_start }})) |>
-    mutate({{ y_end }} := ifelse({{ y_end }} > {{ x_end }}, {{ x_end }}, {{ y_end }})) |>
-    mutate(across(c({{ y_start }}, {{ y_end }}), \(.x) lubridate::as_datetime(.x, tz = tz)))
+    mutate({{ y_start }} := if_else({{ y_start }} < {{ x_start }}, {{ x_start }}, {{ y_start }})) |>
+    mutate({{ y_end }} := if_else({{ y_end }} > {{ x_end }}, {{ x_end }}, {{ y_end }})) |>
+    mutate(across(c({{ y_start }}, {{ y_end }}), \(.x) as_datetime(.x, tz = tz)))
 
   out <- x |>
     dplyr::nest_join(
@@ -898,7 +839,7 @@ bin_data <- function(
   if (!is.null(by) && is.character(by)) {
     by <- match.arg(by, c("sec", "min", "hour", "day"))
     by_duration <- c(sec = 1L, min = 60L, hour = 3600L, day = 86400L)
-    by_duration <- by_duration[grepl(by, names(by_duration))]
+    by_duration <- by_duration[[by]]
   } else if (is.numeric(by) && !fixed) {
     by_duration <- by
   } else {
@@ -908,7 +849,7 @@ bin_data <- function(
     ))
   }
 
-  tz <- lubridate::tz(pull(data, {{ start_time }}))
+  tz <- tz(pull(data, {{ start_time }}))
 
   # check that start_time and end_time are a datetime, or try to convert
   if (
@@ -977,8 +918,8 @@ bin_data <- function(
   )
 
   out <- out |>
-    mutate(bin_start = lubridate::as_datetime(.data$bin_start, tz = tz)) |>
-    dplyr::rename({{ .name }} := "bin_start") |>
+    mutate(bin_start = as_datetime(.data$bin_start, tz = tz)) |>
+    rename({{ .name }} := "bin_start") |>
     select(-any_of("bin_end"))
 
   out

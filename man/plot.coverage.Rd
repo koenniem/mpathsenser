@@ -4,10 +4,51 @@
 \alias{plot.coverage}
 \title{Plot a coverage overview}
 \usage{
-\method{plot}{coverage}(x, ...)
+\method{plot}{coverage}(
+  x,
+  digits = 2,
+  type = c("auto", "line", "heatmap", "bar"),
+  cycle = NULL,
+  aggregate = "auto",
+  label = TRUE,
+  week_start = NULL,
+  ...
+)
 }
 \arguments{
-\item{x}{A tibble with the coverage data coming from \code{\link[=coverage]{coverage()}}.}
+\item{x}{A coverage result from \code{\link[=coverage_frequency]{coverage_frequency()}} or
+\code{\link[=coverage_proportional]{coverage_proportional()}}, either lazy or already collected.}
+
+\item{digits}{Number of digits to show in heatmap labels. Defaults to 2.
+Bar plots do not print labels.}
+
+\item{type}{The plot type. \code{"auto"} (the default) uses a line graph when
+\code{cycle = NULL} and a heatmap otherwise. Use \code{"line"}, \code{"heatmap"}, or
+\code{"bar"} to force a layout. Heatmaps show a sensor-by-time grid with the
+value printed in each cell. Bar plots draw thin bars without labels; the
+rows depend on \code{aggregate}.}
+
+\item{cycle}{The calendar cycle used to average the values for plotting:
+\code{NULL}, \code{"hour"}, \code{"day"}, \code{"week"}, \code{"month"}, or \code{"year"}. Defaults to
+\code{NULL}, which plots the full time series. Each cycle is one calendar
+position: minute of the hour, hour of the day, weekday, day of the month
+(week of the month for weekly bins), or month (week of the year for weekly
+bins). Finer bins are averaged into that position. This only changes the
+plot; use dplyr \code{summarise()} on the returned table for other summaries.}
+
+\item{aggregate}{How to combine multiple participants or sensors. \code{"auto"}
+(the default) averages across participants for every plot type.
+\code{"participant_id"} averages across participants explicitly; for bar plots
+this leaves sensors on the y-axis. \code{"sensor"} averages across sensors and
+is only valid for bar plots, where it leaves participants on the y-axis.
+\code{NULL} performs no averaging and facets the remaining dimension: participants
+for line/heatmap plots, sensors for bar plots (with participants as rows).}
+
+\item{label}{Whether to label weekday positions with abbreviations, as in
+\code{\link[lubridate:wday]{lubridate::wday()}}.}
+
+\item{week_start}{Day the week starts on: 1 = Monday, 7 = Sunday. Defaults
+to the value used when constructing \code{x} (or \code{getOption("lubridate.week.start", 7)}).}
 
 \item{...}{Other arguments passed on to methods. Not currently used.}
 }
@@ -15,37 +56,24 @@
 A \link[ggplot2:ggplot]{ggplot2::ggplot} object.
 }
 \description{
-Plot a coverage overview
+Draw a line chart, a sensor heatmap, or a compact bar timeline. Multiple
+participants are averaged by default for every plot type; use
+\code{aggregate = NULL} to facet them. \code{type = "bar"} draws thin coverage bars:
+sensors by default, participants with \code{aggregate = "sensor"}, and participant
+rows with sensor facets when \code{aggregate = NULL}.
 }
 \examples{
 \dontrun{
-freq <- c(
-  Accelerometer = 720, # Once per 5 seconds. Can have multiple measurements.
-  AirQuality = 1,
-  AppUsage = 2, # Once every 30 minutes
-  Bluetooth = 60, # Once per minute. Can have multiple measurements.
-  Gyroscope = 720, # Once per 5 seconds. Can have multiple measurements.
-  Light = 360, # Once per 10 seconds
-  Location = 60, # Once per 60 seconds
-  Memory = 60, # Once per minute
-  Noise = 120,
-  Pedometer = 1,
-  Weather = 1,
-  Wifi = 60 # once per minute
-)
+db <- example_db()
 
-data <- coverage(
-  db = db,
-  participant_id = "12345",
-  sensor = c("Accelerometer", "Gyroscope"),
-  frequency = mpathsenser::freq,
-  start_date = "2021-01-01",
-  end_date = "2021-05-01"
-)
-
-plot(data)
+plot(coverage_frequency(db, sensor = "Accelerometer"), cycle = "day")
+plot(coverage_proportional(db, coverage_expected()))
 }
 }
 \seealso{
-\code{\link[=coverage]{coverage()}}
+Other coverage functions:
+\code{\link[=coverage_expected]{coverage_expected()}},
+\code{\link[=coverage_frequency]{coverage_frequency()}},
+\code{\link[=coverage_proportional]{coverage_proportional()}}
 }
+\concept{coverage functions}

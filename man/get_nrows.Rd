@@ -18,17 +18,16 @@ get_nrows(
 \item{sensor}{A character vector of one or multiple vectors. Use \code{sensor = NULL} for all
 sensors. See \link[mpathsenser]{sensors} for a list of all available sensors.}
 
-\item{participant_id}{A character string identifying a single participant. Use
+\item{participant_id}{A single participant identifier (stored as an unsigned integer; an
+integer, numeric, or character value is accepted). Use
 \code{\link[=get_participants]{get_participants()}} to retrieve all participants from the database. Leave empty to get data
 for all participants.}
 
 \item{start_date}{Optional search window specifying date where to begin search. Must be
-convertible to date using \code{\link[base:as.Date]{base::as.Date()}}. Use \code{\link[=first_date]{first_date()}} to find the date of the first
-entry for a participant.}
+convertible to date using \code{\link[base:as.Date]{base::as.Date()}}.}
 
 \item{end_date}{Optional search window specifying date where to end search. Must be convertible
-to date using \code{\link[base:as.Date]{base::as.Date()}}. Use \code{\link[=last_date]{last_date()}} to find the date of the last entry for a
-participant.}
+to date using \code{\link[base:as.Date]{base::as.Date()}}.}
 }
 \value{
 A named vector containing the number of rows for each sensor.
@@ -44,8 +43,8 @@ db <- open_db("path/to/db")
 # Get the number of rows for all sensors
 get_nrows(db, sensor = NULL)
 
-# Get the number of rows for the Accelerometer and Gyroscope sensors
-get_nrows(db, c("Accelerometer", "Gyroscope"))
+# Count rows for Accelerometer and Activity
+get_nrows(db, c("Accelerometer", "Activity"))
 
 # Remember to close the connection
 close_db(db)

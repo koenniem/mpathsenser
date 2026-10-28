@@ -33,7 +33,7 @@ test_that("check_db", {
     "Argument `foo` is not a database connection."
   )
 
-  db <- create_db(NULL, tempfile())
+  db <- create_db(NULL, tempfile(), shared_home = FALSE)
   expect_true(check_db(db))
   expect_true(check_db(db, arg = "foo"))
   expect_true(check_db(db, allow_null = TRUE, arg = "foo"))
@@ -47,11 +47,55 @@ test_that("check_db", {
     check_db(db, allow_null = TRUE, arg = "db"),
     "Database connection `db` is not valid."
   )
-  unlink(db@dbname)
+  unlink(db@driver@dbdir)
   expect_error(
     check_db(db, arg = "foo"),
     "Database connection `foo` is not valid."
   )
+})
+
+test_that("check_db recognizes missing sensors", {
+  db <- create_db(NULL, tempfile("chk", fileext = ".db"), shared_home = FALSE)
+  # Sensor tables are physical in raw and exposed as views in main; dropping
+  # the main view (or the raw table) must be detected as a missing sensor.
+  DBI::dbExecute(db, "DROP VIEW main.Accelerometer")
+  expect_error(
+    check_db(db),
+    paste0(
+      "The following sensor is missing from the database: .*\"Accelerometer\".*"
+    )
+  )
+  # Restoring the view alone is not enough: the raw physical table is required
+  # too, so dropping it (after recreating the view) must still fail.
+  .create_sensor_views(db)
+  expect_true(check_db(db))
+  DBI::dbExecute(db, "ALTER TABLE raw.Accelerometer RENAME TO Accelerometer_bak")
+  expect_error(
+    check_db(db),
+    paste0(
+      "The following sensor is missing from the database: .*\"Accelerometer\".*"
+    )
+  )
+  DBI::dbExecute(db, "ALTER TABLE raw.Accelerometer_bak RENAME TO Accelerometer")
+
+  # A leftover <sensor>_optimize_tmp table from an interrupted optimize_db()
+  # run must be ignored by both the sensor check and view creation.
+  DBI::dbExecute(
+    db,
+    "CREATE TABLE raw.Pedometer_optimize_tmp AS SELECT * FROM raw.Pedometer WHERE FALSE"
+  )
+  expect_true(check_db(db))
+  expect_no_error(.create_sensor_views(db))
+  expect_false(DBI::dbExistsTable(db, "Pedometer_optimize_tmp", schema = "main"))
+  DBI::dbExecute(db, "DROP TABLE raw.Pedometer_optimize_tmp")
+
+  # Try again, but with the check disabled
+  old_opts <- options(mpathsenser.check_missing_sensors = FALSE)
+  on.exit(options(old_opts), TRUE)
+  expect_true(check_db(db))
+
+  # Cleanup
+  close_db(db)
 })
 
 test_that("check_arg", {
@@ -82,6 +126,7 @@ test_that("check_arg", {
   expect_true(check_arg(1.12, type = "numeric"))
   expect_true(check_arg(as.factor(iris$Species), type = "factor"))
   expect_true(check_arg(Sys.time(), type = "POSIXt"))
+  expect_true(check_arg(as.Date("2025-01-01"), type = "Date"))
   expect_true(check_arg(data.frame(), type = "data.frame"))
   expect_true(check_arg(list(), type = "list"))
 
@@ -96,6 +141,7 @@ test_that("check_arg", {
   expect_true(check_arg(1.12, type = "numeric", n = 1))
   expect_true(check_arg(as.factor(iris$Species)[1], type = "factor", n = 1))
   expect_true(check_arg(Sys.time(), type = "POSIXt", n = 1))
+  expect_true(check_arg(as.Date("2025-01-01"), type = "Date", n = 1))
   expect_true(check_arg(list(foo = "bar"), type = "list", n = 1))
 
   # Test non-working cases
@@ -130,6 +176,10 @@ test_that("check_arg", {
   expect_error(
     check_arg(TRUE, type = "POSIXt", arg = "x"),
     "Argument `x` must be a POSIXt."
+  )
+  expect_error(
+    check_arg(as.Date(c("2025-01-01", "2025-01-02")), type = "Date", n = 1, arg = "x"),
+    "Argument `x` must be a Date of length 1."
   )
   expect_error(
     check_arg(TRUE, type = "data.frame", arg = "x"),
@@ -187,6 +237,18 @@ test_that("check_arg", {
   )
 })
 
+test_that("check_arg accepts lazy tables", {
+  db <- create_db(NULL, ":memory:", shared_home = FALSE)
+  on.exit(cleanup_test_db(db))
+  lazy <- dplyr::tbl(db, dplyr::sql("SELECT 1 AS x"))
+
+  expect_invisible(check_arg(lazy, c("data.frame", "tbl_sql")))
+  expect_error(
+    check_arg(1, c("data.frame", "tbl_sql"), arg = "data"),
+    "Argument `data` must be a data.frame or a lazy table."
+  )
+})
+
 test_that("check_sensors", {
   expect_true(check_sensors("Accelerometer"))
   expect_true(check_sensors("accelerometer"))
@@ -217,6 +279,96 @@ test_that("check_sensors", {
   )
 })
 
+test_that("check_sensors resolves sensor names", {
+  # NULL expands to every sensor in canonical spelling.
+  expect_identical(
+    check_sensors(NULL, allow_null = TRUE, resolve = TRUE),
+    sensors
+  )
+  # Case and view suffixes are resolved to the canonical base name and
+  # duplicates collapse.
+  expect_identical(
+    check_sensors(
+      c("accelerometer", "Accelerometer_WITH_LOCAL"),
+      resolve = TRUE
+    ),
+    "Accelerometer"
+  )
+  expect_identical(
+    check_sensors(c("Accelerometer", "accelerometer"), resolve = TRUE),
+    "Accelerometer"
+  )
+  # Unknown names and empty selections still abort.
+  expect_error(
+    check_sensors("foo", resolve = TRUE),
+    ".*Sensor `foo` could not be found\\..*"
+  )
+  expect_error(
+    check_sensors(character(), resolve = TRUE),
+    "No valid sensors"
+  )
+})
+
+test_that(".physical_sensor strips view suffixes case-insensitively", {
+  expect_identical(.physical_sensor("Accelerometer"), "Accelerometer")
+  expect_identical(.physical_sensor("Accelerometer_local"), "Accelerometer")
+  expect_identical(.physical_sensor("Accelerometer_WITH_LOCAL"), "Accelerometer")
+})
+
+test_that("check_participants", {
+  db <- create_db(NULL, tempfile("participants", fileext = ".duckdb"), shared_home = FALSE)
+  on.exit(cleanup_test_db(db), add = TRUE)
+  DBI::dbExecute(db, "INSERT INTO Study (study_id, data_format) VALUES ('foo', NULL)")
+  DBI::dbExecute(
+    db,
+    "INSERT INTO Participant (participant_id, study_id) VALUES ('12345', 'foo')"
+  )
+
+  expect_identical(check_participants(db, NULL), "12345")
+  expect_identical(check_participants(db, "12345"), "12345")
+  expect_error(
+    check_participants(db, "999"),
+    "could not be found"
+  )
+
+  empty <- create_db(NULL, tempfile("empty", fileext = ".duckdb"), shared_home = FALSE)
+  on.exit(cleanup_test_db(empty), add = TRUE)
+  expect_error(
+    check_participants(empty, NULL),
+    "The database does not contain any participants."
+  )
+})
+
+test_that("check_dates", {
+  expect_identical(
+    check_dates(NULL, NULL),
+    list(start_date = NULL, end_date = NULL)
+  )
+  expect_identical(
+    check_dates("2024-01-01", as.Date("2024-02-02")),
+    list(start_date = as.Date("2024-01-01"), end_date = as.Date("2024-02-02"))
+  )
+  expect_error(check_dates(as.Date(NA), NULL), "must be.*NULL.*date string")
+  expect_error(check_dates(1, NULL), "must be.*NULL.*date string")
+})
+
+test_that("is_date", {
+  expect_true(.is_date(NULL))
+  expect_true(.is_date("2024-01-01"))
+  expect_true(.is_date(as.Date("2024-01-01")))
+  expect_false(.is_date(as.Date(NA)))
+  expect_false(.is_date(1))
+  expect_false(.is_date(c("2024-01-01", "2024-01-02")))
+})
+
+test_that("check_week_start", {
+  expect_identical(check_week_start(7), 7L)
+  expect_identical(check_week_start(1), 1L)
+  expect_error(check_week_start(8), "whole number between 1 \\(Monday\\) and 7 \\(Sunday\\)")
+  expect_error(check_week_start(2.5), "whole number between")
+  expect_error(check_week_start("Monday"), "must be a numeric")
+})
+
 test_that("check_offset", {
   expect_error(
     check_offset(TRUE, 0),
@@ -244,4 +396,12 @@ test_that("check_offset", {
     check_offset(0, offset_after = -1800),
     "`offset_after` must be a positive period \\(i.e. greater than 0\\)."
   )
+})
+
+test_that("with_article", {
+  expect_identical(with_article("integer"), "an integer")
+  expect_identical(with_article(c("integer", "double")), "an integer or a double")
+  expect_identical(with_article("Integer"), "an Integer")
+  expect_identical(with_article("double"), "a double")
+  expect_identical(with_article(character(0)), "")
 })
